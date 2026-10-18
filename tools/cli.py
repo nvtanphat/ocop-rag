@@ -1,0 +1,128 @@
+"""Single OCOP source-to-answer pipeline.
+
+    python tools/cli.py run                  # prepare corpus and serve API
+    python tools/cli.py run --query "..."    # prepare corpus and answer once
+    python tools/cli.py run --build-only      # prepare corpus without serving
+    python tools/cli.py status               # inspect corpus readiness
+    python tools/cli.py debug --help         # advanced operator commands
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+for _stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if callable(_reconfigure):
+        _reconfigure(encoding="utf-8", errors="replace")
+
+
+def main() -> None:
+    cli = argparse.ArgumentParser(description="OCOP GraphRAG — one end-to-end pipeline")
+    sub = cli.add_subparsers(dest="command", required=True)
+    run = sub.add_parser("run", help="Source validation → OCR → evidence → retrieval/graph → API or answer")
+    run.add_argument("--root", type=Path, default=ROOT)
+    run.add_argument("--query", help="Answer one question after preparing the corpus")
+    run.add_argument("--build-only", action="store_true", help="Prepare corpus without starting the API")
+    run.add_argument("--refresh", action="store_true", help="Rebuild all derived artifacts (OCR cache reused)")
+    run.add_argument("--dense", action="store_true", help="Build real EmbeddingGemma/Qdrant vectors")
+    run.add_argument("--semantic-extract", action="store_true", help="Ask Qwen3.5 2B for constrained candidate entities, relations and rule claims")
+    run.add_argument("--semantic-max-units", type=int, default=50, help="Maximum EvidenceUnits sent to semantic candidate model")
+    run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and Ollama Qwen3.5 2B")
+    run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")
+    run.add_argument("--mongo", action="store_true", help="Also materialize structured data in MongoDB")
+    run.add_argument("--neo4j", action="store_true", help="Also publish graph into Neo4j")
+    run.add_argument("--ocr-engine", choices=("auto", "paddle", "tesseract", "paddle_vl", "easyocr", "easyocr_vietocr", "ensemble"), default="tesseract")
+    run.add_argument("--table-engine", choices=("auto", "opencv", "ppstructure", "paddle_vl"), default="opencv")
+    run.add_argument("--workers", type=int, default=1)
+    run.add_argument("--dpi", type=int, default=260)
+    run.add_argument("--preprocess", action="store_true", help="Deskew OCR rasters with inverse PDF coordinates")
+    run.add_argument("--refine-score-cells",action="store_true",help="Supplement narrow OCOP scoring cells with crop OCR candidates")
+    run.add_argument("--embedding-model", default="google/embeddinggemma-300m")
+    run.add_argument("--embedding-revision")
+    run.add_argument("--qdrant-host", default="localhost")
+    run.add_argument("--qdrant-port", type=int, default=6333)
+    run.add_argument("--mongo-uri", default="mongodb://127.0.0.1:27017")
+    run.add_argument("--neo4j-uri", default="bolt://localhost:7687")
+    run.add_argument("--no-llm", action="store_true", help="Use evidence-only answer mode")
+    run.add_argument("--retrieval-mode", choices=("auto", "sparse", "dense", "hybrid"), default="auto")
+    run.add_argument("--rerank", action="store_true")
+    run.add_argument("--host", default="127.0.0.1")
+    run.add_argument("--port", type=int, default=8000)
+    eval_cmd = sub.add_parser("evaluate", help="Independent retrieval/agent eval; does not OCR PDFs")
+    eval_cmd.add_argument('arguments', nargs=argparse.REMAINDER)
+    status = sub.add_parser("status", help="Validate current unified corpus readiness")
+    status.add_argument("--root", type=Path, default=ROOT)
+    debug = sub.add_parser("debug", help="Developer commands for inspecting individual internal components")
+    debug.add_argument("arguments", nargs=argparse.REMAINDER)
+    if len(sys.argv)>1 and sys.argv[1]=='evaluate':
+        completed=subprocess.run([sys.executable,str(ROOT/'tools'/'evaluate_ocop.py'),
+                                  *sys.argv[2:]],cwd=ROOT,check=False)
+        raise SystemExit(completed.returncode)
+    args = cli.parse_args()
+    if args.command == "evaluate":
+        completed=subprocess.run([sys.executable,str(ROOT/'tools'/'evaluate_ocop.py'),
+                                  *args.arguments],cwd=ROOT,check=False)
+        raise SystemExit(completed.returncode)
+    if args.command == "debug":
+        completed = subprocess.run([sys.executable, str(ROOT / "tools" / "debug_cli.py"),
+                                    *args.arguments], cwd=ROOT, check=False)
+        raise SystemExit(completed.returncode)
+
+    from ai_core.system.pipeline import OcopSystemPipeline, PipelineOptions
+    system = OcopSystemPipeline(args.root.resolve())
+    if args.command == "status":
+        print(json.dumps(system.status(validate_sources=True), indent=2, ensure_ascii=False))
+        return
+
+    if args.build_only and args.query:
+        cli.error("--build-only and --query are mutually exclusive")
+    try:
+        if args.full:
+            from ai_core.system.runtime import verify_ollama_model
+            verify_ollama_model(os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"), "qwen3.5:2b")
+        prepared = system.ensure(PipelineOptions(
+            refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, mongo=args.mongo or args.full, neo4j=args.neo4j or args.full,
+            ocr_engine=args.ocr_engine, table_engine=args.table_engine,
+            workers=args.workers, dpi=args.dpi, refine_score_cells=args.refine_score_cells,
+            preprocess=args.preprocess,
+            embedding_model=args.embedding_model, embedding_revision=args.embedding_revision,
+            qdrant_host=args.qdrant_host, qdrant_port=args.qdrant_port,
+            mongo_uri=args.mongo_uri, neo4j_uri=args.neo4j_uri,
+        ))
+        print(json.dumps({"pipeline": prepared}, indent=2, ensure_ascii=False), flush=True)
+        if args.require_eval_gate or os.environ.get('OCOP_ENFORCE_RELEASE_GATE')=='1':
+            from ai_core.evaluation.ocop.release import validate_latest
+            gate=validate_latest(system.root,corpus_version=prepared.get('corpus_version'))
+            if gate['status']!='pass':
+                raise RuntimeError('OCOP production release blocked: '+', '.join(gate['failures']))
+        if args.build_only:
+            return
+        if args.query:
+            effective_mode = ("hybrid" if prepared["dense_ready"] else "sparse") if args.retrieval_mode == "auto" else args.retrieval_mode
+            if effective_mode != "sparse" and not prepared["dense_ready"]:
+                raise RuntimeError("Dense vectors missing. Re-run with --dense or use --retrieval-mode sparse")
+            from ai_core.orchestration.ocop.workflow import OcopAgent
+            from ai_core.orchestration.ocop.llm import OllamaClient
+            llm = None if args.no_llm else OllamaClient(url=os.environ.get("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"))
+            answer = OcopAgent(system.root, llm=llm, retrieval_mode=effective_mode,
+                               rerank=args.rerank).ask(args.query)
+            print(answer.model_dump_json(indent=2))
+            return
+        from uvicorn import run as serve
+        serve("backend.api.ocop_main:app", host=args.host, port=args.port)
+    except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:
+        print(f"OCOP pipeline error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+if __name__ == "__main__":
+    main()

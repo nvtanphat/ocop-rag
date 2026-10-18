@@ -1,0 +1,330 @@
+"""One end-to-end OCOP corpus pipeline.
+
+Immutable PDF inputs are checked against the approved snapshot. Everything
+produced from those inputs is built off-line in a temporary tree, validated,
+then promoted. Existing corpus artifacts remain available if construction
+fails. OCR is cached by the existing PDF parser, never faked here.
+"""
+from __future__ import annotations
+
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import shutil
+import tempfile
+from typing import Any, Iterator
+
+from ai_core.processing.ocop.pdf_loader import checked_sources
+
+PARTS = ("pages", "knowledge", "index", "graph")
+
+
+def _load_json(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_json(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+@contextmanager
+def _exclusive_lock(path: Path) -> Iterator[None]:
+    """Single build writer. Leave crash artifacts alone for explicit recovery."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise RuntimeError(f"Another OCOP build may be active: {path}") from exc
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as fh:
+            fh.write(str(os.getpid()) + "\n")
+        yield
+    finally:
+        path.unlink(missing_ok=True)
+
+
+@dataclass(frozen=True)
+class PipelineOptions:
+    ocr_engine: str = "tesseract"
+    table_engine: str = "opencv"
+    dpi: int = 260
+    workers: int = 1
+    refine_score_cells: bool = False
+    preprocess: bool = False
+    dense: bool = False
+    mongo: bool = False
+    neo4j: bool = False
+    embedding_model: str = "google/embeddinggemma-300m"
+    embedding_revision: str | None = None
+    mongo_uri: str = "mongodb://127.0.0.1:27017"
+    mongo_database: str = "ocop_rag"
+    qdrant_host: str = "localhost"
+    qdrant_port: int = 6333
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    refresh: bool = False
+    semantic_extract: bool = False
+    semantic_max_units: int = 50
+
+
+class OcopSystemPipeline:
+    def __init__(self, root: Path):
+        self.root = Path(root).resolve()
+        self.data = self.root / "data" / "processed" / "ocop"
+        self.status_file = self.data / "system_manifest.json"
+
+    def source_snapshot(self) -> tuple[int, str]:
+        sources, lock = checked_sources(
+            self.root,
+            self.root / "configs" / "ocop_sources.json",
+            self.root / "configs" / "ocop_sources.lock.json",
+        )
+        return len(sources), lock["aggregate_sha256"]
+
+    def status(self, *, validate_sources: bool = False) -> dict[str, Any]:
+        from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
+        page = _load_json(self.data / "pages" / "manifest.json")
+        knowledge = _load_json(self.data / "knowledge" / "manifest.json")
+        index = _load_json(self.data / "index" / "manifest.json")
+        graph = _load_json(self.data / "graph" / "manifest.json")
+        manifest = _load_json(self.status_file)
+        try:
+            sources, snapshot = self.source_snapshot() if validate_sources else (None, page.get("input_snapshot_sha256"))
+            source_ok = True
+        except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:
+            sources, snapshot, source_ok = None, None, False
+            source_error = str(exc)
+        required = {
+            "pages": ("manifest.json",),
+            "knowledge": ("manifest.json", "evidence_units.jsonl", "entities.jsonl", "relations.jsonl"),
+            "index": ("manifest.json", "chunks.jsonl", "bm25.json.gz"),
+            "graph": ("manifest.json", "nodes.jsonl", "edges.jsonl"),
+        }
+        files_ok = all(all((self.data / component / filename).is_file() for filename in filenames)
+                       for component, filenames in required.items())
+        business_files = ("business_entities.jsonl", "business_relations.jsonl", "business_rules.jsonl")
+        business_ready = all((self.data / "knowledge" / name).is_file() for name in business_files)
+        from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
+        business_consistent = (
+            knowledge.get("pipeline_version") == KNOWLEDGE_VERSION and business_ready
+        )
+        from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
+        lineage_ok = bool(
+            business_consistent and page.get("parser_version")==PARSER_VERSION and
+            source_ok and snapshot and page.get("complete") and knowledge.get("complete")
+            and page.get("input_snapshot_sha256") == snapshot
+            and knowledge.get("source_snapshot_sha256") == snapshot
+            and index.get("source_knowledge_version") == knowledge.get("corpus_version")
+            and index.get('index_version') == INDEX_VERSION
+            and graph.get("source_knowledge_version") == knowledge.get("corpus_version")
+            and index.get("status") in ("sparse_ready", "hybrid_ready")
+            and graph.get("status") == "local_ready" and files_ok
+        )
+        updating = (self.data / ".promoting").exists()
+        result = {
+            "state": "updating" if updating else ("ready" if lineage_ok else "not_ready"),
+            "lineage_ok": bool(lineage_ok),
+            "sources": sources,
+            "source_snapshot_sha256": snapshot,
+            "pdf_pages": page.get("counts", {}).get("pages", 0),
+            "pdf_parser_version": page.get("parser_version"),
+            "pdf_parser_current":page.get("parser_version")==PARSER_VERSION,
+            "evidence_units": knowledge.get("counts", {}).get("evidence_units", knowledge.get("counts", {}).get("units", 0)),
+            "corpus_version": index.get("corpus_version"),
+            "dense_ready": bool(index.get("dense", {}).get("enabled", False)),
+            "graph_ready": graph.get("status") == "local_ready",
+            "business_semantics_ready": business_ready,
+            "semantic_proposals": knowledge.get("semantic_proposals",{}),
+            "neo4j_ready": graph.get("neo4j", {}).get("status") == "uploaded",
+            "mongo_ready": bool(index.get("mongo")),
+            "model_generation": "qwen3.5:2b (optional Ollama service)",
+            "provenance_status": "machine_extracted_not_legally_verified",
+            "last_build": manifest.get("built_at"),
+        }
+        if not source_ok:
+            result["source_error"] = source_error
+        return result
+
+    def ensure(self, options: PipelineOptions = PipelineOptions()) -> dict[str, Any]:
+        """Build (or reuse) a coherent source-locked corpus, once per invocation."""
+        from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
+        with _exclusive_lock(self.data / ".system.lock"):
+            current = self.status(validate_sources=True)
+            if not options.refresh and current["state"] == "ready":
+                index = _load_json(self.data / "index" / "manifest.json")
+                graph = _load_json(self.data / "graph" / "manifest.json")
+                mongo_ok = not options.mongo or bool(index.get("mongo"))
+                neo4j_ok = not options.neo4j or graph.get("neo4j", {}).get("status") == "uploaded"
+                dense_config_ok = (not options.dense or (current["dense_ready"]
+                    and index.get("dense", {}).get("model_id") == options.embedding_model
+                    and index.get("dense", {}).get("revision") == options.embedding_revision
+                    and index.get("dense", {}).get("host") == options.qdrant_host
+                    and index.get("dense", {}).get("port") == options.qdrant_port))
+                page_config = _load_json(self.data / "pages" / "manifest.json")
+                pdf_config_ok = (page_config.get("dpi") == options.dpi
+                    and page_config.get("engine_requested") == options.ocr_engine
+                    and page_config.get("table_engine_requested") == options.table_engine
+                    and page_config.get("parser_version") == PARSER_VERSION
+                    and page_config.get("score_refinement_enabled",False) == options.refine_score_cells
+                    and page_config.get("preprocess_enabled",False) == options.preprocess)
+                knowledge_manifest = _load_json(self.data / "knowledge" / "manifest.json")
+                semantic_ok = (not options.semantic_extract or
+                     (knowledge_manifest.get("semantic_proposals",{}).get("enabled") and
+                     knowledge_manifest["semantic_proposals"].get("processed_unit_count") is not None and
+                     knowledge_manifest["semantic_proposals"].get("model") == f"qwen3.5:2b:{options.semantic_max_units}"))
+                if dense_config_ok and pdf_config_ok and mongo_ok and neo4j_ok and semantic_ok:
+                    return {**current, "reused": True}
+            # Construct the complete pipeline away from the live artifact tree.
+            with tempfile.TemporaryDirectory(prefix="ocop-build-", dir=self.data) as temporary:
+                stage = Path(temporary)
+                try:
+                    from ai_core.processing.ocop.pdf_pipeline import run_pipeline
+                    from ai_core.processing.ocop.knowledge_extract import extract_artifacts
+                    from ai_core.retrieval.ocop.index_pipeline import build_index
+                    from ai_core.graph.ocop.builder import build_graph
+
+                    page_config = _load_json(self.data / "pages" / "manifest.json")
+                    knowledge_config = _load_json(self.data / "knowledge" / "manifest.json")
+                    # Reuse page extraction independently of knowledge version:
+                    # upgrading evidence/schema MUST NOT trigger 315 expensive OCRs.
+                    reuse_pages = (not options.refresh
+                        and page_config.get("complete")
+                        and page_config.get("input_snapshot_sha256") == current.get("source_snapshot_sha256")
+                        and page_config.get("dpi") == options.dpi
+                        and page_config.get("engine_requested") == options.ocr_engine
+                        and page_config.get("table_engine_requested") == options.table_engine
+                        and page_config.get("parser_version") == PARSER_VERSION
+                        and page_config.get("score_refinement_enabled",False) == options.refine_score_cells
+                        and page_config.get("preprocess_enabled",False) == options.preprocess)
+                    knowledge_semantics = knowledge_config.get("semantic_proposals", {})
+                    semantic_match = (not options.semantic_extract or
+                         (knowledge_semantics.get("enabled") and
+                          knowledge_semantics.get("model") == f"qwen3.5:2b:{options.semantic_max_units}"))
+                    from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
+                    reuse_knowledge = (reuse_pages and knowledge_config.get("complete")
+                        and knowledge_config.get("pipeline_version") == KNOWLEDGE_VERSION
+                        and all((self.data / "knowledge" / name).is_file() for name in
+                                ("business_entities.jsonl", "business_relations.jsonl", "business_rules.jsonl"))
+                        and semantic_match)
+                    if reuse_pages:
+                        shutil.copytree(self.data / "pages", stage / "pages")
+                        page = page_config
+                    else:
+                        page = run_pipeline(
+                            self.root,
+                            registry=self.root / "configs" / "ocop_sources.json",
+                            lock=self.root / "configs" / "ocop_sources.lock.json",
+                            output=stage / "pages",
+                            cache_dir=self.data / "cache",
+                            engine=options.ocr_engine,
+                            dpi=options.dpi,
+                            table_engine=options.table_engine,
+                            workers=options.workers,
+                            refine_score_cells=options.refine_score_cells,
+                            preprocess=options.preprocess,
+                        )
+                    if not page.get("complete"):
+                        raise RuntimeError("PDF parser did not produce a complete source-locked corpus")
+                    if reuse_knowledge:
+                        shutil.copytree(self.data / "knowledge", stage / "knowledge")
+                        knowledge = knowledge_config
+                    else:
+                        semantic_client = None
+                        if options.semantic_extract:
+                            from ai_core.orchestration.ocop.llm import OllamaClient
+                            semantic_client = OllamaClient(model="qwen3.5:2b",url=os.getenv("OCOP_OLLAMA_URL","http://127.0.0.1:11434"))
+                        knowledge = extract_artifacts(self.root, input_dir=stage / "pages",
+                            output_dir=stage / "knowledge", semantic_client=semantic_client,
+                            semantic_max_units=options.semantic_max_units)
+                    if not knowledge.get("complete"):
+                        raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
+                    index = build_index(
+                        knowledge=stage / "knowledge", index_dir=stage / "index",
+                        with_dense=options.dense,
+                        with_mongo=options.mongo,
+                        mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
+                        embedding_model=options.embedding_model, embedding_revision=options.embedding_revision,
+                        qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
+                    )
+                    old_graph = _load_json(self.data / "graph" / "manifest.json")
+                    if (reuse_knowledge and old_graph.get("status") == "local_ready"
+                            and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")):
+                        shutil.copytree(self.data / "graph", stage / "graph")
+                        graph = old_graph
+                    else:
+                        graph = build_graph(stage / "knowledge", stage / "graph")
+                    if index["source_knowledge_version"] != knowledge["corpus_version"] or graph["source_knowledge_version"] != knowledge["corpus_version"]:
+                        raise RuntimeError("Cross-store corpus version mismatch")
+                    if options.dense and not index.get("dense", {}).get("enabled"):
+                        raise RuntimeError("Requested dense indexing was not completed")
+                    if options.mongo and not index.get("mongo"):
+                        raise RuntimeError("Requested MongoDB materialization was not completed")
+                    if options.neo4j and graph.get("neo4j", {}).get("status") != "uploaded":
+                        from ai_core.graph.ocop.store import publish_neo4j
+                        password = os.getenv("NEO4J_PASSWORD")
+                        if not password:
+                            raise RuntimeError("NEO4J_PASSWORD is required for Neo4j publishing")
+                        graph["neo4j"] = publish_neo4j(stage / "graph", uri=options.neo4j_uri,
+                                user=options.neo4j_user, password=password, verified_only=False)
+                        _write_json(stage / "graph" / "manifest.json", graph)
+                    self._promote(stage)
+                except Exception:
+                    # TemporaryDirectory removes partial products; current published corpus is untouched.
+                    raise
+            _write_json(self.status_file, {
+                "built_at": datetime.now(timezone.utc).isoformat(),
+                "source_snapshot_sha256": page["input_snapshot_sha256"],
+                "corpus_version": index["corpus_version"],
+                "knowledge_version": knowledge["corpus_version"],
+                "graph_version": graph["graph_version"],
+                "index_status": index["status"],
+                "note": "Machine extraction is not legal review or official OCOP certification",
+            })
+            result = self.status(validate_sources=True)
+            if result["state"] != "ready":
+                raise RuntimeError(f"Post-publish corpus validation failed: {result}")
+            return {**result, "reused": False}
+
+    def _promote(self, stage: Path) -> None:
+        """Promote a checked local bundle with rollback on filesystem errors.
+
+        Multiple directory renames cannot be transactionally atomic: API readers
+        should not query while promotion is underway. Existing builds are saved
+        until all renames finish. External DB publications have their own lifecycle.
+        """
+        backup = stage / "_backup"
+        backup.mkdir()
+        promotion_marker = self.data / ".promoting"
+        promotion_marker.write_text("updating\n", encoding="utf-8")
+        moved: list[str] = []
+        installed: list[str] = []
+        try:
+            for name in PARTS:
+                target = self.data / name
+                if target.exists():
+                    target.rename(backup / name)
+                    moved.append(name)
+                (stage / name).rename(target)
+                installed.append(name)
+            # Validate the *installed* bundle while backups are still on disk.
+            # Prior behavior could publish an invalid bundle and only notice
+            # after TemporaryDirectory had already discarded the backup.
+            ready = self.status(validate_sources=True)
+            if not ready["lineage_ok"]:
+                raise RuntimeError("Promoted OCOP corpus failed cross-store/source validation")
+        except Exception:
+            for name in reversed(installed):
+                shutil.rmtree(self.data / name, ignore_errors=True)
+            for name in reversed(moved):
+                (backup / name).rename(self.data / name)
+            raise
+        finally:
+            promotion_marker.unlink(missing_ok=True)

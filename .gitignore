@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage*
+.venv/
+.env
+node_modules/
+frontend/dist/
+*.log
+outputs/
+models/
+*.egg-info/
+# Source PDFs are intentionally included for reproducibility.
+# Runtime artifacts are generated from the immutable, source-locked PDFs.
+data/processed/
+data/runtime/
+data/review/
+reports/
+*.sqlite
+*.sqlite3
+*.db
+
+# Local-only results and transient state
+coverage/
+htmlcov/
+.cache/
+*.pid
+*.tmp
+*.bak

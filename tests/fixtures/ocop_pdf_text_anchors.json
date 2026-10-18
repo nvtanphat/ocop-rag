@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "review_status": "agent_visually_checked_not_domain_expert_verified",
+  "annotation_method": "Direct visual reading of original first pages rendered using Poppler; ASCII-named temporary PDF copies matched original source SHA-256",
+  "limitations": "Development anchors across all twelve sources, not full-page CER or exhaustive legal-text labels. Does not verify legal effect or domain facts.",
+  "pages": [
+    {
+      "source_id": "VN.HAIPHONG.QD525.2026",
+      "pdf_page": 1,
+      "anchors": [
+        "58 sản phẩm của 20 chủ thể",
+        "36 tháng"
+      ],
+      "source_sha256": "b6d12a12fa40c88c6b05e7378b07623d241b9646da712735bd30527d4e9534cb"
+    },
+    {
+      "source_id": "VN.HATINH.THANHSEN.2026",
+      "pdf_page": 1,
+      "anchors": [
+        "trước ngày 15/10/2026",
+        "Hợp tác xã"
+      ],
+      "source_sha256": "b7abbcf2f519ba9adfd01f9a6794101dbc6da6c0c3906bf3346d238ad768d827"
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "pdf_page": 1,
+      "anchors": [
+        "Mứt Atiso đỏ",
+        "04 tháng 3 năm 2026"
+      ],
+      "source_sha256": "d1701843595625d18f405eba5c79e8b510432782f00ac63be55b6e8bd2a1caa3"
+    },
+    {
+      "source_id": "VN.LAW.17.2023",
+      "pdf_page": 1,
+      "anchors": [
+        "17/2023/QH15",
+        "Luật Hợp tác xã"
+      ],
+      "source_sha256": "f2ad6e583e0f0dc05ea88b88bdb25fea4b76267bde0df49c642039b2d415a675"
+    },
+    {
+      "source_id": "VN.LAW.55.2010",
+      "pdf_page": 1,
+      "anchors": [
+        "55/2010/QH12",
+        "An toàn thực phẩm"
+      ],
+      "source_sha256": "281e6810d4e16417a5938555b3238e28fe54963273687ad7455e57ada4df6ab2"
+    },
+    {
+      "source_id": "VN.ND.111.2021",
+      "pdf_page": 1,
+      "anchors": [
+        "111/2021/NĐ-CP",
+        "43/2017/NĐ-CP"
+      ],
+      "source_sha256": "dc0888355fdb8c82a6c271bffd66dca75d042ca126a47886e4caf65b217a6a75"
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "pdf_page": 1,
+      "anchors": [
+        "15/2018/NĐ-CP",
+        "Thủ tục tự công bố sản phẩm"
+      ],
+      "source_sha256": "9dec41b53cb1568a50fc3a98b41a95df2e6595341e5dd8dcf5926d22dde4b1b2"
+    },
+    {
+      "source_id": "VN.ND.43.2017",
+      "pdf_page": 1,
+      "anchors": [
+        "43/2017/NĐ-CP",
+        "Về nhãn hàng hóa"
+      ],
+      "source_sha256": "d5771b9da7a7f898b7eeef23a21966c85a49c57572e9c71788f24b7f04f0cbdb"
+    },
+    {
+      "source_id": "VN.NQ.15.2026",
+      "pdf_page": 1,
+      "anchors": [
+        "15/2026/NQ-CP",
+        "Tạm ngưng hiệu lực áp dụng văn bản"
+      ],
+      "source_sha256": "f76f585b4a3066bf9ae1511deff62690bf03fc88eca3eeddfc1fb922543689ec"
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 1,
+      "anchors": [
+        "24 tháng 02 năm 2023",
+        "One Commune One Product"
+      ],
+      "source_sha256": "4fec9058fe2d4024d00d1994151fbe4849eb8f45b73ee6bba236933ba15336a5"
+    },
+    {
+      "source_id": "VN.OCOP.QD1489.2025",
+      "pdf_page": 1,
+      "anchors": [
+        "1489/QĐ-TTg",
+        "06 tháng 7 năm 2025"
+      ],
+      "source_sha256": "c8feaadc85cece82579b90aaf7b5899920630f1546d08ddd3860c75cb388e4b7"
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 1,
+      "anchors": [
+        "26/2026/QĐ-TTg",
+        "22 tháng 5 năm 2026"
+      ],
+      "source_sha256": "1916672a65212ad2591e2cc91718c626717c4f81b81457743da4374a72dfdd7a"
+    }
+  ]
+}

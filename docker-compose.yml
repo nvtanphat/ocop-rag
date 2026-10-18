@@ -1,0 +1,39 @@
+name: ocop-graphrag
+services:
+  backend:
+    build: .
+    environment:
+      OCOP_OLLAMA_URL: ${OCOP_OLLAMA_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed
+    ports:
+      - "127.0.0.1:8000:8000"
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports:
+      - "127.0.0.1:5173:80"
+  mongo:
+    image: mongo:7
+    profiles: [stores]
+    ports: ["127.0.0.1:27017:27017"]
+    volumes: [ocop_mongo:/data/db]
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: [stores]
+    ports: ["127.0.0.1:6333:6333"]
+    volumes: [ocop_qdrant:/qdrant/storage]
+  neo4j:
+    image: neo4j:5
+    profiles: [stores]
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-local-only-change-this-secret}"
+    ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
+    volumes: [ocop_neo4j:/data]
+volumes:
+  ocop_mongo:
+  ocop_qdrant:
+  ocop_neo4j:

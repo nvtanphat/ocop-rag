@@ -1,0 +1,98 @@
+{
+  "OCOPPDF_01": {
+    "document_id": "OCOPPDF_01",
+    "filename": "26-ttg-2026.signed.pdf",
+    "pages": 154,
+    "sha256": "1916672a65212ad2591e2cc91718c626717c4f81b81457743da4374a72dfdd7a",
+    "native_text_pages": 1,
+    "source_path": "data/raw/ocop/central_current/26-ttg-2026.signed.pdf"
+  },
+  "OCOPPDF_02": {
+    "document_id": "OCOPPDF_02",
+    "filename": "148-ttg.signed.pdf",
+    "pages": 150,
+    "sha256": "4fec9058fe2d4024d00d1994151fbe4849eb8f45b73ee6bba236933ba15336a5",
+    "native_text_pages": 1,
+    "source_path": "data/raw/ocop/central_historical/148-ttg.signed.pdf"
+  },
+  "OCOPPDF_03": {
+    "document_id": "OCOPPDF_03",
+    "filename": "1489-ttg.signed.pdf",
+    "pages": 5,
+    "sha256": "c8feaadc85cece82579b90aaf7b5899920630f1546d08ddd3860c75cb388e4b7",
+    "native_text_pages": 1,
+    "source_path": "data/raw/ocop/central_historical/1489-ttg.signed.pdf"
+  },
+  "OCOPPDF_04": {
+    "document_id": "OCOPPDF_04",
+    "filename": "OCOP_ThanhSen_2026.pdf",
+    "pages": 6,
+    "sha256": "b7abbcf2f519ba9adfd01f9a6794101dbc6da6c0c3906bf3346d238ad768d827",
+    "native_text_pages": 0,
+    "source_path": "data/raw/ocop/local_guidance/OCOP_ThanhSen_2026.pdf"
+  },
+  "OCOPPDF_05": {
+    "document_id": "OCOPPDF_05",
+    "filename": "00.00.H57-797-QD-UBND-2026-PL1_signed.pdf",
+    "pages": 4,
+    "sha256": "d1701843595625d18f405eba5c79e8b510432782f00ac63be55b6e8bd2a1caa3",
+    "native_text_pages": 4,
+    "source_path": "data/raw/ocop/recognition_decisions/00.00.H57-797-QD-UBND-2026-PL1_signed.pdf"
+  },
+  "OCOPPDF_06": {
+    "document_id": "OCOPPDF_06",
+    "filename": "qd-cong-nhan-san-pham-ocop-2025-1-..signed639060091328998926.pdf",
+    "pages": 6,
+    "sha256": "b6d12a12fa40c88c6b05e7378b07623d241b9646da712735bd30527d4e9534cb",
+    "native_text_pages": 6,
+    "source_path": "data/raw/ocop/recognition_decisions/qd-cong-nhan-san-pham-ocop-2025-1-..signed639060091328998926.pdf"
+  },
+  "OCOPPDF_07": {
+    "document_id": "OCOPPDF_07",
+    "filename": "2010_564 + 565-55_2010_QH12.pdf",
+    "pages": 39,
+    "sha256": "281e6810d4e16417a5938555b3238e28fe54963273687ad7455e57ada4df6ab2",
+    "native_text_pages": 39,
+    "source_path": "data/raw/ocop/sectoral/2010_564 + 565-55_2010_QH12.pdf"
+  },
+  "OCOPPDF_08": {
+    "document_id": "OCOPPDF_08",
+    "filename": "2018_375 + 376_15-2018-NĐ-CP_2.pdf",
+    "pages": 62,
+    "sha256": "9dec41b53cb1568a50fc3a98b41a95df2e6595341e5dd8dcf5926d22dde4b1b2",
+    "native_text_pages": 62,
+    "source_path": "data/raw/ocop/sectoral/2018_375 + 376_15-2018-NĐ-CP_2.pdf"
+  },
+  "OCOPPDF_09": {
+    "document_id": "OCOPPDF_09",
+    "filename": "2021_1051 + 1052_111-2021-NĐ-CP (1).pdf",
+    "pages": 32,
+    "sha256": "dc0888355fdb8c82a6c271bffd66dca75d042ca126a47886e4caf65b217a6a75",
+    "native_text_pages": 32,
+    "source_path": "data/raw/ocop/sectoral/2021_1051 + 1052_111-2021-NĐ-CP (1).pdf"
+  },
+  "OCOPPDF_10": {
+    "document_id": "OCOPPDF_10",
+    "filename": "2023_861 + 862_17-2023-QH15.pdf",
+    "pages": 88,
+    "sha256": "f2ad6e583e0f0dc05ea88b88bdb25fea4b76267bde0df49c642039b2d415a675",
+    "native_text_pages": 88,
+    "source_path": "data/raw/ocop/sectoral/2023_861 + 862_17-2023-QH15.pdf"
+  },
+  "OCOPPDF_11": {
+    "document_id": "OCOPPDF_11",
+    "filename": "2026_242_15_2026_NQ-CP.pdf",
+    "pages": 4,
+    "sha256": "f76f585b4a3066bf9ae1511deff62690bf03fc88eca3eeddfc1fb922543689ec",
+    "native_text_pages": 4,
+    "source_path": "data/raw/ocop/sectoral/2026_242_15_2026_NQ-CP.pdf"
+  },
+  "OCOPPDF_12": {
+    "document_id": "OCOPPDF_12",
+    "filename": "43_2017_NĐ-CP(17292).pdf",
+    "pages": 33,
+    "sha256": "d5771b9da7a7f898b7eeef23a21966c85a49c57572e9c71788f24b7f04f0cbdb",
+    "native_text_pages": 33,
+    "source_path": "data/raw/ocop/sectoral/43_2017_NĐ-CP(17292).pdf"
+  }
+}

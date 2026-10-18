@@ -1,0 +1,118 @@
+export type Section = 'overview' | 'chat' | 'criteria' | 'forms' | 'recognitions' | 'documents' | 'graph' | 'system'
+
+export interface Source {
+  source_id: string
+  filename: string
+  document_number: string | null
+  source_kind: string
+  jurisdiction: string | null
+  source_verification: string
+  page_count: number
+  ocr_pages: number
+}
+export interface Overview {
+  sources: number
+  pages: { pages?: number; ocr_executed?: number; needs_review?: number; tables_detected?: number }
+  knowledge: { units?: number; criterion_candidates?: number; recognition_candidates?: number; form_candidates?: number }
+  index: { corpus_version?: string; status?: string; counts?: { chunks?: number }; dense?: { enabled?: boolean } }
+  graph: { status?: string; counts?: { nodes?: number; edges?: number }; neo4j?: { enabled?: boolean } }
+  verification: string
+}
+export interface Citation {
+  source_id: string
+  pdf_page: number
+  evidence_unit_id: string | null
+  bbox?: [number, number, number, number] | null
+  source_sha256?: string | null
+  source_spans?: Array<{
+    pdf_page: number
+    bbox?: [number, number, number, number] | null
+    block_id?: string
+    table_id?: string
+    cell_id?: string
+    source_sha256?: string
+  }>
+  review_status?: string
+}
+export interface AskResult {
+  answer: string
+  intent: string
+  status: string
+  citations: Citation[]
+  tools_used: string[]
+  workflow_engine: string
+  corpus_version?: string | null
+  route?: { strategy?: string; slots?: Record<string, unknown>; reason_codes?: string[] }
+}
+export interface Criterion {
+  candidate_id: string
+  source_id: string
+  evidence_unit_id: string
+  label_candidate: string
+  pdf_page: number
+  score_candidate: number | null
+  review_status: string
+}
+export interface Recognition {
+  candidate_id: string
+  source_id: string
+  evidence_unit_id: string
+  row_text: string
+  pdf_page: number
+  star_candidate: number | null
+  review_status: string
+}
+export interface FormCandidate {
+  candidate_id: string
+  source_id: string
+  form_number: number
+  title: string
+  pdf_page: number
+  fields_candidate: string[]
+  review_status: string
+}
+export interface GraphNode {
+  node_id: string
+  node_type: string
+  label: string
+  source_id?: string
+  review_status?: string
+  evidence_unit_ids?: string[]
+}
+export interface GraphEdge {
+  source_entity_id?: string
+  target_entity_id?: string
+  source_id?: string
+  target_id?: string
+  relation_type?: string
+  review_status?: string
+}
+export interface Page<T> { items: T[]; total: number; kind: string }
+export interface GraphData { nodes: GraphNode[]; edges: GraphEdge[]; total_matches: number; kind: string }
+export interface Health { status: string; sources_registered: number; pages: number; index_status: string; dense_ready: boolean; graph_status: string; corpus_version?: string }
+
+const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '') + '/ocop'
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, init)
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({})) as { detail?: string }
+    throw new Error(data.detail || `Yêu cầu thất bại (HTTP ${response.status})`)
+  }
+  return response.json() as Promise<T>
+}
+export const api = {
+  health: () => request<Health>('/health'),
+  overview: () => request<Overview>('/overview'),
+  sources: () => request<Source[]>('/sources'),
+  criteria: (params: { q?: string; source_id?: string; offset?: number; limit?: number }) =>
+    request<Page<Criterion>>('/criteria?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()),
+  recognitions: (params: { q?: string; offset?: number; limit?: number }) =>
+    request<Page<Recognition>>('/recognitions?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString()),
+  forms: () => request<{ items: FormCandidate[] }>('/forms'),
+  graph: (params: { q?: string; node_type?: string; limit?: number }) =>
+    request<GraphData>('/graph?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()),
+  ask: (query: string, retrieval_mode: 'sparse' | 'hybrid' | 'dense', use_llm: boolean, session_id?: string, signal?: AbortSignal) =>
+    request<AskResult>('/query', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, retrieval_mode, use_llm, session_id }), signal }),
+  pdf: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf#page=${Math.max(1, page)}`,
+}

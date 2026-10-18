@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ocop-graphrag"
+version = "1.0.0"
+description = "OCOP document intelligence, retrieval and GraphRAG assistant"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.111,<1", "uvicorn[standard]>=0.29,<1", "pydantic>=2.7,<3",
+  "pymupdf>=1.24", "pillow>=10", "numpy>=1.26", "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ocr = ["pytesseract>=0.3.10", "opencv-python-headless>=4.8"]
+easyocr = ["easyocr>=1.7.2,<2", "vietocr==0.3.13"]
+paddle = ["paddleocr>=3.0", "opencv-python-headless>=4.8"]
+paddle_vl = ["paddleocr[doc-parser]>=3.6,<4", "opencv-python-headless>=4.8"]
+retrieval = ["sentence-transformers>=5.0", "qdrant-client>=1.9", "pymongo>=4.7"]
+graph = ["neo4j>=5.20"]
+agent = ["langgraph>=1.0,<2", "httpx>=0.27"]
+full = ["pytesseract>=0.3.10", "opencv-python-headless>=4.8", "sentence-transformers>=5.0", "qdrant-client>=1.9", "pymongo>=4.7", "neo4j>=5.20", "langgraph>=1.0,<2", "httpx>=0.27"]
+observability = ["opentelemetry-api>=1.27", "opentelemetry-sdk>=1.27", "opentelemetry-exporter-otlp>=1.27"]
+persistence = ["langgraph>=1.0,<2", "langgraph-checkpoint-sqlite>=2.0"]
+dev = ["pytest>=8.2", "pytest-asyncio>=0.23", "httpx>=0.27", "ruff>=0.4"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ai_core", "backend"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/ocop"]
+pythonpath = ["."]
+markers = ["integration: requires external services or model weights"]
+addopts = "-p no:langsmith_plugin -p no:typeguard -p no:hypothesispytest -p no:anyio -p no:faker"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

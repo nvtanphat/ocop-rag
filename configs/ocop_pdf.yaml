@@ -1,0 +1,16 @@
+# OCOP PDF extraction runtime settings (one unified pipeline).
+# The command-line parameters of `process-ocop-pdf` are currently authoritative;
+# this file is NOT implicitly parsed by the unused settings loader.
+engine: auto         # paddle when installed, else tesseract baseline
+language: vi+en      # Tesseract implementation uses vie+eng
+ocr_dpi: 260
+table_engine: auto   # PPStructureV3 when installed; OpenCV candidate fallback
+workers: 3           # separate processes, never PyMuPDF threads
+source_registry: configs/ocop_sources.json
+source_lock: configs/ocop_sources.lock.json
+output_dir: data/processed/ocop/pages
+cache_dir: data/processed/ocop/cache
+qa:
+  allow_uncertain_tables_for_authoritative_scoring: false
+  scanned_pages_need_human_review: true
+  accept_unverified_numeric_ocr: false

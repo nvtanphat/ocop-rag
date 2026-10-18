@@ -1,0 +1,33 @@
+# OCOP local model profile; model loading is demand-driven.
+# Model loading is optional, model files are never downloaded implicitly.
+profile: laptop_small
+llm:
+  provider: ollama
+  model_id: qwen3.5:2b
+  answer_and_router_shared: true
+  router_policy: deterministic_first
+  context_tokens: 8192
+  temperature: 0.1
+embedding:
+  provider: sentence_transformers
+  model_id: google/embeddinggemma-300m
+  dimension: 768
+  encode_query: encode_query
+  encode_document: encode_document
+  model_max_tokens: 2048
+  requires_license_acceptance: true
+reranker:
+  provider: sentence_transformers
+  model_id: Alibaba-NLP/gte-multilingual-reranker-base
+  pair_token_budget: 1024
+ocr:
+  provider: undecided_pending_gold_pages
+  optional_document_parser: paddleocr_vl_local_only
+  vl_candidates_require_human_review: true
+  handwritten_or_uncertain_table_cells: needs_review
+safety:
+  verified_rules_only: true
+  forbid_cross_tenant_retrieval: true
+activation:
+  enabled: true  # Model availability checked at runtime; do not auto-download.
+  downloads_automatic: false

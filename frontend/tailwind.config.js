@@ -1,0 +1,73 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: "class",
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  theme: {
+    extend: {
+      spacing: {
+        '128': '32rem',
+      },
+      borderRadius: {
+        xs: '0.125rem',
+      },
+      boxShadow: {
+        '2xs': '0 1px 1px rgb(15 23 42 / 0.04)',
+        xs: '0 1px 2px 0 rgb(15 23 42 / 0.06)',
+      },
+      "colors": {
+          "surface-dim": "#cddff2",
+          "primary-fixed": "#d7eaff",
+          "background": "#edf6ff",
+          "surface-variant": "#dbeaf8",
+          "on-primary-fixed-variant": "#274966",
+          "secondary": "#006edb",
+          "primary": "#06213d",
+          "surface-container-high": "#dcecfb",
+          "surface-bright": "#f5fbff",
+          "on-secondary-fixed": "#00294d",
+          "on-background": "#11263a",
+          "tertiary-fixed-dim": "#b7d4ee",
+          "outline": "#5f7894",
+          "tertiary-fixed": "#d8ecff",
+          "surface-container-lowest": "#ffffff",
+          "on-surface-variant": "#45474c",
+          "on-secondary-container": "#fefcff",
+          "error-container": "#ffdad6",
+          "surface-container-low": "#eef7ff",
+          "error": "#ba1a1a",
+          "secondary-fixed-dim": "#a9d0ff",
+          "secondary-container": "#1185f5",
+          "on-error": "#ffffff",
+          "on-tertiary-container": "#8191a9",
+          "on-secondary-fixed-variant": "#0052a3",
+          "on-primary": "#ffffff",
+          "primary-container": "#0b3158",
+          "secondary-fixed": "#d9ecff",
+          "on-primary-fixed": "#06213d",
+          "outline-variant": "#b6cce1",
+          "on-tertiary-fixed": "#0b1c30",
+          "on-tertiary": "#ffffff",
+          "surface-container": "#e5f1fb",
+          "tertiary": "#073763",
+          "on-primary-container": "#b9d8f4",
+          "surface-tint": "#35698f",
+          "primary-fixed-dim": "#b7d5f2",
+          "on-surface": "#102235",
+          "on-error-container": "#93000a",
+          "on-tertiary-fixed-variant": "#38485d",
+          "inverse-on-surface": "#eff7ff",
+          "surface": "#f5fbff",
+          "inverse-primary": "#b7d8ff",
+          "surface-container-highest": "#d8e8f6",
+          "inverse-surface": "#17324a",
+          "on-secondary": "#ffffff",
+          "tertiary-container": "#124975"
+      },
+      "fontFamily": {
+        "mono": ["JetBrains Mono", "monospace"],
+        "sans": ["Be Vietnam Pro", "system-ui", "-apple-system", "Segoe UI", "sans-serif"]
+      }
+    },
+  },
+  plugins: [],
+}
