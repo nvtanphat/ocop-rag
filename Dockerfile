@@ -6,9 +6,7 @@ COPY ai_core ./ai_core
 COPY backend ./backend
 COPY tools ./tools
 COPY configs ./configs
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng \
-    && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir ".[ocr]"
+RUN pip install --no-cache-dir ".[easy_vietocr]"
 RUN useradd --create-home --uid 10001 ocop && mkdir -p /app/data && chown ocop:ocop /app/data
 USER ocop
 EXPOSE 8000

@@ -23,10 +23,12 @@ export interface Citation {
   pdf_page: number
   evidence_unit_id: string | null
   bbox?: [number, number, number, number] | null
+  table_bbox?: [number, number, number, number] | null
   source_sha256?: string | null
   source_spans?: Array<{
     pdf_page: number
     bbox?: [number, number, number, number] | null
+    table_bbox?: [number, number, number, number] | null
     block_id?: string
     table_id?: string
     cell_id?: string

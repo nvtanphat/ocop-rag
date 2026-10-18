@@ -16,6 +16,8 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
+from ai_core.domain.ocop_models import cell_display_text
+
 TokenCount = Callable[[str], int]
 LEGAL_HEADING = re.compile(r"^(?:Điều\s+\d+|Mẫu\s+(?:số\s+)?\d+|Phụ\s+lục\b|Chương\s+[IVX0-9]+|Mục\s+\d+)", re.I)
 WORD = re.compile(r"\S+", re.UNICODE)
@@ -126,7 +128,7 @@ def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[s
             grouped.setdefault(int(c.get('row',0)),[]).append(c)
         for row_id, row_cells in sorted(grouped.items()):
             row_cells.sort(key=lambda c:int(c.get('col',0)))
-            raw=' | '.join(str(c.get('text') or '').strip() for c in row_cells)
+            raw=' | '.join(cell_display_text(c) for c in row_cells)
             rows.append((row_id,raw,row_cells))
     else:
         for i,line in enumerate(source.splitlines()):
@@ -169,6 +171,8 @@ def _table_spans(unit:dict,row_cells:list[dict],header_cells:list[dict]=())->tup
               'cell_id':cell.get('cell_id') or f"{table_id}:r{row}:c{col}"}
         if base.get('source_sha256') is not None:
             span['source_sha256']=base['source_sha256']
+        if base.get('bbox') is not None:
+            span['table_bbox']=base['bbox']
         if cell.get('bbox') is not None:
             span['bbox']=cell['bbox']
         found.append(span)
@@ -195,10 +199,20 @@ def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
     if not col_labels and headers:
         col_labels={i:val.strip() for i,val in enumerate(headers[0].split('|'))}
 
-    def enrich(raw:str, cells:list[dict])->str:
+    # A cell merged down several rows (rowspan, from ruling geometry) belongs to every row it covers.
+    covering:dict[int,list[dict]]={}
+    for c in table.get('cells',[]) or []:
+        for covered in range(int(c.get('row',0))+1,int(c.get('row',0))+int(c.get('rowspan') or 1)):
+            covering.setdefault(covered,[]).append(c)
+
+    def inherited(rid:int, cells:list[dict])->list[dict]:
+        own={int(c.get('col',0)) for c in cells}
+        return [c for c in covering.get(rid,[]) if int(c.get('col',0)) not in own]
+
+    def enrich(raw:str, cells:list[dict], rid:int=-1)->str:
         if cells:
             pairs=[]
-            for c in sorted(cells,key=lambda c:int(c.get('col',0))):
+            for c in sorted([*cells,*inherited(rid,cells)],key=lambda c:int(c.get('col',0))):
                 label=col_labels.get(int(c.get('col',0)))
                 if label:
                     pairs.append(f"{label}: {str(c.get('text') or '').strip()}")
@@ -208,12 +222,12 @@ def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
     result=[]; buffer=[]
 
     def compose(items):
-        return preface+(header+'\n' if header else '')+'\n'.join(enrich(raw,cs) for _,raw,cs in items)
+        return preface+(header+'\n' if header else '')+'\n'.join(enrich(raw,cs,rid) for rid,raw,cs in items)
 
     def flush():
         if not buffer:return
         content=compose(buffer)
-        row_cells=[c for _,_,cs in buffer for c in cs]
+        row_cells=[c for rid,_,cs in buffer for c in [*cs,*(inherited(rid,cs) if cs else [])]]
         rid=tuple(r for r,_,_ in buffer)
         # Only body row content is raw; header/context comes from the same source.
         raw='\n'.join(r for _,r,_ in buffer)

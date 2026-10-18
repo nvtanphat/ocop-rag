@@ -11,3 +11,18 @@
 - Rule/checklist tools read verified reference rules matching active corpus version, never client/LLM-supplied rules.
 - A valid citation marker is NOT evidence of semantic entailment; verified score/star assertions need extra deterministic checks.
 - This is one end-to-end system; do not create development stages in runtime or frontend.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`GLOSSARY.md` + `docs/adr/`). See `docs/agents/domain.md`.
+

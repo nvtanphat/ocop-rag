@@ -80,12 +80,13 @@ class SourceSpan(StrictModel):
     pdf_page: int = Field(ge=1)
     printed_page: str | None = None
     bbox: tuple[float, float, float, float] | None = None
+    table_bbox: tuple[float, float, float, float] | None = None
     block_id: str | None = None
     table_id: str | None = None
     cell_id: str | None = None
     source_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
-    @field_validator("bbox")
+    @field_validator("bbox", "table_bbox")
     @classmethod
     def bbox_order(cls, value):
         if value is not None:
@@ -241,3 +242,13 @@ class RouteDecision(StrictModel):
     slots: dict[str, Any] = Field(default_factory=dict)
     needs_clarification: bool = False
     missing_slots: list[str] = Field(default_factory=list)
+
+
+def cell_display_text(cell: dict) -> str:
+    """Cell text for indexing; a blank cell shows any OCR candidate labelled as unverified."""
+    text = str(cell.get("text") or "").strip()
+    if text:
+        return text
+    candidates = [str(c.get("text") or "").strip() for c in cell.get("score_ocr_candidates") or []]
+    candidates = [c for c in candidates if c]
+    return f"[ứng viên OCR chưa xác minh: {' / '.join(candidates)}]" if candidates else ""

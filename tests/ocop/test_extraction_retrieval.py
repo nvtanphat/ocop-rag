@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import pytest
 
-from ai_core.processing.ocop.knowledge_extract import page_units, extract_entities_relations, extract_artifacts
+from ai_core.processing.ocop.knowledge_extract import page_units, extract_entities_relations
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.retrieval.ocop.index_pipeline import build_chunks, BM25Search,create_bm25,split_units,build_index
 from ai_core.retrieval.ocop.search import rrf,search
@@ -14,11 +13,12 @@ from ai_core.retrieval.ocop.search import rrf,search
 def page(text="Điều 3. Bộ tiêu chí OCOP\n1. Chất lượng 35 điểm",tables=None,status="needs_review"):
     return {"source_id":"VN.TEST.QD.2026","pdf_page":7,"width_pt":595,"height_pt":842,
             "extracted_text":text,"blocks":[],"tables":tables or [],
-            "extraction_method":"ocr","ocr_engine":"tesseract","review_status":status}
+            "extraction_method":"ocr","ocr_engine":"easyocr_vietocr","review_status":status}
 
 
 def test_extract_page_provenance_and_stable_ids():
-    a=page_units(page());b=page_units(page())
+    a=page_units(page())
+    b=page_units(page())
     assert a==b
     assert a[0]["spans"][0]["pdf_page"]==7
     assert any(u["unit_kind"]=="article" for u in a)
@@ -36,9 +36,9 @@ def test_text_evidence_keeps_ocr_block_bbox_and_source_hash():
     unit=page_units(pg)[1]
     assert unit['spans']==[
         {'pdf_page':7,'bbox':[10.0,20.0,100.0,40.0],'block_id':'vl:0',
-         'table_id':None,'cell_id':None,'printed_page':None,'source_sha256':source_hash},
+         'table_bbox':None,'table_id':None,'cell_id':None,'printed_page':None,'source_sha256':source_hash},
         {'pdf_page':7,'bbox':[10.0,45.0,140.0,65.0],'block_id':'vl:1',
-         'table_id':None,'cell_id':None,'printed_page':None,'source_sha256':source_hash},
+         'table_bbox':None,'table_id':None,'cell_id':None,'printed_page':None,'source_sha256':source_hash},
     ]
 
 
@@ -48,14 +48,17 @@ def test_table_chunks_keep_source_hash_in_cell_spans():
          {'row':0,'col':0,'text':'Criterion','bbox':[20,40,300,80]},
          {'row':0,'col':1,'text':'Points','bbox':[300,40,500,80]},
          {'row':1,'col':0,'text':'Quality','bbox':[20,80,300,120]},
-         {'row':1,'col':1,'text':'3','bbox':[300,80,500,120]}]}
+         {'row':1,'col':1,'text':'3'}]}
     pg=page(tables=[tbl])
     pg['source_sha256']=source_hash
     unit=next(u for u in page_units(pg,source_kind='ocop_framework')
               if u['unit_kind']=='criterion_table_candidate')
     chunks=build_chunks([unit],'source-hash')
-    assert chunks and all(span['source_sha256']==source_hash
-                          for chunk in chunks for span in chunk['spans'])
+    spans=[span for chunk in chunks for span in chunk['spans']]
+    assert spans and all(span['source_sha256']==source_hash for span in spans)
+    assert all(span['table_bbox']==[20.0,40.0,500.0,400.0] for span in spans)
+    missing_cell=next(span for span in spans if span['cell_id']=='table:sha:r1:c1')
+    assert missing_cell['bbox'] is None
 
 
 def test_table_candidate_keeps_coordinates_and_cells():
@@ -116,7 +119,8 @@ def test_rrf_deterministic():
 
 
 def test_index_and_search_fixture_integration(tmp_path):
-    knowledge=tmp_path/"knowledge"; knowledge.mkdir()
+    knowledge=tmp_path/"knowledge"
+    knowledge.mkdir()
     unit=page_units(page("Điều 1. Chất lượng sản phẩm OCOP đạt 35 điểm"))[1]
     (knowledge/"evidence_units.jsonl").write_text(json.dumps(unit,ensure_ascii=False)+"\n",encoding="utf-8")
     (knowledge/"manifest.json").write_text(json.dumps({"complete":True,"corpus_version":"testver",
@@ -132,7 +136,8 @@ def test_index_and_search_fixture_integration(tmp_path):
 
 
 def test_index_stable_on_repeated_build(tmp_path):
-    knowledge=tmp_path/"knowledge"; knowledge.mkdir()
+    knowledge=tmp_path/"knowledge"
+    knowledge.mkdir()
     unit=page_units(page("Mẫu số 01. Phiếu đăng ký"))[1]
     (knowledge/"evidence_units.jsonl").write_text(json.dumps(unit,ensure_ascii=False)+"\n",encoding="utf-8")
     (knowledge/"manifest.json").write_text(json.dumps({"complete":True,"corpus_version":"stable","counts":{"pages":1}}),encoding="utf-8")

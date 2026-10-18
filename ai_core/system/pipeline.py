@@ -53,12 +53,7 @@ def _exclusive_lock(path: Path) -> Iterator[None]:
 
 @dataclass(frozen=True)
 class PipelineOptions:
-    ocr_engine: str = "tesseract"
-    table_engine: str = "opencv"
-    dpi: int = 260
-    workers: int = 1
-    refine_score_cells: bool = False
-    preprocess: bool = False
+    dpi: int = 300
     dense: bool = False
     mongo: bool = False
     neo4j: bool = False
@@ -88,6 +83,19 @@ class OcopSystemPipeline:
             self.root / "configs" / "ocop_sources.lock.json",
         )
         return len(sources), lock["aggregate_sha256"]
+
+    @staticmethod
+    def _ocr_runtime_matches(page_manifest: dict[str, Any]) -> bool:
+        stored = page_manifest.get("ocr_runtime_signature")
+        if stored:
+            try:
+                from ai_core.processing.ocop.easy_viet_ocr import asset_signature
+                if stored != asset_signature():
+                    return False
+            except RuntimeError:
+                # Existing extracted pages remain usable when model files are not mounted.
+                return True
+        return True
 
     def status(self, *, validate_sources: bool = False) -> dict[str, Any]:
         from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
@@ -158,6 +166,8 @@ class OcopSystemPipeline:
         from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
         with _exclusive_lock(self.data / ".system.lock"):
             current = self.status(validate_sources=True)
+            page_config = _load_json(self.data / "pages" / "manifest.json")
+            runtime_config_ok = self._ocr_runtime_matches(page_config) if not options.refresh else False
             if not options.refresh and current["state"] == "ready":
                 index = _load_json(self.data / "index" / "manifest.json")
                 graph = _load_json(self.data / "graph" / "manifest.json")
@@ -170,11 +180,10 @@ class OcopSystemPipeline:
                     and index.get("dense", {}).get("port") == options.qdrant_port))
                 page_config = _load_json(self.data / "pages" / "manifest.json")
                 pdf_config_ok = (page_config.get("dpi") == options.dpi
-                    and page_config.get("engine_requested") == options.ocr_engine
-                    and page_config.get("table_engine_requested") == options.table_engine
-                    and page_config.get("parser_version") == PARSER_VERSION
-                    and page_config.get("score_refinement_enabled",False) == options.refine_score_cells
-                    and page_config.get("preprocess_enabled",False) == options.preprocess)
+                    and page_config.get("engine_requested") == "easyocr_vietocr"
+                    and page_config.get("ocr_enabled") is True
+                    and runtime_config_ok
+                    and page_config.get("parser_version") == PARSER_VERSION)
                 knowledge_manifest = _load_json(self.data / "knowledge" / "manifest.json")
                 semantic_ok = (not options.semantic_extract or
                      (knowledge_manifest.get("semantic_proposals",{}).get("enabled") and
@@ -191,7 +200,6 @@ class OcopSystemPipeline:
                     from ai_core.retrieval.ocop.index_pipeline import build_index
                     from ai_core.graph.ocop.builder import build_graph
 
-                    page_config = _load_json(self.data / "pages" / "manifest.json")
                     knowledge_config = _load_json(self.data / "knowledge" / "manifest.json")
                     # Reuse page extraction independently of knowledge version:
                     # upgrading evidence/schema MUST NOT trigger 315 expensive OCRs.
@@ -199,11 +207,10 @@ class OcopSystemPipeline:
                         and page_config.get("complete")
                         and page_config.get("input_snapshot_sha256") == current.get("source_snapshot_sha256")
                         and page_config.get("dpi") == options.dpi
-                        and page_config.get("engine_requested") == options.ocr_engine
-                        and page_config.get("table_engine_requested") == options.table_engine
-                        and page_config.get("parser_version") == PARSER_VERSION
-                        and page_config.get("score_refinement_enabled",False) == options.refine_score_cells
-                        and page_config.get("preprocess_enabled",False) == options.preprocess)
+                        and page_config.get("engine_requested") == "easyocr_vietocr"
+                        and page_config.get("ocr_enabled") is True
+                        and runtime_config_ok
+                        and page_config.get("parser_version") == PARSER_VERSION)
                     knowledge_semantics = knowledge_config.get("semantic_proposals", {})
                     semantic_match = (not options.semantic_extract or
                          (knowledge_semantics.get("enabled") and
@@ -224,12 +231,7 @@ class OcopSystemPipeline:
                             lock=self.root / "configs" / "ocop_sources.lock.json",
                             output=stage / "pages",
                             cache_dir=self.data / "cache",
-                            engine=options.ocr_engine,
                             dpi=options.dpi,
-                            table_engine=options.table_engine,
-                            workers=options.workers,
-                            refine_score_cells=options.refine_score_cells,
-                            preprocess=options.preprocess,
                         )
                     if not page.get("complete"):
                         raise RuntimeError("PDF parser did not produce a complete source-locked corpus")

@@ -6,6 +6,7 @@ LLMs cannot invent scores or verify OCR at this stage.
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import hashlib
 import json
 import logging
@@ -13,8 +14,6 @@ import math
 import os
 from collections import Counter
 from importlib.metadata import version, PackageNotFoundError
-from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import get_context
 from pathlib import Path
 
 from ai_core.domain.ocop_models import PageArtifact,ReviewStatus
@@ -22,14 +21,13 @@ from ai_core.processing.ocop.artifact_cache import PARSER_VERSION,build_cache_ke
 from ai_core.processing.ocop.pdf_loader import checked_sources
 from ai_core.processing.ocop.registry import sha256_file
 from ai_core.processing.ocop.native_extractor import extract_native
-from ai_core.processing.ocop.ocr_extractor import run_ocr,tesseract_runtime_signature
-from ai_core.processing.ocop.layout import layout_page
-from ai_core.processing.ocop.table_parser import native_tables,raster_tables
-from ai_core.processing.ocop.structure_engine import ppstructure_tables
-from ai_core.processing.ocop.document_vl import run_vl
+from ai_core.processing.ocop.layout import join_blocks_by_line,layout_page
+from ai_core.processing.ocop.table_parser import native_tables
+from ai_core.processing.ocop.easy_viet_ocr import ENGINE, run_easy_viet_ocr
 from ai_core.processing.ocop.pdf_quality import score_page_quality
-from ai_core.processing.ocop.score_cell_ocr import recover_scoring_cells
+from ai_core.processing.ocop.raster_preprocess import prepare_raster, restore_geometry
 from ai_core.processing.ocop.profiler import profile_pdf
+from ai_core.processing.ocop.ocr_postcorrect import postcorrect_artifact
 from ai_core.processing.ocop.table_continuity import possible_continuations
 
 LOG=logging.getLogger(__name__)
@@ -71,14 +69,10 @@ def _validate_boxes(blocks,tables,width,height):
     return clipped
 
 
-def extract_page(page,profile:dict, *,source_id:str,dpi:int=260,
-                 ocr_engine:str="auto",enable_ocr:bool=True,enable_tables:bool=True,table_engine:str="auto",
-                 refine_score_cells:bool=False, preprocess:bool=False) -> dict:
+def extract_page(page, profile: dict, *, source_id: str, dpi: int = 300,
+                 enable_ocr: bool = True, enable_tables: bool = True,
+                 trace: dict | None = None) -> dict:
     native=extract_native(page)
-    if ocr_engine not in ("auto", "paddle", "tesseract", "paddle_vl", "easyocr", "easyocr_vietocr", "ensemble"):
-        raise ValueError(f"unsupported OCR engine: {ocr_engine}")
-    if table_engine not in ("auto", "opencv", "ppstructure", "paddle_vl"):
-        raise ValueError(f"unsupported table engine: {table_engine}")
     use_ocr=enable_ocr and bool(profile["needs_ocr_review"])
     # Do not count signing metadata as source text on scanned pages.
     if profile["page_class"]=="ocr_candidate":
@@ -87,98 +81,61 @@ def extract_page(page,profile:dict, *,source_id:str,dpi:int=260,
     ocr_words=[]
     warnings=[]
     engine="native"
-    vl_tables=None
+    ocr_tables=[]
     prepared=None
     working_page=page
-    if use_ocr:
+    pic=None
+    if use_ocr or trace is not None:
         pic=_render(page,dpi)
-        original_pic=pic
-        if preprocess:
-            from types import SimpleNamespace
-            from ai_core.processing.ocop.raster_preprocess import prepare_raster
-            prepared=prepare_raster(pic)
-            pic=prepared.image
-            working_page=SimpleNamespace(rect=SimpleNamespace(
-                width=page.rect.width*pic.width/prepared.source_size[0],
-                height=page.rect.height*pic.height/prepared.source_size[1]))
-        if ocr_engine == "paddle_vl":
-            response,vl_tables=run_vl(pic,working_page,version=os.getenv("OCOP_PADDLE_VL_VERSION","v1.6"))
-        else:
-            response=run_ocr(pic,working_page,ocr_engine)
+        if trace is not None:
+            trace["source_render"] = pic.copy()
+            trace["ocr_executed"] = bool(use_ocr)
+    if use_ocr:
+        from types import SimpleNamespace
+        prepared=prepare_raster(pic)
+        pic=prepared.image
+        if trace is not None:
+            trace["preprocessed_render"] = pic.copy()
+            trace["preprocessing_metadata"] = prepared.metadata()
+        working_page=SimpleNamespace(rect=SimpleNamespace(
+            width=page.rect.width*pic.width/prepared.source_size[0],
+            height=page.rect.height*pic.height/prepared.source_size[1]))
+        response, ocr_tables = run_easy_viet_ocr(
+            pic, working_page, detect_tables=enable_tables, trace=trace
+        )
         blocks=response.blocks
         ocr_words=response.word_blocks or []
-        engine=response.engine
+        engine=ENGINE
         warnings+=response.warnings
         if not blocks:
             warnings.append("empty_ocr_result")
     elif profile["needs_ocr_review"]:
         warnings.append("ocr_required_but_not_executed")
-    # Detect tables independently of text/OCR status.
+    if trace is not None:
+        trace["tables_before_geometry_restoration"] = deepcopy(ocr_tables)
     tables=[]
     if enable_tables:
-        if not use_ocr:
-            if table_engine in ("paddle_vl", "ppstructure"):
-                pic=_render(page,dpi)
-                if table_engine=="paddle_vl":
-                    _,tables=run_vl(pic,page,version=os.getenv("OCOP_PADDLE_VL_VERSION","v1.6"))
-                else:
-                    tables=ppstructure_tables(pic,page)
-            else:
-                tables=native_tables(page)
-        elif blocks:
-            if vl_tables is not None:
-                tables=vl_tables
-            elif table_engine=="paddle_vl":
-                _,tables=run_vl(pic,working_page,version=os.getenv("OCOP_PADDLE_VL_VERSION","v1.6"))
-            elif table_engine=="ppstructure":
-                tables=ppstructure_tables(pic,working_page)
-            elif table_engine=="auto":
-                try:
-                    from importlib.util import find_spec
-                    if find_spec("paddleocr") is not None:
-                        tables=ppstructure_tables(pic,working_page)
-                    if not tables:
-                        if find_spec("paddleocr") is not None:
-                            warnings.append("ppstructure_empty_using_raster_candidate")
-                        tables=raster_tables(pic,working_page,ocr_words or blocks)
-                except Exception as exc:
-                    warnings.append(f"ppstructure_fallback:{type(exc).__name__}")
-                    tables=raster_tables(pic,working_page,ocr_words or blocks)
-            elif table_engine=="opencv":
-                tables=raster_tables(pic,working_page,ocr_words or blocks)
-            else:
-                raise ValueError(f"unknown table engine: {table_engine}")
+        if use_ocr:
+            tables = ocr_tables
+        elif not profile["needs_ocr_review"]:
+            tables = native_tables(page)
         if not tables and (profile["page_class"] in ("ocr_candidate","mixed_or_native_with_images")):
             warnings.append("table_detection_unverified_or_empty")
-    refined={}
-    if use_ocr and tables and (refine_score_cells or engine in ("tesseract", "ensemble")):
-        refined=recover_scoring_cells(pic,working_page,tables,fill_empty=True,fill_invalid=True,
-                                     image_view="deskewed" if prepared is not None else "source")
     if prepared is not None:
-        from ai_core.processing.ocop.raster_preprocess import restore_geometry
         restore_geometry(prepared,blocks+ocr_words,tables,page.rect.width,page.rect.height)
-        if tables and (refine_score_cells or engine in ("tesseract", "ensemble")) and prepared.angle_degrees:
-            refined["source_view_score_recovery"]=recover_scoring_cells(
-                original_pic,page,tables,fill_empty=True,fill_invalid=True,image_view="source")
-    if use_ocr and engine == "ensemble" and tables:
-        from ai_core.processing.ocop.ocr_consensus import refine_table_regions
-        marker_words=None
-        if prepared is not None and prepared.angle_degrees:
-            marker_response=run_ocr(pic,working_page,"tesseract")
-            marker_words=marker_response.word_blocks or []
-            restore_geometry(prepared,marker_words,[],page.rect.width,page.rect.height)
-        refined["table_text_consensus"]=refine_table_regions(
-            _render(page,350),page,blocks,tables,marker_words=marker_words)
-        ocr_words=list(blocks)
-    blocks,layout_warnings=layout_page(blocks,page.rect.width,page.rect.height,
-                                     preserve_order=engine in ("easyocr", "easyocr_vietocr", "ensemble", "paddle_vl"))
+    if trace is not None:
+        trace["blocks_after_geometry_restoration"] = deepcopy(blocks)
+        trace["tables_after_geometry_restoration"] = deepcopy(tables)
+    blocks,layout_warnings=layout_page(blocks,page.rect.width,page.rect.height)
+    if trace is not None:
+        trace["blocks_after_reading_order"] = deepcopy(blocks)
     warnings+=layout_warnings
     if any("merged_extent_unknown" in cell and cell["merged_extent_unknown"] for t in tables for cell in t["cells"]):
         warnings.append("possible_merged_table_cells")
     clipped=_validate_boxes(blocks+ocr_words,tables,page.rect.width,page.rect.height)
     if clipped:
         warnings.append(f"pdf_bbox_clipped:{clipped}")
-    text="\n".join(b["text"] for b in blocks if b["text"].strip())
+    text=join_blocks_by_line(blocks)
     if use_ocr and not text:
         status=ReviewStatus.NEEDS_REVIEW
     elif profile["needs_ocr_review"] and not use_ocr:
@@ -195,10 +152,12 @@ def extract_page(page,profile:dict, *,source_id:str,dpi:int=260,
     quality=score_page_quality(profile,blocks,tables,ocr_words)
     payload.update({"profile":profile,"tables":tables,"warnings":sorted(set(warnings)),
                     "preprocessing":prepared.metadata() if prepared is not None else None,
-                    "page_quality":{**quality,**refined},
+                    "page_quality":quality,
                     "ocr_engine":engine if use_ocr else None,"ocr_words":ocr_words,
                     "ocr_confidence_mean":round(sum(confidences)/len(confidences),4) if confidences else None,
                     "needs_human_verification":bool(use_ocr or tables or warnings)})
+    if trace is not None:
+        trace["page_artifact"] = deepcopy(payload)
     return payload
 
 
@@ -239,9 +198,8 @@ def _valid_cached_page(artifact: dict, source_id: str, profile: dict, source_sha
 
 def _page_job(job: tuple) -> dict:
     """Independent process, no shared PyMuPDF objects (PyMuPDF is not thread safe)."""
-    (filename,source_id,profile,cache_location,force,dpi,engine,ocr,tables,table_engine,score_refine,*digests)=job
+    (filename,source_id,profile,cache_location,force,dpi,ocr,tables,*digests)=job
     digest = digests[0] if digests else sha256_file(Path(filename))
-    preprocess = bool(digests[1]) if len(digests)>1 else False
     cachefile=Path(cache_location)
     art=None if force else load_json(cachefile)
     if art is not None and not _valid_cached_page(art,source_id,profile,digest):
@@ -252,9 +210,7 @@ def _page_job(job: tuple) -> dict:
     try:
         with fitz.open(filename) as d:
             art=extract_page(d.load_page(profile["pdf_page"]-1),profile,source_id=source_id,
-                             dpi=dpi,ocr_engine=engine,enable_ocr=ocr,
-                             enable_tables=tables,table_engine=table_engine,
-                              refine_score_cells=score_refine,preprocess=preprocess)
+                             dpi=dpi,enable_ocr=ocr,enable_tables=tables)
     except Exception as exc:
         LOG.exception("page failed source=%s page=%s",source_id,profile["pdf_page"])
         art=PageArtifact(source_id=source_id,pdf_page=profile["pdf_page"],
@@ -287,34 +243,63 @@ def _record_page(fh, art, counts):
     fh.write(json.dumps(art,ensure_ascii=False)+"\n")
 
 
+def _source_profiles(filepath:Path,source_id:str,digest:str,cache_dir:Path)->list[dict]:
+    # Source-locked profile cache: repeated full ingestion must not scan
+    # every PDF page a second time just to learn native/image page type.
+    profile_file=cache_dir/"_profiles"/f"{digest}.profile.json"
+    profile_cache=load_json(profile_file)
+    if (isinstance(profile_cache,dict) and profile_cache.get("sha256")==digest
+            and profile_cache.get("source_id")==source_id
+            and profile_cache.get("profile_version")=="ocop-profile-v3"
+            and isinstance(profile_cache.get("pages"),list)
+            and len(profile_cache["pages"])>0
+            and profile_cache.get("pages_sha256")==hashlib.sha256(json.dumps(
+                profile_cache["pages"],sort_keys=True,ensure_ascii=False,
+                separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()
+            and all(x.get("pdf_page")==i+1 for i,x in enumerate(profile_cache["pages"]))):
+        profiles=profile_cache["pages"]
+    else:
+        profiles=profile_pdf(filepath,source_id)
+        write_json(profile_file,{"sha256":digest,"source_id":source_id,
+                                 "profile_version":"ocop-profile-v3","pages":profiles,
+                                 "pages_sha256":hashlib.sha256(json.dumps(
+                                     profiles,sort_keys=True,ensure_ascii=False,
+                                     separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()})
+    return profiles
+
+
+def _postcorrection_model(root:Path,sources,locked:dict,cache_dir:Path):
+    """Diacritic model from every locked source's native-text pages; OCR pages never train it."""
+    import fitz
+    from ai_core.processing.ocop.ocr_postcorrect import DiacriticModel
+    lines=[]
+    for source in sources:
+        filepath=(root/source.path).resolve()
+        digest=next(item["sha256"] for item in locked["sources"] if item["source_id"]==source.source_id)
+        native=[p["pdf_page"] for p in _source_profiles(filepath,source.source_id,digest,cache_dir)
+                if p["page_class"]=="native_text"]
+        if native:
+            with fitz.open(filepath) as document:
+                for number in native:
+                    lines.extend(document.load_page(number-1).get_text().splitlines())
+    return DiacriticModel.from_lines(lines)
+
+
 def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Path,
-                 engine:str="auto",dpi:int=260,ocr:bool=True,tables:bool=True,table_engine:str="auto",
-                 max_pages:int|None=None,source_filter:str|None=None,force:bool=False,workers:int=1,
-                 refine_score_cells:bool=False,preprocess:bool=False)->dict:
+                 dpi:int=300,ocr:bool=True,tables:bool=True,
+                 max_pages:int|None=None,source_filter:str|None=None,force:bool=False)->dict:
     if not 100<=dpi<=450:
         raise ValueError("dpi must be within 100-450")
-    if refine_score_cells:
-        from importlib.util import find_spec
-        if find_spec('pytesseract') is None:
-            raise RuntimeError('score-cell OCR requires pytesseract; install .[ocr] or disable refinement')
-    vl_requested = (ocr and engine == "paddle_vl") or (tables and table_engine == "paddle_vl")
-    if vl_requested:
-        from importlib.util import find_spec
-        if find_spec("paddleocr") is None:
-            raise RuntimeError('PaddleOCR-VL requires PaddleOCR 3.x and its model dependencies; '
-                               'install optional model stack or choose Tesseract/OpenCV')
-        if workers > 1:
-            raise ValueError('PaddleOCR-VL 0.9B is memory-intensive: use workers=1 per model instance')
     if max_pages is not None and max_pages<1:
         raise ValueError("max_pages must be positive")
-    if not 1 <= workers <= 8:
-        raise ValueError("workers must be between 1 and 8")
     import fitz
-    # Avoid Tesseract/OpenMP oversubscription and subprocess deadlock on small laptops.
+    # Bound native inference thread pools on small machines.
     os.environ.setdefault("OMP_THREAD_LIMIT","1")
     os.environ.setdefault("OPENBLAS_NUM_THREADS","1")
     root=root.resolve()
     sources,locked=checked_sources(root,registry,lock)
+    cache_dir.mkdir(parents=True,exist_ok=True)
+    postcorrection=_postcorrection_model(root,sources,locked,cache_dir) if ocr else None
     if source_filter:
         sources=[s for s in sources if s.source_id==source_filter]
         if not sources:
@@ -326,67 +311,35 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
             return version(name)
         except PackageNotFoundError:
             return "absent"
-    model_version=(f"paddle_vl_version={os.getenv('OCOP_PADDLE_VL_VERSION','v1.6')};"
-                   f"paddleocr={package_version('paddleocr')};"
-                   f"pytesseract={package_version('pytesseract')};"
-                   f"fitz={fitz.VersionBind};"
-                   f"opencv={package_version('opencv-python-headless')};"
-                   f"table={table_engine};score_refinement={refine_score_cells}")
-    if vl_requested:
-        from ai_core.processing.ocop.document_vl import load_vl_model, runtime_signature
-        vl_version=os.getenv("OCOP_PADDLE_VL_VERSION","v1.6")
-        runtime=runtime_signature(vl_version)
-        model_version += ";paddle_vl_runtime=" + json.dumps(runtime,sort_keys=True)
+    ocr_runtime = None
+    if ocr:
+        from importlib.util import find_spec
+        if find_spec("easyocr") is None or find_spec("vietocr") is None:
+            raise RuntimeError("scan OCR requires EasyOCR and VietOCR; install the .[easy_vietocr] extra")
         try:
-            load_vl_model(vl_version)
+            from ai_core.processing.ocop.easy_viet_ocr import runtime_signature
+            ocr_runtime = runtime_signature()
         except Exception as exc:
-            raise RuntimeError(f"paddleocr_vl_model_load_failed:{type(exc).__name__}:{str(exc)[:180]}") from exc
-    if (ocr and engine in ("auto", "tesseract", "ensemble")) or refine_score_cells:
-        runtime = tesseract_runtime_signature()
-        if ocr and engine in ("tesseract", "ensemble"):
-            if not runtime['available']:
-                raise RuntimeError('Tesseract executable missing; install Tesseract with vie and eng traineddata')
-            missing = [lang for lang in ('vie', 'eng') if not runtime['traineddata'].get(lang)]
-            if missing:
-                raise RuntimeError('missing_ocr_languages:' + ','.join(missing))
-        model_version += ";tesseract_runtime=" + json.dumps(runtime, sort_keys=True)
-    if ocr and engine in ("easyocr", "easyocr_vietocr", "ensemble"):
-        from ai_core.processing.ocop.easy_viet_ocr import runtime_signature
-        model_version += ";easy_runtime=" + json.dumps(runtime_signature(engine), sort_keys=True)
-    if preprocess:
-        from ai_core.processing.ocop import raster_preprocess
-        model_version += ";preprocess=" + sha256_file(Path(raster_preprocess.__file__))
+            raise RuntimeError(f"easy_viet_ocr_model_load_failed:{type(exc).__name__}:{str(exc)[:180]}") from exc
+    model_version=(f"easyocr={package_version('easyocr')};vietocr={package_version('vietocr')};"
+                   f"fitz={fitz.VersionBind};opencv={package_version('opencv-python-headless')}")
+    if ocr_runtime is not None:
+        model_version += ";easy_viet_runtime=" + json.dumps(ocr_runtime,sort_keys=True)
+    from ai_core.processing.ocop import raster_preprocess
+    model_version += ";deskew=" + sha256_file(Path(raster_preprocess.__file__))
     counts=Counter()
     expected_all=0
     manifest={"schema_version":2,"parser_version":PARSER_VERSION,"input_snapshot_sha256":locked["aggregate_sha256"],
-              "status":"processed_not_legally_verified","engine_requested":engine,"dpi":dpi,
-              "ocr_enabled":ocr,"table_detection_enabled":tables,"table_engine_requested":table_engine,"score_refinement_enabled":refine_score_cells,
-              "preprocess_enabled":preprocess,"model_versions":model_version,"sources":[],"counts":{}}
+              "status":"processed_not_legally_verified","engine_requested":ENGINE if ocr else "native_only","dpi":dpi,
+              "ocr_enabled":ocr,"table_detection_enabled":tables,
+              "ocr_runtime_signature":ocr_runtime,
+              "model_versions":model_version,"sources":[],"counts":{},
+              "ocr_postcorrection_model_sha256":postcorrection.sha256 if postcorrection else None}
     inspected=0
     for source in sources:
         filepath=(root/source.path).resolve()
         digest=next(item["sha256"] for item in locked["sources"] if item["source_id"]==source.source_id)
-        # Source-locked profile cache: repeated full ingestion must not scan
-        # every PDF page a second time just to learn native/image page type.
-        profile_file=cache_dir/"_profiles"/f"{digest}.profile.json"
-        profile_cache=load_json(profile_file)
-        if (isinstance(profile_cache,dict) and profile_cache.get("sha256")==digest
-                and profile_cache.get("source_id")==source.source_id
-                and profile_cache.get("profile_version")=="ocop-profile-v3"
-                and isinstance(profile_cache.get("pages"),list)
-                and len(profile_cache["pages"])>0
-                and profile_cache.get("pages_sha256")==hashlib.sha256(json.dumps(
-                    profile_cache["pages"],sort_keys=True,ensure_ascii=False,
-                    separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()
-                and all(x.get("pdf_page")==i+1 for i,x in enumerate(profile_cache["pages"]))):
-            profiles=profile_cache["pages"]
-        else:
-            profiles=profile_pdf(filepath,source.source_id)
-            write_json(profile_file,{"sha256":digest,"source_id":source.source_id,
-                                     "profile_version":"ocop-profile-v3","pages":profiles,
-                                     "pages_sha256":hashlib.sha256(json.dumps(
-                                         profiles,sort_keys=True,ensure_ascii=False,
-                                         separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()})
+        profiles=_source_profiles(filepath,source.source_id,digest,cache_dir)
         expected_all+=len(profiles)
         name=hashlib.sha256(source.source_id.encode()).hexdigest()[:12]
         output_path=output/f"{name}.pages.jsonl"
@@ -401,30 +354,21 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
                 if max_pages is not None and inspected >= max_pages:
                     break
                 inspected += 1
-                key=build_cache_key(digest,profile["pdf_page"],dpi=dpi,ocr_engine=engine,
+                key=build_cache_key(digest,profile["pdf_page"],dpi=dpi,ocr_engine=ENGINE if ocr else "native_only",
                                     extract_ocr=ocr,detect_tables=tables,model_version=model_version)
                 target=cache_path(cache_dir,source.source_id,key)
-                allowed.append((str(filepath),source.source_id,profile,str(target),force,dpi,engine,ocr,tables,table_engine,refine_score_cells,digest,preprocess))
-            if workers == 1:
-                results = map(_page_job,allowed)
-                with tmp_path.open("w",encoding="utf-8") as fh:
-                    for art in results:
-                        _record_page(fh,art,source_counts)
-                        if prev_art is not None:
-                            continuations.extend(possible_continuations(prev_art,art))
-                        prev_art=art
-                    fh.flush()
-                    os.fsync(fh.fileno())
-            else:
-                with ProcessPoolExecutor(max_workers=workers,mp_context=get_context("spawn")) as pool:
-                    with tmp_path.open("w",encoding="utf-8") as fh:
-                        for art in pool.map(_page_job,allowed,chunksize=1):
-                            _record_page(fh,art,source_counts)
-                            if prev_art is not None:
-                                continuations.extend(possible_continuations(prev_art,art))
-                            prev_art=art
-                        fh.flush()
-                        os.fsync(fh.fileno())
+                allowed.append((str(filepath),source.source_id,profile,str(target),force,dpi,ocr,tables,digest))
+            with tmp_path.open("w",encoding="utf-8") as fh:
+                for art in map(_page_job,allowed):
+                    if postcorrection is not None:
+                        # Applied after the page cache, which keeps the raw OCR transcription.
+                        art=postcorrect_artifact(art,postcorrection)
+                    _record_page(fh,art,source_counts)
+                    if prev_art is not None:
+                        continuations.extend(possible_continuations(prev_art,art))
+                    prev_art=art
+                fh.flush()
+                os.fsync(fh.fileno())
             tmp_path.replace(output_path)
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -456,27 +400,21 @@ def main():
     p.add_argument("--lock-file",default="configs/ocop_sources.lock.json")
     p.add_argument("--output",default="data/processed/ocop/pages")
     p.add_argument("--cache",default="data/processed/ocop/cache")
-    p.add_argument("--engine",choices=["auto","paddle","tesseract","paddle_vl","easyocr","easyocr_vietocr","ensemble"],default="auto")
-    p.add_argument("--dpi",type=int,default=260)
-    p.add_argument("--preprocess",action="store_true",help="Conservative deskew with inverse source geometry")
-    p.add_argument("--table-engine",choices=["auto","opencv","ppstructure","paddle_vl"],default="auto")
+    p.add_argument("--dpi",type=int,default=300)
     p.add_argument("--without-ocr",action="store_true")
     p.add_argument("--without-tables",action="store_true")
-    p.add_argument("--refine-score-cells",action="store_true",help="Read narrow score cells separately; unverified candidates only")
     p.add_argument("--max-pages",type=int)
     p.add_argument("--source-id")
     p.add_argument("--force",action="store_true")
-    p.add_argument("--workers",type=int,default=1,help="PDF OCR page workers (processes, not threads)")
     args=p.parse_args()
     root=args.root.resolve()
     def resolve(path):
         candidate=Path(path)
         return candidate if candidate.is_absolute() else root/candidate
     data=run_pipeline(root,registry=resolve(args.registry),lock=resolve(args.lock_file),
-        output=resolve(args.output),cache_dir=resolve(args.cache),engine=args.engine,dpi=args.dpi,
-        ocr=not args.without_ocr,tables=not args.without_tables,table_engine=args.table_engine,
-        max_pages=args.max_pages,source_filter=args.source_id,force=args.force,workers=args.workers,
-          refine_score_cells=args.refine_score_cells,preprocess=args.preprocess)
+        output=resolve(args.output),cache_dir=resolve(args.cache),dpi=args.dpi,
+        ocr=not args.without_ocr,tables=not args.without_tables,
+        max_pages=args.max_pages,source_filter=args.source_id,force=args.force)
     print(json.dumps({"sources":len(data["sources"]),"counts":data["counts"],
                       "complete":data["complete"],"output":str(resolve(args.output))},ensure_ascii=False))
 

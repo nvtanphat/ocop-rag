@@ -117,5 +117,5 @@ def restore_geometry(prepared: PreparedRaster, blocks, tables, width_pt: float, 
         obj["bbox_processed"] = list(obj["bbox"])
         obj["polygon"] = [[round(x, 4), round(y, 4)] for x, y in mapped]
         obj["bbox"] = [round(float(v), 2) for v in (*points.min(axis=0), *points.max(axis=0))]
-        for candidate in obj.get("score_ocr_candidates", []):
+        for candidate in [*obj.get("score_ocr_candidates", []), *obj.get("image_marker_candidates", [])]:
             candidate["bbox"] = list(obj["bbox"])

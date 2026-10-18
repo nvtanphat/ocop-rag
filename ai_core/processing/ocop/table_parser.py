@@ -17,7 +17,10 @@ def native_tables(page) -> list[dict]:
     if not hasattr(page, "find_tables"):
         return tables
     try:
-        finder=page.find_tables()
+        # lines_strict uses ruled lines only. The default also treats thin filled rectangles and text
+        # edges as rules, which split one logical row per text line (ND111 p17: 32 rows instead of 8)
+        # and invents 3-column "tables" on plain prose (ND15/2018: 65 tables, 18 with strict).
+        finder=page.find_tables(strategy="lines_strict")
     except (RuntimeError, ValueError, TypeError):
         return tables
     for ix, table in enumerate(finder.tables):
@@ -85,6 +88,28 @@ def _merge_nearby(values: list[int], distance: int) -> list[int]:
     return [int(np.median(group)) for group in out]
 
 
+def _keep_persistent_vertical_rules(projection: np.ndarray, centers: list[int]) -> tuple[list[int], int]:
+    """Reject accumulated short dashes that do not behave like table borders.
+
+    A ruling must have one continuous run spanning at least 8% of its table
+    component (and at least 24 pixels). The cumulative ink threshold used to
+    find candidate x positions can otherwise mistake repeated scan marks for
+    a column, even when no individual mark crosses more than a couple of rows.
+    """
+    min_run=max(24,int(np.ceil(projection.shape[0]*0.08)))
+    kept=[]
+    for center in centers:
+        left=max(0,center-1)
+        right=min(projection.shape[1],center+2)
+        occupied=(projection[:,left:right]>0).any(axis=1)
+        starts=np.flatnonzero(occupied & ~np.r_[False,occupied[:-1]])
+        ends=np.flatnonzero(occupied & ~np.r_[occupied[1:],False])+1
+        longest=int(np.max(ends-starts)) if len(starts) else 0
+        if longest>=min_run:
+            kept.append(center)
+    return kept,len(centers)-len(kept)
+
+
 def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[dict]:
     """Detect ruled grids from full raster; report table candidates for review.
 
@@ -117,7 +142,8 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
         # Use *regional* support. Real OCOP scoring columns are narrow and
         # vertical rulings break at merged rows: .45 was losing the entire
         # two-column table in QD26/2026 page 28.
-        xs=_merge_nearby(_line_centers((subv>0).sum(axis=0),max(12,int(h*.12))),max(11,ww//90))
+        detected_xs=_merge_nearby(_line_centers((subv>0).sum(axis=0),max(12,int(h*.12))),max(11,ww//90))
+        xs,rejected_xs=_keep_persistent_vertical_rules(subv,detected_xs)
         ys=_merge_nearby(_line_centers((subh>0).sum(axis=1),max(12,int(w*.16))),max(5,hh//260))
         if len(xs)<3 or len(ys)<3 or (len(xs)-1)*(len(ys)-1)<min_cells:
             continue
@@ -156,7 +182,10 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
                            "cells":cells,"review_status":"needs_review",
                            "warnings":["grid_cells_are_candidates_only","review_merged_cells_and_asterisks"],
                            "extraction_quality":{"observed_row_rules":len(ys),
-                             "observed_column_rules":len(xs),
+                             "observed_column_rules":len(detected_xs),
+                             "retained_column_rules":len(xs),
+                             "fragmented_column_rules_rejected":rejected_xs,
+                             "minimum_vertical_rule_run_fraction":0.08,
                              "bbox_method":"detected_pixel_rulings"}})
     if not candidates:
         # OCR tables often have *horizontal ruling only*, with columns separated
@@ -186,8 +215,9 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
                 # includes more than a few horizontal rules. Never infer spans.
                 sub_v=vlines[y0:y1+1,x0:x1+1]
                 v_support=max(12,int((y1-y0)*.12))
-                xlines=_merge_nearby(_line_centers((sub_v>0).sum(axis=0),v_support),
-                                     max(11,ww//90))
+                detected_xlines=_merge_nearby(_line_centers((sub_v>0).sum(axis=0),v_support),
+                                              max(11,ww//90))
+                xlines,rejected_xlines=_keep_persistent_vertical_rules(sub_v,detected_xlines)
                 if len(xlines)>=3 and len(xlines)<=15:
                     cells=[]
                     for row,(top,bottom) in enumerate(zip(representative,representative[1:])):
@@ -216,7 +246,11 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
                                 y1/hh*page.rect.height]),
                             'row_count':len(representative)-1,'col_count':len(xlines)-1,
                             'cells':cells,'review_status':'needs_review',
-                            'warnings':['partial_grid_merges_unresolved','verify_scores_and_asterisks']})
+                            'warnings':['partial_grid_merges_unresolved','verify_scores_and_asterisks'],
+                            'extraction_quality':{'observed_column_rules':len(detected_xlines),
+                                'retained_column_rules':len(xlines),
+                                'fragmented_column_rules_rejected':rejected_xlines,
+                                'minimum_vertical_rule_run_fraction':0.08}})
                 if not candidates:
                     candidates.append({"table_id":"table:raster:unruled:0",
                   "method":"opencv_horizontal_rulings_candidate",

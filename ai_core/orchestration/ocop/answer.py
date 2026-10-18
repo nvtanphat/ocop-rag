@@ -35,15 +35,16 @@ def _citation_spans(spans:list[dict], pdf_page:int)->list[dict]:
         if not isinstance(span,dict) or span.get('pdf_page')!=pdf_page:
             continue
         item={'pdf_page':pdf_page}
-        box=span.get('bbox')
-        if isinstance(box,(list,tuple)) and len(box)==4:
-            try:
-                coordinates=[float(value) for value in box]
-            except (TypeError,ValueError,OverflowError):
-                coordinates=[]
-            if (len(coordinates)==4 and all(math.isfinite(value) for value in coordinates)
-                    and coordinates[0]<=coordinates[2] and coordinates[1]<=coordinates[3]):
-                item['bbox']=coordinates
+        for box_key in ('bbox','table_bbox'):
+            box=span.get(box_key)
+            if isinstance(box,(list,tuple)) and len(box)==4:
+                try:
+                    coordinates=[float(value) for value in box]
+                except (TypeError,ValueError,OverflowError):
+                    coordinates=[]
+                if (len(coordinates)==4 and all(math.isfinite(value) for value in coordinates)
+                        and coordinates[0]<=coordinates[2] and coordinates[1]<=coordinates[3]):
+                    item[box_key]=coordinates
         for key in ('block_id','table_id','cell_id','printed_page'):
             if isinstance(span.get(key),str):
                 item[key]=span[key]
@@ -85,7 +86,8 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
         if len(signatures)!=1:continue
         row,span,body=entries[0]
         citation={'source_id':key[0],'pdf_page':key[1],'evidence_unit_id':key[2],
-                  'bbox':span.get('bbox'),'table_id':span.get('table_id'),
+                  'bbox':span.get('bbox'),'table_bbox':span.get('table_bbox'),
+                  'table_id':span.get('table_id'),
                   'review_status':row.get('review_status','needs_review'),
                   'source_spans':_citation_spans(row.get('source_spans') or row.get('spans') or [span],key[1])}
         source_sha256=span.get('source_sha256') or row.get('source_sha256')

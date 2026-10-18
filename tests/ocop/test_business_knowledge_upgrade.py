@@ -96,7 +96,9 @@ def test_native_table_row_coordinates_not_column_major():
             def extract(self):return [['STT','Sản phẩm'],['1','Hạt sen']]
         class Finder: tables=[Table()]
         class Page:
-            def find_tables(self):return Finder()
+            def find_tables(self,**kwargs):
+                assert kwargs=={"strategy":"lines_strict"}
+                return Finder()
         table=native_tables(Page())[0]
         assert table['cells'][1]['row']==0 and table['cells'][1]['col']==1
         assert table['cells'][1]['bbox']==[100.,40.,300.,70.]

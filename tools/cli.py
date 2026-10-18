@@ -40,12 +40,7 @@ def main() -> None:
     run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")
     run.add_argument("--mongo", action="store_true", help="Also materialize structured data in MongoDB")
     run.add_argument("--neo4j", action="store_true", help="Also publish graph into Neo4j")
-    run.add_argument("--ocr-engine", choices=("auto", "paddle", "tesseract", "paddle_vl", "easyocr", "easyocr_vietocr", "ensemble"), default="tesseract")
-    run.add_argument("--table-engine", choices=("auto", "opencv", "ppstructure", "paddle_vl"), default="opencv")
-    run.add_argument("--workers", type=int, default=1)
-    run.add_argument("--dpi", type=int, default=260)
-    run.add_argument("--preprocess", action="store_true", help="Deskew OCR rasters with inverse PDF coordinates")
-    run.add_argument("--refine-score-cells",action="store_true",help="Supplement narrow OCOP scoring cells with crop OCR candidates")
+    run.add_argument("--dpi", type=int, default=300)
     run.add_argument("--embedding-model", default="google/embeddinggemma-300m")
     run.add_argument("--embedding-revision")
     run.add_argument("--qdrant-host", default="localhost")
@@ -91,9 +86,7 @@ def main() -> None:
             verify_ollama_model(os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"), "qwen3.5:2b")
         prepared = system.ensure(PipelineOptions(
             refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, mongo=args.mongo or args.full, neo4j=args.neo4j or args.full,
-            ocr_engine=args.ocr_engine, table_engine=args.table_engine,
-            workers=args.workers, dpi=args.dpi, refine_score_cells=args.refine_score_cells,
-            preprocess=args.preprocess,
+            dpi=args.dpi,
             embedding_model=args.embedding_model, embedding_revision=args.embedding_revision,
             qdrant_host=args.qdrant_host, qdrant_port=args.qdrant_port,
             mongo_uri=args.mongo_uri, neo4j_uri=args.neo4j_uri,

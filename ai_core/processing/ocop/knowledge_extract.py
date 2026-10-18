@@ -12,10 +12,11 @@ import os
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 from ai_core.domain.ocop_ids import stable_id, content_sha256
-from ai_core.domain.ocop_models import EvidenceUnit, SourceSpan, ReviewStatus
+from ai_core.domain.ocop_models import EvidenceUnit, SourceSpan, ReviewStatus, cell_display_text
+from ai_core.processing.ocop.layout import group_blocks_by_line, join_blocks_by_line
 from ai_core.processing.ocop.registry import load_registry
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.processing.ocop.temporal_candidates import temporal_candidates
@@ -25,7 +26,7 @@ from ai_core.knowledge.ocop.quality import audit_knowledge
 from ai_core.knowledge.ocop.contracts import BusinessEntity, BusinessRelation, validate_business_graph
 
 ROOT = Path(__file__).resolve().parents[3]
-VERSION = "ocop-evidence-v3.4-source-anchors"
+VERSION = "ocop-evidence-v3.5-table-dedupe"
 LEGAL_START = re.compile(r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?[1-9]\b.*)\s*$", re.IGNORECASE)
 LEGAL_REFERENCE = re.compile(r"\b\d{1,4}/20\d{2}/(?:QĐ-TTg|NĐ-CP|NQ-CP|QH\d+|QĐ-UBND|TT-[A-ZĐ]+)\b",re.IGNORECASE)
 YEAR = re.compile(r"\b(?:năm\s+)?(20\d{2})\b",re.IGNORECASE)
@@ -46,8 +47,9 @@ def _jsonl_atomic(path: Path, records: Iterable[dict]) -> int:
     return count
 
 
-def _span(page: dict, *, bbox=None, table_id=None, cell_id=None, block_id=None) -> SourceSpan:
+def _span(page: dict, *, bbox=None, table_bbox=None, table_id=None, cell_id=None, block_id=None) -> SourceSpan:
     return SourceSpan(pdf_page=page["pdf_page"], bbox=tuple(bbox) if bbox is not None else None,
+                      table_bbox=tuple(table_bbox) if table_bbox is not None else None,
                       table_id=table_id,cell_id=cell_id,block_id=block_id,
                       source_sha256=page.get("source_sha256"))
 
@@ -115,33 +117,63 @@ def _segments_with_line_indices(text:str):
             yield kind,body,indices
 
 
-def _segment_spans(page:dict, line_indices:list[int])->list[SourceSpan]:
-    """Map segment lines to exact page blocks when the text stream agrees."""
+def _line_blocks(page:dict)->list[list[dict]]|None:
+    """Blocks behind each page text line, or None when the text stream does not agree."""
     text=page.get("extracted_text","")
     source_blocks=[block for block in page.get("blocks",[])
                    if isinstance(block,dict) and isinstance(block.get("text"),str)
                    and block["text"].strip()]
-    if not source_blocks or "\r" in text:
-        return [_span(page)]
-    if "\n".join(block["text"] for block in source_blocks)!=text:
-        return [_span(page)]
+    if not source_blocks or "\r" in text or join_blocks_by_line(source_blocks)!=text:
+        return None
+    lines=[]
+    for group in group_blocks_by_line(source_blocks):
+        lines.extend([group]*len(group[0]["text"].split("\n")))
+    return lines
 
-    line_blocks=[]
-    for block in source_blocks:
-        line_blocks.extend([block]*len(block["text"].split("\n")))
-    if not line_indices or any(index < 0 or index >= len(line_blocks) for index in line_indices):
-        return [_span(page)]
 
+def _segment_spans(page:dict, line_indices:list[int])->list[SourceSpan]:
+    """Map segment lines to exact page blocks when the text stream agrees."""
+    line_blocks=_line_blocks(page)
+    if line_blocks is None or not line_indices or any(i<0 or i>=len(line_blocks) for i in line_indices):
+        return [_span(page)]
     spans=[]
     seen=set()
     for line_index in line_indices:
-        block=line_blocks[line_index]
-        key=(line_index,block.get("block_id"))
-        if key in seen:
-            continue
-        seen.add(key)
-        spans.append(_span(page,bbox=block.get("bbox"),block_id=block.get("block_id")))
+        for block in line_blocks[line_index]:
+            key=(line_index,block.get("block_id"))
+            if key in seen:
+                continue
+            seen.add(key)
+            spans.append(_span(page,bbox=block.get("bbox"),block_id=block.get("block_id")))
     return spans or [_span(page)]
+
+
+def _norm(value:str)->str:
+    return " ".join(value.split())
+
+
+def _lines_duplicated_in_tables(page:dict)->set[int]:
+    """Text lines whose block sits inside a table and whose text is already in that table's cells."""
+    line_blocks=_line_blocks(page)
+    if line_blocks is None:
+        return set()
+    tables=[]
+    for table in page.get("tables",[]):
+        box=table.get("bbox")
+        if isinstance(box,(list,tuple)) and len(box)==4:
+            tables.append((box,_norm(" ".join(cell_display_text(c) for c in table.get("cells",[])))))
+    dropped=set()
+    source_lines=page.get("extracted_text","").splitlines()
+    for index,blocks in enumerate(line_blocks):
+        # A joined line can span two cells, so each fragment must be found in the table on its own.
+        fragments=[source_lines[index]] if len(blocks)==1 else [b["text"] for b in blocks]
+        for box,cell_text in tables:
+            inside=all(b.get("bbox") and box[0]<=(b["bbox"][0]+b["bbox"][2])/2<=box[2]
+                       and box[1]<=(b["bbox"][1]+b["bbox"][3])/2<=box[3] for b in blocks)
+            if inside and all(_norm(fragment) in cell_text for fragment in fragments):
+                dropped.add(index)
+                break
+    return dropped
 
 
 def page_units(page:dict, *, source_kind:str="") -> list[dict]:
@@ -155,7 +187,12 @@ def page_units(page:dict, *, source_kind:str="") -> list[dict]:
     if not text.strip() and not page.get("tables"):
         return units
     active_legal_heading=None
-    for i,(kind,body,line_indices) in enumerate(_segments_with_line_indices(text)):
+    dropped=_lines_duplicated_in_tables(page)
+    source_lines=text.splitlines()
+    kept=[i for i in range(len(source_lines)) if i not in dropped]
+    paragraph_text="\n".join(source_lines[i] for i in kept)
+    for i,(kind,body,kept_indices) in enumerate(_segments_with_line_indices(paragraph_text)):
+        line_indices=[kept[j] for j in kept_indices]
         # Preserve only headings seen on this very page: do not infer absent
         # cross-page legislation or invent article numbers from OCR noise.
         first=body.splitlines()[0][:180]
@@ -173,7 +210,7 @@ def page_units(page:dict, *, source_kind:str="") -> list[dict]:
         cells_sorted=sorted(cells,key=lambda x:(x.get("row",0),x.get("col",0)))
         rows={}
         for c in cells_sorted:
-            rows.setdefault(int(c.get("row",0)),[]).append(str(c.get("text") or "").strip())
+            rows.setdefault(int(c.get("row",0)),[]).append(cell_display_text(c))
         txt="\n".join(" | ".join(r) for _,r in sorted(rows.items())).strip()
         if not txt:
             txt=f"[Phát hiện vùng bảng trên trang PDF {page['pdf_page']} nhưng chưa nhận dạng được nội dung]"

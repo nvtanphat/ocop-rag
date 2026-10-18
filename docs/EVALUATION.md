@@ -9,7 +9,7 @@
 ## Lệnh đánh giá
 
 ```powershell
-python tools/cli.py run --build-only --workers 4 --dpi 260
+python tools/cli.py run --build-only --dpi 300
 python tools/evaluate_manual_pdf.py --split dev
 python tools/evaluate_manual_pdf.py --split test
 python tools/evaluate_manual_pdf.py --split all --out reports/evaluation/manual_pdf_sparse.json

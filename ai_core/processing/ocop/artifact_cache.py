@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-PARSER_VERSION = "ocop-pdf-v4.3.0"
+PARSER_VERSION = "ocop-pdf-v7.0.0"
 
 
 def build_cache_key(file_sha256: str, page: int, *, dpi: int, ocr_engine: str,

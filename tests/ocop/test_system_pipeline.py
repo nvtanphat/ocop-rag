@@ -26,11 +26,9 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         calls.append("pdf")
         output.mkdir(parents=True)
         from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
-        manifest = {"complete": True, "parser_version":PARSER_VERSION,"score_refinement_enabled":False,
-                    "preprocess_enabled":kwargs.get("preprocess",False),
+        manifest = {"complete": True, "parser_version":PARSER_VERSION,
                     "input_snapshot_sha256": "approved-snapshot", "counts": {"pages": 1},
-                    "dpi": kwargs["dpi"], "engine_requested": kwargs["engine"],
-                    "table_engine_requested": kwargs["table_engine"]}
+                    "dpi": kwargs["dpi"], "engine_requested": "easyocr_vietocr", "ocr_enabled": True}
         write_json(output / "manifest.json", manifest)
         return manifest
 
@@ -94,16 +92,6 @@ def test_run_follows_one_dependency_chain_and_reuses_corpus(tmp_path, monkeypatc
     assert second["reused"] is True
     assert calls == ["pdf", "evidence", "index", "graph"]
     assert not list(system.data.glob("ocop-build-*"))
-
-
-def test_preprocessing_change_rebuilds_pdf_and_reuses_only_matching_rasters(tmp_path, monkeypatch):
-    system, calls = fixture_pipeline(tmp_path, monkeypatch)
-    system.ensure()
-    changed = system.ensure(PipelineOptions(preprocess=True))
-    assert changed["reused"] is False
-    assert calls.count("pdf") == 2
-    assert system.ensure(PipelineOptions(preprocess=True))["reused"] is True
-    assert calls.count("pdf") == 2
 
 
 def test_stale_retrieval_algorithm_version_requires_reindex(tmp_path,monkeypatch):

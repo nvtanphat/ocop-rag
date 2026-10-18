@@ -8,12 +8,13 @@ import pytest
 
 from ai_core.processing.ocop.artifact_cache import build_cache_key,write_json,load_json
 from ai_core.processing.ocop.native_extractor import extract_native
-from ai_core.processing.ocop.table_parser import native_tables,raster_tables
-from ai_core.processing.ocop.ocr_extractor import _pdf_bbox, OCRResult
+from ai_core.processing.ocop.table_parser import raster_tables
+from ai_core.processing.ocop.easy_viet_ocr import _pdf_bbox
+from ai_core.processing.ocop.ocr_types import OCRResult
 from ai_core.processing.ocop.pdf_pipeline import extract_page,run_pipeline
 from ai_core.processing.ocop.profiler import profile_pdf
 from ai_core.processing.ocop.registry import snapshot
-from ai_core.domain.ocop_models import SourceDocument,ReviewStatus
+from ai_core.domain.ocop_models import SourceDocument
 
 
 @pytest.fixture
@@ -44,16 +45,17 @@ def test_native_bbox_and_page_validation(document):
         assert a['review_status'] in {'machine_extracted','needs_review'}
 
 
-def test_tesseract_to_pdf_point_bbox():
-    bb=_pdf_bbox((200,100,500,350),width_px=1000,height_px=1000,width_pt=500,height_pt=700)
+def test_ocr_pixel_bbox_to_pdf_points():
+    bb=_pdf_bbox((200,100,500,350),width_px=1000,height_px=1000,
+                   page=type('Page',(),{'rect':type('Rect',(),{'width':500,'height':700})()})())
     assert bb==[100.,70.,250.,245.]
     assert all(n>=0 for n in bb)
 
 
 def test_cache_deterministic_and_versioned(tmp_path):
-    a=build_cache_key('a'*64,1,dpi=260,ocr_engine='tesseract',extract_ocr=True,detect_tables=True,model_version='x')
-    b=build_cache_key('a'*64,1,dpi=260,ocr_engine='tesseract',extract_ocr=True,detect_tables=True,model_version='x')
-    c=build_cache_key('a'*64,1,dpi=260,ocr_engine='paddle',extract_ocr=True,detect_tables=True,model_version='x')
+    a=build_cache_key('a'*64,1,dpi=300,ocr_engine='easyocr_vietocr',extract_ocr=True,detect_tables=True,model_version='x')
+    b=build_cache_key('a'*64,1,dpi=300,ocr_engine='easyocr_vietocr',extract_ocr=True,detect_tables=True,model_version='x')
+    c=build_cache_key('a'*64,1,dpi=300,ocr_engine='native_only',extract_ocr=True,detect_tables=True,model_version='x')
     assert a==b and a!=c
     f=tmp_path/'sub'/'a.json'
     write_json(f,{'value':'cây rau'})
@@ -65,8 +67,10 @@ def test_grid_candidates_keep_coordinates_and_review(tmp_path):
     import fitz
     image=Image.new('RGB',(500,500),'white')
     d=ImageDraw.Draw(image)
-    for x in [70,200,440]: d.line([(x,80),(x,330)],fill='black',width=3)
-    for y in [80,140,205,265,330]: d.line([(70,y),(440,y)],fill='black',width=3)
+    for x in [70,200,440]:
+        d.line([(x,80),(x,330)],fill='black',width=3)
+    for y in [80,140,205,265,330]:
+        d.line([(70,y),(440,y)],fill='black',width=3)
     with fitz.open() as pdf:
         page=pdf.new_page(width=250,height=250)
         blocks=[{'bbox':[40,48,90,60],'text':'***', 'order':0}]
@@ -77,15 +81,43 @@ def test_grid_candidates_keep_coordinates_and_review(tmp_path):
         assert all(0<=c['bbox'][0]<c['bbox'][2]<=page.rect.width for c in results[0]['cells'])
 
 
+def test_grid_ignores_repeated_dashes_inside_score_column():
+    from PIL import Image,ImageDraw
+    import fitz
+    from ai_core.processing.ocop.table_parser import raster_tables
+
+    image=Image.new('RGB',(700,700),'white')
+    draw=ImageDraw.Draw(image)
+    for x in (70,300,640):
+        draw.line([(x,60),(x,540)],fill='black',width=3)
+    for y in range(60,541,60):
+        draw.line([(70,y),(640,y)],fill='black',width=3)
+    # Repeated short scan marks can exceed cumulative x-projection support,
+    # but no individual mark is long enough to be a real table border.
+    for y in range(60,480,60):
+        draw.line([(500,y+15),(500,y+39)],fill='black',width=2)
+
+    with fitz.open() as pdf:
+        page=pdf.new_page(width=700,height=700)
+        results=raster_tables(image,page,[])
+
+    assert results and results[0]['row_count']==8
+    assert results[0]['col_count']==2
+    assert results[0]['extraction_quality']['fragmented_column_rules_rejected']==1
+
+
 def test_page_error_is_quarantined_and_resumable(tmp_path,document,monkeypatch):
     root=tmp_path
     (root/'data/raw/ocop').mkdir(parents=True)
     target=root/'data/raw/ocop/demo.pdf'
     target.write_bytes(document.read_bytes())
     src=SourceDocument(source_id='VN.DEMO',path='data/raw/ocop/demo.pdf',source_kind='ocop_framework')
-    registry=root/'r.json';registry.write_text(json.dumps({'schema_version':1,'sources':[src.model_dump(mode='json')]}))
-    lock=root/'lock.json';lock.write_text(json.dumps(snapshot(root,[src])))
-    out=root/'out'; cache=root/'cache'
+    registry=root/'r.json'
+    registry.write_text(json.dumps({'schema_version':1,'sources':[src.model_dump(mode='json')]}))
+    lock=root/'lock.json'
+    lock.write_text(json.dumps(snapshot(root,[src])))
+    out=root/'out'
+    cache=root/'cache'
     result=run_pipeline(root,registry=registry,lock=lock,output=out,cache_dir=cache,ocr=False,tables=False)
     assert result['complete'] and result['counts']['pages']==1
     result2=run_pipeline(root,registry=registry,lock=lock,output=out,cache_dir=cache,ocr=False,tables=False)
@@ -99,7 +131,8 @@ def test_signed_scan_is_not_treated_as_native_legal_content(monkeypatch,tmp_path
     from PIL import Image
     import fitz
     img=Image.new('RGB',(500,700),'white')
-    buf=__import__('io').BytesIO();img.save(buf,format='PNG')
+    buf=__import__('io').BytesIO()
+    img.save(buf,format='PNG')
     f=tmp_path/'scan.pdf'
     with fitz.open() as d:
         p=d.new_page(width=500,height=700)
@@ -108,11 +141,11 @@ def test_signed_scan_is_not_treated_as_native_legal_content(monkeypatch,tmp_path
         d.save(f)
     pr=profile_pdf(f,'TEST')[0]
     assert pr['page_class']=='ocr_candidate'
-    monkeypatch.setattr('ai_core.processing.ocop.pdf_pipeline.run_ocr',lambda *a,**k: OCRResult([{
+    monkeypatch.setattr('ai_core.processing.ocop.pdf_pipeline.run_easy_viet_ocr',lambda *a,**k: (OCRResult([{
         'block_id':'ocr:test', 'text':'BANG TIEU CHI *** 15 diem',
-        'bbox':[10,10,300,100],'method':'mock','confidence':0.7,'order':0}], 'mock',[]))
+        'bbox':[10,10,300,100],'method':'mock','confidence':None,'order':0}], 'easyocr_vietocr',[]), []))
     with fitz.open(f) as d:
-        art=extract_page(d[0],pr,source_id='TEST',enable_tables=False,ocr_engine='tesseract')
+        art=extract_page(d[0],pr,source_id='TEST',enable_tables=False)
     assert 'Nguoi ky' not in art['extracted_text']
     assert '***' in art['extracted_text']
     assert art['review_status']=='needs_review'
@@ -123,38 +156,6 @@ def test_cross_page_is_not_silently_merged():
     x=[{'bbox':[20,20,60,38],'text':'DIEM 5','order':0}]
     ordered,warnings=layout_page(x,100,100)
     assert ordered[0]['text']=='DIEM 5' and ordered[0]['reading_order']==0
-
-
-def test_paddle_mock_adapter_on_offline_pixels():
-    from PIL import Image
-    from types import SimpleNamespace
-    from ai_core.processing.ocop.ocr_extractor import _paddle
-    class Mock:
-        def predict(self,pixels):
-            return [{'res':{'rec_polys':[[[10,20],[50,20],[50,40],[10,40]]],
-                            'rec_texts':['Mẫu 01'], 'rec_scores':[0.94]}}]
-    r=_paddle(Image.new('RGB',(100,100)),SimpleNamespace(rect=SimpleNamespace(width=200,height=200)),Mock())
-    assert r.engine=='paddle' and r.blocks[0]['bbox']==[20.,40.,100.,80.]
-
-
-def test_ppstructure_mock_table_candidate():
-    from PIL import Image
-    from types import SimpleNamespace
-    from ai_core.processing.ocop.structure_engine import ppstructure_tables
-    class Mock:
-        def predict(self,pixels):
-            return [{'res':{'table_res_list':[{'table_region_bbox':[5,5,60,60], 'pred_html':'<table><tr><td>3</td></tr></table>'}]}}]
-    t=ppstructure_tables(Image.new('RGB',(100,100)),SimpleNamespace(rect=SimpleNamespace(width=200,height=200)),Mock())
-    assert t[0]['review_status']=='needs_review' and t[0]['bbox']==[10.,10.,120.,120.]
-
-
-def test_ppstructure_merges_keep_explicit_rowspan_colspan():
-    from ai_core.processing.ocop.structure_engine import parse_html_cells
-    cells,rows,cols=parse_html_cells('<table><tr><th rowspan="2">A</th><td>1</td></tr><tr><td colspan="2">2</td></tr></table>')
-    assert rows==2 and cols==3
-    assert cells[0]['rowspan']==2
-    assert cells[2]['col']==1 and cells[2]['colspan']==2
-    assert all(cell['bbox'] is None for cell in cells)
 
 
 def test_cross_page_candidate_never_materializes_merge():
@@ -188,7 +189,7 @@ def test_page_cache_hit_skips_expensive_extraction(tmp_path,document,monkeypatch
     lock=root/'source.lock.json'
     lock.write_text(json.dumps(snapshot(root,[src])))
     kw={'registry':registry,'lock':lock,'output':root/'out','cache_dir':root/'cache',
-        'engine':'tesseract','ocr':False,'tables':False}
+        'ocr':False,'tables':False}
     first=pdf_module.run_pipeline(root,**kw)
     assert first['counts']['pages']==1
     monkeypatch.setattr(pdf_module,'extract_page',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('cache not used')))
