@@ -139,7 +139,9 @@ source HTML and parsed cells, with individual cell boxes left null when the
 model does not return them. OCR/VLM text, including numbers, stars and table
 descriptions, remains `needs_review`; the model does not supply a legal
 verification or a usable confidence score. Check critical text and table cells
-against the source PDF before relying on them. The [PaddleOCR-VL output contract](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PaddleOCR-VL.en.md)
+against the source PDF before relying on them. Evidence spans and citations
+carry the PDF page, block/table box, evidence unit ID and source SHA-256. The
+[PaddleOCR-VL output contract](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/pipeline_usage/PaddleOCR-VL.en.md)
 documents the block boxes and reading-order fields consumed by this adapter.
 
 ## Optional EasyOCR and VietOCR
