@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from pathlib import Path
 
 
 def stable_id(kind: str, source_id: str, path: Sequence[str | int], *, revision: str = "") -> str:
@@ -27,6 +28,20 @@ def stable_id(kind: str, source_id: str, path: Sequence[str | int], *, revision:
         separators=(",", ":"),
     ).encode("utf-8")
     return f"ocop:{kind}:{hashlib.sha256(payload).hexdigest()[:24]}"
+
+
+def code_fingerprint(kind: str, files: Iterable[Path]) -> str:
+    """Identify a pipeline stage by the source code that produces its output.
+
+    Replaces hand-written version labels: any change to these files yields a new identifier, so caches
+    and lineage checks follow the code without anyone remembering to bump a label. Line endings are
+    normalized so a CRLF checkout fingerprints the same as an LF one.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(Path(p) for p in files):
+        digest.update(path.name.encode("utf-8") + b"\0")
+        digest.update(path.read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return f"ocop-{kind}-{digest.hexdigest()[:12]}"
 
 
 def content_sha256(content: str | bytes) -> str:

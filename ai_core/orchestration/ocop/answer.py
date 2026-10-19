@@ -73,7 +73,11 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
         if span is None:continue
         body=_body(row)
         if not body:continue
-        key=(row['source_id'],span['pdf_page'],row.get('evidence_unit_id') or row.get('unit_id'))
+        # Several retrieval chunks may share one parent evidence unit while
+        # containing different, non-conflicting excerpts. Keep each chunk's
+        # own citation identity so one chunk cannot suppress its siblings.
+        chunk_id=row.get('chunk_id') if isinstance(row.get('chunk_id'),str) else None
+        key=(row['source_id'],span['pdf_page'],row.get('evidence_unit_id') or row.get('unit_id'),chunk_id)
         grouped.setdefault(key,[]).append((row,span,body))
     citations=[];contexts=[];selected=[]
     for key,entries in grouped.items():
@@ -90,12 +94,17 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
                   'table_id':span.get('table_id'),
                   'review_status':row.get('review_status','needs_review'),
                   'source_spans':_citation_spans(row.get('source_spans') or row.get('spans') or [span],key[1])}
+        if key[3]:citation['chunk_id']=key[3]
         source_sha256=span.get('source_sha256') or row.get('source_sha256')
         if source_sha256:
             citation['source_sha256']=source_sha256
         # The claim checker MUST inspect only words actually presented to the
         # generator, not hidden trailing text or unselected colliding records.
-        excerpt=body[:1250]
+        context_metadata=row.get('context') if isinstance(row.get('context'),dict) else {}
+        table_backed=bool(context_metadata.get('table_id') or any(
+            isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox'))
+            for item in spans))
+        excerpt=body[:5000 if table_backed else 1250]
         chosen=dict(row)
         # OCR fields/label candidates are displayed as *candidates*, but may
         # never silently become verified factual/legal claim support.
@@ -124,7 +133,10 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
         return {"answer":"Chưa tìm thấy bằng chứng nguồn đủ để trả lời trong dữ liệu đã lập chỉ mục.",
                 "status":"insufficient_evidence","citations":[]}
     if llm is None:
-        return {"answer":"Kết quả truy xuất (chưa tạo câu trả lời bằng LLM):\n"+"\n".join(x[:500] for x in contexts[:4]),
+        return {"answer":("Kết quả truy xuất (chưa tạo câu trả lời bằng LLM). "
+                          "Các trích đoạn giữ nguyên trạng thái xác minh của nguồn; "
+                          "điểm số OCR chưa xác minh không phải kết luận.\n"+
+                          "\n".join(contexts[:4])),
                 "status":"retrieval_only","citations":citations}
     system=("Bạn là trợ lý tra cứu OCOP tiếng Việt. Chỉ dùng SOURCE được cung cấp; "
             "không bịa luật, thang điểm, điều kiện, ngày tháng hoặc trích dẫn. "

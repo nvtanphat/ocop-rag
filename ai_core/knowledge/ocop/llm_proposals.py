@@ -58,7 +58,7 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50) ->
                 ev = evidence(anchor)
                 if ev is None:
                     continue
-                entity_id=stable_id('llm_entity',sid,[uid,kind,anchor],revision='biz-v1')
+                entity_id=stable_id('llm_entity',sid,[uid,kind,anchor],revision='business')
                 ent[entity_id]=BusinessEntity(entity_id=entity_id,kind=allowed_kinds[kind],
                        label=anchor,source_id=sid,evidence=[ev],
                        extraction_method=f'llm_candidate:{client.model}')
@@ -68,12 +68,17 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50) ->
                 endpoints=RELATION_TYPES.get(relation_type)
                 if endpoints is None:
                     continue
-                src=locals_by_anchor.get((endpoints[0].value,obj.get('source_anchor')))
-                dst=locals_by_anchor.get((endpoints[1].value,obj.get('target_anchor')))
+                def resolve_endpoint(expected,anchor):
+                    kinds=expected if isinstance(expected,frozenset) else {expected}
+                    matches={locals_by_anchor[(kind.value,anchor)] for kind in kinds
+                             if (kind.value,anchor) in locals_by_anchor}
+                    return next(iter(matches)) if len(matches)==1 else None
+                src=resolve_endpoint(endpoints[0],obj.get('source_anchor'))
+                dst=resolve_endpoint(endpoints[1],obj.get('target_anchor'))
                 ev=evidence(obj.get('proof'))
                 if src is None or dst is None or ev is None:
                     continue
-                rid=stable_id('llm_relation',sid,[uid,relation_type,src,dst,ev.quote],revision='biz-v1')
+                rid=stable_id('llm_relation',sid,[uid,relation_type,src,dst,ev.quote],revision='business')
                 rel[rid]=BusinessRelation(relation_id=rid,relation_type=relation_type,
                   source_entity_id=src,target_entity_id=dst,evidence=[ev],
                   extraction_method=f'llm_candidate:{client.model}')
@@ -82,7 +87,7 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50) ->
                 ev=evidence(anchor)
                 if ev is None or kind not in ('obligation','prohibition','permission','exemption','scoring','temporal'):
                     continue
-                rid=stable_id('llm_rule',sid,[uid,kind,anchor],revision='biz-v1')
+                rid=stable_id('llm_rule',sid,[uid,kind,anchor],revision='business')
                 rules[rid]=BusinessRule(rule_id=rid,source_id=sid,kind=kind,
                      statement=anchor,evidence=[ev])
             accepted += 1

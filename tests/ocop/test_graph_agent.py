@@ -22,9 +22,10 @@ def _jsonl(path,rows):
 
 def _fixture(tmp_path):
     knowledge=tmp_path/'knowledge';knowledge.mkdir()
-    (knowledge/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'fixture-v3'}))
+    (knowledge/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'graph-agent-fixture'}))
     evid={'unit_id':'unit-1','source_id':'DOC1','unit_kind':'article','review_status':'verified',
-          'text':'Điều 1. Sản phẩm OCOP','spans':[{'pdf_page':1}]}
+          'text':'Điều 1. Sản phẩm OCOP','spans':[{'pdf_page':1,'bbox':[0,0,100,20],
+                                                    'block_id':'native:0:0','source_sha256':'a'*64}]}
     _jsonl(knowledge/'evidence_units.jsonl',[evid]);_jsonl(knowledge/'entities.jsonl',[
         {'entity_id':'doc','entity_type':'source_document','source_id':'DOC1','name':'Quyết định', 'evidence_unit_ids':['unit-1'],'review_status':'verified'},
         {'entity_id':'paragraph','entity_type':'evidence_unit','source_id':'DOC1','name':'Điều 1','evidence_unit_ids':['unit-1'],'review_status':'verified'},

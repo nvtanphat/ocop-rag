@@ -10,3 +10,4 @@ class OCRResult:
     engine: str
     warnings: list[str]
     word_blocks: list[dict] | None = None
+    noise_candidates: list[dict] | None = None

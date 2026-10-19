@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.ocop_routes import router
+from backend.api.ocop_review_routes import router as review_router
 
 app = FastAPI(title="OCOP GraphRAG API", version="1.0.0")
 app.add_middleware(
@@ -11,3 +12,4 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(router)
+app.include_router(review_router)

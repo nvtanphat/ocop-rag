@@ -56,6 +56,17 @@ def main() -> None:
     eval_cmd.add_argument('arguments', nargs=argparse.REMAINDER)
     status = sub.add_parser("status", help="Validate current unified corpus readiness")
     status.add_argument("--root", type=Path, default=ROOT)
+    review=sub.add_parser('review',help='Export human review queue, record one decision, or show statistics')
+    review.add_argument('action',choices=['queue','decide','stats'])
+    review.add_argument('--root',type=Path,default=ROOT)
+    review.add_argument('--out',type=Path)
+    review.add_argument('--render',action='store_true',help='Render source-checked crops when exporting')
+    review.add_argument('--target-id')
+    review.add_argument('--content-hash')
+    review.add_argument('--decision',choices=['approve','reject','correct'])
+    review.add_argument('--reviewer')
+    review.add_argument('--correction-file',type=Path)
+    review.add_argument('--notes',default='')
     debug = sub.add_parser("debug", help="Developer commands for inspecting individual internal components")
     debug.add_argument("arguments", nargs=argparse.REMAINDER)
     if len(sys.argv)>1 and sys.argv[1]=='evaluate':
@@ -63,6 +74,30 @@ def main() -> None:
                                   *sys.argv[2:]],cwd=ROOT,check=False)
         raise SystemExit(completed.returncode)
     args = cli.parse_args()
+    if args.command=='review':
+        from ai_core.graph.ocop.review import load_queue,statistics,record_decision,render_queue_crops,rebuild_reviewed_graph
+        try:
+            if args.action=='decide':
+                if not all([args.target_id,args.content_hash,args.decision,args.reviewer]):
+                    cli.error('decide requires --target-id, --content-hash, --decision, --reviewer')
+                correction=json.loads(args.correction_file.read_text(encoding='utf-8')) if args.correction_file else None
+                event=record_decision(args.root,args.target_id,args.content_hash,args.decision,args.reviewer,
+                                      correction=correction,notes=args.notes)
+                result={'decision':event,'graph':rebuild_reviewed_graph(args.root)['counts']}
+            else:
+                items=load_queue(args.root)
+                result=statistics(items)
+                if args.action=='queue':
+                    target=args.out or args.root/'data/review/ocop_review_queue.jsonl'
+                    target.parent.mkdir(parents=True,exist_ok=True)
+                    if args.render:
+                        result['unique_crops']=render_queue_crops(args.root,items)
+                    target.write_text(''.join(json.dumps(i,ensure_ascii=False)+'\n' for i in items),encoding='utf-8')
+                    result['output']=str(target)
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+        except (ValueError,OSError,RuntimeError) as exc:
+            print('OCOP review error: '+str(exc),file=sys.stderr);raise SystemExit(1) from exc
+        return
     if args.command == "evaluate":
         completed=subprocess.run([sys.executable,str(ROOT/'tools'/'evaluate_ocop.py'),
                                   *args.arguments],cwd=ROOT,check=False)

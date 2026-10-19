@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 
-def possible_continuations(previous:dict,current:dict)->list[dict]:
+def possible_continuations(previous:dict,current:dict,*,min_columns:int=3)->list[dict]:
     if previous["source_id"] != current["source_id"]:
         return []
     if current["pdf_page"] != previous["pdf_page"] + 1:
@@ -19,7 +19,7 @@ def possible_continuations(previous:dict,current:dict)->list[dict]:
             pcols=pt.get("col_count");ccols=ct.get("col_count")
             # Unknown column counts make accidental cross-page links common.
             # Prefer no link over an unsupported connection.
-            if (not pcols or not ccols or pcols<3 or ccols<3
+            if (not pcols or not ccols or pcols<min_columns or ccols<min_columns
                 or (pt.get("row_count") or 0)<3 or (ct.get("row_count") or 0)<3
                 or abs(pcols-ccols)>1):
                 continue

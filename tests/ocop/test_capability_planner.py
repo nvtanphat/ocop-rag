@@ -31,12 +31,12 @@ def _fixture(tmp_path):
 
 
 def test_question_with_taxonomy_criteria_requirements_creates_dependency_dag():
-    r=route_query('Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao năm 2026?')
+    r=route_query('Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao?')
     assert {'classify_product','criteria','evidence_requirements'}<=set(r.capabilities)
     p=build_plan(r)
     assert p.names.index('lookup_product_subgroup')<p.names.index('lookup_criterion')<p.names.index('lookup_evidence_requirements')
     assert 'search_graph' in p.names
-    assert p.max_calls>=len(p.names)
+    assert p.max_calls==5 and len(p.names)<=5
     assert all(t.name in TOOL_REGISTRY for t in p.tasks)
 
 
@@ -62,16 +62,16 @@ def test_exact_article_and_temporal_are_both_planned():
     assert {'lookup_legal_unit','resolve_temporal_applicability'}<=set(build_plan(r).names)
 
 
-def test_long_followup_restores_multicapability_without_leaking_private():
+def test_followup_over_tool_budget_requests_a_split():
     previous=route_query('Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao?')
     prev={'last_query':'Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao?',
           'slots':previous.slots,'intent':previous.intent.value,
           'capabilities':previous.capabilities}
     r=route_query('Thế năm 2025?',session=prev)
-    assert r.intent==Intent.FOLLOWUP
+    assert r.intent==Intent.CLARIFY
+    assert r.needs_clarification
+    assert 'tool_budget_exceeded' in r.reason_codes
     assert r.slots['years']==['2025']
-    assert 'classify_product' in r.capabilities
-    assert 'evidence_requirements' in r.capabilities
 
 
 def test_unknown_local_deadline_is_not_answered_with_national_deadline(tmp_path):
@@ -133,7 +133,7 @@ def test_planner_rejects_unknown_and_over_budget():
         build_plan(Route(intent=Intent.MULTIHOP_REASONING,strategy='hybrid',required_tools=names))
 
 
-def test_agent_preserves_multicapability_followup_from_server_session(tmp_path):
+def test_agent_clarifies_multicapability_followup_over_tool_budget(tmp_path):
     _fixture(tmp_path)
     agent=OcopAgent(tmp_path)
     first=agent.ask('Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao?')
@@ -142,5 +142,6 @@ def test_agent_preserves_multicapability_followup_from_server_session(tmp_path):
              'capabilities':first.route.capabilities}
     follow=agent.ask('Thế năm 2025?',session=session)
     assert follow.route.slots['years']==['2025']
-    assert {'classify_product','criteria','evidence_requirements'}<=set(follow.route.capabilities)
-    assert 'lookup_evidence_requirements' in follow.tools_used
+    assert follow.route.intent==Intent.CLARIFY
+    assert 'tool_budget_exceeded' in follow.route.reason_codes
+    assert not follow.tools_used

@@ -20,6 +20,7 @@ from ai_core.system.telemetry import observe,traced
 from ai_core.system.checkpoints import SQLiteCheckpoint,thread_key,should_checkpoint
 from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite
 from ai_core.orchestration.ocop.llm import OllamaClient
+from ai_core.retrieval.ocop.search import query_content_bigram_coverage
 
 
 class OcopState(TypedDict,total=False):
@@ -53,7 +54,9 @@ class OcopAgent:
         safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','dossier_id') if key in session}
         auth=state.get('auth')
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
-        choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None))
+        choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
+            indexed_content_bigram_coverage=lambda text:query_content_bigram_coverage(
+                self.tools.index_dir,text))
         if (choice.intent in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or
             set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
             choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
@@ -294,6 +297,11 @@ class OcopAgent:
     def answer(self,state:OcopState)->dict:
         route=Route.model_validate(state['route'])
         if route.needs_clarification:
+            if 'tool_budget_exceeded' in route.reason_codes:
+                return {'answer':{'answer':'Câu hỏi gồm nhiều phần tra cứu độc lập. '
+                    'Vui lòng gửi từng câu riêng, chẳng hạn phân nhóm sản phẩm, tiêu chí '
+                    'hoặc hồ sơ/minh chứng, để không bỏ sót nguồn cần đối chiếu.',
+                    'status':'clarify','citations':[]}}
             return {'answer':{'answer':'Cần bổ sung thông tin để xử lý: '+', '.join(route.missing_slots),
                               'status':'clarify','citations':[]}}
         if route.intent==Intent.OUT_OF_SCOPE:

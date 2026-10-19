@@ -15,7 +15,7 @@ def test_no_generated_output_or_release_label_in_distributed_names():
     for name in ("reports", "outputs", "data/processed", "data/runtime", "data/review", "data/private"):
         assert not (ROOT / name).exists()
     source_paths = (p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()
-                    and not any(part in ("__pycache__", ".pytest_cache") for part in p.parts))
+                    and not any(part in ("__pycache__", ".pytest_cache", "node_modules", ".venv", ".git") for part in p.parts))
     assert not [path for path in source_paths if re.search(r"(?i)(?:^|[/_-])v\d+(?=[./_-]|$)", path)]
 
 

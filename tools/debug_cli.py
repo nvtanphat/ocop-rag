@@ -51,6 +51,10 @@ _MODULE_COMMANDS: dict[str, tuple[str, str]] = {
         "ai_core.processing.ocop.pdf_pipeline",
         "OCOP PDF: source-locked native text/OCR/layout/table extraction",
     ),
+    "smoke-ocop": (
+        "ai_core.system.smoke",
+        "OCOP debug smoke: selected pages through OCR, evidence, index, graph and agent",
+    ),
     "audit-ocop": (
         "ai_core.processing.ocop_audit",
         "Read-only full OCOP PDF inventory and per-page OCR classification",

@@ -125,7 +125,8 @@ def test_graph_and_retrieval_share_knowledge_version_not_derived_index_hash(tmp_
     know=tmp_path/'knowledge';know.mkdir()
     (know/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'knowledge-A'}))
     unit={'unit_id':'unit1','source_id':'DOC','review_status':'verified','unit_kind':'article',
-          'text':'Thông tin OCOP nguồn hợp lệ','spans':[{'pdf_page':1}]}
+          'text':'Thông tin OCOP nguồn hợp lệ','spans':[{'pdf_page':1,'bbox':[0,0,100,20],
+                                                        'block_id':'native:0:0','source_sha256':'a'*64}]}
     (know/'evidence_units.jsonl').write_text(json.dumps(unit)+'\n')
     (know/'entities.jsonl').write_text(json.dumps({'entity_id':'doc1','entity_type':'source_document',
          'source_id':'DOC','name':'Đăng ký','review_status':'verified','evidence_unit_ids':['unit1']})+'\n')
@@ -169,7 +170,7 @@ def test_qdrant_dense_build_creates_keyword_payload_indexes_first(monkeypatch):
     monkeypatch.setattr(ip,'_load_embedding',lambda *_:FakeModel())
     monkeypatch.setattr(ip,'_encode',lambda model,texts,is_query:np.ones((len(texts),3)))
     data=[{**row('a','Điều kiện OCOP'),'text_for_embedding':'Điều kiện OCOP','over_budget':False}]
-    result=ip.build_dense(data,collection='test_v7',model_id='fake')
+    result=ip.build_dense(data,collection='test_dense',model_id='fake')
     assert result['points']==1
     assert [item[1]['field_name'] for item in events if item[0]=='create_payload_index']==[
         'source_id','review_status','corpus_version']

@@ -67,7 +67,7 @@ def test_api_fails_closed_without_built_corpus(monkeypatch, tmp_path):
 def test_api_query_after_coherent_build_uses_agent(monkeypatch, tmp_path):
     idx = tmp_path / 'index'
     idx.mkdir()
-    (idx / 'manifest.json').write_text('{"dense":{"enabled":false},"corpus_version":"clean-v1"}', encoding='utf-8')
+    (idx / 'manifest.json').write_text('{"dense":{"enabled":false},"corpus_version":"clean-fixture"}', encoding='utf-8')
     monkeypatch.setattr(routes, 'DATA', tmp_path)
     # Agent behavior itself is checked in separate contract tests; only verify public wiring here.
     monkeypatch.setattr(OcopSystemPipeline, 'status', lambda self, **kwargs: {'state':'ready'})

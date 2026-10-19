@@ -245,10 +245,10 @@ class RouteDecision(StrictModel):
 
 
 def cell_display_text(cell: dict) -> str:
-    """Cell text for indexing; a blank cell shows any OCR candidate labelled as unverified."""
+    """Cell text for indexing; blanks always stay explicit and OCR candidates stay unverified."""
     text = str(cell.get("text") or "").strip()
     if text:
         return text
     candidates = [str(c.get("text") or "").strip() for c in cell.get("score_ocr_candidates") or []]
     candidates = [c for c in candidates if c]
-    return f"[ứng viên OCR chưa xác minh: {' / '.join(candidates)}]" if candidates else ""
+    return f"[ứng viên OCR chưa xác minh: {' / '.join(candidates)}]"

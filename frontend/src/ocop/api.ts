@@ -1,4 +1,4 @@
-export type Section = 'overview' | 'chat' | 'criteria' | 'forms' | 'recognitions' | 'documents' | 'graph' | 'system'
+export type Section = 'overview' | 'chat' | 'criteria' | 'forms' | 'recognitions' | 'documents' | 'graph' | 'system' | 'review'
 
 export interface Source {
   source_id: string
@@ -103,6 +103,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 export const api = {
+  reviewQueue: (priority: string, offset = 0, includeDecided = false) => request<{items: ReviewItem[]; total: number}>(`/review/queue?priority=${priority}&offset=${offset}&limit=30&include_decided=${includeDecided}`),
+  reviewItem: (id: string) => request<ReviewItem>(`/review/items/${encodeURIComponent(id)}`),
+  reviewStats: () => request<{total: number; by_priority: Record<string, number>; by_state: Record<string, number>}>('/review/stats'),
+  reviewDecide: (body: object, token: string) => request<{review: {verified_nodes: number; verified_edges: number}}>('/review/decisions', {
+    method: 'POST', headers: {'Content-Type': 'application/json', ...(token ? {Authorization: `Bearer ${token}`} : {})}, body: JSON.stringify(body),
+  }),
   health: () => request<Health>('/health'),
   overview: () => request<Overview>('/overview'),
   sources: () => request<Source[]>('/sources'),
@@ -117,4 +123,12 @@ export const api = {
     request<AskResult>('/query', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, retrieval_mode, use_llm, session_id }), signal }),
   pdf: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf#page=${Math.max(1, page)}`,
+}
+
+export interface ReviewItem {
+  latest_decision: {decision: string; reviewer: string; timestamp: string; notes: string; correction?: object} | null
+  dependencies: Array<{target_id: string; label: string | null; type: string; review_status: string}>
+  target_id: string; content_hash: string; type: string; label: string | null; source_id: string
+  priority: string; state: string; reasons: string[]; review_status: string; properties: Record<string, unknown>
+  citations: Array<{source_id: string; pdf_page: number; bbox: number[] | null; quote: string; source_sha256: string; crop_url?: string}>
 }

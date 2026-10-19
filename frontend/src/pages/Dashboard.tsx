@@ -6,8 +6,9 @@ import { samplePrompts, sourceTitle } from '../ocop/catalog'
 import Sidebar from '../ocop/Sidebar'
 import Chat, { type Message } from '../ocop/Chat'
 import { Criteria, Forms, KnowledgeGraph, Recognitions, Sources } from '../ocop/KnowledgeViews'
+import Review from '../ocop/Review'
 
-const headings: Record<Section, string> = { overview: 'Tổng quan', chat: 'Trợ lý OCOP', criteria: 'Bộ tiêu chí', forms: 'Biểu mẫu OCOP', recognitions: 'Sản phẩm công nhận', documents: 'Thư viện văn bản', graph: 'Đồ thị tri thức', system: 'Trạng thái hệ thống' }
+const headings: Record<Section, string> = { overview: 'Tổng quan', chat: 'Trợ lý OCOP', criteria: 'Bộ tiêu chí', forms: 'Biểu mẫu OCOP', recognitions: 'Sản phẩm công nhận', documents: 'Thư viện văn bản', graph: 'Đồ thị tri thức', system: 'Trạng thái hệ thống', review: 'Người duyệt' }
 
 function CountCard({ label, value, note, icon: Icon }: { label: string; value: number | string; note: string; icon: ComponentType<{ size?: number } > }) {
   return <div className="ocop-count-card"><div className="ocop-count-header"><span>{label}</span><span className="ocop-count-icon"><Icon size={19}/></span></div><strong>{typeof value==='number' ? value.toLocaleString('vi-VN') : value}</strong><small>{note}</small></div>
@@ -88,6 +89,7 @@ export default function Dashboard() {
         {section==='documents'&&<Sources sources={sources} openPdf={(source,page=1)=>setPdf({source,page})}/>}
         {section==='graph'&&<KnowledgeGraph sources={sources} openPdf={(source,page=1)=>setPdf({source,page})}/>}
         {section==='system'&&<SystemView overview={overview} health={health} refresh={refresh} refreshing={refreshing}/>}
+        {section==='review'&&<Review/>}
       </div>
     </main>
     {pdf&&<div className="ocop-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setPdf(null)}}><div className="ocop-pdf-modal" role="dialog" aria-modal="true" aria-label={`PDF ${sourceTitle(pdf.source)}`}><div className="ocop-pdf-header"><div><span className="ocop-eyebrow">PDF GỐC · TRANG {pdf.page}</span><strong>{sourceTitle(pdf.source)}</strong></div><div><a href={api.pdf(pdf.source.source_id,pdf.page)} rel="noreferrer" target="_blank" className="ocop-text-link"><ExternalLink size={15}/> Mở tab mới</a><button aria-label="Đóng PDF" onClick={()=>setPdf(null)}><X size={20}/></button></div></div><iframe title={`${sourceTitle(pdf.source)} – trang ${pdf.page}`} src={api.pdf(pdf.source.source_id,pdf.page)}/></div></div>}

@@ -39,7 +39,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
         manifest = {"complete": True, "source_snapshot_sha256": "approved-snapshot",
                     "pipeline_version": KNOWLEDGE_VERSION,
-                    "corpus_version": "knowledge-v1", "counts": {"evidence_units": 2}}
+                    "corpus_version": "knowledge-fixture", "counts": {"evidence_units": 2}}
         write_json(output_dir / "manifest.json", manifest)
         for filename in ("evidence_units.jsonl", "entities.jsonl", "relations.jsonl",
                          "business_entities.jsonl", "business_relations.jsonl", "business_rules.jsonl"):
@@ -51,7 +51,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         calls.append("index")
         index_dir.mkdir(parents=True)
         from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
-        manifest = {"source_knowledge_version": "knowledge-v1", "corpus_version": "index-v1",
+        manifest = {"source_knowledge_version": "knowledge-fixture", "corpus_version": "index-fixture",
                     "index_version": INDEX_VERSION,
                     "status": "sparse_ready", "dense": {"enabled": False}}
         write_json(index_dir / "manifest.json", manifest)
@@ -59,13 +59,13 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         (index_dir / "bm25.json.gz").write_bytes(b"TEST")
         return manifest
 
-    def graph(knowledge, output):
+    def graph(knowledge, output, *, review_decisions=None):
         assert (knowledge / "manifest.json").exists()
         calls.append("graph")
         if fail_graph:
             raise RuntimeError("graph failure")
         output.mkdir(parents=True)
-        manifest = {"source_knowledge_version": "knowledge-v1", "graph_version": "graph-v1", "status": "local_ready"}
+        manifest = {"source_knowledge_version": "knowledge-fixture", "graph_version": "graph-fixture", "status": "local_ready"}
         write_json(output / "manifest.json", manifest)
         (output / "nodes.jsonl").write_text("", encoding="utf-8")
         (output / "edges.jsonl").write_text("", encoding="utf-8")
@@ -167,9 +167,9 @@ def test_invalid_new_bundle_rolls_back_after_directory_promotion(tmp_path, monke
     import ai_core.graph.ocop.builder as graph_mod
     real_graph = graph_mod.build_graph
 
-    def malformed_graph(knowledge, output):
-        result = real_graph(knowledge, output)
-        result['source_knowledge_version'] = 'knowledge-v1'
+    def malformed_graph(knowledge, output, *, review_decisions=None):
+        result = real_graph(knowledge, output,review_decisions=review_decisions)
+        result['source_knowledge_version'] = 'knowledge-fixture'
         # Force a post-rename lineage failure not caught by the preflight.
         result['status'] = 'broken_state'
         write_json(output / 'manifest.json', result)

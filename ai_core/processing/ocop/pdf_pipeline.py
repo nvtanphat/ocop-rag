@@ -12,6 +12,7 @@ import json
 import logging
 import math
 import os
+import time
 from collections import Counter
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
@@ -27,10 +28,12 @@ from ai_core.processing.ocop.easy_viet_ocr import ENGINE, run_easy_viet_ocr
 from ai_core.processing.ocop.pdf_quality import score_page_quality
 from ai_core.processing.ocop.raster_preprocess import prepare_raster, restore_geometry
 from ai_core.processing.ocop.profiler import profile_pdf
+from ai_core.domain.ocop_ids import code_fingerprint
 from ai_core.processing.ocop.ocr_postcorrect import postcorrect_artifact
 from ai_core.processing.ocop.table_continuity import possible_continuations
 
 LOG=logging.getLogger(__name__)
+PROFILE_VERSION=code_fingerprint("profile",[Path(__file__).resolve().parent/"profiler.py"])
 ROOT=Path(__file__).resolve().parents[3]
 
 
@@ -79,6 +82,7 @@ def extract_page(page, profile: dict, *, source_id: str, dpi: int = 300,
         native=[b for b in native if not profile["largest_image_area_ratio"]>=.7]
     blocks=native
     ocr_words=[]
+    ocr_noise_candidates=[]
     warnings=[]
     engine="native"
     ocr_tables=[]
@@ -105,6 +109,7 @@ def extract_page(page, profile: dict, *, source_id: str, dpi: int = 300,
         )
         blocks=response.blocks
         ocr_words=response.word_blocks or []
+        ocr_noise_candidates=response.noise_candidates or []
         engine=ENGINE
         warnings+=response.warnings
         if not blocks:
@@ -154,6 +159,7 @@ def extract_page(page, profile: dict, *, source_id: str, dpi: int = 300,
                     "preprocessing":prepared.metadata() if prepared is not None else None,
                     "page_quality":quality,
                     "ocr_engine":engine if use_ocr else None,"ocr_words":ocr_words,
+                    "ocr_noise_candidates":ocr_noise_candidates,
                     "ocr_confidence_mean":round(sum(confidences)/len(confidences),4) if confidences else None,
                     "needs_human_verification":bool(use_ocr or tables or warnings)})
     if trace is not None:
@@ -196,7 +202,7 @@ def _valid_cached_page(artifact: dict, source_id: str, profile: dict, source_sha
     return True
 
 
-def _page_job(job: tuple) -> dict:
+def _page_job(job: tuple, *, before_ocr=None) -> dict:
     """Independent process, no shared PyMuPDF objects (PyMuPDF is not thread safe)."""
     (filename,source_id,profile,cache_location,force,dpi,ocr,tables,*digests)=job
     digest = digests[0] if digests else sha256_file(Path(filename))
@@ -206,6 +212,8 @@ def _page_job(job: tuple) -> dict:
         art=None
     if art is not None:
         return art
+    if ocr and profile.get('needs_ocr_review') and before_ocr is not None:
+        before_ocr()
     import fitz
     try:
         with fitz.open(filename) as d:
@@ -250,7 +258,7 @@ def _source_profiles(filepath:Path,source_id:str,digest:str,cache_dir:Path)->lis
     profile_cache=load_json(profile_file)
     if (isinstance(profile_cache,dict) and profile_cache.get("sha256")==digest
             and profile_cache.get("source_id")==source_id
-            and profile_cache.get("profile_version")=="ocop-profile-v3"
+            and profile_cache.get("profile_version")==PROFILE_VERSION
             and isinstance(profile_cache.get("pages"),list)
             and len(profile_cache["pages"])>0
             and profile_cache.get("pages_sha256")==hashlib.sha256(json.dumps(
@@ -261,7 +269,7 @@ def _source_profiles(filepath:Path,source_id:str,digest:str,cache_dir:Path)->lis
     else:
         profiles=profile_pdf(filepath,source_id)
         write_json(profile_file,{"sha256":digest,"source_id":source_id,
-                                 "profile_version":"ocop-profile-v3","pages":profiles,
+                                 "profile_version":PROFILE_VERSION,"pages":profiles,
                                  "pages_sha256":hashlib.sha256(json.dumps(
                                      profiles,sort_keys=True,ensure_ascii=False,
                                      separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()})
@@ -287,7 +295,8 @@ def _postcorrection_model(root:Path,sources,locked:dict,cache_dir:Path):
 
 def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Path,
                  dpi:int=300,ocr:bool=True,tables:bool=True,
-                 max_pages:int|None=None,source_filter:str|None=None,force:bool=False)->dict:
+                 max_pages:int|None=None,source_filter:str|None=None,
+                 pages:set[tuple[str,int]]|None=None,force:bool=False)->dict:
     if not 100<=dpi<=450:
         raise ValueError("dpi must be within 100-450")
     if max_pages is not None and max_pages<1:
@@ -298,7 +307,25 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
     os.environ.setdefault("OPENBLAS_NUM_THREADS","1")
     root=root.resolve()
     sources,locked=checked_sources(root,registry,lock)
+    locked_sources=list(sources)
     cache_dir.mkdir(parents=True,exist_ok=True)
+    selected_pages=None
+    if pages is not None:
+        selected_pages=set()
+        for item in pages:
+            if (not isinstance(item,tuple) or len(item)!=2 or
+                    not isinstance(item[0],str) or not item[0].strip() or
+                    not isinstance(item[1],int) or isinstance(item[1],bool) or item[1]<1):
+                raise ValueError("pages must contain (source_id, positive_pdf_page) pairs")
+            selected_pages.add((item[0],item[1]))
+        if not selected_pages:
+            raise ValueError("pages must select at least one PDF page")
+        known_sources={source.source_id for source in sources}
+        unknown={source_id for source_id,_ in selected_pages}-known_sources
+        if unknown:
+            raise ValueError(f"unknown source_id in pages: {sorted(unknown)}")
+        if source_filter and any(source_id!=source_filter for source_id,_ in selected_pages):
+            raise ValueError("pages selection conflicts with source_filter")
     postcorrection=_postcorrection_model(root,sources,locked,cache_dir) if ocr else None
     if source_filter:
         sources=[s for s in sources if s.source_id==source_filter]
@@ -335,11 +362,53 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
               "ocr_runtime_signature":ocr_runtime,
               "model_versions":model_version,"sources":[],"counts":{},
               "ocr_postcorrection_model_sha256":postcorrection.sha256 if postcorrection else None}
-    inspected=0
+    manifest['ocr_warmup']={'executed':False,'policy':'canonical_locked_scan_discard_v1',
+                            'cache_written':False,'page_artifact_written':False}
+    def warmup():
+        if manifest['ocr_warmup']['executed']:
+            return
+        for spec in sorted(locked_sources,key=lambda s:s.source_id):
+            filename=(root/spec.path).resolve()
+            digest=next(s['sha256'] for s in locked['sources'] if s['source_id']==spec.source_id)
+            profile=next((p for p in _source_profiles(filename,spec.source_id,digest,cache_dir)
+                          if p.get('needs_ocr_review')),None)
+            if profile is None:
+                continue
+            started=time.monotonic()
+            with fitz.open(filename) as document:
+                extract_page(document[profile['pdf_page']-1],profile,source_id=spec.source_id,
+                             dpi=dpi,enable_ocr=True,enable_tables=tables)
+            manifest['ocr_warmup'].update(executed=True,source_id=spec.source_id,
+                pdf_page=profile['pdf_page'],source_sha256=digest,dpi=dpi,
+                elapsed_seconds=round(time.monotonic()-started,3))
+            return
+        raise RuntimeError('OCR requested but no canonical locked scan available for warmup')
+    if selected_pages is not None:
+        manifest["debug_page_selection"]=[{"source_id":source_id,"pdf_page":page}
+            for source_id,page in sorted(selected_pages)]
+    profiles_by_source={}
     for source in sources:
+        if selected_pages is not None and not any(sid==source.source_id for sid,_ in selected_pages):
+            continue
         filepath=(root/source.path).resolve()
         digest=next(item["sha256"] for item in locked["sources"] if item["source_id"]==source.source_id)
         profiles=_source_profiles(filepath,source.source_id,digest,cache_dir)
+        profiles_by_source[source.source_id]=profiles
+    if selected_pages is not None:
+        available={(source_id,profile["pdf_page"])
+                   for source_id,profiles in profiles_by_source.items() for profile in profiles}
+        missing=selected_pages-available
+        if missing:
+            raise ValueError(f"PDF page selection is out of range: {sorted(missing)}")
+    inspected=0
+    for source in sources:
+        if selected_pages is not None and source.source_id not in profiles_by_source:
+            continue
+        filepath=(root/source.path).resolve()
+        digest=next(item["sha256"] for item in locked["sources"] if item["source_id"]==source.source_id)
+        profiles=profiles_by_source.get(source.source_id)
+        if profiles is None:
+            profiles=_source_profiles(filepath,source.source_id,digest,cache_dir)
         expected_all+=len(profiles)
         name=hashlib.sha256(source.source_id.encode()).hexdigest()[:12]
         output_path=output/f"{name}.pages.jsonl"
@@ -350,7 +419,9 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
         prev_art=None
         try:
             allowed = []
-            for profile in profiles:
+            selected_profiles=(profiles if selected_pages is None else
+                [profile for profile in profiles if (source.source_id,profile["pdf_page"]) in selected_pages])
+            for profile in selected_profiles:
                 if max_pages is not None and inspected >= max_pages:
                     break
                 inspected += 1
@@ -359,7 +430,8 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
                 target=cache_path(cache_dir,source.source_id,key)
                 allowed.append((str(filepath),source.source_id,profile,str(target),force,dpi,ocr,tables,digest))
             with tmp_path.open("w",encoding="utf-8") as fh:
-                for art in map(_page_job,allowed):
+                for job in allowed:
+                    art=_page_job(job,before_ocr=warmup)
                     if postcorrection is not None:
                         # Applied after the page cache, which keeps the raw OCR transcription.
                         art=postcorrect_artifact(art,postcorrection)
@@ -388,9 +460,22 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
             break
     manifest["counts"]=dict(counts)
     manifest["expected_total_pages"] = expected_all
-    manifest["complete"]=bool(not source_filter and not max_pages and counts["pages"]==expected_all and counts["quarantined"]==0 and (ocr or all(s["counts"].get("ocr_executed",0)==0 and s["counts"].get("needs_review",0)==0 for s in manifest["sources"])))
+    manifest["complete"]=bool(selected_pages is None and not source_filter and not max_pages and counts["pages"]==expected_all and counts["quarantined"]==0 and (ocr or all(s["counts"].get("ocr_executed",0)==0 and s["counts"].get("needs_review",0)==0 for s in manifest["sources"])))
     write_json(output/"manifest.json",manifest)
     return manifest
+
+
+def _parse_page(value:str)->tuple[str,int]:
+    source_id,separator,page=value.rpartition(":")
+    if not separator or not source_id.strip():
+        raise argparse.ArgumentTypeError("page must use SOURCE_ID:PAGE")
+    try:
+        number=int(page)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("page number must be a positive integer") from exc
+    if number<1:
+        raise argparse.ArgumentTypeError("page number must be a positive integer")
+    return source_id.strip(),number
 
 
 def main():
@@ -405,6 +490,8 @@ def main():
     p.add_argument("--without-tables",action="store_true")
     p.add_argument("--max-pages",type=int)
     p.add_argument("--source-id")
+    p.add_argument("--page",action="append",type=_parse_page,default=None,
+                   metavar="SOURCE_ID:PAGE",help="Process one PDF page (repeatable; debug-only partial output)")
     p.add_argument("--force",action="store_true")
     args=p.parse_args()
     root=args.root.resolve()
@@ -414,7 +501,8 @@ def main():
     data=run_pipeline(root,registry=resolve(args.registry),lock=resolve(args.lock_file),
         output=resolve(args.output),cache_dir=resolve(args.cache),dpi=args.dpi,
         ocr=not args.without_ocr,tables=not args.without_tables,
-        max_pages=args.max_pages,source_filter=args.source_id,force=args.force)
+        max_pages=args.max_pages,source_filter=args.source_id,
+        pages=set(args.page) if args.page is not None else None,force=args.force)
     print(json.dumps({"sources":len(data["sources"]),"counts":data["counts"],
                       "complete":data["complete"],"output":str(resolve(args.output))},ensure_ascii=False))
 

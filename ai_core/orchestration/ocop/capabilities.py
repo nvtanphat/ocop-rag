@@ -7,6 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+MAX_TOOL_CALLS = 5
+
 
 class Capability(str, Enum):
     OVERVIEW = 'overview'

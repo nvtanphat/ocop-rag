@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "status": "candidate_aliases_not_verified_facts",
+  "authorities": [
+    {"canonical_id":"vn.ministry.agriculture_environment","label":"Bộ Nông nghiệp và Môi trường","aliases":["Bộ Nông nghiệp và Môi trường"]},
+    {"canonical_id":"vn.minister.agriculture_environment","label":"Bộ trưởng Bộ Nông nghiệp và Môi trường","aliases":["Bộ trưởng Bộ Nông nghiệp và Môi trường"]},
+    {"canonical_id":"vn.ministry.health","label":"Bộ Y tế","aliases":["Bộ Y tế"]},
+    {"canonical_id":"vn.ministry.industry_trade","label":"Bộ Công Thương","aliases":["Bộ Công Thương"]},
+    {"canonical_id":"vn.ministry.science_technology","label":"Bộ Khoa học và Công nghệ","aliases":["Bộ Khoa học và Công nghệ"]},
+    {"canonical_id":"vn.people_committee.commune","label":"UBND cấp xã","aliases":["UBND cấp xã","Ủy ban nhân dân cấp xã","Uỷ ban nhân dân cấp xã"]},
+    {"canonical_id":"vn.people_committee.province","label":"UBND cấp tỉnh","aliases":["UBND cấp tỉnh","Ủy ban nhân dân cấp tỉnh","Uỷ ban nhân dân cấp tỉnh"]},
+    {"canonical_id":"vn.chair.people_committee.commune","label":"Chủ tịch UBND cấp xã","aliases":["Chủ tịch UBND cấp xã","Chủ tịch Ủy ban nhân dân cấp xã"]},
+    {"canonical_id":"vn.chair.people_committee.province","label":"Chủ tịch UBND cấp tỉnh","aliases":["Chủ tịch UBND cấp tỉnh","Chủ tịch Ủy ban nhân dân cấp tỉnh"]},
+    {"canonical_id":"vn.hatinh.thanhsen.people_committee","label":"UBND phường Thành Sen","aliases":["UBND phường Thành Sen","Ủy ban nhân dân phường Thành Sen"]},
+    {"canonical_id":"vn.ocop.council.province","label":"Hội đồng cấp tỉnh","aliases":["Hội đồng cấp tỉnh","Hội đồng đánh giá, phân hạng sản phẩm OCOP cấp tỉnh","Hội đồng OCOP cấp tỉnh"]},
+    {"canonical_id":"vn.ocop.council.central","label":"Hội đồng cấp trung ương","aliases":["Hội đồng cấp trung ương","Hội đồng đánh giá, phân hạng sản phẩm OCOP cấp trung ương","Hội đồng OCOP cấp trung ương"]},
+    {"canonical_id":"vn.ocop.advisory_council.central","label":"Tổ tư vấn Hội đồng cấp trung ương","aliases":["Tổ tư vấn Hội đồng cấp trung ương"]},
+    {"canonical_id":"vn.ocop.advisory_council.province","label":"Tổ tư vấn Hội đồng cấp tỉnh","aliases":["Tổ tư vấn Hội đồng cấp tỉnh"]},
+    {"canonical_id":"vn.ocop.administration.province","label":"Cơ quan tham mưu quản lý OCOP cấp tỉnh","aliases":["Cơ quan tham mưu quản lý OCOP cấp tỉnh"]},
+    {"canonical_id":"vn.ocop.administration.ministry_agriculture_environment","label":"Cơ quan tham mưu quản lý OCOP của Bộ Nông nghiệp và Môi trường","aliases":["Cơ quan tham mưu quản lý OCOP của Bộ Nông nghiệp và Môi trường","Cơ quan tham mưu quản lý OCOP của Bộ"]},
+    {"canonical_id":"vn.ocop.administration.unspecified","label":"Cơ quan tham mưu quản lý OCOP","aliases":["Cơ quan tham mưu quản lý OCOP"]},
+    {"canonical_id":"vn.hatinh.thanhsen.department_agriculture_environment","label":"Phòng Nông nghiệp và Môi trường","aliases":["Phòng Nông nghiệp và Môi trường"]}
+  ]
+}

@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+import re
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -23,6 +24,16 @@ class Status(str, Enum):
 
 
 class EntityType(str, Enum):
+    SOURCE_DOCUMENT = "SourceDocument"
+    ARTICLE = "Article"
+    CLAUSE = "Clause"
+    POINT = "Point"
+    STAR_LEVEL = "StarLevel"
+    CRITERION_SHEET = "CriterionSheet"
+    AUTHORITY = "Authority"
+    PROCEDURE_STEP = "ProcedureStep"
+    LOCAL_GUIDANCE = "LocalGuidance"
+    ADMINISTRATIVE_AREA = "AdministrativeArea"
     PRODUCT = "Product"
     ORGANIZATION = "Organization"
     RECOGNITION_DECISION = "RecognitionDecision"
@@ -42,13 +53,28 @@ class EntityType(str, Enum):
 
 # Only relationships with explicitly checked endpoints can enter the business graph.
 RELATION_TYPES = {
+    "HAS_ARTICLE": (EntityType.SOURCE_DOCUMENT, EntityType.ARTICLE),
+    "HAS_CLAUSE": (EntityType.ARTICLE, EntityType.CLAUSE),
+    "HAS_POINT": (EntityType.CLAUSE, EntityType.POINT),
+    "MINIMUM_FOR": (EntityType.SCORE_OPTION, EntityType.STAR_LEVEL),
+    "DEFINES_GROUP": (EntityType.SOURCE_DOCUMENT, EntityType.PRODUCT_GROUP),
+    "USES_SHEET": (EntityType.PRODUCT_SUBGROUP, EntityType.CRITERION_SHEET),
+    "HAS_CRITERION": (EntityType.CRITERION_SHEET, EntityType.CRITERION),
+    "RESPONSIBLE_FOR": (EntityType.AUTHORITY, EntityType.PROCEDURE_STEP),
+    "APPLIES_IN": (EntityType.LOCAL_GUIDANCE, EntityType.ADMINISTRATIVE_AREA),
+    "OWNED_BY": (EntityType.PRODUCT, EntityType.ORGANIZATION),
+    "BASED_ON": (EntityType.RECOGNITION_DECISION, EntityType.SOURCE_DOCUMENT),
+    "AMENDS": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
+    "REPLACES": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
+    "SUSPENDS": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
     "HAS_RECORD": (EntityType.RECOGNITION_DECISION, EntityType.RECOGNITION_RECORD),
     "RECOGNIZES": (EntityType.RECOGNITION_RECORD, EntityType.PRODUCT),
     "DECLARED_BY": (EntityType.RECOGNITION_RECORD, EntityType.ORGANIZATION),
     "HAS_FIELD": (EntityType.FORM_TEMPLATE, EntityType.FORM_FIELD),
+    "HAS_SUBCRITERION": (EntityType.CRITERION, EntityType.CRITERION),
     "HAS_OPTION": (EntityType.CRITERION, EntityType.SCORE_OPTION),
     "HAS_CONDITION": (EntityType.CRITERION, EntityType.CONDITION),
-    "REQUIRES_EVIDENCE": (EntityType.CRITERION, EntityType.EVIDENCE_TYPE),
+    "REQUIRES_EVIDENCE": (frozenset({EntityType.CRITERION,EntityType.PROCEDURE_STEP}), EntityType.EVIDENCE_TYPE),
     "HAS_SUBGROUP": (EntityType.PRODUCT_GROUP, EntityType.PRODUCT_SUBGROUP),
 }
 
@@ -57,6 +83,7 @@ class EvidenceRef(Strict):
     source_id: str = Field(min_length=3)
     evidence_unit_id: str = Field(min_length=5)
     pdf_page: int = Field(ge=1)
+    source_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
     table_id: str | None = None
     row: int | None = Field(default=None, ge=0)
     cell_id: str | None = None
@@ -89,6 +116,7 @@ class BusinessRelation(Strict):
     target_entity_id: str
     evidence: list[EvidenceRef] = Field(min_length=1)
     status: Status = Status.CANDIDATE
+    attributes: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     extraction_method: str = "deterministic_from_structure"
 
     @field_validator("relation_type")
@@ -133,7 +161,13 @@ class BusinessRule(Strict):
         return self
 
 
-def validate_business_graph(entities: list[BusinessEntity], relations: list[BusinessRelation]) -> None:
+def contains_document_number(text: str, number: str) -> bool:
+    """A whole legal number, never a suffix of another number or jurisdiction."""
+    return bool(re.search(r'(?<![\w/])' + re.escape(number) + r'(?![\w/-])', text, re.I))
+
+
+def validate_business_graph(entities: list[BusinessEntity], relations: list[BusinessRelation],
+                            *, source_registry: dict[str, dict] | None = None) -> None:
     """Fail closed for missing, mistyped, cross-source or ungrounded relations."""
     by_id = {x.entity_id: x for x in entities}
     if len(by_id) != len(entities):
@@ -146,10 +180,18 @@ def validate_business_graph(entities: list[BusinessEntity], relations: list[Busi
         src, dst = by_id.get(r.source_entity_id), by_id.get(r.target_entity_id)
         if src is None or dst is None:
             raise ValueError("business relation missing endpoint")
-        if (src.kind, dst.kind) != RELATION_TYPES[r.relation_type]:
+        expected_src,expected_dst=RELATION_TYPES[r.relation_type]
+        if (src.kind not in (expected_src if isinstance(expected_src,frozenset) else {expected_src}) or
+            dst.kind not in (expected_dst if isinstance(expected_dst,frozenset) else {expected_dst})):
             raise ValueError("business relation endpoint type mismatch")
         if src.source_id != dst.source_id:
-            raise ValueError("cross-document relation needs explicit resolution")
+            registered = (source_registry or {}).get(dst.source_id, {}).get('document_number')
+            if (r.relation_type not in {'AMENDS','REPLACES','SUSPENDS','BASED_ON'} or
+                dst.kind != EntityType.SOURCE_DOCUMENT or not registered or
+                dst.attributes.get('registry_source_id') != dst.source_id or
+                not any(e.source_id == src.source_id and contains_document_number(e.quote,registered)
+                        for e in r.evidence)):
+                raise ValueError("cross-document relation needs explicit resolution")
         shared = {(e.source_id, e.evidence_unit_id) for e in src.evidence}
         shared &= {(e.source_id, e.evidence_unit_id) for e in dst.evidence}
         if not shared.intersection({(e.source_id, e.evidence_unit_id) for e in r.evidence}):

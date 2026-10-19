@@ -23,7 +23,7 @@ from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.orchestration.ocop.llm import OllamaClient
 from ai_core.system.pipeline import OcopSystemPipeline
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get('OCOP_ROOT',Path(__file__).resolve().parents[2])).resolve()
 DATA = ROOT / "data" / "processed" / "ocop"
 router = APIRouter(prefix="/api/ocop", tags=["OCOP knowledge"])
 

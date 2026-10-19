@@ -6,6 +6,7 @@ and review flags. There is deliberately no LLM/model/network dependency here.
 from __future__ import annotations
 
 import argparse
+from difflib import SequenceMatcher
 import hashlib
 import json
 import os
@@ -14,7 +15,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Iterable
 
-from ai_core.domain.ocop_ids import stable_id, content_sha256
+from ai_core.domain.ocop_ids import code_fingerprint, stable_id, content_sha256
 from ai_core.domain.ocop_models import EvidenceUnit, SourceSpan, ReviewStatus, cell_display_text
 from ai_core.processing.ocop.layout import group_blocks_by_line, join_blocks_by_line
 from ai_core.processing.ocop.registry import load_registry
@@ -26,7 +27,16 @@ from ai_core.knowledge.ocop.quality import audit_knowledge
 from ai_core.knowledge.ocop.contracts import BusinessEntity, BusinessRelation, validate_business_graph
 
 ROOT = Path(__file__).resolve().parents[3]
-VERSION = "ocop-evidence-v3.5-table-dedupe"
+_PROCESSING = Path(__file__).resolve().parent
+_ROOT = _PROCESSING.parents[1]
+# Every module whose code shapes evidence units, entities, relations, rules and temporal candidates.
+VERSION = code_fingerprint("evidence", [
+    *(_PROCESSING / name for name in ("knowledge_extract.py", "business_candidates.py",
+                                      "temporal_candidates.py", "layout.py", "legend_proposals.py", "easy_viet_ocr.py", "table_continuity.py")),
+    *(_ROOT / "knowledge" / "ocop" / name for name in ("extractor.py", "contracts.py", "quality.py",
+                                                       "llm_proposals.py", "legal_structure.py", "article_tree.py", "star_requirements.py", "criterion_sheets.py", "procedures.py", "authorities.py", "shapes.py")),
+    ROOT / 'configs' / 'ocop_authorities.json',
+    _ROOT / "domain" / "ocop_models.py", _ROOT / "domain" / "ocop_ids.py", _ROOT / "domain" / "ocop_citations.py"])
 LEGAL_START = re.compile(r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?[1-9]\b.*)\s*$", re.IGNORECASE)
 LEGAL_REFERENCE = re.compile(r"\b\d{1,4}/20\d{2}/(?:QĐ-TTg|NĐ-CP|NQ-CP|QH\d+|QĐ-UBND|TT-[A-ZĐ]+)\b",re.IGNORECASE)
 YEAR = re.compile(r"\b(?:năm\s+)?(20\d{2})\b",re.IGNORECASE)
@@ -140,11 +150,11 @@ def _segment_spans(page:dict, line_indices:list[int])->list[SourceSpan]:
     seen=set()
     for line_index in line_indices:
         for block in line_blocks[line_index]:
-            key=(line_index,block.get("block_id"))
+            key=(line_index,block.get('block_id'))
             if key in seen:
                 continue
             seen.add(key)
-            spans.append(_span(page,bbox=block.get("bbox"),block_id=block.get("block_id")))
+            spans.append(_span(page,bbox=block.get('bbox'),block_id=block.get('block_id')))
     return spans or [_span(page)]
 
 
@@ -152,8 +162,178 @@ def _norm(value:str)->str:
     return " ".join(value.split())
 
 
+def _table_fragment_matches(fragment:str,cell_text:str)->bool:
+    fragment_norm=_norm(fragment).casefold()
+    cell_norm=_norm(cell_text).casefold()
+    if not fragment_norm or fragment_norm in cell_norm:
+        return bool(fragment_norm)
+    fragment_tokens=re.findall(r"[^\W_]+",fragment_norm,re.UNICODE)
+    cell_tokens=re.findall(r"[^\W_]+",cell_norm,re.UNICODE)
+    if len(fragment_tokens)<4 or not cell_tokens:
+        return False
+    matched=sum(block.size for block in SequenceMatcher(
+        None,fragment_tokens,cell_tokens,autojunk=False).get_matching_blocks())
+    return matched/len(fragment_tokens)>=0.8
+
+
+def _line_geometry(page:dict)->list[dict]|None:
+    """Return source-text lines with exact block bounds when streams agree."""
+    lines=page.get("extracted_text","").splitlines()
+    grouped=_line_blocks(page)
+    width=page.get("width_pt");height=page.get("height_pt")
+    if (grouped is None or len(grouped)!=len(lines) or
+        not isinstance(width,(int,float)) or width<=0 or
+        not isinstance(height,(int,float)) or height<=0):
+        return None
+    result=[]
+    for index,(text,blocks) in enumerate(zip(lines,grouped,strict=True)):
+        boxes=[]
+        for block in blocks:
+            box=block.get("bbox")
+            if not isinstance(box,(list,tuple)) or len(box)!=4:
+                continue
+            try:
+                bounds=tuple(float(value) for value in box)
+            except (TypeError,ValueError,OverflowError):
+                continue
+            boxes.append(bounds)
+        if not text.strip() or not boxes:
+            continue
+        left=min(box[0] for box in boxes);right=max(box[2] for box in boxes)
+        top=min(box[1] for box in boxes);bottom=max(box[3] for box in boxes)
+        result.append({"line_index":index,"text":text,"bbox":[
+            left,top,right,bottom],"center_x":(left+right)/(2*width),
+            "center_y":(top+bottom)/(2*height),"height_ratio":(bottom-top)/height})
+    return result
+
+
+def _page_furniture_lines(pages:Iterable[dict])->dict[tuple[str,int],dict[int,str]]:
+    """Find recurring edge text and adjacent printed page numbers per source."""
+    page_list=list(pages)
+    by_source:dict[str,list[dict]]={}
+    geometry:dict[tuple[str,int],list[dict]]={}
+    sightings:dict[tuple[str,str,int],list[tuple[int,int,float,float]]]={}
+    for page in page_list:
+        sid=str(page.get("source_id") or "");pdf_page=int(page.get("pdf_page") or 0)
+        by_source.setdefault(sid,[]).append(page)
+        lines=_line_geometry(page)
+        if lines is None:
+            continue
+        geometry[(sid,pdf_page)]=lines
+        for line in lines:
+            y=line["center_y"]
+            if y<=.12 or y>=.88:
+                key=(sid,_norm(line["text"]).casefold(),round(y,2))
+                sightings.setdefault(key,[]).append((pdf_page,line["line_index"],y,line["height_ratio"]))
+
+    threshold_by_source={sid:max(3,(len(source_pages)*3+4)//5)
+                         for sid,source_pages in by_source.items()}
+    anchors:dict[str,list[tuple[float,float]]]={}
+    marked:dict[tuple[str,int],dict[int,str]]={}
+    for (sid,normalized,_),occurrences in sightings.items():
+        if not normalized or len({row[0] for row in occurrences})<threshold_by_source[sid]:
+            continue
+        anchors.setdefault(sid,[]).append((
+            sum(row[2] for row in occurrences)/len(occurrences),
+            sum(row[3] for row in occurrences)/len(occurrences)))
+        for pdf_page,line_index,_,_ in occurrences:
+            marked.setdefault((sid,pdf_page),{})[line_index]="repeated_margin_text"
+
+    for page in page_list:
+        sid=str(page.get("source_id") or "");pdf_page=int(page.get("pdf_page") or 0)
+        for line in geometry.get((sid,pdf_page),[]):
+            if not re.fullmatch(r"\s*\d{1,4}\s*",line["text"]):
+                continue
+            y=line["center_y"]
+            if y>.12 and y<.88:
+                continue
+            for anchor_y,anchor_height in anchors.get(sid,[]):
+                tolerance=max(1.5*line["height_ratio"],1.5*anchor_height,.012)
+                if abs(y-anchor_y)<=tolerance:
+                    marked.setdefault((sid,pdf_page),{}).setdefault(
+                        line["line_index"],"page_number_adjacent_to_repeated_margin_text")
+                    break
+
+    # A source without a running header can still expose page numbers as isolated
+    # numeric blocks. Trust exact PDF-page matches, or a sequential run at one
+    # stable page-edge position; do not remove an unsupported isolated number.
+    numeric_by_source:dict[str,list[dict]]={}
+    for page in page_list:
+        sid=str(page.get("source_id") or "");pdf_page=int(page.get("pdf_page") or 0)
+        for line in geometry.get((sid,pdf_page),[]):
+            if not re.fullmatch(r"\s*\d{1,4}\s*",line["text"]):
+                continue
+            y=line["center_y"]
+            if y>.12 and y<.88:
+                continue
+            candidate={**line,"source_id":sid,"pdf_page":pdf_page,"value":int(line["text"])}
+            numeric_by_source.setdefault(sid,[]).append(candidate)
+            if candidate["value"]==pdf_page:
+                marked.setdefault((sid,pdf_page),{}).setdefault(
+                    line["line_index"],"page_number_matches_pdf_page")
+    for sid,candidates_for_source in numeric_by_source.items():
+        sequences=[]
+        for first in candidates_for_source:
+            for second in candidates_for_source:
+                if (second["pdf_page"]!=first["pdf_page"]+1 or
+                    second["value"]!=first["value"]+1 or
+                    abs(second["center_x"]-first["center_x"])>.04 or
+                    abs(second["center_y"]-first["center_y"])>.02):
+                    continue
+                sequences.append((first,second))
+        for first,second in sequences:
+            for candidate in candidates_for_source:
+                if (candidate["pdf_page"] in (first["pdf_page"],second["pdf_page"]) and
+                    abs(candidate["center_x"]-first["center_x"])<=.04 and
+                    abs(candidate["center_y"]-first["center_y"])<=.02):
+                    marked.setdefault((sid,candidate["pdf_page"]),{}).setdefault(
+                        candidate["line_index"],"sequential_page_number_at_consistent_position")
+    return marked
+
+
+def _furniture_metadata(page:dict, furniture_lines:dict[int,str])->list[dict]:
+    if not furniture_lines:
+        return []
+    geometries={row["line_index"]:row for row in (_line_geometry(page) or [])}
+    source_lines=page.get("extracted_text","").splitlines()
+    return [{"line_index":index,"text":source_lines[index],"reason":reason,
+             **({"bbox":geometries[index]["bbox"]} if index in geometries else {})}
+            for index,reason in sorted(furniture_lines.items()) if 0<=index<len(source_lines)]
+
+
+def _page_furniture_candidates(page:dict)->dict[int,str]:
+    """Separate isolated margin page numbers and legal closing blocks from body text.
+
+    Reading-order heuristics can place a short ``Nơi nhận`` label after its
+    recipient lines, especially when a signature or seal forms another visual
+    region. Use the marker's geometry to classify the whole closing block while
+    keeping every line as source-backed furniture evidence.
+    """
+    geometry=_line_geometry(page)
+    if geometry is None:
+        return {}
+    result={}
+    marker=next((line for line in geometry if re.fullmatch(
+        r"\s*(?:nơi nhận|noi nhan)\s*:?\s*",line["text"],flags=re.IGNORECASE)),None)
+    if marker is not None:
+        marker_top=float(marker["bbox"][1])
+        marker_height=max(1.0,float(marker["bbox"][3])-marker_top)
+        threshold=marker_top-max(1.5,marker_height*.3)
+        for line in geometry:
+            if float(line["bbox"][1])>=threshold:
+                result[line["line_index"]]="legal_distribution_or_signature_block"
+    height=float(page.get("height_pt") or 0)
+    if height>0:
+        for line in geometry:
+            if re.fullmatch(r"\s*\d{1,4}\s*",line["text"]):
+                y0,y1=float(line["bbox"][1]),float(line["bbox"][3])
+                if y1<=height*.10 or y0>=height*.90:
+                    result.setdefault(line["line_index"],"isolated_page_number_at_margin")
+    return result
+
+
 def _lines_duplicated_in_tables(page:dict)->set[int]:
-    """Text lines whose block sits inside a table and whose text is already in that table's cells."""
+    """Text lines whose source blocks and near-matching OCR text are already in table cells."""
     line_blocks=_line_blocks(page)
     if line_blocks is None:
         return set()
@@ -161,35 +341,71 @@ def _lines_duplicated_in_tables(page:dict)->set[int]:
     for table in page.get("tables",[]):
         box=table.get("bbox")
         if isinstance(box,(list,tuple)) and len(box)==4:
-            tables.append((box,_norm(" ".join(cell_display_text(c) for c in table.get("cells",[])))))
+            cells=[]
+            for cell in table.get("cells",[]):
+                cell_box=cell.get("bbox")
+                if isinstance(cell_box,(list,tuple)) and len(cell_box)==4:
+                    cells.append((cell_box,_norm(cell_display_text(cell))))
+            tables.append((box,_norm(" ".join(cell_display_text(c) for c in table.get("cells",[]))),cells))
     dropped=set()
     source_lines=page.get("extracted_text","").splitlines()
     for index,blocks in enumerate(line_blocks):
         # A joined line can span two cells, so each fragment must be found in the table on its own.
         fragments=[source_lines[index]] if len(blocks)==1 else [b["text"] for b in blocks]
-        for box,cell_text in tables:
+        for box,cell_text,cells in tables:
             inside=all(b.get("bbox") and box[0]<=(b["bbox"][0]+b["bbox"][2])/2<=box[2]
                        and box[1]<=(b["bbox"][1]+b["bbox"][3])/2<=box[3] for b in blocks)
-            if inside and all(_norm(fragment) in cell_text for fragment in fragments):
+            if not inside:
+                continue
+            if cells:
+                matched=[]
+                for block,fragment in zip(blocks,fragments,strict=True):
+                    bounds=block.get("bbox")
+                    if not bounds:
+                        matched.append(False)
+                        continue
+                    center=((bounds[0]+bounds[2])/2,(bounds[1]+bounds[3])/2)
+                    containing=[text for cell_box,text in cells
+                                if cell_box[0]<=center[0]<=cell_box[2]
+                                and cell_box[1]<=center[1]<=cell_box[3]]
+                    if containing:
+                        matched.append(any(_table_fragment_matches(fragment,text) for text in containing))
+                    else:
+                        matched.append(_table_fragment_matches(fragment,cell_text))
+            else:
+                matched=[_table_fragment_matches(fragment,cell_text) for fragment in fragments]
+            if all(matched):
                 dropped.add(index)
                 break
     return dropped
 
 
-def page_units(page:dict, *, source_kind:str="") -> list[dict]:
+def page_units(page:dict, *, source_kind:str="",furniture_lines:dict[int,str]|None=None) -> list[dict]:
     """Creates page root, structural units, and independent table evidence units."""
     text=page.get("extracted_text","")
+    furniture_lines=dict(furniture_lines or {})
+    for line_index,reason in _page_furniture_candidates(page).items():
+        furniture_lines.setdefault(line_index,reason)
+    page_bbox=None
+    try:
+        width=float(page["width_pt"]);height=float(page["height_pt"])
+        if width>0 and height>0:
+            page_bbox=(0.0,0.0,width,height)
+    except (KeyError,TypeError,ValueError,OverflowError):
+        pass
     root=_unit(page,"page","root",text[:5000],structured={
         "source_kind":source_kind,"extraction_method":page.get("extraction_method"),
         "warnings":page.get("warnings",[]),"text_length":len(text),
-        "table_count":len(page.get("tables",[])),"has_ocr":bool(page.get("ocr_engine"))})
+        "table_count":len(page.get("tables",[])),"has_ocr":bool(page.get("ocr_engine")),
+        "page_furniture":_furniture_metadata(page,furniture_lines)},
+        spans=[_span(page,bbox=page_bbox)] if page_bbox else None)
     units=[root]
     if not text.strip() and not page.get("tables"):
         return units
     active_legal_heading=None
     dropped=_lines_duplicated_in_tables(page)
     source_lines=text.splitlines()
-    kept=[i for i in range(len(source_lines)) if i not in dropped]
+    kept=[i for i in range(len(source_lines)) if i not in dropped and i not in furniture_lines]
     paragraph_text="\n".join(source_lines[i] for i in kept)
     for i,(kind,body,kept_indices) in enumerate(_segments_with_line_indices(paragraph_text)):
         line_indices=[kept[j] for j in kept_indices]
@@ -197,6 +413,10 @@ def page_units(page:dict, *, source_kind:str="") -> list[dict]:
         # cross-page legislation or invent article numbers from OCR noise.
         first=body.splitlines()[0][:180]
         structured={"source_kind":source_kind,"heading":first}
+        geometry={line['line_index']:line for line in (_line_geometry(page) or [])}
+        if len(line_indices)==len(body.splitlines()) and all(j in geometry for j in line_indices):
+            structured['quote_lines']=[{'text':line,'bbox':geometry[j]['bbox'],
+                'pdf_page':page['pdf_page']} for line,j in zip(body.splitlines(),line_indices)]
         if kind in ("article","annex","form","section"):
             active_legal_heading=first
         elif active_legal_heading is not None:
@@ -277,7 +497,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     units_file=output_dir/"evidence_units.jsonl";facts_file=output_dir/"domain_facts.jsonl"
     entities_file=output_dir/"entities.jsonl";relations_file=output_dir/"relations.jsonl"
     files_by_source={s["source_id"]:input_dir/s["artifact"] for s in manifest["sources"]}
-    counts=Counter();all_units=[];facts=[]
+    counts=Counter();all_units=[];facts=[];page_records=[]
     stop=False
     for sid in sorted(files_by_source):
         path=files_by_source[sid]
@@ -288,23 +508,41 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
                 page=json.loads(line)
                 if page["source_id"]!=sid:
                     raise ValueError("PageArtifact source mismatch")
-                generated=page_units(page,source_kind=source_info[sid]["source_kind"])
-                all_units.extend(generated)
+                page_records.append(page)
                 counts["pages"]+=1
                 counts["tables"]+=len(page.get("tables",[]))
-                counts["units"]+=len(generated)
                 counts["ocr_pages"]+=int(bool(page.get("ocr_engine")))
-                for u in generated:
-                    if u["unit_kind"] in ("form","article","annex","criterion_table_candidate"):
-                        facts.append({"fact_id":stable_id("fact",sid,[u["unit_id"]]),
-                          "fact_type":u["unit_kind"],"evidence_unit_id":u["unit_id"],
-                          "source_id":sid,"text":u["text"][:3000],
-                          "review_status":u["review_status"],"spans":u["spans"],
-                          "structured":{k:v for k,v in u["structured"].items() if k!="cells"}})
         if stop:break
+    furniture_by_page=_page_furniture_lines(page_records)
+    for page in page_records:
+        sid=page["source_id"]
+        generated=page_units(page,source_kind=source_info[sid]["source_kind"],
+            furniture_lines=furniture_by_page.get((sid,int(page["pdf_page"])),{}))
+        all_units.extend(generated)
+        counts["units"]+=len(generated)
+        for u in generated:
+            if u["unit_kind"] in ("form","article","annex","criterion_table_candidate"):
+                facts.append({"fact_id":stable_id("fact",sid,[u["unit_id"]]),
+                  "fact_type":u["unit_kind"],"evidence_unit_id":u["unit_id"],
+                  "source_id":sid,"text":u["text"][:3000],
+                  "review_status":u["review_status"],"spans":u["spans"],
+                  "structured":{k:v for k,v in u["structured"].items() if k!="cells"}})
+    from ai_core.processing.ocop.legend_proposals import propose_legend_images
+    propose_legend_images(root,source_info,page_records,all_units)
+    from ai_core.processing.ocop.table_continuity import possible_continuations
+    boundary_hints=[]
+    ordered_pages=sorted(page_records,key=lambda p:(p['source_id'],int(p['pdf_page'])))
+    for previous,current in zip(ordered_pages,ordered_pages[1:]):
+        if source_info[current['source_id']]['source_kind'] in {'ocop_framework','ocop_historical','ocop_amendment'}:
+            boundary_hints.extend(possible_continuations(previous,current,min_columns=2))
+    for unit in all_units:
+        unit['structured']['table_continuity']=[hint for hint in boundary_hints
+            if hint['source_id']==unit['source_id'] and hint['to_pdf_page']==unit['spans'][0]['pdf_page']
+            and hint['to_table_id']==unit['structured'].get('table_id')]
     domain_candidates=candidates(all_units,{sid:row["source_kind"] for sid,row in source_info.items()})
     domain_candidates["temporal_candidates"]=temporal_candidates(all_units)
-    semantics=extract_semantics(all_units,{sid:row["source_kind"] for sid,row in source_info.items()},domain_candidates)
+    semantics=extract_semantics(all_units,{sid:row["source_kind"] for sid,row in source_info.items()},domain_candidates,
+                               source_registry=source_info)
     llm_stats={"enabled":semantic_client is not None, "model":semantic_profile, "processed_unit_count":0, "errors":0}
     if semantic_client is not None:
         proposed=propose(all_units,semantic_client,max_units=semantic_max_units)
@@ -318,6 +556,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     validate_business_graph(
         [BusinessEntity.model_validate(row) for row in semantics['business_entities']],
         [BusinessRelation.model_validate(row) for row in semantics['business_relations']],
+        source_registry=source_info,
     )
     quality = audit_knowledge(all_units,semantics)
     quality_tmp=output_dir/'business_quality.json.tmp'
@@ -333,7 +572,9 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     for name,items in semantics.items():
         counts[name]=_jsonl_atomic(output_dir/f"{name}.jsonl",items)
     summary={"pipeline_version":VERSION,"corpus_version":version,"semantic_proposals":llm_stats,"source_snapshot_sha256":snapshot,
-        "counts":dict(sorted(counts.items())),"business_quality":"business_quality.json","complete":(not stop and counts["pages"]==manifest["counts"]["pages"]),
+        "document_registry":{sid:{'document_number':s.get('document_number')} for sid,s in source_info.items()},
+        "counts":dict(sorted(counts.items())),"business_quality":"business_quality.json",
+        "complete":(bool(manifest.get("complete")) and not stop and counts["pages"]==manifest["counts"]["pages"]),
         "status":"machine_extracted_not_verified","files":{
             "evidence_units":units_file.name,"domain_facts":facts_file.name,
             "entities":entities_file.name,"relations":relations_file.name,

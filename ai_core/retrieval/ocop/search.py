@@ -7,7 +7,10 @@ from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
 from ai_core.domain.ocop_ids import content_sha256
-from ai_core.retrieval.ocop.index_pipeline import ROOT,BM25Search,_load_embedding,_encode,_records_hash
+from ai_core.retrieval.ocop.index_pipeline import (
+    ROOT, BM25Search, _load_embedding, _encode, _records_hash, terms,
+    _fold_vietnamese,
+)
 
 
 def _dense_hits(query:str,manifest:dict,limit:int,*,source_id:str|None=None,
@@ -95,6 +98,66 @@ def _read_checked_index(index_dir:Path)->tuple[dict,list[dict],dict,BM25Search]:
     bm25=BM25Search(index_dir/'bm25.json.gz')
     _check_index(index_dir,manifest,ordered,bm25)
     return manifest,ordered,chunks,bm25
+
+
+# Function words in question syntax should not dilute coverage of the content
+# phrases. These are deliberately language-level stopwords, not OCOP terms.
+_SCOPE_STOPWORDS = frozenset(_fold_vietnamese(token) for token in terms(
+    "ai cái các có của để gì gồm không là mà mỗi nào như những phải sao thì "
+    "và về với ở tại trong ngoài cần được này đó hôm nay tuần bên thế cùng "
+    "một số hãy"
+))
+
+
+def _scope_bigrams(text:str)->frozenset[tuple[str,str]]:
+    tokens=tuple(_fold_vietnamese(token) for token in terms(text))
+    return frozenset((left,right) for left,right in zip(tokens,tokens[1:])
+                     if left not in _SCOPE_STOPWORDS and right not in _SCOPE_STOPWORDS)
+
+
+@lru_cache(maxsize=4)
+def _indexed_scope_tokens(index_dir:str,signature:tuple[tuple[int,int],...])->tuple[tuple[str,...],...]:
+    # Validate the BM25 postings, manifest and chunk content before using the
+    # index to reopen a query that the deterministic scope gate rejected.
+    _,ordered,_,_=_read_checked_index(Path(index_dir))
+    return tuple(tuple(_fold_vietnamese(token) for token in terms(row.get('text_for_bm25','')))
+                 for row in ordered)
+
+
+def query_content_bigram_coverage(index_dir:Path,query:str)->float|None:
+    """Return max accent-folded content-bigram coverage in one checked chunk.
+
+    A missing or invalid local index returns ``None`` so the caller keeps the
+    normal fail-closed out-of-scope decision. At least two informative query
+    bigrams are required to avoid reopening on a single generic phrase.
+    """
+    index_dir=Path(index_dir).resolve()
+    files=(index_dir/'manifest.json',index_dir/'chunks.jsonl',index_dir/'bm25.json.gz')
+    try:
+        signature=tuple((item.stat().st_mtime_ns,item.stat().st_size) for item in files)
+    except OSError:
+        return None
+    query_bigrams=_scope_bigrams(query)
+    if len(query_bigrams)<2:
+        return 0.0
+    try:
+        corpus_tokens=_indexed_scope_tokens(str(index_dir),signature)
+    except (OSError,RuntimeError,ValueError,KeyError,json.JSONDecodeError):
+        return None
+    best=0.0
+    for tokens in corpus_tokens:
+        chunk_bigrams=_scope_bigrams_from_tokens(tokens)
+        if not chunk_bigrams:
+            continue
+        best=max(best,len(query_bigrams & chunk_bigrams)/len(query_bigrams))
+        if best>=1.0:
+            break
+    return best
+
+
+def _scope_bigrams_from_tokens(tokens:tuple[str,...])->frozenset[tuple[str,str]]:
+    return frozenset((left,right) for left,right in zip(tokens,tokens[1:])
+                     if left not in _SCOPE_STOPWORDS and right not in _SCOPE_STOPWORDS)
 
 
 def _rerank(query:str,candidates:list[dict],model_id:str,revision:str|None=None):

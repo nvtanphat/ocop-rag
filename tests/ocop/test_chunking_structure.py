@@ -99,7 +99,7 @@ def test_search_expands_parent_context_with_source_guard(tmp_path):
     kb=tmp_path/'kb';kb.mkdir()
     unit=make_unit('Điều 7. Hồ sơ OCOP\n'+' '.join('Thành phần hồ sơ đầy đủ.' for _ in range(45)))
     (kb/'evidence_units.jsonl').write_text(json.dumps(unit,ensure_ascii=False)+'\n',encoding='utf-8')
-    (kb/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'knowledge-v1','counts':{'pages':1}}),encoding='utf-8')
+    (kb/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'knowledge-fixture','counts':{'pages':1}}),encoding='utf-8')
     idx=tmp_path/'index';build_index(knowledge=kb,index_dir=idx,max_words=40)
     rows=search(idx,'Thành phần hồ sơ',top_k=1,expand_parent=True,parent_max_chars=500)
     assert rows and len(rows[0]['parent_context'])<=500

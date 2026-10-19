@@ -149,13 +149,10 @@ class ToolRegistry:
                         seen.add(key);hits.append(hit)
                 hits.sort(key=lambda row:-float(row.get('score') or 0))
                 return {'results':hits[:8],'status':'local_document_scoped'}
-            if not doc and not slots.get('region') and not slots.get('years') and context.get('business_intent') in (
-                'CRITERIA_LOOKUP','PROCEDURE_FORM','OCOP_OVERVIEW'):
-                # General OCOP criteria/forms belong to the national framework.
-                # Do not present local deadline guidance as a nationwide rule.
-                # Explicit historical years, document IDs or locality suppress this hint.
-                preferred=self._resolve_source_id('26/2026')
-                if preferred:source_filter=preferred
+            # Business intent alone does not pin a document version or scope.
+            # Broad queries rank across the checked corpus; only an explicit
+            # document_code, locality policy above, or verified structured tool
+            # may constrain the source set.
             if doc and not source_filter:
                 return {"results":[],"status":"document_not_found_or_ambiguous"}
             return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter,
@@ -379,9 +376,9 @@ class ToolRegistry:
             if not self.graph_dir.joinpath("manifest.json").exists():
                 return {"results":[],"note":"graph_not_built"}
             debug=bool(context.get("debug_candidates",False))
-            semantic=("HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_OPTION","HAS_CONDITION",
+            semantic=("HAS_ARTICLE","HAS_CLAUSE","HAS_POINT","MINIMUM_FOR","HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_SUBCRITERION","HAS_OPTION","HAS_CONDITION",
                 "REQUIRES_EVIDENCE","RECOGNIZES","OWNED_BY","BASED_ON","AMENDS","REPLACES",
-                "SUSPENDS","HAS_FIELD","USES_SHEET","HAS_SUBGROUP","SUPPORTED_BY")
+                "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","SUPPORTED_BY")
             graph=traverse(self.graph_dir,list(seed),hops=2,relations=list(semantic),
                            verified_only=not debug,limit=75,direction="both")
             # Return the source evidence for traversed edges, not arbitrary

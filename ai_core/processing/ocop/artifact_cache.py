@@ -6,7 +6,14 @@ import json
 import os
 from pathlib import Path
 
-PARSER_VERSION = "ocop-pdf-v7.0.0"
+from ai_core.domain.ocop_ids import code_fingerprint
+
+_HERE = Path(__file__).resolve().parent
+# Every module whose code shapes a PageArtifact (extraction, OCR, layout, tables, post-correction).
+PARSER_VERSION = code_fingerprint("pdf", [_HERE / name for name in (
+    "artifact_cache.py", "pdf_pipeline.py", "native_extractor.py", "easy_viet_ocr.py", "layout.py",
+    "layout_regions.py", "table_parser.py", "table_continuity.py", "raster_preprocess.py", "pdf_quality.py",
+    "profiler.py", "ocr_types.py", "ocr_postcorrect.py", "vietocr_vgg_transformer.json")])
 
 
 def build_cache_key(file_sha256: str, page: int, *, dpi: int, ocr_engine: str,

@@ -24,7 +24,8 @@ def make_knowledge(tmp_path):
     k=tmp_path/'knowledge';k.mkdir()
     (k/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'v6-fixture'}))
     dump(k/'evidence_units.jsonl',[{'unit_id':'u1','source_id':'D1','review_status':'verified',
-            'unit_kind':'article','text':'Điều kiện OCOP từ hồ sơ A','spans':[{'pdf_page':3}]}])
+            'unit_kind':'article','text':'Điều kiện OCOP từ hồ sơ A','spans':[
+                {'pdf_page':3,'bbox':[0,0,200,20],'block_id':'native:0:0','source_sha256':'a'*64}]}])
     dump(k/'entities.jsonl',[{'entity_id':'doc1','entity_type':'source_document','source_id':'D1',
             'name':'Quy định A','review_status':'verified','evidence_unit_ids':['u1']}])
     dump(k/'relations.jsonl',[])
@@ -33,14 +34,16 @@ def make_knowledge(tmp_path):
 
 def entity(i,kind,*,status='verified', uid='u1'):
     return {'entity_id':i,'kind':kind,'label':i,'source_id':'D1','status':status,
-            'evidence':[{'source_id':'D1','evidence_unit_id':uid,'pdf_page':3,'quote':'Điều kiện OCOP'}],
+            'evidence':[{'source_id':'D1','evidence_unit_id':uid,'pdf_page':3,
+                         'bbox':[0,0,200,20],'quote':'Điều kiện OCOP'}],
             'attributes':{}}
 
 
 def rel(*,page=3,uid='u1',status='verified'):
     return {'relation_id':'r1','relation_type':'HAS_RECORD','source_entity_id':'decision',
             'target_entity_id':'record','status':status,
-            'evidence':[{'source_id':'D1','evidence_unit_id':uid,'pdf_page':page,'quote':'Điều kiện OCOP'}]}
+            'evidence':[{'source_id':'D1','evidence_unit_id':uid,'pdf_page':page,
+                         'bbox':[0,0,200,20],'quote':'Điều kiện OCOP'}]}
 
 
 def test_graph_detects_evidence_text_change_without_id_change(tmp_path):
@@ -84,7 +87,7 @@ def test_business_relation_proof_page_must_match(tmp_path):
     dump(k/'business_relations.jsonl',[rel(page=20)])
     out=tmp_path/'out';build_graph(k,out)
     assert not any(x['relation_type']=='HAS_RECORD' for x in
-                   map(json.loads,(out/'edges.jsonl').read_text().splitlines()))
+                   map(json.loads,(out/'edges.jsonl').read_text(encoding='utf-8').splitlines()))
 
 
 def test_valid_business_relation_is_preserved_and_provenance_verified(tmp_path):
@@ -96,6 +99,61 @@ def test_valid_business_relation_is_preserved_and_provenance_verified(tmp_path):
     result=traverse(out,['decision'],hops=1,relations=['HAS_RECORD'],verified_only=True,direction='out')
     assert 'record' in {n['node_id'] for n in result['nodes']}
     assert result['edges'][0]['evidence_unit_id']=='u1'
+
+
+def test_graph_preserves_cell_citations_and_source_hash(tmp_path):
+    k=make_knowledge(tmp_path);g=tmp_path/'graph'
+    unit={'unit_id':'u1','source_id':'D1','review_status':'needs_review','unit_kind':'table',
+          'text':'1 | HTX Sen Hue | Hat sen','spans':[{'pdf_page':3,'table_id':'table:1',
+              'bbox':[0,0,100,20],'source_sha256':'a'*64}],
+          'structured':{'table_id':'table:1','cells':[
+              {'row':1,'col':0,'text':'1','bbox':[0,10,20,20]},
+              {'row':1,'col':1,'text':'HTX Sen Hue','bbox':[20,10,70,20]},
+              {'row':1,'col':2,'text':'Hat sen','bbox':[70,10,100,20]}]}}
+    dump(k/'evidence_units.jsonl',[unit])
+    # The fixture evidence is a candidate; omit make_knowledge's unrelated
+    # verified article entity so it cannot add a status rejection.
+    dump(k/'entities.jsonl',[])
+    row_ref={'source_id':'D1','evidence_unit_id':'u1','pdf_page':3,'table_id':'table:1',
+             'row':1,'bbox':[0,10,100,20],'quote':'1 | HTX Sen Hue | Hat sen'}
+    owner_ref={'source_id':'D1','evidence_unit_id':'u1','pdf_page':3,'table_id':'table:1',
+               'row':1,'cell_id':'table:1:r1:c1','bbox':[20,10,70,20],'quote':'HTX Sen Hue'}
+    product_ref={'source_id':'D1','evidence_unit_id':'u1','pdf_page':3,'table_id':'table:1',
+                 'row':1,'cell_id':'table:1:r1:c2','bbox':[70,10,100,20],'quote':'Hat sen'}
+    dump(k/'business_entities.jsonl',[
+        {'entity_id':'decision','kind':'RecognitionDecision','label':'D1','source_id':'D1','status':'candidate','evidence':[row_ref],'attributes':{}},
+        {'entity_id':'record','kind':'RecognitionRecord','label':'record','source_id':'D1','status':'candidate','evidence':[row_ref,owner_ref,product_ref],'attributes':{}},
+        {'entity_id':'owner','kind':'Organization','label':'HTX Sen Hue','source_id':'D1','status':'candidate','evidence':[owner_ref],'attributes':{}},
+        {'entity_id':'product','kind':'Product','label':'Hat sen','source_id':'D1','status':'candidate','evidence':[product_ref],'attributes':{}},
+    ])
+    dump(k/'business_relations.jsonl',[{
+        'relation_id':'recognizes-1','relation_type':'RECOGNIZES','source_entity_id':'record',
+        'target_entity_id':'product','status':'candidate','evidence':[row_ref,product_ref]},
+        {'relation_id':'owner-1','relation_type':'DECLARED_BY','source_entity_id':'record',
+         'target_entity_id':'owner','status':'candidate','evidence':[row_ref,owner_ref]},
+    ])
+    manifest=build_graph(k,g)
+    assert manifest['counts']['rejected']==0
+    nodes={x['node_id']:x for x in map(json.loads,(g/'nodes.jsonl').read_text(encoding='utf-8').splitlines())}
+    edges=[json.loads(x) for x in (g/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
+    assert any(c.get('cell_id')=='table:1:r1:c2' and c['source_sha256']=='a'*64
+               and c['bbox']==[70,10,100,20] for c in nodes['product']['citations'])
+    owns=next(e for e in edges if e['relation_type']=='DECLARED_BY')
+    assert any(c.get('cell_id')=='table:1:r1:c1' and c['source_sha256']=='a'*64
+               and c['bbox']==[20,10,70,20] for c in owns['citations'])
+    located=next(e for e in edges if e['relation_type']=='LOCATED_IN')
+    assert located['citations'][0]['pdf_page']==3 and located['citations'][0]['source_sha256']=='a'*64
+
+
+def test_graph_fails_closed_when_source_span_lacks_sha(tmp_path):
+    k=make_knowledge(tmp_path)
+    unit=json.loads((k/'evidence_units.jsonl').read_text(encoding='utf-8'))
+    unit['spans'][0].pop('source_sha256')
+    dump(k/'evidence_units.jsonl',[unit])
+    out=tmp_path/'graph';manifest=build_graph(k,out)
+    edges=[json.loads(x) for x in (out/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
+    assert not any(e['relation_type']=='LOCATED_IN' for e in edges)
+    assert manifest['counts']['rejected']>=1
 
 
 def test_graph_refuses_tampering_after_build(tmp_path):

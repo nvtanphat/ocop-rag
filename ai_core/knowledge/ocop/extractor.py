@@ -10,6 +10,7 @@ import re
 from collections import Counter
 from typing import Any
 
+from ai_core.domain.ocop_citations import quote_bbox
 from ai_core.domain.ocop_ids import stable_id
 from .contracts import (
     BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef, EntityType,
@@ -20,8 +21,8 @@ from .contracts import (
 KEYWORDS = (
     ("exemption", re.compile(r"(?:được\s+miễn|không\s+phải|không\s+thuộc\s+diện)", re.I)),
     ("prohibition", re.compile(r"(?:nghiêm\s+cấm|không\s+được)", re.I)),
-    ("obligation", re.compile(r"(?:\bphải\b|bắt\s+buộc|có\s+trách\s+nhiệm)", re.I)),
-    ("temporal", re.compile(r"(?:có\s+hiệu\s+lực|kể\s+từ\s+ngày|chuyển\s+tiếp|tạm\s+ngưng\s+hiệu\s+lực)", re.I)),
+    ("obligation", re.compile(r"(?:\bphải\b|bắt\s+buộc|(?:có|chịu)\s+trách\s+nhiệm)", re.I)),
+    ("temporal", re.compile(r"(?:có\s+hiệu\s+lực|có\s+giá\s+trị\s+(?:trong\s+)?(?:thời\s+hạn\s+)?\d+|kể\s+từ\s+ngày|chuyển\s+tiếp|tạm\s+ngưng\s+hiệu\s+lực)", re.I)),
 )
 
 
@@ -45,15 +46,15 @@ def _ref(candidate: dict, evidence_index: dict[str, dict], text: str | None = No
                  if int(c.get('row', -1)) == int(row_no)]
         if not cells:
             raise ValueError('table row missing from evidence source')
-        if quote:
-            # A row extracted from structured table cells may differ in layout
-            # newlines from the flat table text. Reconstruct from ORIGINAL cells.
-            reconstructed = ' | '.join(str(c.get('text') or '').strip()
+        # Reconstruct from ORIGINAL cells, including a metadata caller that
+        # supplies a row number without a proposed quote.
+        reconstructed = ' | '.join(str(c.get('text') or '').strip()
                        for c in sorted(cells,key=lambda x:int(x.get('col',0)))
                        if str(c.get('text') or '').strip())
+        if quote:
             if quote != reconstructed and quote not in original and not reconstructed.startswith(quote):
                 raise ValueError('candidate row text not traceable to table cells')
-            quote = reconstructed[:1200]
+        quote = reconstructed[:1200]
         rectangles = [c.get('bbox') for c in cells if c.get('bbox')]
         if rectangles:
             bbox = (min(v[0] for v in rectangles), min(v[1] for v in rectangles),
@@ -63,14 +64,17 @@ def _ref(candidate: dict, evidence_index: dict[str, dict], text: str | None = No
             raise ValueError('quote not literally present in evidence source')
         if not quote:
             quote = original[:min(200,len(original))].strip()
+        bbox=quote_bbox(unit,page,quote)
     span = next(s for s in spans if int(s['pdf_page']) == page)
     return EvidenceRef(source_id=src,evidence_unit_id=uid,pdf_page=page,
+          source_sha256=span.get('source_sha256'),
           table_id=candidate.get('table_id') or span.get('table_id'),
           row=row_no,bbox=bbox or span.get('bbox'),quote=quote)
 
 
-def _cell_ref(candidate: dict, evidence_index: dict[str, dict], col: int) -> EvidenceRef | None:
-    """Return the literal source cell for points/mandatory marks, if present.
+def _cell_ref_at(candidate: dict, evidence_index: dict[str, dict],
+                 row: int, col: int) -> EvidenceRef | None:
+    """Return one literal source cell, including an explicit merged origin cell.
 
     Do not replace an OCR cell with alternative crop text or a guessed value.
     A missing cell yields None and remains unresolved.
@@ -78,7 +82,7 @@ def _cell_ref(candidate: dict, evidence_index: dict[str, dict], col: int) -> Evi
     unit=evidence_index.get(candidate.get('evidence_unit_id'))
     if not unit or unit.get('source_id')!=candidate.get('source_id'):
         return None
-    row=int(candidate.get('row',-1))
+    row=int(row)
     cells=[c for c in unit.get('structured',{}).get('cells',[])
            if int(c.get('row',-2))==row and int(c.get('col',-2))==col]
     if len(cells)!=1 or not str(cells[0].get('text') or '').strip():
@@ -94,17 +98,61 @@ def _cell_ref(candidate: dict, evidence_index: dict[str, dict], col: int) -> Evi
     table_id=candidate.get('table_id') or unit.get('structured',{}).get('table_id')
     return EvidenceRef(source_id=candidate['source_id'],
         evidence_unit_id=candidate['evidence_unit_id'],pdf_page=page,
+        source_sha256=next(s for s in span if int(s['pdf_page'])==page).get('source_sha256'),
         table_id=table_id, row=row,
         cell_id=f'{table_id}:r{row}:c{col}' if table_id else None,
         bbox=cell.get('bbox'),quote=raw)
+
+
+def _cell_ref(candidate: dict, evidence_index: dict[str, dict], col: int) -> EvidenceRef | None:
+    """Return a literal source cell on the candidate's own row."""
+    return _cell_ref_at(candidate,evidence_index,int(candidate.get('row',-1)),col)
+
+
+def _evidence_key(evidence: EvidenceRef) -> tuple:
+    return (evidence.source_id,evidence.evidence_unit_id,evidence.pdf_page,
+            evidence.row,evidence.cell_id,evidence.quote)
 
 
 def _short_label(value: str) -> str:
     return re.sub(r'\s+', ' ', value).strip()[:350]
 
 
+def _rule_sentences(text: str) -> list[str]:
+    """Join physical line wraps until sentence punctuation or a new list item."""
+    result=[];buffer=[]
+    def flush():
+        if buffer:
+            statement='\n'.join(buffer).strip()
+            if statement:result.append(statement)
+            buffer.clear()
+    item_start=re.compile(r'^(?:\d{1,2}[.)]|[a-zđ][.)]|\(\d+\))\s+',re.I)
+    heading=re.compile(r'^(?:Điều\s+\d+|Chương\s+|Mục\s+|Phụ\s+lục\b|Mẫu\s+)',re.I)
+    for raw in str(text or '').splitlines():
+        line=raw.strip()
+        if not line:
+            flush();continue
+        if heading.match(line):
+            flush()
+            # "Điều 3. Bộ trưởng, ..." starts the article's first sentence on the heading line; keep it with
+            # the lines that finish that sentence instead of cutting the subject off.
+            if re.search(r'[.!?;:]\s*$',line) or len(line) < 40:
+                result.append(line)
+            else:
+                buffer.append(line)
+            continue
+        if buffer and item_start.match(line):
+            flush()
+        buffer.append(line)
+        if re.search(r'[.!?;:]\s*$',line):
+            flush()
+    flush()
+    return result
+
+
 def extract_semantics(units: list[dict], source_kinds: dict[str, str],
-                      candidate_sets: dict[str, list[dict]]) -> dict[str, list[dict]]:
+                      candidate_sets: dict[str, list[dict]], *,
+                      source_registry: dict[str, dict] | None = None) -> dict[str, list[dict]]:
     """Create typed graph facts from only source-observable information.
 
     The outputs are read-only candidates. No candidate is automatically verified,
@@ -119,26 +167,26 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
     def add(kind: EntityType, label: str, record: dict, evidence: EvidenceRef,
             *, key: str, attributes: dict | None = None) -> str:
         src = record['source_id']
-        entity_id = stable_id('biz_entity', src, [kind.value, key], revision='biz-v1')
+        entity_id = stable_id('biz_entity', src, [kind.value, key], revision='business')
         new = BusinessEntity(entity_id=entity_id, kind=kind, label=label,
             source_id=src, evidence=[evidence], attributes=attributes or {})
         if entity_id in entities:
             existing = entities[entity_id]
             if existing.kind != kind or existing.source_id != src:
                 raise ValueError('entity identity collision')
-            if (evidence.source_id, evidence.evidence_unit_id, evidence.pdf_page) not in {
-                (e.source_id, e.evidence_unit_id, e.pdf_page) for e in existing.evidence
-            }:
+            if _evidence_key(evidence) not in {_evidence_key(e) for e in existing.evidence}:
                 existing.evidence.append(evidence)
         else:
             entities[entity_id] = new
         return entity_id
 
-    def link(relation: str, src: str, dst: str, ev: EvidenceRef, *, extra_evidence: list[EvidenceRef] | None = None) -> None:
+    def link(relation: str, src: str, dst: str, ev: EvidenceRef, *, extra_evidence: list[EvidenceRef] | None = None,
+             attributes: dict | None = None) -> None:
         rid = stable_id('biz_relation', ev.source_id,
-                        [relation, src, dst, ev.evidence_unit_id, ev.row], revision='biz-v1')
+                        [relation, src, dst, ev.evidence_unit_id, ev.row], revision='business')
         relations[rid] = BusinessRelation(relation_id=rid, relation_type=relation,
-                   source_entity_id=src, target_entity_id=dst, evidence=[ev, *(extra_evidence or [])])
+                   source_entity_id=src, target_entity_id=dst, evidence=[ev, *(extra_evidence or [])],
+                   attributes=attributes or {})
 
     # Table row candidates MUST NOT be promoted to Criterion/ScoreOption.
     # A row may be a heading, subtotal, merged cell or score option.
@@ -160,10 +208,25 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
     score_tables = defaultdict(list)
     for row in candidate_sets.get('criterion_candidates', []):
         score_tables[(row.get('source_id'),row.get('evidence_unit_id'),row.get('table_id'))].append(row)
-    heading_re = re.compile(r'^\s*(?:\d+(?:\.\d+){1,3}[.)]?|[A-C][.])\s+\S', re.I)
+    heading_re = re.compile(r'^\s*(?:\d+(?:\.\d+){1,3}[.,)]?\s*(?=[^\W\d_])|[A-C][.]\s*\S)', re.I)
+    # A single-number heading such as "2. PHÁT TRIỂN SẢN PHẨM" is a criterion group, not a score option.
+    # Requiring capitals keeps an ordinary numbered option ("1. Có ...") out.
+    section_re = re.compile(r'^\s*(\d{1,2})[.,)]\s*\S')
+    numbering_re = re.compile(r'^\s*(\d+(?:\.\d+){0,3})')
+    note_re = re.compile(r'^\s*(?:gh[iị]\s+ch[úủ]|chú\s+ý|lưu\s+ý|yêu\s+cầu|ch[iỉ]\s+áp\s+dụng|tổng\s+cộng|các\s+tiêu\s+chí|thang\s+điểm)\b|^\s*\(', re.I)
+    part_re = re.compile(r'^\s*Phần\s+([ABC])\b',re.I)
     markers_re = re.compile(r'(?<!\*)\*{3,5}(?!\*)')
+
+    def is_section(label: str) -> bool:
+        # A heading cell may include a lower-case explanatory paragraph.
+        title=re.split(r'[\n(]',label,maxsplit=1)[0]
+        letters = [c for c in title if c.isalpha()]
+        return bool(section_re.match(label)) and len(letters) >= 4 and \
+            sum(c.isupper() for c in letters) >= 0.8 * len(letters)
+
     for _,rows in sorted(score_tables.items(),key=lambda item:str(item[0])):
         parent_id = None
+        criteria_by_number: dict[str, str] = {}
         for row in sorted(rows,key=lambda rec:int(rec.get('row',0))):
             raw = str(row.get('label_candidate') or '')
             parts=[part.strip() for part in raw.split('|')]
@@ -176,16 +239,31 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
             score=row.get('score_candidate')
             if score is not None and (not isinstance(score,int) or not 0<=score<=100):
                 score=None
-            if heading_re.match(label):
-                parent_id=add(EntityType.CRITERION, _short_label(label),row,ev,
+            part=part_re.match(label)
+            if part or heading_re.match(label) or is_section(label):
+                number = numbering_re.match(label).group(1) if numbering_re.match(label) else None
+                criterion_id=add(EntityType.CRITERION, _short_label(label),row,ev,
                     key=f'numbered:{row["candidate_id"]}',attributes={
                         'max_points_candidate':score,
+                        'level':0 if part else number.count('.') + 1 if number else None,
+                        'part_letter':part[1].upper() if part else None,
                         'table_id':row.get('table_id'),
                         'row':row.get('row')})
-            elif score is not None and len(label.strip()) >= 5:
+                # The parent is found by numbering ("2.1" under "2"), only within this same table.
+                parent_number = number.rsplit('.', 1)[0] if number and '.' in number else None
+                if parent_number and parent_number in criteria_by_number:
+                    link('HAS_SUBCRITERION', criteria_by_number[parent_number], criterion_id, ev)
+                if number:
+                    criteria_by_number[number] = criterion_id
+                parent_id = criterion_id
+            elif len(label.strip()) >= 2 and any(c.isalpha() for c in label) and not note_re.match(label) and (score is not None or parent_id):
+                # A row under a criterion whose score is not in its cell text stays an option with an unknown
+                # score; a crop re-read of the score cell is kept apart as an unverified alternative.
+                crop = row.get('crop_score_candidate') or {}
                 option_id=add(EntityType.SCORE_OPTION, _short_label(label),row,ev,
                     key=f'score-option:{row["candidate_id"]}',attributes={
                         'points_candidate':score, 'parent_identified':bool(parent_id),
+                        'crop_points_candidate':crop.get('text') if score is None else None,
                         'table_id':row.get('table_id'), 'row':row.get('row')})
                 score_cols=[int(c.get('col',-1)) for c in evidence_by_id[row['evidence_unit_id']]
                     .get('structured',{}).get('cells',[]) if int(c.get('row',-1))==int(row.get('row',-2))]
@@ -196,15 +274,24 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
                     link('HAS_OPTION',parent_id,option_id,ev,
                          extra_evidence=[score_ev] if score_ev and score_ev.quote.replace(' ','')==str(score) else None)
                 rule_id=stable_id('biz_scoring_rule',row['source_id'],
-                    [row['candidate_id']],revision='biz-v2')
+                    [row['candidate_id']],revision='business_row')
                 rules[rule_id]=BusinessRule(rule_id=rule_id,source_id=row['source_id'],
                     kind='scoring',statement=raw,evidence=[ev,score_ev] if score_ev and score_ev.quote.replace(' ','')==str(score) else [ev])
-            for mark in sorted(set(markers_re.findall(label))):
+            # OCR keeps star markers out of the text; the image detector records them on the row's cells.
+            marks = {mark: 'ocr_text' for mark in markers_re.findall(label)}
+            for cell in evidence_by_id[row['evidence_unit_id']].get('structured', {}).get('cells', []):
+                if int(cell.get('row', -1)) != int(row.get('row', -2)):
+                    continue
+                for marker in cell.get('image_marker_candidates') or []:
+                    if markers_re.fullmatch(str(marker.get('text') or '')):
+                        marks.setdefault(marker['text'], 'image_marker_candidate')
+            for mark, observed_in in sorted(marks.items()):
                 if not parent_id:
                     continue
                 condition_id=add(EntityType.CONDITION, f'Dấu {mark} (cần xác minh)',row,ev,
                     key=f'mandatory-marker:{row["candidate_id"]}:{mark}',attributes={
-                        'marker_observed':mark, 'interpretation_verified':False})
+                        'marker_observed':mark, 'marker_observed_in':observed_in,
+                        'interpretation_verified':False})
                 link('HAS_CONDITION',parent_id,condition_id,ev)
 
     for row in candidate_sets.get('form_candidates', []):
@@ -225,64 +312,94 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
         except (KeyError, ValueError):
             omitted['form_missing_evidence'] += 1
 
-    # Recognition tables may have true merged owner cells. When the upstream
-    # table engine provides native rowspan geometry, carry that source cell to
-    # subsequent product rows. NEVER fill by mere previous-row adjacency.
+    # Recognition tables may have true merged cells. Layout comes from the
+    # table header, while inherited values require an explicit source rowspan.
     for row in candidate_sets.get('recognition_candidates', []):
         src = row.get('source_id', '')
         cols = row.get('resolved_columns') or {}
-        parts = [p.strip() for p in str(row.get('row_text') or '').split('|')]
-        def value(col: int) -> str:
-            col_record = cols.get(str(col)) or {}
-            return str(col_record.get('text') or '').strip()
-        sequence = value(0) if cols else (parts[0] if parts else '')
+        layout = row.get('layout_columns') or {}
+        if not {'sequence','product','producer'}.issubset(layout):
+            omitted['recognition_unknown_layout'] += 1
+            continue
+        def column_record(role: str) -> dict:
+            col=layout.get(role)
+            return cols.get(str(col)) or {} if col is not None else {}
+        def value(role: str) -> str:
+            return ' '.join(str(column_record(role).get('text') or '').split())
+        def cell_evidence(role: str) -> EvidenceRef | None:
+            col=layout.get(role)
+            record=column_record(role)
+            if col is None or not record.get('text'):
+                return None
+            origin=record.get('row')
+            if origin is None:
+                return None
+            origin=int(origin)
+            current=int(row.get('row',-1))
+            if (record.get('inherited') and origin>=current) or (not record.get('inherited') and origin!=current):
+                return None
+            ref=_cell_ref_at(row,evidence_by_id,origin,int(col))
+            if not ref or ' '.join(ref.quote.split()) != ' '.join(str(record.get('text') or '').split()):
+                return None
+            return ref
+        sequence = value('sequence')
         if not re.fullmatch(r'\d+', sequence):
             omitted['recognition_header_or_incomplete_row'] += 1
             continue
-        if src.startswith('VN.HUE.'):
-            product, producer = ((value(1),value(2)) if cols and value(1) and value(2)
-                                 else (parts[1],parts[2]) if len(parts)>=5 else ('',''))
-            owner_column = 2
-        elif src.startswith('VN.HAIPHONG.'):
-            producer, product = ((value(1),value(2)) if cols
-                                 else (parts[1],parts[2]) if len(parts)>=7 else ('',''))
-            owner_column = 1
-        else:
-            omitted['recognition_unknown_layout'] += 1
-            continue
+        product,producer=value('product'),value('producer')
         if len(_short_label(product)) < 3 or len(_short_label(producer)) < 3:
             omitted['recognition_missing_owner_or_product'] += 1
             continue
-        owner_cell = cols.get(str(owner_column), {})
+        owner_cell = column_record('producer')
         inherited = bool(owner_cell.get('inherited'))
-        owner_ref = None
-        if inherited:
-            origin_row = owner_cell.get('row')
-            if origin_row is None or int(origin_row) >= int(row.get('row',0)):
-                omitted['recognition_unsafe_merged_owner'] += 1
-                continue
-            try:
-                owner_ref = _ref({**row,'row':origin_row}, evidence_by_id)
-            except (KeyError,ValueError):
-                omitted['recognition_unsafe_merged_owner'] += 1
-                continue
+        owner_ref=cell_evidence('producer')
+        product_ref=cell_evidence('product')
+        if owner_ref is None or product_ref is None:
+            omitted['recognition_missing_cell_evidence'] += 1
+            continue
+        address=value('address') or None
+        representative=value('representative') or None
+        address_ref=cell_evidence('address') if address else None
+        representative_ref=cell_evidence('representative') if representative else None
+        if (address and address_ref is None) or (representative and representative_ref is None):
+            omitted['recognition_missing_cell_evidence'] += 1
+            continue
+        # A merged score/star value is visible, but it is not known to belong
+        # to every product row. Keep those candidates only when directly printed
+        # on this row; the source cell remains the citation for accepted values.
+        score=value('score') or None
+        score_ref=cell_evidence('score') if score and not column_record('score').get('inherited') else None
+        if score and score_ref is None:
+            score=None
+        star_text=value('star') or None
+        star_ref=cell_evidence('star') if star_text and not column_record('star').get('inherited') else None
+        if star_text and star_ref is None:
+            star_text=None
+        star_match=re.search(r'(?<!\d)([1-5])\s*sao\b',star_text or '',re.I)
+        star_candidate=int(star_match.group(1)) if star_match else None
         try:
             ev = _ref(row, evidence_by_id)
             decision = add(EntityType.RECOGNITION_DECISION, src, row, ev,
                            key=src, attributes={'decision_source_id':src})
             rec = add(EntityType.RECOGNITION_RECORD,
                       _short_label(row['row_text']), row, ev, key=row['candidate_id'],
-                      attributes={'star_rating_candidate':row.get('star_candidate'),
+                      attributes={'star_rating_candidate':star_candidate,
+                                  'score_candidate':score,
+                                  'producer_address_candidate':address,
+                                  'representative_candidate':representative,
                                   'row_number':sequence,'owner_inherited_from_merge':inherited})
-            product_id = add(EntityType.PRODUCT, _short_label(product), row, ev,
+            record_refs=[product_ref,owner_ref,address_ref,representative_ref,score_ref,star_ref]
+            for ref in record_refs:
+                if ref and _evidence_key(ref) not in {_evidence_key(e) for e in entities[rec].evidence}:
+                    entities[rec].evidence.append(ref)
+            product_id = add(EntityType.PRODUCT, _short_label(product), row, product_ref,
                              key=f'{row["candidate_id"]}:product')
-            owner_id = add(EntityType.ORGANIZATION, _short_label(producer), row, ev,
+            owner_id = add(EntityType.ORGANIZATION, _short_label(producer), row, owner_ref,
                            key=f'organization:{_short_label(producer).casefold()}')
-            if owner_ref:
-                entities[owner_id].evidence.append(owner_ref)
             link('HAS_RECORD',decision,rec,ev)
-            link('RECOGNIZES',rec,product_id,ev)
-            link('DECLARED_BY',rec,owner_id,ev,extra_evidence=[owner_ref] if owner_ref else None)
+            link('RECOGNIZES',rec,product_id,ev,extra_evidence=[product_ref])
+            link('DECLARED_BY',rec,owner_id,ev,extra_evidence=[owner_ref])
+            link('OWNED_BY',product_id,owner_id,ev,extra_evidence=[product_ref,owner_ref])
         except (KeyError, ValueError):
             omitted['recognition_missing_evidence'] += 1
 
@@ -290,32 +407,54 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
     # not compile OCR prose into executable IF/THEN or effective-date rules.
     permitted = {'food_safety_law','food_safety_decree','food_safety_resolution',
                  'labeling_decree','labeling_amendment','cooperative_law',
-                 'ocop_framework','ocop_historical','ocop_amendment'}
+                 'ocop_framework','ocop_historical','ocop_amendment','local_guidance'}
+    from .procedures import _procedure_sentences
     for u in units:
         if source_kinds.get(u['source_id']) not in permitted or u['unit_kind'] not in ('article','paragraph','section'):
             continue
-        for line_no,line in enumerate((u.get('text') or '').splitlines()):
-            line=line.strip()
-            if len(line) < 25:
+        for sentence_no,statement in enumerate(_procedure_sentences(u.get('text') or '',_rule_sentences)):
+            if len(statement) < 25:
+                continue
+            if re.fullmatch(r'\s*Điều\s+\d+[.]?\s*Điều\s+khoản\s+chuyển\s+tiếp\s*[.:]?\s*',statement,re.I):
+                omitted['transition_heading_not_rule']+=1
                 continue
             for kind,pattern in KEYWORDS:
-                if not pattern.search(line):
+                if not pattern.search(statement):
                     continue
-                # keep contextual paragraph, but no hidden text content synthesis
+                # Keep wrapped source text together; these are still claims,
+                # never executable or verified rules.
                 try:
                     ev = _ref({'source_id':u['source_id'],
                                'evidence_unit_id':u['unit_id'],
-                               'pdf_page':u['spans'][0]['pdf_page']}, evidence_by_id, text=line)
-                    rid=stable_id('biz_rule', u['source_id'], [u['unit_id'],line_no,kind],revision='biz-v1')
+                               'pdf_page':u['spans'][0]['pdf_page']}, evidence_by_id, text=statement)
+                    rid=stable_id('biz_rule', u['source_id'], [u['unit_id'],sentence_no,kind],revision='business_row')
                     rules[rid]=BusinessRule(rule_id=rid,source_id=u['source_id'],
-                              kind=kind,statement=line,evidence=[ev])
+                              kind=kind,statement=statement,evidence=[ev])
                 except (KeyError, ValueError):
                     omitted['rule_missing_evidence'] += 1
-                break  # one dominant modality per line; ambiguous remains candidate
+                break  # one dominant modality per source sentence; ambiguous remains candidate
+
+    from .legal_structure import extract_documents
+    # Local article structure needs no registry resolution. Cross-document
+    # identities remain disabled unless the caller supplies the real registry.
+    legal_registry = source_registry if source_registry is not None else {
+        sid:{'document_number':None} for sid in source_kinds}
+    extract_documents(units, source_kinds, legal_registry, evidence_by_id,
+                      entities, relations, rules, omitted, add, link, _ref)
+
+    from .criterion_sheets import extract_criterion_sheets
+    extract_criterion_sheets(units,source_kinds,candidate_sets,evidence_by_id,
+                             entities,relations,omitted,add,link,_ref)
+    from .star_requirements import extract_star_requirements
+    extract_star_requirements(units, source_kinds, candidate_sets, evidence_by_id,
+                              entities, omitted, add, link, _ref, _cell_ref_at, _rule_sentences)
+    from .procedures import extract_procedures
+    extract_procedures(units,source_kinds,candidate_sets,evidence_by_id,entities,
+                       omitted,add,link,_ref,_rule_sentences)
 
     typed_entities=sorted(entities.values(),key=lambda x:x.entity_id)
     typed_relations=sorted(relations.values(),key=lambda x:x.relation_id)
-    validate_business_graph(typed_entities,typed_relations)
+    validate_business_graph(typed_entities,typed_relations,source_registry=source_registry)
     return {
        'business_entities':[e.model_dump(mode='json') for e in typed_entities],
        'business_relations':[r.model_dump(mode='json') for r in typed_relations],

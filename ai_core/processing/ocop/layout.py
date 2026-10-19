@@ -101,7 +101,7 @@ def _same_row(previous: dict, block: dict) -> bool:
     previous_box, box = _box(previous), _box(block)
     if previous_box is None or box is None:
         return False
-    (px0, py0, px1, py1), (x0, y0, _, y1) = previous_box, box
+    (_, py0, px1, py1), (x0, y0, _, y1) = previous_box, box
     height = min(py1 - py0, y1 - y0)
     return min(py1, y1) - max(py0, y0) >= .8 * height and px1 - 2 <= x0 <= px1 + 2 * height
 

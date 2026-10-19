@@ -27,6 +27,40 @@ def test_temporal_dates_are_candidates_not_legal_assertions():
     assert all(v["source_spans"][0]["pdf_page"] == 8 for v in out)
 
 
+def test_temporal_type_uses_its_local_clause_not_a_neighboring_heading():
+    from ai_core.processing.ocop.temporal_candidates import temporal_candidates
+    text=("Quyết định về đánh giá, phân hạng sản phẩm OCOP\n"
+          "Căn cứ Luật Tổ chức chính quyền địa phương ngày 16/6/2025;\n"
+          "1. Quy định này có hiệu lực thi hành\n"
+          "từ ngày 01 tháng 7 năm 2024;\n"
+          "2. Quy định tại khoản 3 có hiệu lực thi hành\n"
+          "từ ngày 01 tháng 9 năm 2023;\n"
+          "3. Hoạt động này tiếp tục kể từ ngày 01 tháng 9 năm 2023.")
+    unit={"unit_id":"unit:temporal:1","source_id":"VN.TEST.QD.2026",
+          "unit_kind":"article","text":text,
+          "spans":[{"pdf_page":8,"bbox":[10,10,200,120],"source_sha256":"b"*64}]}
+    rows=temporal_candidates([unit])
+    by_date={}
+    for row in rows:by_date.setdefault(row["date_candidate"],[]).append(row)
+    assert [r["candidate_type"] for r in by_date["2025-06-16"]]==["date_mention"]
+    assert [r["candidate_type"] for r in by_date["2024-07-01"]]==["effective_date_candidate"]
+    assert sorted(r["candidate_type"] for r in by_date["2023-09-01"])==[
+        "date_mention","effective_date_candidate"]
+    assert all(r["pdf_page"]==8 and not r["is_authoritative"] for r in rows)
+
+
+def test_evaluation_report_date_is_not_mislabeled_as_recognition_date():
+    from ai_core.processing.ocop.temporal_candidates import temporal_candidates
+    text=("Theo đề nghị của Hội đồng đánh giá, phân hạng sản phẩm OCOP "
+          "tại Tờ trình số 51/TTr-HĐĐG ngày 16/01/2026.")
+    unit={"unit_id":"unit:proposal-date","source_id":"VN.TEST.QD.2026",
+          "unit_kind":"article","text":text,
+          "spans":[{"pdf_page":1,"bbox":[10,10,200,30],"source_sha256":"b"*64}]}
+    rows=temporal_candidates([unit])
+    assert [(row["date_candidate"],row["candidate_type"]) for row in rows]==[
+        ("2026-01-16","date_mention")]
+
+
 def test_transition_mentioned_without_date_remains_unverified():
     unit = page_units(_page("Điều 12. Quy định chuyển tiếp đối với hồ sơ."))[1]
     rows = temporal_candidates([unit])

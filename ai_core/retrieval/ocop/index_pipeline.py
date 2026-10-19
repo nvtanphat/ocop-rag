@@ -20,11 +20,13 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Iterable
 
-from ai_core.domain.ocop_ids import stable_id,content_sha256
+from ai_core.domain.ocop_ids import code_fingerprint,stable_id,content_sha256
 from ai_core.domain.ocop_models import RetrievalChunk
 
 ROOT=Path(__file__).resolve().parents[3]
-INDEX_VERSION="ocop-retrieval-v7.0-integrity-accent-prefilter"
+# The chunker and index builder code identify the index format.
+INDEX_VERSION=code_fingerprint("retrieval",[Path(__file__).resolve().parent/name
+                                            for name in ("index_pipeline.py","structure_chunker.py")])
 WORD_RE=re.compile(r"[^\W_]+(?:[_-][^\W_]+)*",flags=re.UNICODE)
 
 
@@ -180,7 +182,7 @@ def create_bm25(chunks:list[dict],path:Path)->dict:
             "records_hash":_records_hash(chunks),
             "n":n,"avgdl":sum(lengths)/n if n else 0,"lengths":lengths,
             "postings":dict(posting),"document_freq":dict(df),"k1":1.5,"b":0.75,
-            "tokenizer":"unicode_casefold_vi_folded_v2"}
+            "tokenizer":"unicode_casefold_vi_folded"}
     path.parent.mkdir(parents=True,exist_ok=True)
     tmp=path.with_suffix(path.suffix+".tmp")
     # gzip.open(filename) embeds wall-clock mtime by default, causing the
@@ -202,7 +204,7 @@ class BM25Search:
         idx=self.data;n=idx["n"]
         if not n:return []
         scores=defaultdict(float)
-        if idx.get('tokenizer')=='unicode_casefold_vi_folded_v2':
+        if idx.get('tokenizer')=='unicode_casefold_vi_folded':
             query_terms={t:1.0 for t in terms(query)}
             query_terms.update({'__vi_fold__'+_fold_vietnamese(t):0.35 for t in terms(query)})
         else:
@@ -295,9 +297,11 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
                 with_mongo:bool=False,mongo_uri:str="mongodb://127.0.0.1:27017",
                 mongo_database:str="ocop_rag",
                 qdrant_host:str="localhost",qdrant_port:int=6333,
-                token_budget:int=512,tokenizer_path:str|None=None)->dict:
+                token_budget:int=512,tokenizer_path:str|None=None,
+                allow_partial:bool=False)->dict:
     src=json.loads((knowledge/"manifest.json").read_text(encoding="utf-8"))
-    if not src.get("complete"):
+    source_complete=bool(src.get("complete"))
+    if not source_complete and not allow_partial:
         raise RuntimeError("evidence extraction corpus incomplete: refusing production index")
     units=[];pages_with_kids=set()
     with (knowledge/"evidence_units.jsonl").open(encoding="utf-8") as f:
@@ -311,7 +315,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
     metadata=_source_metadata()
     # Include source catalog fingerprint: a legal context change must rebuild the index.
     metadata_hash=content_sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True))
-    tokenizer_fingerprint=tokenizer_path or "estimate-v1"
+    tokenizer_fingerprint=tokenizer_path or "estimate"
     corpus_version=hashlib.sha256((INDEX_VERSION+"|"+src["corpus_version"]+
         f"|{max_words}|{overlap}|{token_budget}|{tokenizer_fingerprint}|{metadata_hash}").encode()).hexdigest()[:20]
     counter=_local_token_counter(tokenizer_path) if tokenizer_path else None
@@ -328,6 +332,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
     dense={"enabled":False,"reason":"model_not_loaded; pass --with-dense to build REAL vectors"}
     manifest={"status":"sparse_ready","index_version":INDEX_VERSION,
        "source_knowledge_version":src["corpus_version"],"corpus_version":corpus_version,
+       "source_complete":source_complete,
        "counts":{"chunks":count,"evidence_units":evidence_count,
                  "structured_records":structured_count,"source_pages":src["counts"]["pages"]},
        "bm25":bm25,"dense":dense,"chunking":{
@@ -354,6 +359,9 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
         manifest["mongo"]=index_mongo(index_dir,corpus_version=corpus_version,
             uri=mongo_uri,database=mongo_database)
         _write_json(index_dir/"manifest.json",manifest)
+    if allow_partial:
+        manifest["status"]="partial_debug_not_production"
+        _write_json(index_dir/"manifest.json",manifest)
     return manifest
 
 
@@ -368,6 +376,8 @@ def main():
                    help="Total source+context+body token budget; estimated unless tokenizer path supplied")
     p.add_argument("--tokenizer-path",default=None,
                    help="Optional local HF tokenizer directory (no downloads); requires transformers")
+    p.add_argument("--allow-partial",action="store_true",
+                   help="Debug-only: index incomplete evidence and mark output non-production")
     p.add_argument("--with-dense",action="store_true")
     p.add_argument("--with-mongo",action="store_true",
                    help="Materialize OCOP evidence/chunks/facts in separate MongoDB database")
@@ -385,7 +395,8 @@ def main():
        embedding_revision=args.embedding_revision,
        with_mongo=args.with_mongo,mongo_uri=args.mongo_uri,mongo_database=args.mongo_database,
        qdrant_host=args.qdrant_host,qdrant_port=args.qdrant_port,
-       token_budget=args.token_budget,tokenizer_path=args.tokenizer_path)
+       token_budget=args.token_budget,tokenizer_path=args.tokenizer_path,
+       allow_partial=args.allow_partial)
     print(json.dumps(out,indent=2,ensure_ascii=False))
 
 if __name__=="__main__":main()

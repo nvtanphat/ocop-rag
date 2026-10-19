@@ -20,8 +20,8 @@ def root(tmp_path):
     k.mkdir()
     (k/'manifest.json').write_text(json.dumps({'complete': True, 'corpus_version': 'same-corpus'}))
     put(k/'evidence_units.jsonl', [
-        {'unit_id':'unit-s1','source_id':'SOURCE-A','review_status':'verified','unit_kind':'paragraph','text':'Sản phẩm mật ong được công nhận','spans':[{'pdf_page':1}]},
-        {'unit_id':'unit-s2','source_id':'SOURCE-B','review_status':'verified','unit_kind':'paragraph','text':'Hướng dẫn sản phẩm cà phê','spans':[{'pdf_page':2}]},
+        {'unit_id':'unit-s1','source_id':'SOURCE-A','review_status':'verified','unit_kind':'paragraph','text':'Sản phẩm mật ong được công nhận','spans':[{'pdf_page':1,'bbox':[0,0,100,20],'block_id':'native:0:0','source_sha256':'a'*64}]},
+        {'unit_id':'unit-s2','source_id':'SOURCE-B','review_status':'verified','unit_kind':'paragraph','text':'Hướng dẫn sản phẩm cà phê','spans':[{'pdf_page':2,'bbox':[0,0,100,20],'block_id':'native:0:0','source_sha256':'b'*64}]},
     ])
     put(k/'entities.jsonl', [
         {'entity_id':'doc-a','entity_type':'source_document','source_id':'SOURCE-A','name':'Văn bản A', 'review_status':'verified','evidence_unit_ids':['unit-s1']},
@@ -33,12 +33,14 @@ def root(tmp_path):
 
 def be(entity_id, kind, source='SOURCE-A', evid='unit-s1', label=None, status='verified'):
     return {'entity_id':entity_id, 'kind':kind, 'source_id':source, 'label': label or entity_id, 'status':status,
-            'evidence':[{'source_id':source,'evidence_unit_id':evid,'pdf_page':1,'quote':'Sản phẩm mật ong'}],
+            'evidence':[{'source_id':source,'evidence_unit_id':evid,'pdf_page':1,
+                         'bbox':[0,0,100,20],'quote':'Sản phẩm mật ong'}],
             'attributes':{}}
 
 
 def ref(source='SOURCE-A', uid='unit-s1'):
-    return {'source_id':source,'evidence_unit_id':uid,'pdf_page':1,'quote':'Sản phẩm mật ong'}
+    return {'source_id':source,'evidence_unit_id':uid,'pdf_page':1,
+            'bbox':[0,0,100,20],'quote':'Sản phẩm mật ong'}
 
 
 def test_control_verified_graph_traversal_works(tmp_path):

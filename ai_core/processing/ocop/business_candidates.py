@@ -6,6 +6,7 @@ are NOT eligible for automatic legal scoring without a later validation gate.
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import defaultdict
 from typing import Any
 from ai_core.domain.ocop_ids import stable_id
@@ -13,6 +14,79 @@ from ai_core.domain.ocop_ids import stable_id
 FORM_HEADER=re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?([1-3])\b",re.I)
 AMOUNT=re.compile(r"(?<!\d)(\d{1,3})(?:[,.]0+)?\s*(?:điểm)?\s*$",re.I)
 STARS=re.compile(r"(?<!\d)([1-5])\s*sao\b",re.I)
+
+
+def _header_key(value: str) -> str:
+    decomposed=unicodedata.normalize("NFKD",str(value or "").casefold())
+    unaccented="".join(char for char in decomposed if not unicodedata.combining(char))
+    unaccented=unaccented.replace("đ","d")
+    return " ".join(re.sub(r"[^a-z0-9]+"," ",unaccented).split())
+
+
+_HEADER_ROLES={
+    "sequence": {"stt":10,"tt":10,"so thu tu":10,"thu tu":8},
+    "product": {"ten san pham":10,"san pham":9,"ten san pham ocop":10,
+                "ten hang hoa":9,"hang hoa":8},
+    "producer": {"to chuc ca nhan":12,"ten to chuc ca nhan":12,
+                  "ten chu the":11,"ten to chuc":10,"ten don vi":10,
+                  "co so san xuat":9,"to chuc":8,"don vi":8,"chu the":5},
+    "score": {"diem danh gia":10,"tong diem":9,"diem":7},
+    "star": {"xep loai":10,"phan hang":10,"hang sao":9,"so sao":8},
+    "address": {"dia chi":10,"dia chi chu the":10,"tru so":9},
+    "representative": {"nguoi dai dien":10,"dai dien":9,"ca nhan dai dien":10},
+}
+
+
+def _recognition_layout(rows: list[dict]) -> tuple[int | None,dict[str,int]]:
+    """Infer recognition columns from a table's own header, fail closed on ambiguity."""
+    schemas=[]
+    for row in rows:
+        candidates=defaultdict(list)
+        ambiguous_subject=[]
+        for cell in row["cells"]:
+            col=int(cell.get("col",-1))
+            key=_header_key(cell.get("text") or "")
+            if key=="chu the":
+                ambiguous_subject.append(col)
+            for role,aliases in _HEADER_ROLES.items():
+                priority=aliases.get(key)
+                if priority is not None:
+                    candidates[role].append((priority,col))
+        def unique_best(role: str) -> int | None:
+            matches=candidates.get(role,[])
+            if not matches:
+                return None
+            best=max(priority for priority,_ in matches)
+            cols={col for priority,col in matches if priority==best}
+            return next(iter(cols)) if len(cols)==1 else None
+        roles={role:col for role in _HEADER_ROLES if (col:=unique_best(role)) is not None}
+        # A lone “Chủ thể” is a usable owner heading. If a stronger organization
+        # heading also exists, it is a separate representative/person column.
+        if ambiguous_subject:
+            if len(ambiguous_subject)==1 and "producer" in roles:
+                if roles["producer"] != ambiguous_subject[0] and "representative" not in roles:
+                    roles["representative"]=ambiguous_subject[0]
+            elif len(ambiguous_subject)==1 and "producer" not in roles:
+                roles["producer"]=ambiguous_subject[0]
+        if {"sequence","product","producer"}.issubset(roles):
+            schemas.append((int(row["row"]),roles))
+    if len(schemas)!=1:
+        return None,{}
+    return schemas[0]
+
+
+def _resolved_value(row: dict, columns: dict[str,int], role: str) -> str | None:
+    col=columns.get(role)
+    if col is None:
+        return None
+    cell=(row.get("resolved_columns") or {}).get(str(col)) or {}
+    value=str(cell.get("text") or "").strip()
+    return value or None
+
+
+def _compact(value: str | None) -> str | None:
+    compact=" ".join(str(value or "").split())
+    return compact or None
 
 
 def _row_text(cells: list[dict])->list[dict]:
@@ -91,13 +165,27 @@ def candidates(units:list[dict],source_kinds:dict[str,str])->dict[str,list[dict]
                     "crop_score_candidate":candidate_score,
                     "review_status":"needs_review"})
         elif kind=="recognition_decision":
+            header_row,layout_columns=_recognition_layout(rows)
             for row in rows:
                 if not row["text"]:continue
-                match=STARS.search(row["text"])
+                is_header=header_row is not None and int(row["row"])==header_row
+                sequence=None if is_header else _compact(_resolved_value(row,layout_columns,"sequence"))
+                score=None if is_header else _compact(_resolved_value(row,layout_columns,"score"))
+                star_text=None if is_header else _compact(_resolved_value(row,layout_columns,"star"))
+                match=STARS.search(star_text or "")
                 out["recognition_candidates"].append({"candidate_id":stable_id("recognition_candidate",sid,[uid,row["row"]]),
                     "source_id":sid,"evidence_unit_id":uid,"pdf_page":page,
                     "row_text":row["text"][:1200],
                     "resolved_columns":row["resolved_columns"],
+                    "layout_columns":layout_columns,
+                    "header_row":header_row,
+                    "sequence_candidate":sequence,
+                    "product_candidate":None if is_header else _compact(_resolved_value(row,layout_columns,"product")),
+                    "producer_candidate":None if is_header else _compact(_resolved_value(row,layout_columns,"producer")),
+                    "address_candidate":None if is_header else _compact(_resolved_value(row,layout_columns,"address")),
+                    "representative_candidate":None if is_header else _compact(_resolved_value(row,layout_columns,"representative")),
+                    "score_candidate":score,
+                    "star_raw_candidate":star_text,
                     "row":row["row"],"table_id":unit["structured"].get("table_id"),"star_candidate":int(match.group(1)) if match else None,
                     "review_status":"needs_review"})
     return out

@@ -21,6 +21,16 @@ from ai_core.domain.ocop_models import cell_display_text
 TokenCount = Callable[[str], int]
 LEGAL_HEADING = re.compile(r"^(?:Điều\s+\d+|Mẫu\s+(?:số\s+)?\d+|Phụ\s+lục\b|Chương\s+[IVX0-9]+|Mục\s+\d+)", re.I)
 WORD = re.compile(r"\S+", re.UNICODE)
+CLAUSE_START = re.compile(
+    r"(?m)^[ \t]*(?:\d{1,2}[.)]|[A-Za-z\u00c0-\u024f][.)]|\(\d+\)|[\u2013\u2014-])[ \t]+"
+)
+_HEADER_CUES = (
+    "stt", "tt", "số thứ tự", "tên sản phẩm", "tên chủ thể", "tổ chức/cá nhân",
+    "địa chỉ", "điểm đánh giá", "điểm tối đa", "xếp loại", "phân hạng", "tiêu chí",
+    "nội dung", "chỉ tiêu", "yêu cầu", "đánh giá", "loại hàng hóa",
+    "tên nhóm hàng hóa", "mặt hàng", "cách ghi", "trường hợp",
+    "cơ sở sản xuất kinh doanh", "mã số", "số, ký hiệu", "đơn vị đo", "cách thể hiện",
+)
 
 
 def estimated_tokens(s: str) -> int:
@@ -83,6 +93,10 @@ def _plan_prose(unit: dict, *, max_words: int, overlap: int, budget: int,
     words = list(WORD.finditer(source))
     if not words:
         return []
+    structural_starts={
+        match.start()+len(match.group(0))-len(match.group(0).lstrip())
+        for match in CLAUSE_START.finditer(source)
+    }
     result=[]
     start=0
     while start<len(words):
@@ -96,15 +110,29 @@ def _plan_prose(unit: dict, *, max_words: int, overlap: int, budget: int,
             last=pos
             if count(projected)>budget:
                 break
-        # Prefer source paragraph/sentence boundaries near the budget if possible.
+        # Prefer a legal clause/point boundary near the budget. Such a boundary
+        # is a clean continuation point, so the next chunk need not overlap it.
+        hard_boundary=False
         if last>start+3 and last<len(words)-1:
             threshold=start+max(1,int((last-start)*.65))
-            for pos in range(last,threshold-1,-1):
-                between=source[words[pos].end():words[pos+1].start()]
-                tail=words[pos].group()
-                if '\n' in between or tail.endswith(('.', '!', '?', ';', ':')):
-                    last=pos
+            for pos in range(last,threshold,-1):
+                if words[pos].start() in structural_starts:
+                    last=pos-1
+                    hard_boundary=True
                     break
+        if (not hard_boundary and last+1<len(words) and
+                words[last+1].start() in structural_starts):
+            hard_boundary=True
+        # If no legal boundary fits, prefer a source line or sentence boundary.
+        if last>start+3 and last<len(words)-1:
+            threshold=start+max(1,int((last-start)*.65))
+            if not hard_boundary:
+                for pos in range(last,threshold-1,-1):
+                    between=source[words[pos].end():words[pos+1].start()]
+                    tail=words[pos].group()
+                    if '\n' in between or tail.endswith(('.', '!', '?', ';', ':')):
+                        last=pos
+                        break
         a=words[start].start();b=words[last].end()
         raw=source[a:b]
         text=prefix+raw
@@ -112,12 +140,12 @@ def _plan_prose(unit: dict, *, max_words: int, overlap: int, budget: int,
                                 heading=heading,token_count=count(text),over_budget=count(text)>budget))
         if last==len(words)-1:
             break
-        nxt=max(start+1,last+1-overlap)
+        nxt=last+1 if hard_boundary else max(start+1,last+1-overlap)
         start=nxt
     return result
 
 
-def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[str,...],bool]:
+def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[str,...],bool,tuple[int,...]]:
     source=unit['text']
     table=(unit.get('structured') or {})
     cells=table.get('cells') or []
@@ -135,17 +163,36 @@ def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[s
             if line.strip():
                 rows.append((i,line.strip(),[]))
     if not rows:
-        return '',[],(),False
+        return '',[],(),False,()
     explicit_headers=tuple(r for rid,r,cs in rows if cs and any(c.get('is_header') or c.get('header') for c in cs))
     if explicit_headers:
         header_rows={rid for rid,r,cs in rows if cs and any(c.get('is_header') or c.get('header') for c in cs)}
         inferred=False
-    elif len(rows)>1 and any(term in rows[0][1].casefold() for term in
-            ('tiêu chí','điểm','nội dung','tên sản phẩm','stt','số thứ tự','chỉ tiêu','yêu cầu','đánh giá')):
-        # Do not assume an ordinary first data row is a verified column header.
-        header_rows={rows[0][0]}
-        explicit_headers=(rows[0][1],)
-        inferred=True
+    elif len(rows)>1:
+        # Table parsers may omit header flags, split header text across lines,
+        # or include a title/preface row before the actual columns. Search only
+        # the first few rows and require multiple independent column cues.
+        candidates=[]
+        for row_id,row_text,row_cells in rows[:3]:
+            header_values=(
+                [re.sub(r"\s+"," ",cell_display_text(c)).strip().casefold() for c in row_cells]
+                if row_cells else
+                [re.sub(r"\s+"," ",part).strip().casefold() for part in row_text.split("|")]
+            )
+            nonempty=[value for value in header_values if value]
+            matched=[value for value in nonempty if any(cue in value for cue in _HEADER_CUES)]
+            sequence=any(value in ("tt","stt","số thứ tự") for value in nonempty)
+            if (len(nonempty)>=2 and len(matched)>=2 and
+                    (len(matched)>=3 or sequence or len(matched)==len(nonempty))):
+                candidates.append((len(matched),row_id,row_text))
+        if candidates:
+            _,header_row,header_text=max(candidates,key=lambda item:(item[0],-item[1]))
+            header_rows={header_row}
+            explicit_headers=(header_text,)
+            inferred=True
+        else:
+            header_rows=set()
+            inferred=False
     else:
         header_rows=set()
         inferred=False
@@ -154,7 +201,7 @@ def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[s
         remaining=rows
         header_rows=set()
     header_cells=[c for rid,_,cs in rows if rid in header_rows for c in cs]
-    return source,remaining,explicit_headers,inferred
+    return source,remaining,explicit_headers,inferred,tuple(sorted(header_rows))
 
 
 def _table_spans(unit:dict,row_cells:list[dict],header_cells:list[dict]=())->tuple[dict,...]:
@@ -181,7 +228,7 @@ def _table_spans(unit:dict,row_cells:list[dict],header_cells:list[dict]=())->tup
 
 def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
                 meta:dict|None)->list[ChildPart]:
-    source, rows, headers, inferred = _table_data(unit)
+    source, rows, headers, inferred, header_row_ids = _table_data(unit)
     if not rows:return []
     table=(unit.get('structured') or {})
     table_id=table.get('table_id') or (unit.get('spans') or [{}])[0].get('table_id')
@@ -191,8 +238,8 @@ def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
     header='\n'.join(headers)
     header_cells=[c for c in table.get('cells',[]) or [] if c.get('is_header') or c.get('header')]
     if not header_cells and inferred and table.get('cells'):
-        first_row=min(int(c.get('row',0)) for c in table['cells'])
-        header_cells=[c for c in table['cells'] if int(c.get('row',0))==first_row]
+        header_ids=set(header_row_ids)
+        header_cells=[c for c in table['cells'] if int(c.get('row',0)) in header_ids]
     # Each extracted source row remains atomic. Header labels are repeated,
     # and column-name/value pairs are included when coordinates are known.
     col_labels={int(c.get('col',0)):str(c.get('text') or '').strip() for c in header_cells}
@@ -238,6 +285,12 @@ def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
         buffer.clear()
 
     for row in rows:
+        row_id,_,row_cells=row
+        starts_merged_group=any(int(cell.get('rowspan') or 1)>1 for cell in row_cells)
+        if buffer and starts_merged_group:
+            # Begin a fresh child when source geometry starts another merged
+            # row group, such as the next producer in a recognition table.
+            flush()
         candidate=[*buffer,row]
         raw_word_count=sum(len(r.split()) for _,r,_ in candidate)
         if buffer and (raw_word_count>max_words or count(compose(candidate))>budget):

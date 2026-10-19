@@ -10,9 +10,9 @@ import re
 from ai_core.orchestration.ocop.contracts import Intent, Route
 from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath,choose_retrieval_path
 from ai_core.orchestration.ocop.capabilities import (
-    TOOL_REGISTRY, TOOL_DEPENDENCIES, PRIVATE_TOOLS)
+    TOOL_REGISTRY, TOOL_DEPENDENCIES, PRIVATE_TOOLS, MAX_TOOL_CALLS)
 
-MAX_TOOLS = 8
+MAX_TOOLS = MAX_TOOL_CALLS
 # A transport/contract failure is not a legitimate zero-hit lookup. Never
 # disguise these errors as a successful text recovery.
 RECOVERY_BLOCKING_STATUSES = frozenset({

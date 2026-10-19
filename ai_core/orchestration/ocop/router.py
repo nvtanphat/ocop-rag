@@ -11,7 +11,9 @@ from datetime import date
 import re
 import unicodedata
 from ai_core.orchestration.ocop.contracts import Intent, Route
-from ai_core.orchestration.ocop.capabilities import Capability, TOOL_REGISTRY, CAPABILITY_TO_TOOLS, PRIVATE_TOOLS
+from ai_core.orchestration.ocop.capabilities import (
+    Capability, TOOL_REGISTRY, CAPABILITY_TO_TOOLS, PRIVATE_TOOLS, MAX_TOOL_CALLS,
+)
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
 from ai_core.orchestration.ocop.semantic import (
     detect_capabilities, normalize, temporal_question, private_dossier_action,
@@ -27,6 +29,11 @@ PRODUCT = re.compile(r"(?:sản phẩm|có sản phẩm|với sản phẩm)\s+([
 PRODUCTS = ("rau củ quả tươi", "rau củ quả", "hạt sen", "mật ong", "cà phê", "nước mắm", "chè", "trà", "sầu riêng", "gạo", "cam", "bưởi", "tổ yến")
 REGIONS = ("Quảng Nam", "Huế", "Hải Phòng", "Hà Tĩnh", "Đà Nẵng", "Hồ Chí Minh", "Hà Nội", "Bình Định", "Gia Lai", "Cần Thơ", "Lâm Đồng", "Đồng Nai", "Nghệ An", "Khánh Hòa", "Quảng Ninh", "Thanh Hóa", "An Giang", "Đồng Tháp", "Bắc Ninh", "Ninh Bình", "Phú Thọ", "Quảng Trị", "Quảng Ngãi", "Tây Ninh", "Cao Bằng", "Sơn La", "Lạng Sơn", "Lào Cai", "Điện Biên", "Lai Châu", "Tuyên Quang", "Thái Nguyên", "Hưng Yên")
 TOOLS = frozenset(TOOL_REGISTRY)
+# Calibration on the temporary 893-chunk native-text corpus: 13 OCOP-relevant
+# prompts included 8 keyword-gate false rejects; 7 of those scored >=0.60.
+# Six out-of-scope probes scored at most 0.50, with none reaching this cutoff.
+# Re-measure when the corpus/chunker or the scope probe set materially changes.
+MIN_INDEXED_CONTENT_BIGRAM_COVERAGE = 0.60
 ROUTES = {
  Intent.OCOP_OVERVIEW:("hybrid",["search_regulations"]),
  Intent.EXACT_LOOKUP:("exact",["lookup_legal_unit"]),
@@ -168,7 +175,8 @@ def _merge_followup(prior:dict,updates:dict)->dict:
     return slots
 
 
-def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict]|None=None)->Route:
+def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict]|None=None,
+                indexed_content_bigram_coverage:Callable[[str],float|None]|None=None)->Route:
     q=query.strip()
     if not q:return Route(intent=Intent.CLARIFY,strategy="clarify",needs_clarification=True,
                           missing_slots=["question"],reason_codes=["empty_query"])
@@ -210,8 +218,21 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
     if updates.get("form_id") or updates.get("document_code") or (updates.get('star_rating') and
             _contains(lower,('san pham','ocop','dieu kien'))) or _contains(lower,("diem", "mau", "dang ky", "nop ho so", "so sanh nam")):
         out_of_scope=False
-    if _contains(lower,("ket qua bong da", "gia bitcoin", "xem tarot", "du bao thoi tiet", "viet ma doc")):
+    explicit_out_of_scope=_contains(lower,("ket qua bong da", "gia bitcoin", "xem tarot", "du bao thoi tiet", "viet ma doc"))
+    if explicit_out_of_scope:
         out_of_scope=True
+    reopened_by_indexed_coverage=False
+    # The index is consulted only after the deterministic keyword gate would
+    # reject the query. Explicitly off-topic requests still remain blocked.
+    if out_of_scope and not explicit_out_of_scope and indexed_content_bigram_coverage is not None:
+        try:
+            coverage=indexed_content_bigram_coverage(q)
+        except (OSError,RuntimeError,ValueError,TypeError,KeyError):
+            coverage=None
+        if isinstance(coverage,(int,float)) and not isinstance(coverage,bool) and \
+                MIN_INDEXED_CONTENT_BIGRAM_COVERAGE<=coverage<=1.0:
+            out_of_scope=False
+            reopened_by_indexed_coverage=True
     scores={}
     if out_of_scope:scores[Intent.OUT_OF_SCOPE]=100
     requests_scoring=private_scoring_action(lower)
@@ -362,9 +383,14 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
     if missing:
         return Route(intent=Intent.CLARIFY,strategy="clarify",slots=slots,needs_clarification=True,
                      missing_slots=missing,reason_codes=["required_dossier_context_missing"])
+    if len(required)>MAX_TOOL_CALLS:
+        return Route(intent=Intent.CLARIFY,strategy="clarify",slots=slots,needs_clarification=True,
+                     missing_slots=["split_question"],
+                     reason_codes=["tool_budget_exceeded"]+cap_reasons)
     secondary=[x for x in scores if x!=effective and scores[x]>=40]
     return Route(intent=intent,strategy=strategy,retrieval_path=choose_retrieval_path(required),
                  slots=slots,required_tools=required,
-                 secondary_intents=secondary[:3],capabilities=[x.value for x in capabilities],
-                 reason_codes=(["followup_slot_override" if followup else "deterministic_multi_signal"]+cap_reasons),
+                  secondary_intents=secondary[:3],capabilities=[x.value for x in capabilities],
+                  reason_codes=(["followup_slot_override" if followup else "deterministic_multi_signal"]+
+                                cap_reasons+(["indexed_content_bigram_scope_recovery"] if reopened_by_indexed_coverage else [])),
                  confidence=None)

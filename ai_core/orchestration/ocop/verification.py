@@ -65,6 +65,7 @@ def verify_claims(answer:str,citations:list[dict],evidence_rows:list[dict],
         for i,c in enumerate(citations,1):
             if (row.get('source_id')==c.get('source_id') and
                 (row.get('evidence_unit_id') or row.get('unit_id'))==c.get('evidence_unit_id') and
+                (not c.get('chunk_id') or row.get('chunk_id')==c.get('chunk_id')) and
                 isinstance(spans,list) and any(isinstance(span,dict) and
                     span.get('pdf_page')==c.get('pdf_page') and
                     isinstance(span.get('pdf_page'),int) and span['pdf_page']>0

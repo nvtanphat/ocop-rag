@@ -125,6 +125,9 @@ class OcopSystemPipeline:
             knowledge.get("pipeline_version") == KNOWLEDGE_VERSION and business_ready
         )
         from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
+        from ai_core.graph.ocop.review import ledger_path,ledger_digest
+        review_current=(graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
+                        ==ledger_digest(ledger_path(self.root)))
         lineage_ok = bool(
             business_consistent and page.get("parser_version")==PARSER_VERSION and
             source_ok and snapshot and page.get("complete") and knowledge.get("complete")
@@ -134,7 +137,7 @@ class OcopSystemPipeline:
             and index.get('index_version') == INDEX_VERSION
             and graph.get("source_knowledge_version") == knowledge.get("corpus_version")
             and index.get("status") in ("sparse_ready", "hybrid_ready")
-            and graph.get("status") == "local_ready" and files_ok
+            and graph.get("status") == "local_ready" and files_ok and review_current
         )
         updating = (self.data / ".promoting").exists()
         result = {
@@ -149,6 +152,7 @@ class OcopSystemPipeline:
             "corpus_version": index.get("corpus_version"),
             "dense_ready": bool(index.get("dense", {}).get("enabled", False)),
             "graph_ready": graph.get("status") == "local_ready",
+            "human_review_current":review_current,
             "business_semantics_ready": business_ready,
             "semantic_proposals": knowledge.get("semantic_proposals",{}),
             "neo4j_ready": graph.get("neo4j", {}).get("status") == "uploaded",
@@ -257,12 +261,16 @@ class OcopSystemPipeline:
                         qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
                     )
                     old_graph = _load_json(self.data / "graph" / "manifest.json")
+                    from ai_core.graph.ocop.review import ledger_path,ledger_digest
                     if (reuse_knowledge and old_graph.get("status") == "local_ready"
-                            and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")):
+                            and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")
+                            and old_graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
+                                ==ledger_digest(ledger_path(self.root))):
                         shutil.copytree(self.data / "graph", stage / "graph")
                         graph = old_graph
                     else:
-                        graph = build_graph(stage / "knowledge", stage / "graph")
+                        from ai_core.graph.ocop.review import ledger_path
+                        graph = build_graph(stage / "knowledge", stage / "graph",review_decisions=ledger_path(self.root))
                     if index["source_knowledge_version"] != knowledge["corpus_version"] or graph["source_knowledge_version"] != knowledge["corpus_version"]:
                         raise RuntimeError("Cross-store corpus version mismatch")
                     if options.dense and not index.get("dense", {}).get("enabled"):

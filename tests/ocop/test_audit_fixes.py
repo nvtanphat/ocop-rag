@@ -36,7 +36,8 @@ def graph_fixture(tmp_path):
          'evidence_unit_ids':['u1'],'review_status':'verified'},
     ])
     save_rows(kb/'evidence_units.jsonl',[{'unit_id':'u1','source_id':'D1','unit_kind':'article',
-                                          'text':'Điều 1','spans':[{'pdf_page':2}],
+                                          'text':'Điều 1','spans':[{'pdf_page':2,'bbox':[0,0,100,20],
+                                                                    'block_id':'native:0:0','source_sha256':'a'*64}],
                                           'review_status':'verified'}])
     save_rows(kb/'relations.jsonl',[{'relation_type':'CONTAINS','source_entity_id':'doc-old',
                                     'target_entity_id':'u-old','evidence_unit_id':'u1','source_id':'D1',

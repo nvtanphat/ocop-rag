@@ -9,6 +9,7 @@ const menu = [
   { id: 'recognitions', icon: PackageCheck, label: 'Sản phẩm công nhận' },
   { id: 'documents', icon: FileText, label: 'Thư viện văn bản' },
   { id: 'graph', icon: GitBranch, label: 'Đồ thị tri thức' },
+  { id: 'review', icon: ClipboardList, label: 'Người duyệt' },
   { id: 'system', icon: Activity, label: 'Trạng thái hệ thống' },
 ] as const
 

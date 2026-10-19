@@ -5,14 +5,17 @@ from pathlib import Path
 from ai_core.domain.ocop_ids import content_sha256
 
 
-def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False) -> dict:
+def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False,
+                            allow_partial: bool = False) -> dict:
     manifest_file = path / "manifest.json"
     if not manifest_file.is_file():
         if allow_legacy:
             return {"status": "legacy_unverified"}
         raise ValueError("graph manifest missing")
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-    if manifest.get("status") != "local_ready":
+    status=manifest.get("status")
+    if status!="local_ready" and not (allow_partial and status=="partial_debug_not_production"
+                                      and manifest.get("source_complete") is False):
         raise ValueError("graph snapshot is not ready")
     expected = manifest.get("file_sha256")
     if not isinstance(expected, dict) or not expected:

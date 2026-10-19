@@ -3,11 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 NODE_TYPES = frozenset({
-    "SourceDocument", "EvidenceUnit", "Article", "Clause", "Annex", "Regulation",
+    "SourceDocument", "EvidenceUnit", "Article", "Clause", "Point", "Annex", "Regulation",
     "ProductGroup", "ProductSubgroup", "CriterionSheet", "Criterion",
-    "ScoreOption", "Condition", "EvidenceType", "FormTemplate", "FormField",
+    "ScoreOption", "StarLevel", "Condition", "EvidenceType", "FormTemplate", "FormField",
     "RecognitionDecision", "Product", "Organization", "AdministrativeArea", "LocalGuidance",
     "CandidateFact", "Mention", "CriterionRowCandidate", "RecognitionRecord", "RuleCandidate",
+    "Authority", "ProcedureStep",
 })
 EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "CONTAINS": (frozenset(NODE_TYPES), frozenset(NODE_TYPES)),
@@ -16,14 +17,18 @@ EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "HAS_CRITERION_CANDIDATE": (frozenset(NODE_TYPES), frozenset({"CandidateFact","Criterion"})),
     "HAS_ARTICLE": (frozenset({"Regulation","SourceDocument"}), frozenset({"Article"})),
     "HAS_CLAUSE": (frozenset({"Article"}), frozenset({"Clause"})),
+    "HAS_POINT": (frozenset({"Clause"}), frozenset({"Point"})),
     "HAS_ANNEX": (frozenset({"SourceDocument","Regulation"}), frozenset({"Annex"})),
-    "DEFINES_GROUP": (frozenset({"Annex"}), frozenset({"ProductGroup"})),
+    "DEFINES_GROUP": (frozenset({"Annex","SourceDocument"}), frozenset({"ProductGroup"})),
     "HAS_SUBGROUP": (frozenset({"ProductGroup"}), frozenset({"ProductSubgroup"})),
     "USES_SHEET": (frozenset({"ProductSubgroup","ProductGroup"}), frozenset({"CriterionSheet"})),
     "HAS_CRITERION": (frozenset({"CriterionSheet"}), frozenset({"Criterion"})),
+    "HAS_SUBCRITERION": (frozenset({"Criterion"}), frozenset({"Criterion"})),
     "HAS_OPTION": (frozenset({"Criterion"}), frozenset({"ScoreOption"})),
+    "MINIMUM_FOR": (frozenset({"ScoreOption"}), frozenset({"StarLevel"})),
     "HAS_CONDITION": (frozenset({"Criterion"}), frozenset({"Condition"})),
-    "REQUIRES_EVIDENCE": (frozenset({"Criterion"}), frozenset({"EvidenceType"})),
+    "REQUIRES_EVIDENCE": (frozenset({"Criterion","ProcedureStep"}), frozenset({"EvidenceType"})),
+    "RESPONSIBLE_FOR": (frozenset({"Authority"}), frozenset({"ProcedureStep"})),
     "HAS_FIELD": (frozenset({"FormTemplate"}), frozenset({"FormField"})),
     "RECOGNIZES": (frozenset({"RecognitionDecision","RecognitionRecord"}), frozenset({"Product"})),
     "HAS_RECORD": (frozenset({"RecognitionDecision"}), frozenset({"RecognitionRecord"})),
