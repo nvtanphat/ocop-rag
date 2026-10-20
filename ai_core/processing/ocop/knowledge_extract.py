@@ -22,7 +22,7 @@ from ai_core.processing.ocop.registry import load_registry
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.processing.ocop.temporal_candidates import temporal_candidates
 from ai_core.knowledge.ocop.extractor import extract_semantics
-from ai_core.knowledge.ocop.llm_proposals import propose
+from ai_core.knowledge.ocop.llm_proposals import propose, reconcile, semantic_profile
 from ai_core.knowledge.ocop.quality import audit_knowledge
 from ai_core.knowledge.ocop.contracts import BusinessEntity, BusinessRelation, validate_business_graph
 
@@ -485,14 +485,16 @@ def extract_entities_relations(units:list[dict],sources:dict[str,dict])->tuple[l
 
 
 def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|None=None,
-                      semantic_client=None, semantic_max_units:int=50)->dict:
+                      semantic_client=None, semantic_max_units:int=50,
+                      semantic_cache_dir:Path|None=None, semantic_workers:int=1,
+                      semantic_gleanings:int=1)->dict:
     manifest=json.loads((input_dir/"manifest.json").read_text(encoding="utf-8"))
     if not manifest.get("complete") and max_pages is None:
         raise RuntimeError("PDF PageArtifact manifest not complete")
     source_info={s.source_id:s.model_dump(mode="json") for s in load_registry(root/"configs/ocop_sources.json")}
     snapshot=manifest["input_snapshot_sha256"]
-    semantic_profile = ("none" if semantic_client is None else f"{semantic_client.model}:{semantic_max_units}")
-    version=hashlib.sha256((VERSION+"|"+snapshot+"|"+semantic_profile).encode()).hexdigest()[:20]
+    profile = ("none" if semantic_client is None else semantic_profile(semantic_client.model,semantic_max_units,semantic_gleanings))
+    version=hashlib.sha256((VERSION+"|"+snapshot+"|"+profile).encode()).hexdigest()[:20]
     output_dir.mkdir(parents=True,exist_ok=True)
     units_file=output_dir/"evidence_units.jsonl";facts_file=output_dir/"domain_facts.jsonl"
     entities_file=output_dir/"entities.jsonl";relations_file=output_dir/"relations.jsonl"
@@ -543,13 +545,19 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     domain_candidates["temporal_candidates"]=temporal_candidates(all_units)
     semantics=extract_semantics(all_units,{sid:row["source_kind"] for sid,row in source_info.items()},domain_candidates,
                                source_registry=source_info)
-    llm_stats={"enabled":semantic_client is not None, "model":semantic_profile, "processed_unit_count":0, "errors":0}
+    llm_stats={"enabled":semantic_client is not None, "model":profile, "processed_unit_count":0, "errors":0}
     if semantic_client is not None:
-        proposed=propose(all_units,semantic_client,max_units=semantic_max_units)
+        proposed=propose(all_units,semantic_client,max_units=semantic_max_units,
+                         cache_dir=semantic_cache_dir,max_workers=semantic_workers,
+                         gleanings=semantic_gleanings)
+        proposed=reconcile(proposed,semantics["business_entities"],semantics["business_relations"])
         for category,name in (("entities","business_entities"),("relations","business_relations"),("rules","business_rules")):
             semantics[name]=sorted(semantics[name]+proposed[category],key=lambda row: next((row[k] for k in ("entity_id","relation_id","rule_id") if k in row),""))
         llm_stats["processed_unit_count"]=proposed["processed_unit_count"]
         llm_stats["errors"]=len(proposed["errors"])
+        llm_stats["chunk_count"]=proposed["chunk_count"]
+        llm_stats["grounding_dropped"]=proposed["grounding"]
+        llm_stats["reconciled"]=proposed["reconciled"]
         semantics["business_llm_errors"]=proposed["errors"]
     # Validate the combined graph, including any opt-in LLM proposals; isolated
     # validation per extractor is insufficient once datasets are merged.

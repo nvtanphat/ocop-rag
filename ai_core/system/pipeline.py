@@ -51,6 +51,12 @@ def _exclusive_lock(path: Path) -> Iterator[None]:
         path.unlink(missing_ok=True)
 
 
+def _semantic_profile(options: "PipelineOptions") -> str:
+    from ai_core.knowledge.ocop.llm_proposals import semantic_profile
+    from ai_core.orchestration.ocop.llm import extraction_gleanings, extraction_model_name
+    return semantic_profile(extraction_model_name(), options.semantic_max_units, extraction_gleanings())
+
+
 @dataclass(frozen=True)
 class PipelineOptions:
     dpi: int = 300
@@ -192,7 +198,7 @@ class OcopSystemPipeline:
                 semantic_ok = (not options.semantic_extract or
                      (knowledge_manifest.get("semantic_proposals",{}).get("enabled") and
                      knowledge_manifest["semantic_proposals"].get("processed_unit_count") is not None and
-                     knowledge_manifest["semantic_proposals"].get("model") == f"qwen3.5:2b:{options.semantic_max_units}"))
+                     knowledge_manifest["semantic_proposals"].get("model") == _semantic_profile(options)))
                 if dense_config_ok and pdf_config_ok and mongo_ok and neo4j_ok and semantic_ok:
                     return {**current, "reused": True}
             # Construct the complete pipeline away from the live artifact tree.
@@ -218,7 +224,7 @@ class OcopSystemPipeline:
                     knowledge_semantics = knowledge_config.get("semantic_proposals", {})
                     semantic_match = (not options.semantic_extract or
                          (knowledge_semantics.get("enabled") and
-                          knowledge_semantics.get("model") == f"qwen3.5:2b:{options.semantic_max_units}"))
+                          knowledge_semantics.get("model") == _semantic_profile(options)))
                     from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
                     reuse_knowledge = (reuse_pages and knowledge_config.get("complete")
                         and knowledge_config.get("pipeline_version") == KNOWLEDGE_VERSION
@@ -245,11 +251,15 @@ class OcopSystemPipeline:
                     else:
                         semantic_client = None
                         if options.semantic_extract:
-                            from ai_core.orchestration.ocop.llm import OllamaClient
-                            semantic_client = OllamaClient(model="qwen3.5:2b",url=os.getenv("OCOP_OLLAMA_URL","http://127.0.0.1:11434"))
+                            from ai_core.orchestration.ocop.llm import (
+                                extraction_gleanings, extraction_workers, make_extraction_client)
+                            semantic_client = make_extraction_client()
                         knowledge = extract_artifacts(self.root, input_dir=stage / "pages",
                             output_dir=stage / "knowledge", semantic_client=semantic_client,
-                            semantic_max_units=options.semantic_max_units)
+                            semantic_max_units=options.semantic_max_units,
+                            semantic_cache_dir=self.data / "cache" / "llm",
+                            semantic_workers=extraction_workers() if options.semantic_extract else 1,
+                            semantic_gleanings=extraction_gleanings() if options.semantic_extract else 1)
                     if not knowledge.get("complete"):
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
                     index = build_index(

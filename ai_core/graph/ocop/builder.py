@@ -132,6 +132,14 @@ def _dedupe_citations(citations: list[dict]) -> list[dict]:
             seen.add(key);result.append(citation)
     return result
 
+def _with_provenance(row: dict) -> dict:
+    """Keep LLM origin visible to reviewers; deterministic rows keep their properties unchanged."""
+    properties=dict(row.get('attributes') or {})
+    method=str(row.get('extraction_method') or '')
+    if method.startswith('llm_candidate'):
+        properties['extraction_method']=method
+    return properties
+
 def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = True,
                 allow_partial: bool = False, review_decisions: Path | None = None) -> dict:
     src = json.loads((knowledge / "manifest.json").read_text(encoding="utf-8"))
@@ -382,7 +390,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                          label=(row.get('attributes',{}).get('document_number_candidate') or
                                 document_registry.get(row['source_id'],{}).get('document_number') or row['label'])
                                 if row['kind'] in {'RecognitionDecision','LocalGuidance','SourceDocument'} else row['label'],
-                         properties=row.get("attributes", {}),citations=citations)
+                         properties=_with_provenance(row),citations=citations)
             for ref in refs:
                 add_edge("SUPPORTED_BY",node_id,
                          evidence_node_ids[(ref["source_id"],ref["evidence_unit_id"])],
@@ -397,7 +405,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                          aliases.get(row["target_entity_id"],row["target_entity_id"]),
                          ref["evidence_unit_id"],ref["source_id"],
                          "needs_review" if row.get("status") == "candidate" else row["status"],
-                         evidence_ref=ref, attributes=row.get('attributes'))
+                         evidence_ref=ref, attributes=_with_provenance(row) or None)
         for row in records(knowledge / "business_rules.jsonl"):
             if row.get('kind')=='scoring':
                 continue  # raw scoring statements are retained in knowledge for debug/retrieval
