@@ -36,7 +36,7 @@ def _norm(text):
 
 def _recipient(text,match):
     # OCR often misreads the tone of "đề" ("để", "đê"); the cue still marks a recipient.
-    return bool(re.search(r'(?:đ[ềểêe]\s+nghị|đ[ềểêe]\s+xuất|gửi|đến|cho|về|trình|tới|của|lên|từ|họp)\s*$',text[:match.start()],re.I))
+    return bool(re.search(r'(?:đ[ềểếêe]\s+nghị|đ[ềểếêe]\s+xuất|gửi|đến|cho|về|trình|tới|của|lên|từ|họp)\s*$',text[:match.start()],re.I))
 
 
 def _subjects(text):

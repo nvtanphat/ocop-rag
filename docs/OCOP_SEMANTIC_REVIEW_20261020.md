@@ -1,5 +1,45 @@
 # Manual PDF review - 2026-10-20
 
+## Final independent reinspection
+
+The table below is the earlier review journal; its sample numbering belongs to that
+earlier selection. A fresh deterministic sample was rendered and independently viewed
+after commit 13afce6: `samples.json` contains 192 review turns (102 passed, 25 failed,
+65 LLM document mentions), shown in all 60 contact sheets. All five targeted cross-page
+HAS_OPTION cards were also viewed. Six source PDF hashes were checked against the lock
+before this rendering. No automatic semantic grading script was executed.
+
+Fresh inspection findings, judged from the images:
+
+| Scope | Finding and final disposition |
+|---|---|
+| RESPONSIBLE_FOR 01–10 passed | Actors match the source, including collective ministries on NQ15 p2, commune/province separation, and advisory roles on QD26 p6–7. |
+| OWNED_BY / RECOGNIZES / DECLARED_BY, 10 each | All match printed QD525 p3 rows and merged organization cells. No score/star validity is certified. |
+| AMENDS (1), BASED_ON (1), REPLACES (2) | Number and clause match QD1489 p1, QD525 p1, QD26 p13. SUSPENDS has no real occurrence. |
+| HAS_OPTION (10 + 5 targeted), HAS_CRITERION (6), HAS_SUBCRITERION (10) | Printed parent/child scope matches, including QD26 p18–19, p19–20, p28–29. Notes remain distinct from options. |
+| REQUIRES_EVIDENCE (all 2 passed) | Explicit test-sheet requirement in the note under criterion 9 on QD26 p22 and p32. Failed score alternatives and the agency-as-applicant edge are not promoted. |
+| HAS_CONDITION (5 failed), Condition (5 failed) | Qualifications are visible, but remain review candidates; no executable scoring interpretation is asserted. |
+| Fresh failed RESPONSIBLE_FOR:02 / ProcedureStep:01 | NQ15 p2 inspection with object phrase “đối với” was a gate false negative. New regression went red, then green. Restored only explicit single-actor inspection cases. |
+| QD26 p7–8 request recipient | OCR variant “đế nghị/đế xuất” could make the recipient an actor. Parameterized regression went red, then green; source text was not rewritten. |
+| Fresh failed RESPONSIBLE_FOR:04 / ProcedureStep:05 | Real action, but cross-page inheritance (QD26 p5–6) / conservative context handling (QD1489 p3) remains failed. This is a recall limitation. |
+| Fresh LLM EvidenceType:25 | OCR renders an annex number as “m” on Thanh Sen p2; incorrect label retained verbatim, not an accepted requirement. |
+| Fresh LLM EvidenceType:26, 50, 58, 61 | Trade-promotion results, market information, storefront URL and conditional testing results do not prove unconditional required-document edges. Kept unlinked/failed as applicable. |
+| Fresh LLM EvidenceType:47, 51 | Clipped source fragments do not establish complete document names; failed. |
+| Fresh ScoreOption:05 | OCR includes checkbox “O” in “O Kém” (QD26 p21). Option role and parent are correct; label noise remains verbatim. |
+
+All 65 LLM EvidenceType mentions were viewed. The remaining mentions are visible source
+nouns/lists, outputs or scoring alternatives; visibility alone does not authorize entity
+equivalence or a requirement edge. All 52 passed LLM EvidenceTypes without passed semantic
+edges remain unforced. The regenerated sample files retain exact record IDs, citation
+coordinates, evidence IDs and hashes; sample labels are not new verification ledger decisions.
+
+Final rebuild: LLM 1194 nodes / 2357 edges (739 / 1536 passed), baseline 901 / 1971
+(687 / 1462 passed). Duplicate edges=0, rejected=0, human_verified=0; no baseline node or
+edge lost with LLM, including the passed subset. Final semantic coverage 76/76 units,
+80 chunks, zero errors or omissions, zero new API calls. Both graphs remain partial.
+
+## Earlier inspection journal
+
 Seed 20261020; source-balanced fixed sample: 10 passed/type (all if fewer), 5 failed/type; all 65 LLM EvidenceType mentions. PDF SHA-256 checked against the lock before rendering at 200 DPI. All 60 contact sheets and five targeted cross-page crops were viewed. The mixed-actor sample RESPONSIBLE_FOR:10 was superseded by its two literal clauses after a red/green regression; both clauses are visible in its p7 crop. No image text was copied into graph data.
 
 Scratch: `C:/Users/PC/AppData/Local/Temp/ocop-semantic-quality-20261020`; `final_samples.json`, `manual_judgments.json`, `verified_source_sha256.json`, `invariants.json`, `cache_migrations.json`, `build_results.json`, `crops/`. Full rows retain evidence IDs, bboxes and hashes. This journal judges extraction assertions, not legal/scoring validity; a correct candidate may intentionally remain failed.

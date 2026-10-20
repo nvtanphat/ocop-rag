@@ -412,9 +412,20 @@ def _entails(edge, source, target, units):
         )
     if relation == "RESPONSIBLE_FOR":
         statement = b.get("statement_candidate") or target["label"]
-        conditional = r"\b(?:nếu|trường\s+hợp|trừ\s+khi|có\s+thể|dự\s+kiến|không|chưa|đối\s+với)\b"
-        if re.search(conditional, statement, re.I):
+        conditional = r"\b(?:nếu|trường\s+hợp|trừ\s+khi|có\s+thể|dự\s+kiến|không|chưa)\b"
+        scoped = r"^\s*(?:(?:\d+|[a-zđ])[.)]\s*)?đối\s+với\b"
+        if re.search(conditional, statement, re.I) or re.search(scoped, statement, re.I):
             return False
+        if re.search(r'đối\s+với', statement, re.I):
+            # Only relax object phrases for an explicit, single inspection actor.
+            # Recognition/withdrawal scopes and embedded actors still abstain.
+            subjects = _subjects(statement)
+            if len(subjects) != 1 or not re.fullmatch(
+                    r'\s*(?:(?:\d+|[a-zđ])[.)]\s*)?', statement[:subjects[0].start()], re.I):
+                return False
+            if not re.match(r'\s*:?\s*(?:kiểm\s+tra|theo\s+dõi|giám\s+sát|xử\s+lý)\b',
+                            statement[subjects[0].end():], re.I):
+                return False
         # A split action can inherit a condition earlier in the same source
         # sentence. Do not discard it just because another actor starts a slice.
         for uid in target.get('evidence_unit_ids', []):
@@ -422,7 +433,7 @@ def _entails(edge, source, target, units):
             if statement in text:
                 prefix = text[:text.index(statement)]
                 local_prefix = re.split(r'[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+', prefix, flags=re.I)[-1]
-                if re.search(conditional, local_prefix, re.I):
+                if re.search(conditional, local_prefix, re.I) or re.search(scoped, local_prefix, re.I):
                     return False
         return any(
             (canonical := resolve(label)) and canonical["canonical_id"] == a.get("canonical_id")

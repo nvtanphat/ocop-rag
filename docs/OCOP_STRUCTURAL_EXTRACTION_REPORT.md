@@ -1,5 +1,46 @@
 # Đối chiếu trích xuất OCOP theo cấu trúc
 
+## Chốt chất lượng ngữ nghĩa — 2026-10-20
+
+Đã giữ và commit phần dở (`13afce6`), sau đó sửa thêm hai lỗi bằng test đỏ/xanh:
+nhận diện người nhận với biến thể OCR `đế nghị/đế xuất` (QĐ26 trang 7–8),
+và không loại nhầm nhiệm vụ kiểm tra chỉ vì có giới từ `đối với` (NQ15 trang 2).
+Chỉ cho phép trường hợp kiểm tra có một actor đứng đầu; các phạm vi điều kiện,
+công nhận/thu hồi và actor lồng nhau vẫn bị chặn. Các sửa đã giữ từ phần dở:
+tách chủ thể QĐ26 trang 7–8, actor tập thể NQ15 trang 2, phủ định giấy tờ,
+HAS_OPTION nối bảng QĐ26 trang 18–19, 19–20, 28–29 và số tiêu chí OCR dấu phẩy.
+QĐ525 trang 3: giữ đủ 15 OWNED_BY từ ô gộp đúng hàng. QĐ1489 trang 1 và
+QĐ26 trang 13: AMENDS/REPLACES đúng số hiệu, khoản; BASED_ON ở QĐ525 trang 1.
+
+| Bản 39 trang | nodes / edges | passed nodes / edges | failed nodes / edges |
+|---|---:|---:|---:|
+| LLM trước phần sửa tiếp nối (mục lịch sử bên dưới) | 1190 / 2354 | 732 / 1517 | 458 / 837 |
+| LLM cuối | 1194 / 2357 | 739 / 1536 | 455 / 821 |
+| Không LLM cuối | 901 / 1971 | 687 / 1462 | 214 / 509 |
+
+Rebuild bằng `extract_artifacts(max_pages=9999)`, `build_graph(allow_partial=True)`
+trên đúng `pages-part5-final`: 39 trang, 76/76 unit, 80 chunk, 0 lỗi/omission,
+0 request API (cache), chi phí mới $0. Không OCR thêm. Graph duy nhất giữ check/origin;
+0 cạnh trùng, rejected=0, human_verified=0; mất node/cạnh tất định so với bản không LLM=0,
+cả toàn graph và tập passed. Cache lỗi được thử lại khi resume; mặc định không chặn số unit;
+pipeline không công bố extraction LLM chưa hoàn tất.
+
+Đã tự xem lại 60 contact sheet (192 lượt mẫu: 102 passed, 25 failed, toàn bộ 65
+EvidenceType LLM) và 5 crop nối trang, sau kiểm SHA-256 của 6 PDF với lock.
+Mỗi loại quan hệ trọng tâm lấy 10 passed hoặc tất cả nếu ít hơn; HAS_CONDITION
+không có passed, SUSPENDS không xuất hiện trong 39 trang (chỉ có test tổng hợp).
+Không dùng script tự chấm nội dung. Nhật ký và giới hạn: [OCOP_SEMANTIC_REVIEW_20261020.md](OCOP_SEMANTIC_REVIEW_20261020.md).
+Các mẫu quan hệ passed đã xem khớp nguồn; đây là kiểm mẫu, không phải bảo đảm toàn corpus.
+52 EvidenceType LLM vẫn chưa đủ chứng cứ cho cạnh ngữ nghĩa: gồm đầu ra, phương án
+chấm điểm, yêu cầu có điều kiện và danh sách hồ sơ chưa có ProcedureStep được chấp nhận.
+Giữ nguyên lỗi OCR nhãn/phụ lục ở Thành Sen trang 2–3, ký hiệu ô chọn `O Kém`
+ở QĐ26 trang 21; actor kế thừa qua trang và một số nhiệm vụ đúng còn failed do cổng
+bảo thủ (QĐ26 trang 5–6, QĐ1489 trang 3). Không sửa chữ theo ảnh, không ép nối,
+không nâng condition/điểm/sao thành kết luận. Snapshot còn partial.
+
+Kiểm tra cuối: pytest **655 passed, 1 skipped**; frontend `npm run build`, TypeScript và lint F đạt.
+
+
 ## Một đầu ra extraction/graph — 2026-10-20
 
 Đã chuyển sang `nodes.jsonl`, `edges.jsonl`, `manifest.json` và `snapshots/`.

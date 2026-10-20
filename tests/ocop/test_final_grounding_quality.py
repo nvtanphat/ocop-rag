@@ -11,6 +11,24 @@ from ai_core.knowledge.ocop.extractor import extract_semantics
 from ai_core.processing.ocop.business_candidates import candidates
 
 
+@pytest.mark.parametrize(('statement', 'expected'), [
+    ('Bộ Y tế kiểm tra hồ sơ đối với các sản phẩm thực phẩm.', True),
+    ('Đối với hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.', False),
+    ('Nếu hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.', False),
+    ('Bộ Y tế công nhận đối với các sản phẩm thực phẩm.', False),
+    ('UBND cấp xã đề nghị Bộ Y tế kiểm tra hồ sơ đối với sản phẩm.', False),
+])
+def test_responsibility_object_preposition_is_not_a_conditional_scope(statement, expected):
+    from ai_core.graph.ocop.grounding import _entails
+    from ai_core.knowledge.ocop.authorities import resolve
+
+    actor = {'properties': resolve('Bộ Y tế')}
+    step = {'label': statement, 'properties': {'statement_candidate': statement},
+            'evidence_unit_ids': ['unit']}
+    assert _entails({'relation_type': 'RESPONSIBLE_FOR'}, actor, step,
+                    {'unit': {'text': statement}}) is expected
+
+
 def sheet_graph(tmp_path):
     from tests.ocop.test_criterion_sheets import fixture
     from tests.ocop.test_legal_structure import extract, REGISTRY

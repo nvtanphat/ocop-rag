@@ -1,5 +1,6 @@
 """Synthetic procedural evidence; no real-PDF unit fixtures."""
 import json
+import pytest
 from tests.ocop.test_legal_structure import unit,extract
 from tests.ocop.test_criterion_sheets import table
 
@@ -244,9 +245,10 @@ def test_delegation_inside_a_sentence_is_not_split():
     assert _procedure_sentences(text, _rule_sentences) == [text]
 
 
-def test_ocr_tone_variant_of_de_nghi_still_marks_a_recipient():
+@pytest.mark.parametrize('cue', ['đề nghị', 'để nghị', 'đế nghị', 'đê nghị'])
+def test_ocr_tone_variant_of_de_nghi_still_marks_a_recipient(cue):
     from ai_core.knowledge.ocop.procedures import _subjects
-    text = ("Hội đồng cấp trung ương tổ chức họp, báo cáo kết quả đánh giá và để nghị "
+    text = (f"Hội đồng cấp trung ương tổ chức họp, báo cáo kết quả đánh giá và {cue} "
             "Bộ trưởng Bộ Nông nghiệp và Môi trường công nhận sản phẩm.")
     assert [m[0] for m in _subjects(text)] == ["Hội đồng cấp trung ương"]
 
