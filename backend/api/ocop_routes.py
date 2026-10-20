@@ -156,14 +156,28 @@ def recognitions(q: str = Query(default="", max_length=160), offset: int = Query
 @lru_cache(maxsize=1)
 def _graph_data(graph_version: str = ""):
     # Version-keyed cache invalidates automatically after a corpus swap.
-    nodes = list(_jsonl(DATA / "graph" / "nodes.jsonl"))
-    edges = list(_jsonl(DATA / "graph" / "edges.jsonl"))
+    from ai_core.graph.ocop.integrity import validate_graph_snapshot
+    path = DATA / 'graph' / 'snapshots' / graph_version
+    validate_graph_snapshot(path)
+    nodes = list(_jsonl(path / "agent_nodes.jsonl"))
+    edges = list(_jsonl(path / "agent_edges.jsonl"))
     return nodes, edges
 
 
 @router.get("/graph")
 def graph(q: str = Query(default="", max_length=160), node_type: str = "", limit: int = Query(default=60, ge=1, le=200)):
-    nodes, edges = _graph_data(_json(DATA / "graph" / "manifest.json").get("graph_version", ""))
+    if not (DATA / 'graph' / 'manifest.json').is_file():
+        return {'nodes': [], 'edges': [], 'total_matches': 0,
+                'kind': 'source_grounded_graph', 'status': 'graph_not_built'}
+    from ai_core.graph.ocop.integrity import validate_graph_snapshot
+    from ai_core.graph.ocop.builder import SCHEMA_REVISION
+    try:
+        manifest = validate_graph_snapshot(DATA / 'graph')
+        if not manifest.get('grounding') or manifest.get('schema_revision') != SCHEMA_REVISION:
+            raise ValueError('graph requires grounding rebuild')
+        nodes, edges = _graph_data(manifest['graph_version'])
+    except (ValueError, OSError, KeyError) as exc:
+        raise HTTPException(status_code=409, detail='Graph chưa có snapshot đã kiểm tra hợp lệ; cần build lại corpus.') from exc
     if q:
         matches = [n for n in nodes if q.casefold() in str(n.get("label", "")).casefold()]
     elif node_type:
@@ -174,7 +188,8 @@ def graph(q: str = Query(default="", max_length=160), node_type: str = "", limit
     selected = matches[:limit]
     ids = {n["node_id"] for n in selected}
     connected = [e for e in edges if e.get("source_entity_id", e.get("source_id")) in ids and e.get("target_entity_id", e.get("target_id")) in ids]
-    return {"nodes": selected, "edges": connected[:600], "total_matches": len(matches), "kind": "machine_candidates"}
+    return {"nodes": selected, "edges": connected[:600], "total_matches": len(matches),
+            "kind": "source_grounded_graph", 'validation': manifest['grounding']}
 
 
 # Session state contains only conversational slots, never identity/tenant permissions.

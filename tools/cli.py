@@ -98,10 +98,6 @@ def main() -> None:
         except (ValueError,OSError,RuntimeError) as exc:
             print('OCOP review error: '+str(exc),file=sys.stderr);raise SystemExit(1) from exc
         return
-    if args.command == "evaluate":
-        completed=subprocess.run([sys.executable,str(ROOT/'tools'/'evaluate_ocop.py'),
-                                  *args.arguments],cwd=ROOT,check=False)
-        raise SystemExit(completed.returncode)
     if args.command == "debug":
         completed = subprocess.run([sys.executable, str(ROOT / "tools" / "debug_cli.py"),
                                     *args.arguments], cwd=ROOT, check=False)
@@ -145,6 +141,9 @@ def main() -> None:
                                rerank=args.rerank).ask(args.query)
             print(answer.model_dump_json(indent=2))
             return
+        # API modules resolve their source/index/graph roots on import. Serve
+        # exactly the corpus just prepared, even if an older OCOP_ROOT exists.
+        os.environ['OCOP_ROOT'] = str(system.root)
         from uvicorn import run as serve
         serve("backend.api.ocop_main:app", host=args.host, port=args.port)
     except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:

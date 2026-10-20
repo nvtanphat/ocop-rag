@@ -36,6 +36,7 @@ VERSION = code_fingerprint("evidence", [
     *(_ROOT / "knowledge" / "ocop" / name for name in ("extractor.py", "contracts.py", "quality.py",
                                                        "llm_proposals.py", "legal_structure.py", "article_tree.py", "star_requirements.py", "criterion_sheets.py", "procedures.py", "authorities.py", "shapes.py")),
     ROOT / 'configs' / 'ocop_authorities.json',
+    _ROOT / 'orchestration/ocop/llm.py',
     _ROOT / "domain" / "ocop_models.py", _ROOT / "domain" / "ocop_ids.py", _ROOT / "domain" / "ocop_citations.py"])
 LEGAL_START = re.compile(r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?[1-9]\b.*)\s*$", re.IGNORECASE)
 LEGAL_REFERENCE = re.compile(r"\b\d{1,4}/20\d{2}/(?:QĐ-TTg|NĐ-CP|NQ-CP|QH\d+|QĐ-UBND|TT-[A-ZĐ]+)\b",re.IGNORECASE)
@@ -558,7 +559,11 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
         llm_stats["chunk_count"]=proposed["chunk_count"]
         llm_stats["grounding_dropped"]=proposed["grounding"]
         llm_stats["reconciled"]=proposed["reconciled"]
+        llm_stats['eligible_unit_count'] = proposed['eligible_unit_count']
+        llm_stats['selected_unit_count'] = proposed['selected_unit_count']
+        llm_stats['omitted_unit_count'] = len(proposed['omissions'])
         semantics["business_llm_errors"]=proposed["errors"]
+        semantics['business_llm_omissions'] = proposed['omissions']
     # Validate the combined graph, including any opt-in LLM proposals; isolated
     # validation per extractor is insufficient once datasets are merged.
     validate_business_graph(
@@ -580,7 +585,8 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     for name,items in semantics.items():
         counts[name]=_jsonl_atomic(output_dir/f"{name}.jsonl",items)
     summary={"pipeline_version":VERSION,"corpus_version":version,"semantic_proposals":llm_stats,"source_snapshot_sha256":snapshot,
-        "document_registry":{sid:{'document_number':s.get('document_number')} for sid,s in source_info.items()},
+        "document_registry":{sid:{'document_number':s.get('document_number'), 'source_kind':s.get('source_kind')}
+                             for sid,s in source_info.items()},
         "counts":dict(sorted(counts.items())),"business_quality":"business_quality.json",
         "complete":(bool(manifest.get("complete")) and not stop and counts["pages"]==manifest["counts"]["pages"]),
         "status":"machine_extracted_not_verified","files":{

@@ -9,6 +9,9 @@ _ROUTER_SYSTEM=("Bạn là router cho OCOP. Chỉ trả JSON với intent và sl
                 "Không ra lệnh tools. Không suy đoán tenant_id/dossier_id.")
 
 class _RouteMixin:
+    def chat_structured(self, system: str, user: str, *, schema: dict, max_tokens: int = 1024) -> str:
+        return self.chat(system, user, format_json=True, max_tokens=max_tokens, schema=schema)
+
     def route(self,question:str)->dict:
         try:
             return json.loads(self.chat(_ROUTER_SYSTEM,question,format_json=True,max_tokens=180))
@@ -18,16 +21,21 @@ class OllamaClient(_RouteMixin):
     def __init__(self,model:str="qwen3.5:2b",url:str="http://127.0.0.1:11434",timeout:float=75):
         self.model=model;self.url=url.rstrip("/");self.timeout=timeout
     @traced("ocop.llm.ollama_chat")
-    def chat(self,system:str,user:str,*,format_json:bool=False,max_tokens:int=1024)->str:
+    def chat(self,system:str,user:str,*,format_json:bool=False,max_tokens:int=1024,schema:dict|None=None)->str:
         data={"model":self.model,"stream":False,
               "messages":[{"role":"system","content":system},{"role":"user","content":user}],
               "options":{"temperature":0.1,"num_ctx":8192,"num_predict":max_tokens}}
-        if format_json:data["format"]="json"
+        if schema is not None:
+            data['format']=schema
+            data['think']=False
+        elif format_json:data["format"]="json"
         req=urllib.request.Request(self.url+"/api/chat",data=json.dumps(data,ensure_ascii=False).encode(),
                                    headers={"Content-Type":"application/json"},method="POST")
         try:
             with urllib.request.urlopen(req,timeout=self.timeout) as response:
                 out=json.load(response)
+            if out.get('done_reason') == 'length':
+                raise RuntimeError('Configured Ollama response truncated')
             return str(out["message"]["content"])
         except (urllib.error.URLError,TimeoutError,OSError,KeyError,ValueError) as exc:
             raise RuntimeError("Configured Ollama model unavailable") from exc
@@ -40,18 +48,24 @@ class OpenAICompatClient(_RouteMixin):
         self.timeout=timeout;self.reasoning_budget=reasoning_budget;self.retries=retries
     def __repr__(self)->str:return f"OpenAICompatClient(model={self.model!r}, base_url={self.url!r})"
     @traced("ocop.llm.openai_chat")
-    def chat(self,system:str,user:str,*,format_json:bool=False,max_tokens:int=1024)->str:
+    def chat(self,system:str,user:str,*,format_json:bool=False,max_tokens:int=1024,schema:dict|None=None)->str:
         # Reasoning models count hidden reasoning tokens against the completion limit.
         data={"model":self.model,"temperature":0.1,"max_tokens":max_tokens+self.reasoning_budget,
               "messages":[{"role":"system","content":system},{"role":"user","content":user}]}
-        if format_json:data["response_format"]={"type":"json_object"}
+        if schema is not None:
+            data['response_format']={'type':'json_schema','json_schema':{
+                'name':'ocop_extraction','strict':True,'schema':schema}}
+        elif format_json:data["response_format"]={"type":"json_object"}
         req=urllib.request.Request(self.url+"/chat/completions",data=json.dumps(data,ensure_ascii=False).encode(),
                                    # Some gateways (Cloudflare 1010) reject the default Python-urllib agent.
                                    headers={"Content-Type":"application/json","Authorization":"Bearer "+self._key,
                                             "User-Agent":"ocop-graphrag/1.0"},
                                    method="POST")
         try:
-            content=self._post(req)["choices"][0]["message"]["content"]
+            choice=self._post(req)['choices'][0]
+            if choice.get('finish_reason') in {'length','content_filter'}:
+                raise RuntimeError('Configured OpenAI-compatible response truncated or filtered')
+            content=choice['message']['content']
         except (urllib.error.URLError,TimeoutError,OSError,KeyError,IndexError,TypeError,ValueError) as exc:
             detail=f"HTTP {exc.code}: {_error_message(exc)}" if isinstance(exc,urllib.error.HTTPError) else type(exc).__name__
             raise RuntimeError(f"Configured OpenAI-compatible model unavailable ({detail})") from exc

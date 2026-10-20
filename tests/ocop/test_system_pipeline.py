@@ -21,6 +21,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
     system = OcopSystemPipeline(tmp_path)
     monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self: (12, "approved-snapshot"))
     calls = []
+    from ai_core.graph.ocop.builder import build_graph as real_build_graph
 
     def pdf(root, *, output, **kwargs):
         calls.append("pdf")
@@ -64,12 +65,9 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         calls.append("graph")
         if fail_graph:
             raise RuntimeError("graph failure")
-        output.mkdir(parents=True)
-        manifest = {"source_knowledge_version": "knowledge-fixture", "graph_version": "graph-fixture", "status": "local_ready"}
-        write_json(output / "manifest.json", manifest)
-        (output / "nodes.jsonl").write_text("", encoding="utf-8")
-        (output / "edges.jsonl").write_text("", encoding="utf-8")
-        return manifest
+        # Exercise the real graph snapshot contract, including automatic acceptance
+        # files and hashes; only expensive OCR/index services remain mocked.
+        return real_build_graph(knowledge, output, review_decisions=review_decisions)
 
     import ai_core.processing.ocop.pdf_pipeline as pdf_mod
     import ai_core.processing.ocop.knowledge_extract as knowledge_mod

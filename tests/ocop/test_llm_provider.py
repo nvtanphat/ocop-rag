@@ -228,9 +228,9 @@ def test_reconcile_folds_llm_entities_into_deterministic_ones():
                        "proof": "Mật ong hoa nhãn do HTX Ong Mật Bình Minh sản xuất"}]})
     proposed = propose([UNIT], llm)
     det = [{"entity_id": "det:product", "kind": "Product", "label": "mật ong  hoa nhãn", "source_id": "VN.TEST.DOC",
-            "attributes": {}},
+            "attributes": {}, "evidence": proposed['entities'][0]['evidence'][:]},
            {"entity_id": "det:org", "kind": "Organization", "label": "HTX Ong Mật Bình Minh", "source_id": "VN.TEST.DOC",
-            "attributes": {}}]
+            "attributes": {}, "evidence": proposed['entities'][1]['evidence'][:]}]
     rels = [{"relation_type": "OWNED_BY", "source_entity_id": "det:product", "target_entity_id": "det:org"}]
     out = reconcile(proposed, det, rels)
     assert out["entities"] == [] and out["relations"] == []

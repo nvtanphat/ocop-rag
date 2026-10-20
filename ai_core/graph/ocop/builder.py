@@ -3,7 +3,6 @@
 Candidate edges remain candidates: nothing here promotes OCR output to legal truth.
 """
 from __future__ import annotations
-import hashlib
 import json
 import os
 import re
@@ -14,7 +13,7 @@ from typing import Iterator
 from ai_core.domain.ocop_citations import bbox_matches, cell_at, quote_bbox, row_quote_bbox
 from ai_core.domain.ocop_ids import code_fingerprint, stable_id, content_sha256
 from ai_core.graph.ocop.ontology import NODE_TYPES, validate_edge
-from ai_core.knowledge.ocop.contracts import contains_document_number
+from ai_core.knowledge.ocop.contracts import AttributeClaim, contains_document_number
 from ai_core.retrieval.ocop.index_pipeline import _write_json, _write_jsonl
 
 ALLOWED_STATUSES = frozenset({"verified", "needs_review", "machine_extracted", "candidate", "rejected"})
@@ -23,6 +22,11 @@ _ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_REVISION = code_fingerprint("graph", [_ROOT / "graph" / "ocop" / "builder.py",
                                             _ROOT / "graph" / "ocop" / "ontology.py",
                                             _ROOT / "graph" / "ocop" / "review.py",
+                                            _ROOT / "graph" / "ocop" / "grounding.py",
+                                            *(_ROOT / 'knowledge/ocop' / name for name in
+                                              ('contracts.py','shapes.py','procedures.py','authorities.py')),
+                                            _ROOT / 'processing/ocop/business_candidates.py',
+                                            _ROOT.parent / 'configs/ocop_authorities.json',
                                             _ROOT / "domain" / "ocop_citations.py"])
 
 CANDIDATE_FILES = {
@@ -295,6 +299,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                      citations=_span_citations(row,evid,source) or [])
         # Evidence nodes carry page spans for source round trips.
         nodes[eid]["properties"].update({"source_spans": row.get("spans", []), "unit_kind": row.get("unit_kind")})
+        nodes[eid]['citations'] = _span_citations(row, evid, source) or []
         # The source document node is created even when the extractor didn't emit an entity.
         source_node = source_node_ids.setdefault(source, stable_id("document_node",source,[source],revision=version))
         if source_node not in nodes:
@@ -353,6 +358,10 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             if row['entity_id'] in debug_ids:
                 continue
             refs = row.get("evidence", [])
+            if row['kind'] != 'SourceDocument' and any(
+                    not isinstance(ref, dict) or ref.get('source_id') != row.get('source_id') for ref in refs):
+                rejected.append({'reason': 'business_entity_source_mismatch', 'entity_id': row.get('entity_id')})
+                continue
             citations=[]
             valid_refs=[]
             for ref in refs:
@@ -365,6 +374,21 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                     evidence_by_id[r["evidence_unit_id"]].get("review_status") != "verified"
                     for r in valid_refs))):
                 rejected.append({"reason":"business_entity_missing_evidence", "entity_id":row.get("entity_id")})
+                continue
+            # Attribute proof is validated independently of the entity's name.
+            claims = row.get('attribute_claims', [])
+            try:
+                if not isinstance(claims, list):
+                    raise ValueError('attribute claims must be a list')
+                for claim in claims:
+                    AttributeClaim.model_validate(claim)
+            except (ValueError, TypeError):
+                rejected.append({'reason': 'business_attribute_schema_invalid', 'entity_id': row.get('entity_id')})
+                continue
+            if any(not claim.get('attribute', '').endswith('_candidate') or
+                   any(ref not in refs or _specific_citation(ref, evidence_by_id.get(ref.get('evidence_unit_id'), {})) is None
+                       for ref in claim.get('evidence', [])) for claim in claims):
+                rejected.append({'reason': 'business_attribute_missing_evidence', 'entity_id': row.get('entity_id')})
                 continue
             node_id = row['entity_id']
             status = "needs_review" if row.get("status") == "candidate" else row["status"]
@@ -391,12 +415,16 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                                 document_registry.get(row['source_id'],{}).get('document_number') or row['label'])
                                 if row['kind'] in {'RecognitionDecision','LocalGuidance','SourceDocument'} else row['label'],
                          properties=_with_provenance(row),citations=citations)
+            if claims:
+                nodes[node_id]['attribute_claims'] = claims
             for ref in refs:
                 add_edge("SUPPORTED_BY",node_id,
                          evidence_node_ids[(ref["source_id"],ref["evidence_unit_id"])],
                          ref["evidence_unit_id"],ref["source_id"],
                          "verified" if row.get("status")=="verified" else "needs_review",
-                         evidence_ref=ref)
+                         evidence_ref=ref,
+                         attributes={key: value for key, value in _with_provenance(row).items()
+                                     if key in {'extraction_method', 'llm_enriched_attributes'}} or None)
         for row in records(knowledge / "business_relations.jsonl"):
             if row['source_entity_id'] in debug_ids or row['target_entity_id'] in debug_ids:
                 continue
@@ -410,6 +438,9 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             if row.get('kind')=='scoring':
                 continue  # raw scoring statements are retained in knowledge for debug/retrieval
             refs=row.get("evidence", [])
+            if any(not isinstance(ref, dict) or ref.get('source_id') != row.get('source_id') for ref in refs):
+                rejected.append({'reason': 'business_rule_source_mismatch', 'rule_id': row.get('rule_id')})
+                continue
             citations=[]
             for ref in refs:
                 unit=evidence_by_id.get(ref.get("evidence_unit_id")) if isinstance(ref,dict) else None
@@ -451,6 +482,9 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
     if review_decisions is not None:
         from ai_core.graph.ocop.review import apply_decisions
         review_manifest=apply_decisions(out_nodes,out_edges,evidence_by_id,review_decisions)
+    from ai_core.graph.ocop.grounding import materialize_grounded_graph
+    agent_nodes, agent_edges, excluded, grounding = materialize_grounded_graph(
+        out_nodes, out_edges, evidence_by_id, registry=document_registry)
     # A fingerprint of the *source bytes* also detects edits to evidence text,
     # even if node IDs, spans and labels themselves happen not to change.
     knowledge_files = sorted(knowledge.glob("*.jsonl")) + [knowledge / "manifest.json"]
@@ -461,6 +495,8 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                           "corpus_version":version,"candidate_mode":include_candidates,
                           "source_complete":source_complete,
                           "human_review":review_manifest,
+                          'grounding': grounding, 'agent_nodes': agent_nodes, 'agent_edges': agent_edges,
+                          'excluded_assertions': excluded,
                           "schema_revision":SCHEMA_REVISION},ensure_ascii=False,sort_keys=True,
                          separators=(",",":"))
     graph_version = content_sha256(payload)[:20]
@@ -473,10 +509,16 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
         _write_jsonl(stage/"nodes.jsonl",out_nodes)
         _write_jsonl(stage/"edges.jsonl",out_edges)
         _write_jsonl(stage/"rejected.jsonl",rejected)
+        _write_jsonl(stage/'agent_nodes.jsonl', agent_nodes)
+        _write_jsonl(stage/'agent_edges.jsonl', agent_edges)
+        _write_jsonl(stage/'excluded_assertions.jsonl', excluded)
+        snapshot_files = ('nodes.jsonl', 'edges.jsonl', 'rejected.jsonl', 'agent_nodes.jsonl',
+                          'agent_edges.jsonl', 'excluded_assertions.jsonl')
         file_hashes={f:content_sha256((stage/f).read_bytes()) for f in
-                     ("nodes.jsonl","edges.jsonl","rejected.jsonl")}
+                     snapshot_files}
         manifest={"graph_version":graph_version,"source_knowledge_version":version,
             "human_review":review_manifest,
+            'grounding': grounding,
             "source_knowledge_sha256":source_fingerprint, "schema_revision":SCHEMA_REVISION,
             "status":"local_ready" if source_complete else "partial_debug_not_production",
             "source_complete":source_complete,
@@ -497,13 +539,13 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             # Atomic creation of an immutable directory on the same filesystem.
             pending = Path(tempfile.mkdtemp(prefix=".snapshot-pending-", dir=snapshots))
             try:
-                for filename in ("nodes.jsonl","edges.jsonl","rejected.jsonl","manifest.json"):
+                for filename in (*snapshot_files, 'manifest.json'):
                     shutil.copyfile(stage/filename,pending/filename)
                 os.replace(pending,snapshot_dir)
             finally:
                 if pending.exists():
                     shutil.rmtree(pending,ignore_errors=True)
-        for filename in ("nodes.jsonl","edges.jsonl","rejected.jsonl"):
+        for filename in snapshot_files:
             temp_file=output/("."+filename+".next")
             shutil.copyfile(stage/filename,temp_file)
             os.replace(temp_file,output/filename)

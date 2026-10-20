@@ -8,7 +8,7 @@ from ai_core.retrieval.ocop.search import search
 from ai_core.retrieval.ocop.lookup import exact_lookup
 from ai_core.graph.ocop.retriever import traverse
 from ai_core.graph.ocop.builder import records
-from ai_core.graph.ocop.temporal import applicable,resolve_event_applicability
+from ai_core.graph.ocop.temporal import resolve_event_applicability
 from ai_core.assessment.ocop.rules import checklist,estimate_score
 from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.contracts import AuthContext
@@ -364,35 +364,44 @@ class ToolRegistry:
                     if (index_source_version and
                             index_source_version!=graph_manifest.get("source_knowledge_version")):
                         return {"results":[],"status":"graph_index_version_mismatch"}
-            except (ValueError, OSError, KeyError, json.JSONDecodeError):
+            except (ValueError, OSError, KeyError):
                 return {"results":[],"status":"graph_integrity_failed"}
             seed=slots.get("graph_seed_ids") or context.get("graph_seed_ids") or []
+            from ai_core.graph.ocop.builder import SCHEMA_REVISION
+            if not graph_manifest.get('grounding') or graph_manifest.get('schema_revision') != SCHEMA_REVISION:
+                return {'results': [], 'status': 'graph_requires_grounding_rebuild'}
+            graph_path = self.graph_dir/'snapshots'/graph_manifest['graph_version']
+            if not graph_path.is_dir():
+                return {'results': [], 'status': 'graph_integrity_failed'}
             if not seed and context.get("retrieved_evidence_ids"):
                 source_ids=set(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
-                seed=[n["node_id"] for n in records(self.graph_dir/"nodes.jsonl")
+                seed=[n["node_id"] for n in records(graph_path/'agent_nodes.jsonl')
                       if n.get("node_type")=="EvidenceUnit" and
                       source_ids.intersection(n.get("evidence_unit_ids",[]))][:6]
-            if not self.graph_dir.joinpath("manifest.json").exists():
-                return {"results":[],"note":"graph_not_built"}
-            debug=bool(context.get("debug_candidates",False))
             semantic=("HAS_ARTICLE","HAS_CLAUSE","HAS_POINT","MINIMUM_FOR","HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_SUBCRITERION","HAS_OPTION","HAS_CONDITION",
                 "REQUIRES_EVIDENCE","RECOGNIZES","OWNED_BY","BASED_ON","AMENDS","REPLACES",
-                "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","SUPPORTED_BY")
-            graph=traverse(self.graph_dir,list(seed),hops=2,relations=list(semantic),
-                           verified_only=not debug,limit=75,direction="both")
-            # Return the source evidence for traversed edges, not arbitrary
-            # document-neighbor nodes. This is the Graph -> Evidence contract.
-            if graph["edges"]:
-                # Offer node source facts via the same evidence reference contract as retrieval.
-                found=set();facts=[]
-                for edge in graph["edges"]:
-                    evid=edge.get("evidence_unit_id")
-                    if not evid or evid in found:continue
-                    found.add(evid)
-                    facts.extend(exact_lookup(self.index_dir,identity=evid,limit=1,include_candidates=False))
-                    if len(facts)>=8:break
-                graph["results"]=facts
+                "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","HAS_RECORD","DECLARED_BY","SUPPORTED_BY")
+            graph=traverse(graph_path,list(seed),hops=2,relations=list(semantic),
+                           verified_only=False,grounded_only=True,
+                           limit=75,direction="both")
+            # Only checked assertions enter generation. Source text is linked as
+            # provenance, never reintroduced wholesale as an accepted relation.
+            by_node={n['node_id']:n for n in graph['nodes']}
+            facts=[]
+            ranked=sorted(graph['edges'], key=lambda e:(e['relation_type']=='SUPPORTED_BY',e['edge_id']))
+            for edge in ranked:
+                source,target=by_node[edge['source_entity_id']],by_node[edge['target_entity_id']]
+                refs=edge['citations']
+                facts.append({'chunk_id':'graph:'+edge['edge_id'],
+                    'evidence_unit_id':edge['evidence_unit_id'],'source_id':edge['source_id'],
+                    'text':source['label']+' ['+edge['relation_type']+'] '+target['label'],
+                    'source_spans':refs,'review_status':'machine_extracted',
+                    'validation':edge['validation'], 'graph_edge_id':edge['edge_id'],
+                    'corpus_version':graph_manifest['source_knowledge_version']})
+                if len(facts)>=8:break
+            graph['results']=facts
+            graph['status']='checked_source_graph'
             return graph
         if name=="resolve_temporal_applicability":
             when=context.get("as_of_date")

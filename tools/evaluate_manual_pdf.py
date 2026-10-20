@@ -4,10 +4,10 @@ This evaluator measures source/page retrieval coverage and safe behavior in
 no-LLM mode, not answer accuracy. It never builds gold labels from pipeline
 output. Gold evidence and SHA-256 values come from manual_pdf_*.
 """
+
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -39,8 +39,9 @@ def load_gold(root: Path, dataset: Path = DATASET, sources_file: Path = SOURCES)
         if sha256_file(pdf) != spec["sha256"]:
             raise ValueError(f"PDF differs from manually checked source: {filename}")
         mapping[doc_id] = src["source_id"]
-    cases = [json.loads(line) for line in (root / dataset).read_text(encoding="utf-8").splitlines()
-             if line.strip()]
+    cases = [
+        json.loads(line) for line in (root / dataset).read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     if len(cases) != len({row["id"] for row in cases}):
         raise ValueError("Duplicate manual benchmark case IDs")
     return cases, mapping
@@ -60,8 +61,14 @@ def score_case(gold: dict, citations: list[dict], mapping: dict[str, str]) -> di
     }
 
 
-def run_evaluation(root: Path, *, split: str = "all", max_queries: int | None = None,
-                   dataset: Path = DATASET, sources_file: Path = SOURCES):
+def run_evaluation(
+    root: Path,
+    *,
+    split: str = "all",
+    max_queries: int | None = None,
+    dataset: Path = DATASET,
+    sources_file: Path = SOURCES,
+):
     status = OcopSystemPipeline(root).status(validate_sources=True)
     if status["state"] != "ready":
         raise RuntimeError("Build the locked corpus first: python tools/cli.py run --build-only")
@@ -77,32 +84,66 @@ def run_evaluation(root: Path, *, split: str = "all", max_queries: int | None = 
         try:
             response = agent.ask(item["question"]).model_dump(mode="json")
             metrics = score_case(item, response.get("citations", []), mapping)
-            results.append({"id": item["id"], "split": item["split"], "category": item["category"],
-                            "answerability": item["answerability"], "intent": response.get("intent"),
-                            "status": response.get("status"), "tools": response.get("tools_used", []),
-                            "citations": [{"source_id": x["source_id"], "pdf_page": x["pdf_page"]}
-                                          for x in response.get("citations", [])],
-                            **metrics})
+            results.append(
+                {
+                    "id": item["id"],
+                    "split": item["split"],
+                    "category": item["category"],
+                    "answerability": item["answerability"],
+                    "intent": response.get("intent"),
+                    "status": response.get("status"),
+                    "tools": response.get("tools_used", []),
+                    "citations": [
+                        {"source_id": x["source_id"], "pdf_page": x["pdf_page"]}
+                        for x in response.get("citations", [])
+                    ],
+                    **metrics,
+                }
+            )
         except Exception as exc:
-            results.append({"id": item["id"], "split": item["split"],
-                            "category": item["category"], "error": type(exc).__name__ + ": " + str(exc)[:300]})
+            results.append(
+                {
+                    "id": item["id"],
+                    "split": item["split"],
+                    "category": item["category"],
+                    "error": type(exc).__name__ + ": " + str(exc)[:300],
+                }
+            )
     answerable = [r for r in results if r.get("answerability") == "answerable"]
     with_evidence = [r for r in answerable if "error" not in r]
     statuses = Counter(r.get("status", "ERROR") for r in results)
-    return {"scope": "local_sparse_no_llm_retrieval_only", "corpus_version": status["corpus_version"],
-            "source_documents": status["sources"], "pdf_pages": status["pdf_pages"],
-            "dataset_origin": "manual_pdf_read_not_pipeline", "split": split,
-            "cases_run": len(cases), "cases_answerable": len(answerable),
-            "cases_failed_execution": sum("error" in r for r in results),
-            "statuses": dict(statuses), "retrieval_metrics": {
-                "page_hit_rate": round(sum(r["page_hit"] for r in with_evidence) / len(with_evidence), 4) if with_evidence else None,
-                "source_hit_rate": round(sum(r["source_hit"] for r in with_evidence) / len(with_evidence), 4) if with_evidence else None,
-                "page_recall": round(sum(r["page_recall"] or 0 for r in with_evidence) / len(with_evidence), 4) if with_evidence else None,
-            }, "answer_metrics": None,
-            "answer_metrics_reason": "No generative LLM or expert judgment used; retrieval_only is not a factual answer",
-            "unanswerable_statuses": {k: v for k,v in Counter(r.get("status", "ERROR") for r in results
-                if r.get("answerability") != "answerable").items()},
-            "per_case": results}
+    return {
+        "scope": "local_sparse_no_llm_retrieval_only",
+        "corpus_version": status["corpus_version"],
+        "source_documents": status["sources"],
+        "pdf_pages": status["pdf_pages"],
+        "dataset_origin": "manual_pdf_read_not_pipeline",
+        "split": split,
+        "cases_run": len(cases),
+        "cases_answerable": len(answerable),
+        "cases_failed_execution": sum("error" in r for r in results),
+        "statuses": dict(statuses),
+        "retrieval_metrics": {
+            "page_hit_rate": round(sum(r["page_hit"] for r in with_evidence) / len(with_evidence), 4)
+            if with_evidence
+            else None,
+            "source_hit_rate": round(sum(r["source_hit"] for r in with_evidence) / len(with_evidence), 4)
+            if with_evidence
+            else None,
+            "page_recall": round(sum(r["page_recall"] or 0 for r in with_evidence) / len(with_evidence), 4)
+            if with_evidence
+            else None,
+        },
+        "answer_metrics": None,
+        "answer_metrics_reason": "No generative LLM or expert judgment used; retrieval_only is not a factual answer",
+        "unanswerable_statuses": {
+            k: v
+            for k, v in Counter(
+                r.get("status", "ERROR") for r in results if r.get("answerability") != "answerable"
+            ).items()
+        },
+        "per_case": results,
+    }
 
 
 def main() -> None:
@@ -116,7 +157,7 @@ def main() -> None:
     output = args.out if args.out.is_absolute() else args.root / args.out
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    summary = {k:v for k,v in report.items() if k != "per_case"}
+    summary = {k: v for k, v in report.items() if k != "per_case"}
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if report["cases_failed_execution"]:
         raise SystemExit(2)

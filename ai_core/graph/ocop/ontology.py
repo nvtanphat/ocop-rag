@@ -1,6 +1,7 @@
 """Explicit ontology; no free-form relation types from LLM/OCR."""
 from __future__ import annotations
 from dataclasses import dataclass
+from ai_core.knowledge.ocop.contracts import EntityType, RELATION_TYPES
 
 NODE_TYPES = frozenset({
     "SourceDocument", "EvidenceUnit", "Article", "Clause", "Point", "Annex", "Regulation",
@@ -10,6 +11,7 @@ NODE_TYPES = frozenset({
     "CandidateFact", "Mention", "CriterionRowCandidate", "RecognitionRecord", "RuleCandidate",
     "Authority", "ProcedureStep",
 })
+NODE_TYPES = NODE_TYPES | frozenset(kind.value for kind in EntityType)
 EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "CONTAINS": (frozenset(NODE_TYPES), frozenset(NODE_TYPES)),
     "MENTIONS": (frozenset(NODE_TYPES), frozenset(NODE_TYPES)),
@@ -42,6 +44,15 @@ EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "SUPPORTED_BY": (frozenset(NODE_TYPES - {"EvidenceUnit"}), frozenset({"EvidenceUnit"})),
     "LOCATED_IN": (frozenset({"EvidenceUnit"}), frozenset({"SourceDocument"})),
 }
+# Business triples have one authority. Broader legacy structural types remain
+# compatible, but adding a business endpoint never requires editing two schemas.
+def _kind_names(value):
+    return frozenset(k.value for k in (value if isinstance(value, frozenset) else (value,)))
+
+
+for _relation, (_source, _target) in RELATION_TYPES.items():
+    _existing = EDGE_ENDPOINTS.get(_relation, (frozenset(), frozenset()))
+    EDGE_ENDPOINTS[_relation] = (_existing[0] | _kind_names(_source), _existing[1] | _kind_names(_target))
 
 @dataclass(frozen=True)
 class EdgeCheck:

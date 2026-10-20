@@ -15,7 +15,7 @@ export interface Overview {
   pages: { pages?: number; ocr_executed?: number; needs_review?: number; tables_detected?: number }
   knowledge: { units?: number; criterion_candidates?: number; recognition_candidates?: number; form_candidates?: number }
   index: { corpus_version?: string; status?: string; counts?: { chunks?: number }; dense?: { enabled?: boolean } }
-  graph: { status?: string; counts?: { nodes?: number; edges?: number }; neo4j?: { enabled?: boolean } }
+  graph: { status?: string; counts?: { nodes?: number; edges?: number }; grounding?: { nodes?: number; edges?: number }; neo4j?: { enabled?: boolean } }
   verification: string
 }
 export interface Citation {
@@ -80,6 +80,8 @@ export interface GraphNode {
   source_id?: string
   review_status?: string
   evidence_unit_ids?: string[]
+  validation?: { status: string; legal_verified: boolean }
+  citations?: Array<{ pdf_page: number; source_sha256?: string }>
 }
 export interface GraphEdge {
   source_entity_id?: string

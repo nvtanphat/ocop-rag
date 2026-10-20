@@ -14,15 +14,18 @@ from ai_core.graph.ocop.ontology import EDGE_ENDPOINTS
 
 def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
                   user: str = "neo4j", password: str, database: str = "neo4j",
-                  verified_only: bool = False, batch_size: int = 300) -> dict:
+                  verified_only: bool = False, batch_size: int = 300,
+                  grounded_only: bool = False) -> dict:
     if batch_size < 1 or batch_size > 10000:
         raise ValueError("batch_size must be between 1 and 10000")
     # Validate before connecting or mutating remote state.
     manifest = validate_graph_snapshot(graph_dir)
-    nodes = list(records(graph_dir/"nodes.jsonl"))
-    edges = list(records(graph_dir/"edges.jsonl"))
-    if (len(nodes) != manifest["counts"]["nodes"] or
-        len(edges) != manifest["counts"]["edges"]):
+    if grounded_only and not manifest.get('grounding'):
+        raise ValueError('graph lacks automatic grounding; rebuild before publication')
+    nodes = list(records(graph_dir/('agent_nodes.jsonl' if grounded_only else 'nodes.jsonl')))
+    edges = list(records(graph_dir/('agent_edges.jsonl' if grounded_only else 'edges.jsonl')))
+    expected = manifest['grounding'] if grounded_only else manifest['counts']
+    if (len(nodes) != expected['nodes'] or len(edges) != expected['edges']):
         raise ValueError("graph snapshot row counts differ from manifest")
     if verified_only:
         nodes = [n for n in nodes if n["review_status"] == "verified"]
@@ -39,7 +42,7 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
     if invalid:
         raise ValueError(f"Unsafe relation types: {sorted(invalid)}")
     version = manifest["graph_version"]
-    mode = "verified" if verified_only else "all"
+    mode = ('grounded_verified' if verified_only else 'grounded') if grounded_only else ('verified' if verified_only else 'all')
     snapshot_id = f"{version}:{mode}"
     scope = f"ocop:{mode}"
     try:
@@ -52,10 +55,7 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
         # relationship can accidentally connect different corpus versions.
         for offset in range(0, len(nodes), batch_size):
             group = nodes[offset:offset + batch_size]
-            rows = [{**{k:v for k,v in n.items() if k not in ("properties","evidence_unit_ids")},
-                     "properties_json": json.dumps(n.get("properties", {}),ensure_ascii=False),
-                     "evidence_unit_ids_json": json.dumps(n.get("evidence_unit_ids", []))}
-                    for n in group]
+            rows = [_properties(n) for n in group]
             tx.run("UNWIND $rows AS row "
                    "MERGE (n:OcopNode {snapshot_id:$snapshot_id,node_id:row.node_id}) "
                    "SET n += row", rows=rows, snapshot_id=snapshot_id).consume()
@@ -68,7 +68,7 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
                       f"MERGE (a)-[r:{relation} {{snapshot_id:$snapshot_id,edge_id:row.edge_id}}]->(b) "
                       "SET r += row")
             for offset in range(0,len(group),batch_size):
-                tx.run(cypher, rows=group[offset:offset+batch_size],snapshot_id=snapshot_id).consume()
+                tx.run(cypher, rows=[_properties(e) for e in group[offset:offset+batch_size]],snapshot_id=snapshot_id).consume()
         # Activation happens only after all writes complete, within the SAME
         # transaction. Exceptions abort both publication and pointer switch.
         tx.run("MERGE (a:OcopGraphActive {scope:$scope}) "
@@ -87,6 +87,13 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
             session.execute_write(write_snapshot)
         return {"status":"uploaded","node_count":len(nodes),"edge_count":len(edges),
                 "graph_version":version,"snapshot_id":snapshot_id,
-                "active_scope":scope,"verified_only":verified_only}
+                "active_scope":scope,"verified_only":verified_only,'grounded_only':grounded_only}
     finally:
         drv.close()
+
+
+def _properties(row):
+    """Neo4j properties cannot contain nested maps or arrays of maps."""
+    return {(key + '_json' if isinstance(value, (dict, list, tuple)) else key):
+            (json.dumps(value, ensure_ascii=False, allow_nan=False) if isinstance(value, (dict, list, tuple)) else value)
+            for key, value in row.items()}

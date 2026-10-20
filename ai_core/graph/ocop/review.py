@@ -65,6 +65,7 @@ def candidate_snapshot(row, units):
             'source_id':raw['source_id'],'label':raw.get('label'),
             'properties':raw.get('properties',{}),
             'attribute_candidates':raw.get('attribute_candidates',[]),
+            'attribute_claims':raw.get('attribute_claims',[]),
             'source_entity_id':raw.get('source_entity_id'),
             'target_entity_id':raw.get('target_entity_id'),
             'evidence_unit_ids':raw.get('evidence_unit_ids',[]),'citations':citations}

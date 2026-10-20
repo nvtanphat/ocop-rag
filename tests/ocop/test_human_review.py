@@ -60,7 +60,11 @@ def test_approve_is_scoped_and_verified_edge_requires_both_endpoints(corpus):
     from ai_core.orchestration.ocop.tools import ToolRegistry
     result=ToolRegistry(corpus).dispatch('search_graph',query='Synthetic product',
         slots={'graph_seed_ids':['product:synthetic']},context={})
-    assert result['verified_only'] is True and len(result['nodes'])==2
+    # Review storage remains available above, but approval cannot make a name
+    # absent from the source or an unentailed ownership edge usable by the Agent.
+    assert result['grounded_only'] is True
+    assert not any(n['node_id']=='owner:synthetic' for n in result['nodes'])
+    assert not any(e['relation_type']=='OWNED_BY' for e in result['edges'])
 
 
 def test_correct_preserves_ocr_and_reject_overrides_append_only(corpus):

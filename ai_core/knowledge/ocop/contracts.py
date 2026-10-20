@@ -6,7 +6,6 @@ IDs are stable and review is an explicit operation separate from extraction.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 from enum import Enum
 import re
 from typing import Literal
@@ -14,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, allow_inf_nan=False)
 
 
 class Status(str, Enum):
@@ -49,6 +48,15 @@ class EntityType(str, Enum):
     PRODUCT_SUBGROUP = "ProductSubgroup"
     CONDITION = "Condition"
     FORMAL_RULE = "RuleCandidate"
+
+
+# Descriptive features only; numeric scoring and legal interpretation are not LLM features.
+ENTITY_ATTRIBUTE_KEYS = {
+    'Product': ('product_type', 'brand', 'packaging', 'raw_material', 'origin_area'),
+    'Organization': ('organization_form', 'address', 'representative'),
+    'Criterion': ('code',), 'EvidenceType': ('issuer', 'copies', 'format'),
+    'ProductGroup': ('code',), 'ProductSubgroup': ('code',), 'Condition': ('subject',),
+}
 
 
 # Only relationships with explicitly checked endpoints can enter the business graph.
@@ -98,6 +106,15 @@ class EvidenceRef(Strict):
         return value
 
 
+class AttributeClaim(Strict):
+    """An observed feature with its own proof; alignment does not verify meaning."""
+    attribute: str = Field(min_length=1)
+    value: str = Field(min_length=1)
+    evidence: list[EvidenceRef] = Field(min_length=1)
+    status: Literal['candidate'] = 'candidate'
+    extraction_method: str = Field(min_length=1)
+
+
 class BusinessEntity(Strict):
     entity_id: str = Field(min_length=5)
     kind: EntityType
@@ -107,6 +124,17 @@ class BusinessEntity(Strict):
     status: Status = Status.CANDIDATE
     attributes: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     extraction_method: str = "deterministic_from_structure"
+    attribute_claims: list[AttributeClaim] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def claims_have_entity_provenance(self):
+        for claim in self.attribute_claims:
+            if (not claim.attribute.endswith('_candidate') or
+                claim.attribute.removesuffix('_candidate') not in ENTITY_ATTRIBUTE_KEYS.get(self.kind.value, ())):
+                raise ValueError('machine attribute claim must be a candidate')
+            if any(ref not in self.evidence for ref in claim.evidence):
+                raise ValueError('attribute claim proof must be included in entity evidence')
+        return self
 
 
 class BusinessRelation(Strict):
@@ -172,6 +200,16 @@ def validate_business_graph(entities: list[BusinessEntity], relations: list[Busi
     by_id = {x.entity_id: x for x in entities}
     if len(by_id) != len(entities):
         raise ValueError("duplicate business entity id")
+    for entity in entities:
+        foreign = {e.source_id for e in entity.evidence if e.source_id != entity.source_id}
+        if not foreign:
+            continue
+        number = (source_registry or {}).get(entity.source_id, {}).get('document_number')
+        if (entity.kind != EntityType.SOURCE_DOCUMENT or not number or
+            entity.attributes.get('registry_source_id') != entity.source_id or any(
+                not any(e.source_id == sid and contains_document_number(e.quote, number)
+                        for e in entity.evidence) for sid in foreign)):
+            raise ValueError('business entity evidence source mismatch; cross-document identity needs explicit resolution')
     relation_ids = set()
     for r in relations:
         if r.relation_id in relation_ids:

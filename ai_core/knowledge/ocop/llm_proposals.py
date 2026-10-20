@@ -17,17 +17,19 @@ import hashlib
 import json
 import os
 import re
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Protocol
 from ai_core.domain.ocop_citations import quote_bbox
-from ai_core.domain.ocop_ids import stable_id
+from ai_core.domain.ocop_ids import stable_id, code_fingerprint
 from .contracts import (
-    BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef,
-    EntityType, RELATION_TYPES, validate_business_graph,
+    AttributeClaim, BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef,
+    EntityType, ENTITY_ATTRIBUTE_KEYS, RELATION_TYPES, validate_business_graph,
 )
 
-PROMPT_VERSION = "ocop-llm-extract-7"
+PROMPT_VERSION = code_fingerprint('semantic', [Path(__file__), Path(__file__).with_name('contracts.py'),
+    Path(__file__).resolve().parents[2]/'orchestration/ocop/llm.py'])
 CHUNK_CHARS = 2500
 CHUNK_OVERLAP = 200
 
@@ -40,16 +42,7 @@ class StructuredLLM(Protocol):
 PERMITTED_KINDS = ('Criterion', 'EvidenceType', 'ProductGroup', 'ProductSubgroup',
                    'Condition', 'Product', 'Organization')
 # Descriptive features only. Points, stars and ranks stay with deterministic/human review.
-ATTRIBUTE_KEYS = {
-    'Product': ('product_type', 'brand', 'packaging', 'raw_material', 'origin_area'),
-    'Organization': ('organization_form', 'address', 'representative'),
-    'Criterion': ('code',),
-
-    'EvidenceType': ('issuer', 'copies', 'format'),
-    'ProductGroup': ('code',),
-    'ProductSubgroup': ('code',),
-    'Condition': ('subject',),
-}
+ATTRIBUTE_KEYS = ENTITY_ATTRIBUTE_KEYS
 FORBIDDEN_ATTRIBUTE_HINTS = ('point', 'score', 'star', 'rank', 'diem', 'sao', 'hang')
 # Entity-type definitions in the prompt (GraphRAG/LangExtract style) plus a context gate
 # (LlamaIndex strict schema): scoring-sheet kinds only come from table units.
@@ -98,6 +91,26 @@ def _allowed_triples() -> dict[str, tuple[set[str], set[str]]]:
 
 ALLOWED_TRIPLES = _allowed_triples()
 
+
+def response_schema() -> dict:
+    """Provider-constrained output; application validation still distrusts every value."""
+    def obj(properties):
+        return {'type': 'object', 'properties': properties, 'required': list(properties),
+                'additionalProperties': False}
+    attribute_names = sorted({key for keys in ATTRIBUTE_KEYS.values() for key in keys})
+    entity = obj({'kind': {'type': 'string', 'enum': list(PERMITTED_KINDS)},
+                  'anchor': {'type': 'string'},
+                  'attributes': {'type': 'array', 'items': obj({
+                      'key': {'type': 'string', 'enum': attribute_names}, 'value': {'type': 'string'}})}})
+    return obj({
+        'entities': {'type': 'array', 'items': entity},
+        'relations': {'type': 'array', 'items': obj({
+            'type': {'type': 'string', 'enum': sorted(ALLOWED_TRIPLES)},
+            'source': {'type': 'integer'}, 'target': {'type': 'integer'}})},
+        'rules': {'type': 'array', 'items': obj({
+            'kind': {'type': 'string', 'enum': list(RULE_KINDS)}, 'anchor': {'type': 'string'}})},
+    })
+
 _EXAMPLE_INPUT = ("2.1. Bao bì sản phẩm\n- Bao bì đẹp, có nhãn đúng quy định\n"
                   "Hồ sơ gồm: Phiếu kiểm nghiệm do đơn vị được công nhận cấp\n"
                   "Sản phẩm: Mật ong hoa nhãn, đóng chai thủy tinh, chủ thể: HTX Ong Mật Bình Minh")
@@ -115,6 +128,8 @@ _EXAMPLE_OUTPUT = {
     ],
     "rules": [],
 }
+for _entity in _EXAMPLE_OUTPUT['entities']:
+    _entity['attributes'] = [{'key': k, 'value': v} for k, v in _entity.get('attributes', {}).items()]
 
 
 def _system_prompt() -> str:
@@ -130,8 +145,8 @@ def _system_prompt() -> str:
         "(for example each product with its producer), not only the first ones.\n"
         "Entity kinds: " + "; ".join(f"{k} = {v}" for k, v in KIND_DEFINITIONS.items()) + ".\n"
         f"Entity: {{\"kind\": one of {'|'.join(PERMITTED_KINDS)}, \"anchor\": VERBATIM substring, "
-        "\"attributes\": {key: VERBATIM substring}}.\n"
-        f"Allowed attribute keys per kind: {attrs}. Omit a key when the source does not state it.\n"
+        "\"attributes\": [{\"key\": attribute name, \"value\": VERBATIM substring}]}.\n"
+        f"Allowed attribute keys per kind: {attrs}. Use an empty attributes array for unstated features.\n"
         "Relation: {\"type\", \"source\": index of the source entity in your entities array, "
         "\"target\": index of the target entity}; only when the source text directly states it. "
         "Do not copy text into relations.\n"
@@ -211,9 +226,14 @@ class _Cache:
     def put(self, key: str, response: str) -> None:
         if self.dir is None:
             return
-        tmp = self.dir / f"{key}.json.tmp"
-        tmp.write_text(json.dumps({'response': response}, ensure_ascii=False), encoding='utf-8')
-        os.replace(tmp, self.dir / f"{key}.json")
+        descriptor, name = tempfile.mkstemp(prefix=f'{key}.', suffix='.tmp', dir=self.dir)
+        tmp = Path(name)
+        try:
+            with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+                json.dump({'response': response}, stream, ensure_ascii=False)
+            os.replace(tmp, self.dir / f'{key}.json')
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 def _page_of(unit: dict, start: int, end: int) -> int | None:
@@ -234,9 +254,10 @@ def _page_of(unit: dict, start: int, end: int) -> int | None:
 
 
 class _Grounder:
-    def __init__(self, unit: dict):
+    def __init__(self, unit: dict, start: int = 0, end: int | None = None):
         self.unit = unit
-        self.text = unit.get('text') or ''
+        self.start = start
+        self.text = (unit.get('text') or '')[start:end]
         self.sha = {int(s['pdf_page']): s.get('source_sha256') for s in unit.get('spans') or []}
 
     def locate(self, anchor, min_len: int = 3) -> str | None:
@@ -249,7 +270,7 @@ class _Grounder:
         if not hits:
             return None
         quote = self.text[hits[0][0]:hits[0][1]]
-        pages = {_page_of(self.unit, s, e) for s, e in hits}
+        pages = {_page_of(self.unit, s + self.start, e + self.start) for s, e in hits}
         if len(pages) != 1 or None in pages:
             return None
         page = pages.pop()
@@ -284,19 +305,37 @@ def _kind_allowed(kind, anchor, unit: dict) -> bool:
     return not (kind == 'Organization' and _STATE_AGENCY.match(anchor))
 
 
-def _attributes(kind: str, raw, grounder: "_Grounder", stats: dict) -> dict[str, str]:
-    out = {}
+def _attributes(kind: str, anchor: str, raw, grounder: "_Grounder", stats: dict,
+                method: str) -> tuple[dict[str, str], list[AttributeClaim]]:
+    out, claims = {}, []
+    if isinstance(raw, list):
+        values = {}
+        for item in raw:
+            if not isinstance(item, dict) or not isinstance(item.get('key'), str) or not isinstance(item.get('value'), str):
+                stats['dropped_attributes'] += 1
+                continue
+            values.setdefault(item['key'], set()).add(item['value'])
+        for alternatives in values.values():
+            if len(alternatives) > 1:
+                stats['dropped_attributes'] += len(alternatives)
+        raw = {key: next(iter(alternatives)) for key, alternatives in values.items() if len(alternatives) == 1}
     if not isinstance(raw, dict):
-        return out
+        return out, claims
     for key, value in raw.items():
+        if value is None:
+            continue  # strict providers emit null for an unstated optional feature
         found = (grounder.locate(value, min_len=2) if isinstance(value, str) and len(value) <= 200
                  and key in ATTRIBUTE_KEYS.get(kind, ())
                  and not any(h in str(key).lower() for h in FORBIDDEN_ATTRIBUTE_HINTS) else None)
-        if found is None:
+        context = _covering_span(grounder.text, anchor, found) if found else None
+        proof = grounder.ref(context) if context else None
+        if found is None or proof is None:
             stats['dropped_attributes'] += 1
             continue
         out[f"{key}_candidate"] = ' '.join(found.split())
-    return out
+        claims.append(AttributeClaim(attribute=f'{key}_candidate', value=out[f'{key}_candidate'],
+                                     evidence=[proof], extraction_method=method))
+    return out, claims
 
 
 def _ask(client: StructuredLLM, cache: _Cache, prompt: str) -> dict:
@@ -304,10 +343,20 @@ def _ask(client: StructuredLLM, cache: _Cache, prompt: str) -> dict:
     raw = cache.get(key)
     fresh = raw is None
     if fresh:
-        raw = client.chat(SYSTEM, prompt, format_json=True, max_tokens=1600)
+        structured = getattr(client, 'chat_structured', None)
+        for token_limit in (1600, 4096):
+            try:
+                raw = (structured(SYSTEM, prompt, schema=response_schema(), max_tokens=token_limit)
+                       if callable(structured) else client.chat(SYSTEM, prompt, format_json=True, max_tokens=token_limit))
+                break
+            except RuntimeError as exc:
+                if 'truncated' not in str(exc) or token_limit == 4096:
+                    raise
     response = json.loads(raw)
     if not isinstance(response, dict):
         raise ValueError('not an object')
+    if any(not isinstance(response.get(key, []), list) for key in ('entities', 'relations', 'rules')):
+        raise ValueError('extraction collections must be arrays')
     if fresh:
         cache.put(key, raw)
     return response
@@ -336,14 +385,17 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
         raise ValueError('max_units must be 0..500')
     if not (1 <= max_workers <= 16):
         raise ValueError('max_workers must be 1..16')
+    if isinstance(gleanings, bool) or not isinstance(gleanings, int) or not 0 <= gleanings <= 3:
+        raise ValueError('gleanings must be 0..3')
     cache = _Cache(cache_dir)
-    target_units = [u for u in units if u.get('unit_kind') in ('article', 'paragraph', 'section', 'table', 'criterion_table_candidate')
-                    and u.get('text', '').strip()][:max_units]
-    jobs = [(u, body) for u in target_units for _, body in _chunks(u['text'])]
+    eligible_units = [u for u in units if u.get('unit_kind') in ('article', 'paragraph', 'section', 'table', 'criterion_table_candidate')
+                      and u.get('text', '').strip()]
+    target_units = eligible_units[:max_units]
+    jobs = [(u, start, body) for u in target_units for start, body in _chunks(u['text'])]
 
     def run(job):
         try:
-            return _call(client, cache, job[1], gleanings), None
+            return _call(client, cache, job[2], gleanings), None
         except (RuntimeError, ValueError, TypeError, KeyError, IndexError, OSError) as exc:
             return None, type(exc).__name__ + (f': {exc}' if isinstance(exc, RuntimeError) else '')
 
@@ -359,14 +411,14 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
     rules: dict[str, BusinessRule] = {}
     failures, ok_units, failed_units = [], set(), set()
     method = f'llm_candidate:{client.model}'
-    for (unit, _body), (response, error) in zip(jobs, results):
+    for (unit, start, body), (response, error) in zip(jobs, results):
         sid, uid = unit['source_id'], unit['unit_id']
         if response is None:
             failures.append({'evidence_unit_id': uid, 'error_type': error})
             failed_units.add(uid)
             continue
         ok_units.add(uid)
-        grounder = _Grounder(unit)
+        grounder = _Grounder(unit, start, start + len(body))
         by_anchor: dict[tuple[str, str], str] = {}
         by_index: dict[int, tuple[str, str, str]] = {}
         for index, obj in enumerate((response.get('entities') or [])[:80]):
@@ -381,9 +433,10 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
             # GraphRAG-style merge: one entity per (source, kind, normalized label), evidence accumulated.
             key = norm_label(ev.quote)
             # Scoring-sheet rows repeat verbatim across sheets: never merge them across units.
-            scope = [uid] if kind in TABLE_ONLY_KINDS else []
+            scope = [uid] if kind in TABLE_ONLY_KINDS | {'Product', 'Organization'} else []
             entity_id = stable_id('llm_entity', sid, [kind, key, *scope], revision='business')
-            attrs = _attributes(kind, obj.get('attributes'), grounder, stats)
+            attrs, claims = _attributes(kind, ev.quote, obj.get('attributes'), grounder, stats, method)
+            refs = [ev] + [ref for claim in claims for ref in claim.evidence if ref != ev]
             if entity_id in ent:
                 old = ent[entity_id]
                 merged = dict(old.attributes)
@@ -393,16 +446,17 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
                         merged[k.replace('_candidate', '_conflict')] = True
                     elif k not in merged:
                         merged[k] = v
-                evidence = old.evidence + [e for e in [ev] if e not in old.evidence]
-                ent[entity_id] = old.model_copy(update={'evidence': evidence, 'attributes': merged})
+                evidence = old.evidence + [e for e in refs if e not in old.evidence]
+                ent[entity_id] = old.model_copy(update={'evidence': evidence, 'attributes': merged,
+                    'attribute_claims': old.attribute_claims + [c for c in claims if c not in old.attribute_claims]})
             else:
                 ent[entity_id] = BusinessEntity(entity_id=entity_id, kind=EntityType(kind), label=' '.join(ev.quote.split()),
-                                                source_id=sid, evidence=[ev], attributes=attrs,
+                                                source_id=sid, evidence=refs, attributes=attrs, attribute_claims=claims,
                                                 extraction_method=method)
             by_anchor[(kind, key)] = entity_id
             by_index[index] = (entity_id, kind, ev.quote)
         for obj in (response.get('relations') or [])[:80]:
-            if not isinstance(obj, dict) or obj.get('type') not in ALLOWED_TRIPLES:
+            if not isinstance(obj, dict) or not isinstance(obj.get('type'), str) or obj['type'] not in ALLOWED_TRIPLES:
                 stats['dropped_relations'] += 1
                 continue
             relation_type = obj['type']
@@ -433,6 +487,8 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
             else:
                 rel[rid] = BusinessRelation(relation_id=rid, relation_type=relation_type,
                                             source_entity_id=src, target_entity_id=dst, evidence=[ev],
+                                            attributes={'grounding_method': 'verbatim_cooccurrence',
+                                                        'semantic_verified': False},
                                             extraction_method=method)
         for obj in (response.get('rules') or [])[:40]:
             kind, anchor = (obj.get('kind'), obj.get('anchor')) if isinstance(obj, dict) else (None, None)
@@ -449,6 +505,10 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
         'rules': [r.model_dump(mode='json') for r in rules.values()],
         'errors': failures,
         'processed_unit_count': len(ok_units - failed_units),
+        'eligible_unit_count': len(eligible_units),
+        'selected_unit_count': len(target_units),
+        'omissions': [{'evidence_unit_id': u['unit_id'], 'reason': 'semantic_unit_budget_exceeded'}
+                     for u in eligible_units[max_units:]],
         'chunk_count': len(jobs),
         'grounding': stats,
     }
@@ -472,14 +532,18 @@ def _match(row: dict, candidates: list[dict]) -> dict | None:
     """Same label may recur on several sheets: require a shared evidence unit, then a shared page."""
     units = {e['evidence_unit_id'] for e in row['evidence']}
     pages = {e['pdf_page'] for e in row['evidence']}
-    for test in (lambda c: units & {e['evidence_unit_id'] for e in c.get('evidence', [])},
-                 lambda c: pages & {e['pdf_page'] for e in c.get('evidence', [])}):
+    tests = [lambda c: units & {e['evidence_unit_id'] for e in c.get('evidence', [])}]
+    if row['kind'] not in {'Product', 'Organization'}:
+        tests.append(lambda c: pages & {e['pdf_page'] for e in c.get('evidence', [])})
+    for test in tests:
         hits = [c for c in candidates if test(c)]
         if len(hits) == 1:
             return hits[0]
         if hits:
             return None
-    return candidates[0] if len(candidates) == 1 and row['kind'] in ENRICHABLE_KINDS else None
+    # A unique name in this extraction is not a globally unique business identity.
+    return candidates[0] if len(candidates) == 1 and row['kind'] in {
+        'EvidenceType', 'ProductGroup', 'ProductSubgroup'} else None
 
 
 def reconcile(proposed: dict, entities: list[dict], relations: list[dict]) -> dict:
@@ -491,8 +555,10 @@ def reconcile(proposed: dict, entities: list[dict], relations: list[dict]) -> di
     existing entity lacks. Scoring-sheet kinds are never modified, and an LLM Criterion
     without a deterministic match is dropped instead of forming a parallel tree."""
     index: dict[tuple, list[dict]] = {}
+    def entity_key(row):
+        return norm_label(row['label']) if row['kind'] in {'Product', 'Organization', 'EvidenceType'} else _resolution_key(row['label'])
     for e in entities:
-        index.setdefault((e['source_id'], e['kind'], _resolution_key(e['label'])), []).append(e)
+        index.setdefault((e['source_id'], e['kind'], entity_key(e)), []).append(e)
     family = {}
     for e in entities:
         if e['kind'] in GROUP_FAMILY:
@@ -500,7 +566,7 @@ def reconcile(proposed: dict, entities: list[dict], relations: list[dict]) -> di
     options = {(e['source_id'], _resolution_key(e['label'])) for e in entities if e['kind'] == 'ScoreOption'}
     remap, enriched, kept, unanchored, kind_conflicts = {}, 0, [], 0, 0
     for row in proposed['entities']:
-        key = (row['source_id'], _resolution_key(row['label']))
+        key = (row['source_id'], entity_key(row))
         target = _match(row, index.get((row['source_id'], row['kind'], key[1]), []))
         if row['kind'] == 'Condition' and key in options:
             kind_conflicts += 1  # an answer option restated as a condition
@@ -517,19 +583,30 @@ def reconcile(proposed: dict, entities: list[dict], relations: list[dict]) -> di
         remap[row['entity_id']] = target['entity_id']
         if row['kind'] in ENRICHABLE_KINDS:
             # The LLM mention becomes another grounded mention of the existing entity.
+            if target.get('status') == 'rejected':
+                continue
+            before = json.dumps(target, sort_keys=True, ensure_ascii=False)
             evidence = target.setdefault('evidence', [])
             evidence.extend(e for e in row['evidence'] if e not in evidence)
+            claims = target.setdefault('attribute_claims', [])
+            claims.extend(c for c in row.get('attribute_claims', []) if c not in claims)
             attrs = target.setdefault('attributes', {})
             added = [k for k in row.get('attributes', {}) if k not in attrs]
             for k in added:
                 attrs[k] = row['attributes'][k]
+            for k, value in row.get('attributes', {}).items():
+                if k.endswith('_candidate') and k in attrs and attrs[k] != value:
+                    # Keep the incumbent reading and both source claims; flag the conflict.
+                    attrs[k.removesuffix('_candidate') + '_conflict'] = True
             if added:
                 enriched += len(added)
                 previous = [k for k in str(attrs.get('llm_enriched_attributes') or '').split(',') if k]
                 attrs['llm_enriched_attributes'] = ','.join(sorted(set(previous + added)))
+            if target.get('status') == 'verified' and before != json.dumps(target, sort_keys=True, ensure_ascii=False):
+                target['status'] = 'candidate'
     units_of = {e['entity_id']: {ev['evidence_unit_id'] for ev in e.get('evidence', [])}
                 for e in list(entities) + kept}
-    existing = {(r['relation_type'], r['source_entity_id'], r['target_entity_id']) for r in relations}
+    existing = {(r['relation_type'], r['source_entity_id'], r['target_entity_id']): r for r in relations}
     out_rel, duplicates, ungrounded = [], 0, 0
     for row in proposed['relations']:
         if row['source_entity_id'] not in remap and row['source_entity_id'] not in units_of or \
@@ -538,19 +615,34 @@ def reconcile(proposed: dict, entities: list[dict], relations: list[dict]) -> di
             continue
         row = dict(row, source_entity_id=remap.get(row['source_entity_id'], row['source_entity_id']),
                    target_entity_id=remap.get(row['target_entity_id'], row['target_entity_id']))
-        if (row['relation_type'], row['source_entity_id'], row['target_entity_id']) in existing:
+        key = (row['relation_type'], row['source_entity_id'], row['target_entity_id'])
+        if key in existing:
             duplicates += 1
+            old = existing[key]
+            proof = old.setdefault('evidence', [])
+            added_proof = [e for e in row['evidence'] if e not in proof]
+            proof.extend(added_proof)
+            if added_proof and old.get('status') == 'verified':
+                old['status'] = 'candidate'
             continue
         shared = units_of.get(row['source_entity_id'], set()) & units_of.get(row['target_entity_id'], set())
         if not shared & {ev['evidence_unit_id'] for ev in row['evidence']}:
             ungrounded += 1
             continue
+        row['relation_id'] = stable_id('llm_relation', row['evidence'][0]['source_id'],
+            [row['relation_type'], row['source_entity_id'], row['target_entity_id']], revision='business')
         out_rel.append(row)
+        existing[key] = row
     # A Condition only means something under its criterion; drop ones left without a parent.
     linked = {r['target_entity_id'] for r in out_rel if r['relation_type'] == 'HAS_CONDITION'}
     orphans = [e for e in kept if e['kind'] == 'Condition' and e['entity_id'] not in linked]
     kept = [e for e in kept if e not in orphans]
     unanchored += len(orphans)
+    statuses = {e['entity_id']: e.get('status') for e in entities + kept}
+    for relation in relations:
+        if relation.get('status') == 'verified' and any(statuses.get(relation[endpoint]) != 'verified'
+                for endpoint in ('source_entity_id', 'target_entity_id')):
+            relation['status'] = 'candidate'
     return {**proposed, 'entities': kept, 'relations': out_rel,
             'reconciled': {'merged_entities': len(remap), 'enriched_attributes': enriched,
                            'duplicate_relations': duplicates, 'ungrounded_after_merge': ungrounded,

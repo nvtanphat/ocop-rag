@@ -13,10 +13,10 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse,Route,Intent,AuthContext
 from ai_core.orchestration.ocop.router import route_query,extract_slots,_merge_followup
-from ai_core.orchestration.ocop.planner import ToolPlan,build_plan,evidence_ids,needs_recovery,recovery_safe
+from ai_core.orchestration.ocop.planner import ToolPlan,build_plan,evidence_ids,recovery_safe
 from ai_core.orchestration.ocop.tools import ToolRegistry
-from ai_core.orchestration.ocop.answer import assemble
-from ai_core.system.telemetry import observe,traced
+from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
+from ai_core.system.telemetry import traced
 from ai_core.system.checkpoints import SQLiteCheckpoint,thread_key,should_checkpoint
 from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite
 from ai_core.orchestration.ocop.llm import OllamaClient
@@ -150,6 +150,19 @@ class OcopAgent:
             for row in output.get('results',[])
         )
 
+    @staticmethod
+    def _graph_seed_rows(output:dict)->list[dict]:
+        """Source locations may seed a checked graph without becoming business facts."""
+        if output.get('status') in BAD_RESULT_STATUSES or output.get('fallback'):
+            return []
+        return [row for row in output.get('results', []) if isinstance(row, dict) and
+                row.get('review_status') != 'rejected' and row.get('source_id') and
+                (row.get('evidence_unit_id') or row.get('unit_id')) and any(
+                    isinstance(span, dict) and isinstance(span.get('pdf_page'), int) and
+                    span['pdf_page'] > 0 and isinstance(span.get('bbox'), (list, tuple)) and
+                    len(span['bbox']) == 4 and re.fullmatch(r'[0-9a-f]{64}', str(span.get('source_sha256') or ''))
+                    for span in (row.get('source_spans') or row.get('spans') or []))]
+
     def execute(self,state:OcopState)->dict:
         route=Route.model_validate(state['route']);plan=state.get('plan') or build_plan(route)
         results=[];trace=list(state.get('trace') or [])
@@ -170,7 +183,8 @@ class OcopAgent:
         for task in ordered:
             name=task.name
             if len(results)>=plan.max_calls:break
-            failed=[dep for dep in task.depends_on if not self._dependency_ready(finished.get(dep,{}))]
+            failed=[dep for dep in task.depends_on if not self._dependency_ready(finished.get(dep,{})) and
+                    not (name == 'search_graph' and self._graph_seed_rows(finished.get(dep, {})))]
             if failed:
                 output={'results':[],'status':'dependency_unavailable'}
                 results.append({'tool':name,'output':output})
@@ -184,6 +198,10 @@ class OcopAgent:
             predecessors=[entry for entry in results if entry['tool'] in ancestors]
             tool_slots={**self._verified_slots(predecessors),**route.slots}
             context['retrieved_evidence_ids']=evidence_ids(results,verified_only=True)
+            if name == 'search_graph':
+                context['retrieved_evidence_ids'] = evidence_ids([
+                    {'output': {'results': self._graph_seed_rows(entry.get('output') or {})}}
+                    for entry in results])
             started=monotonic()
             try:
                 output=self.tools.dispatch(name,query=state.get('effective_query',state['query']),

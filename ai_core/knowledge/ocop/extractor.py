@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Any
 
 from ai_core.domain.ocop_citations import quote_bbox
 from ai_core.domain.ocop_ids import stable_id
 from .contracts import (
     BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef, EntityType,
-    Status, validate_business_graph,
+    validate_business_graph,
 )
 
 
@@ -395,7 +394,8 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
             product_id = add(EntityType.PRODUCT, _short_label(product), row, product_ref,
                              key=f'{row["candidate_id"]}:product')
             owner_id = add(EntityType.ORGANIZATION, _short_label(producer), row, owner_ref,
-                           key=f'organization:{_short_label(producer).casefold()}')
+                           key=f'organization:{_short_label(producer).casefold()}:'
+                               f'{_short_label(address).casefold() if address else owner_ref.evidence_unit_id + ":" + str(owner_ref.row)}')
             link('HAS_RECORD',decision,rec,ev)
             link('RECOGNIZES',rec,product_id,ev,extra_evidence=[product_ref])
             link('DECLARED_BY',rec,owner_id,ev,extra_evidence=[owner_ref])
