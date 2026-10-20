@@ -34,7 +34,8 @@ def main() -> None:
     run.add_argument("--build-only", action="store_true", help="Prepare corpus without starting the API")
     run.add_argument("--refresh", action="store_true", help="Rebuild all derived artifacts (OCR cache reused)")
     run.add_argument("--dense", action="store_true", help="Build real EmbeddingGemma/Qdrant vectors")
-    run.add_argument("--semantic-extract", action="store_true", help="Ask the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules")
+    run.add_argument("--semantic-extract", action=argparse.BooleanOptionalAction, default=True,
+                     help="Use the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules (enabled by default; --no-semantic-extract disables it)")
     run.add_argument("--semantic-max-units", type=int, default=50, help="Maximum EvidenceUnits sent to semantic candidate model")
     run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and Ollama Qwen3.5 2B")
     run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")

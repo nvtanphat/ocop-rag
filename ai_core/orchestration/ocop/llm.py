@@ -120,7 +120,7 @@ def extraction_gleanings()->int:
     return int(os.getenv("OCOP_EXTRACT_LLM_GLEANINGS","1"))
 
 def make_extraction_client()->OllamaClient|OpenAICompatClient:
-    """Client used ONLY for candidate entity/feature extraction (--semantic-extract):
+    """Client used ONLY for candidate entity/feature extraction (enabled by default):
     OCOP_EXTRACT_LLM_PROVIDER=ollama (default, local qwen3.5:2b) or openai (OpenAI-compatible API)."""
     provider=extraction_provider();model=extraction_model_name()
     if provider=="openai":

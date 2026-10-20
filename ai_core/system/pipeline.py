@@ -72,7 +72,7 @@ class PipelineOptions:
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
     refresh: bool = False
-    semantic_extract: bool = False
+    semantic_extract: bool = True
     semantic_max_units: int = 50
 
 
