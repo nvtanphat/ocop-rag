@@ -10,25 +10,31 @@ from pathlib import Path
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 from ai_core.graph.ocop.ontology import EDGE_ENDPOINTS
+from ai_core.graph.ocop.grounding import usable, public_record
 
 
 def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
                   user: str = "neo4j", password: str, database: str = "neo4j",
-                  verified_only: bool = False, batch_size: int = 300,
-                  grounded_only: bool = False) -> dict:
+                  verified_only: bool = False, batch_size: int = 300) -> dict:
     if batch_size < 1 or batch_size > 10000:
         raise ValueError("batch_size must be between 1 and 10000")
     # Validate before connecting or mutating remote state.
     manifest = validate_graph_snapshot(graph_dir)
-    if grounded_only and not manifest.get('grounding'):
-        raise ValueError('graph lacks automatic grounding; rebuild before publication')
-    nodes = list(records(graph_dir/('agent_nodes.jsonl' if grounded_only else 'nodes.jsonl')))
-    edges = list(records(graph_dir/('agent_edges.jsonl' if grounded_only else 'edges.jsonl')))
-    expected = manifest['grounding'] if grounded_only else manifest['counts']
+    from ai_core.graph.ocop.builder import SCHEMA_REVISION
+    if not manifest.get('checks') or manifest.get('schema_revision') != SCHEMA_REVISION:
+        raise ValueError('graph check policy changed; rebuild before publication')
+    immutable = graph_dir/'snapshots'/manifest['graph_version']
+    if immutable.is_dir():
+        validate_graph_snapshot(immutable)
+        graph_dir = immutable
+    nodes = list(records(graph_dir/'nodes.jsonl'))
+    edges = list(records(graph_dir/'edges.jsonl'))
+    expected = manifest['counts']
     if (len(nodes) != expected['nodes'] or len(edges) != expected['edges']):
         raise ValueError("graph snapshot row counts differ from manifest")
-    if verified_only:
-        nodes = [n for n in nodes if n["review_status"] == "verified"]
+    nodes = [public_record(n) for n in nodes if usable(n)
+             and (not verified_only or n['check'] == 'human_verified')]
+    edges = [public_record(e) for e in edges if usable(e)]
     allowed = {n["node_id"] for n in nodes}
     # An orphan in the full snapshot is corruption; verified-only mode may
     # intentionally omit lower-trust endpoints and their incident edges.
@@ -37,12 +43,12 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
         raise ValueError("graph snapshot contains dangling edge")
     edges = [e for e in edges if e["source_entity_id"] in allowed and
              e["target_entity_id"] in allowed and
-             (not verified_only or e["review_status"] == "verified")]
+             (not verified_only or e["check"] == "human_verified")]
     invalid = {e["relation_type"] for e in edges} - EDGE_ENDPOINTS.keys()
     if invalid:
         raise ValueError(f"Unsafe relation types: {sorted(invalid)}")
     version = manifest["graph_version"]
-    mode = ('grounded_verified' if verified_only else 'grounded') if grounded_only else ('verified' if verified_only else 'all')
+    mode = 'verified' if verified_only else 'checked'
     snapshot_id = f"{version}:{mode}"
     scope = f"ocop:{mode}"
     try:
@@ -87,7 +93,7 @@ def publish_neo4j(graph_dir: Path, *, uri: str = "bolt://localhost:7687",
             session.execute_write(write_snapshot)
         return {"status":"uploaded","node_count":len(nodes),"edge_count":len(edges),
                 "graph_version":version,"snapshot_id":snapshot_id,
-                "active_scope":scope,"verified_only":verified_only,'grounded_only':grounded_only}
+                "active_scope":scope,"verified_only":verified_only}
     finally:
         drv.close()
 

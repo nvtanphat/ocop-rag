@@ -39,7 +39,7 @@ def test_extracted_views_empty_when_not_built(monkeypatch, tmp_path):
     monkeypatch.setattr(routes, "DATA", tmp_path)
     routes._graph_data.cache_clear()
     criteria = client.get('/api/ocop/criteria?limit=2').json()
-    assert criteria['kind'] == 'machine_candidates'
+    assert criteria['kind'] == 'checked_graph'
     assert criteria['items'] == []
     assert client.get('/api/ocop/forms').json()['items'] == []
     assert client.get('/api/ocop/recognitions?limit=2').json()['items'] == []

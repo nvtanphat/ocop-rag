@@ -45,13 +45,14 @@ def ref(source='SOURCE-A', uid='unit-s1'):
 
 def test_control_verified_graph_traversal_works(tmp_path):
     k=root(tmp_path); g=tmp_path/'g'; build_graph(k,g)
-    got=traverse(g,['doc-a'],hops=1,verified_only=True)
+    got=traverse(g,['doc-a'],hops=1)
     assert any(x['node_id']=='doc-a' for x in got['nodes'])
-    assert all(x['review_status']=='verified' for x in got['nodes'])
+    assert all(x['check']=='passed' for x in got['nodes'])
+    assert traverse(g,['doc-a'],verified_only=True)['nodes']==[]
 
 
 def test_verified_only_must_not_return_unverified_seed(tmp_path):
-    k=root(tmp_path); entities=[json.loads(s) for s in (k/'entities.jsonl').read_text().splitlines()]
+    k=root(tmp_path); entities=[json.loads(s) for s in (k/'entities.jsonl').read_text(encoding='utf-8').splitlines()]
     entities[0]['review_status']='needs_review'
     put(k/'entities.jsonl',entities);g=tmp_path/'g';build_graph(k,g)
     got=traverse(g,['doc-a'],hops=0,verified_only=True)
@@ -60,7 +61,7 @@ def test_verified_only_must_not_return_unverified_seed(tmp_path):
 
 def test_graph_version_changes_when_evidence_label_changes(tmp_path):
     k=root(tmp_path);g=tmp_path/'g';first=build_graph(k,g)
-    entities=[json.loads(s) for s in (k/'entities.jsonl').read_text().splitlines()]
+    entities=[json.loads(s) for s in (k/'entities.jsonl').read_text(encoding='utf-8').splitlines()]
     entities[0]['name']='Văn bản A (đã hiệu đính)'
     put(k/'entities.jsonl',entities)
     second=build_graph(k,g)
@@ -75,8 +76,8 @@ def test_graph_rejects_business_relation_with_unknown_evidence(tmp_path):
          'status':'verified','evidence':[ref(uid='not-a-real-unit')]}
     ])
     build_graph(k,g)
-    edges=[json.loads(x) for x in (g/'edges.jsonl').read_text().splitlines()]
-    assert not any(e['relation_type']=='HAS_RECORD' for e in edges), 'orphan proof must not become verified edge'
+    edges=[json.loads(x) for x in (g/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
+    assert not any(e['relation_type']=='HAS_RECORD' and e['check']!='failed' for e in edges), 'orphan proof must not become verified edge'
 
 
 def test_graph_rejects_business_relation_cross_source_evidence(tmp_path):
@@ -87,8 +88,8 @@ def test_graph_rejects_business_relation_cross_source_evidence(tmp_path):
          'status':'verified','evidence':[ref(source='SOURCE-B',uid='unit-s2')]}
     ])
     build_graph(k,g)
-    edges=[json.loads(x) for x in (g/'edges.jsonl').read_text().splitlines()]
-    assert not any(e['relation_type']=='HAS_RECORD' for e in edges), 'unrelated document proof must not justify relation'
+    edges=[json.loads(x) for x in (g/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
+    assert not any(e['relation_type']=='HAS_RECORD' and e['check']!='failed' for e in edges), 'unrelated document proof must not justify relation'
 
 
 def test_graph_rejects_duplicate_entity_id_conflicting_claims(tmp_path):

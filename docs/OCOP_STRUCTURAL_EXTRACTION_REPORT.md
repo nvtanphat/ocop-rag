@@ -1,5 +1,110 @@
 # Đối chiếu trích xuất OCOP theo cấu trúc
 
+## Một đầu ra extraction/graph — 2026-10-20
+
+Đã chuyển sang `nodes.jsonl`, `edges.jsonl`, `manifest.json` và `snapshots/`.
+Mỗi bản ghi có `check`, `origin`; chỉ `failed` có `check_reason`. Giữ assertion
+thất bại và nội dung máy trích cho người duyệt trong cùng graph; không xuất file
+`agent_*`, `excluded_assertions.jsonl` hay `rejected.jsonl` mới. Snapshot lịch sử
+không bị viết lại. Retrieval/Agent, API graph và ba danh mục tiêu chí/biểu mẫu/
+công nhận, frontend, Neo4j đều lấy bản ghi `passed` hoặc `human_verified`.
+Chỉ review ledger khớp hash, bằng chứng và phụ thuộc mới tạo `human_verified`.
+Các cổng sở hữu cùng hàng và quan hệ văn bản đã có từ lượt trước được giữ lại;
+không nới `REQUIRES_EVIDENCE`, Condition, `HAS_CONDITION`, `MINIMUM_FOR`, StarLevel.
+
+| Bản chạy | Tổng node/cạnh | passed node/cạnh | failed node/cạnh | human_verified | rejected |
+|---|---:|---:|---:|---:|---:|
+| gpt-6-sol | 1190 / 2354 | 732 / 1517 | 458 / 837 | 0 | 0 |
+| Không LLM | 897 / 1968 | 680 / 1443 | 217 / 525 | 0 | 0 |
+
+Hai bản đều đủ 15 `OWNED_BY` của QĐ525 và `REPLACES` ×2, `AMENDS`, `BASED_ON`
+ở trạng thái `passed`; cạnh trùng = 0. So theo nguồn + loại + nhãn chuẩn hóa
+và hai đầu cạnh: mất node/cạnh tất định = 0, cả toàn graph lẫn tập `passed`.
+Nguồn gốc LLM còn nguyên; không có bản ghi tự nhận human_verified. Vẫn có 52
+EvidenceType do LLM thêm chỉ có liên kết chứng cứ, chưa có cạnh ngữ nghĩa.
+
+Lệnh: `python C:/Users/PC/AppData/Local/Temp/ocop-single-graph-20261020/run_build.py`
+gọi `extract_artifacts(max_pages=9999, semantic_workers=4, semantic_gleanings=1)`
+trên đúng 39 trang `pages-part5-final`, rồi `build_graph(allow_partial=True)`.
+Thời gian lượt cuối có/không LLM: 4,266 / 3,718 giây; 76/76 unit LLM, lỗi = 0.
+Cache hợp lệ được dùng trực tiếp, chặn mọi cache miss gọi mạng: **0 API request,
+chi phí thực tế $0**. Không chạy lại OCR. Hai manifest là partial, chưa đủ để
+kích hoạt corpus sản xuất; không giả manifest complete để chạy Agent trên mẫu.
+
+Test đỏ ban đầu: 2 lỗi hợp đồng đầu ra/trust; test đỏ bổ sung bắt ba API danh mục
+đọc candidate trực tiếp (`'machine_candidates' != 'checked_graph'`). Sau sửa:
+`python -m pytest -q tests`: **627 passed, 1 skipped**;
+`ruff check --select F` trên các file Python sửa: sạch; `npm run build` và
+`npx tsc --noEmit`: đạt. Các test cũ được đổi hợp đồng một cách tường minh:
+đọc file phụ → lọc `check`; assertion thất bại vẫn tồn tại; input
+`review_status=verified` không tương đương quyết định ledger; duyệt đủ qua ledger
+được Agent sử dụng. Test từng cấm toàn bộ OWNED_BY từ bảng nay kiểm đủ hai cạnh
+cùng hàng, với các test âm khác hàng, khác khoản, phủ định/điều kiện giữ nguyên.
+Lỗi phụ đã sửa: `TS2869: Right operand of ?? is unreachable because the left operand is never nullish.`
+Một lệnh in nhãn tiếng Việt gặp `UnicodeEncodeError: 'charmap' codec can't encode character`;
+chỉ ảnh hưởng console, không sửa dữ liệu OCR hay PDF.
+Test đỏ bổ sung khi duyệt cạnh thất bại thiếu đầu mút tái hiện
+`KeyError: 'missing:owner'`; đã sửa để giữ `failed`, không làm vỡ rebuild ledger.
+
+Đo bằng ảnh: seed **20261020**, xáo từng văn bản; 5 mẫu/loại nếu đủ, thêm tầng
+LLM (15 EvidenceType, 5 SUPPORTED_BY); tối đa 20 lượt/loại. Đã kiểm SHA-256 của
+8 PDF xuất hiện trong mẫu với lock trước khi render crop **200 DPI** rồi tự xem
+71 tờ ảnh tổng hợp. 179 lượt xem, **176 assertion phân biệt**; ba mẫu trùng giữa
+hai tầng được loại khi tính n. Không dùng script tự chấm nội dung. Nhật ký từng
+mẫu, bbox/SHA, crop và kết quả nằm trong scratchpad trên (`samples.json`,
+`manual_judgments.json`, `precision.json`, `final_checks.json`, `crops/`).
+
+| Loai | n | Dung | Sai | KXD | Precision |
+|---|---:|---:|---:|---:|---:|
+| edge: `AMENDS` | 1 | 1 | 0 | 0 | 100% |
+| edge: `BASED_ON` | 1 | 1 | 0 | 0 | 100% |
+| edge: `DECLARED_BY` | 5 | 5 | 0 | 0 | 100% |
+| edge: `DEFINES_GROUP` | 4 | 4 | 0 | 0 | 100% |
+| edge: `HAS_ARTICLE` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_CLAUSE` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_CRITERION` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_OPTION` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_POINT` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_RECORD` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_SUBCRITERION` | 5 | 5 | 0 | 0 | 100% |
+| edge: `HAS_SUBGROUP` | 2 | 2 | 0 | 0 | 100% |
+| edge: `LOCATED_IN` | 5 | 5 | 0 | 0 | 100% |
+| edge: `OWNED_BY` | 5 | 5 | 0 | 0 | 100% |
+| edge: `RECOGNIZES` | 5 | 5 | 0 | 0 | 100% |
+| edge: `REPLACES` | 2 | 2 | 0 | 0 | 100% |
+| edge: `REQUIRES_EVIDENCE` | 2 | 2 | 0 | 0 | 100% |
+| edge: `RESPONSIBLE_FOR` | 5 | 4 | 1 | 0 | 80% |
+| edge: `SUPPORTED_BY` | 10 | 10 | 0 | 0 | 100% |
+| edge: `USES_SHEET` | 2 | 2 | 0 | 0 | 100% |
+| node: `Article` | 5 | 5 | 0 | 0 | 100% |
+| node: `Authority` | 5 | 5 | 0 | 0 | 100% |
+| node: `Clause` | 5 | 5 | 0 | 0 | 100% |
+| node: `Criterion` | 5 | 5 | 0 | 0 | 100% |
+| node: `CriterionSheet` | 5 | 5 | 0 | 0 | 100% |
+| node: `EvidenceType` | 17 | 17 | 0 | 0 | 100% |
+| node: `EvidenceUnit` | 5 | 5 | 0 | 0 | 100% |
+| node: `FormTemplate` | 5 | 5 | 0 | 0 | 100% |
+| node: `Organization` | 3 | 3 | 0 | 0 | 100% |
+| node: `Point` | 5 | 5 | 0 | 0 | 100% |
+| node: `ProcedureStep` | 5 | 5 | 0 | 0 | 100% |
+| node: `Product` | 5 | 5 | 0 | 0 | 100% |
+| node: `ProductGroup` | 4 | 4 | 0 | 0 | 100% |
+| node: `ProductSubgroup` | 2 | 2 | 0 | 0 | 100% |
+| node: `RecognitionDecision` | 1 | 1 | 0 | 0 | 100% |
+| node: `RecognitionRecord` | 5 | 5 | 0 | 0 | 100% |
+| node: `ScoreOption` | 5 | 5 | 0 | 0 | 100% |
+| node: `SourceDocument` | 5 | 5 | 0 | 0 | 100% |
+
+**Chưa đạt tiêu chí precision ≥90% cho mọi loại n≥5.** Mẫu sai duy nhất:
+`agent:edge:RESPONSIBLE_FOR:01`, cạnh `ocop:kg_edge:46f4f9260958f3d006a03bfc`,
+QĐ26 p8, bbox `[86.68,396.65,543.89,592.63]`. Bước bắt đầu bằng chủ thể OCOP
+chuẩn bị hồ sơ; UBND cấp tỉnh nằm ở câu sau. Lỗi parser/cổng vượt ranh giới
+chủ ngữ: 4 đúng/1 sai, KXĐ=0. Giữ mẫu sai trong phép đo, không nới cổng hay
+chép nội dung ảnh vào dữ liệu. Các loại chưa có bản ghi passed: không có mẫu,
+không tính 100%. Precision ở đây chỉ là mẫu kiểm tay, không phải benchmark corpus.
+
+---
+
 ## Chốt extraction/graph — 2026-10-20
 
 **Chưa đạt toàn bộ tiêu chí chốt.** Đã sửa ba nhóm lỗi được giao, build trên

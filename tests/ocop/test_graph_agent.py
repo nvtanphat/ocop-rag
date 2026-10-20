@@ -1,7 +1,6 @@
 """Unit/contract tests for graph/agent. No model, Neo4j or network required."""
 from __future__ import annotations
 import json
-from pathlib import Path
 import pytest
 from ai_core.graph.ocop.builder import build_graph
 from ai_core.graph.ocop.ontology import validate_edge
@@ -43,9 +42,10 @@ def test_graph_build_and_repeat(tmp_path):
     b=build_graph(knowledge,out)
     assert a==b and first==(out/'edges.jsonl').read_bytes()
     assert a['counts']['edges']>=3
-    graph=traverse(out,['doc'],hops=2,verified_only=True)
+    graph=traverse(out,['doc'],hops=2)
     assert any(n['node_id']=='paragraph' for n in graph['nodes'])
-    assert all(e['review_status']=='verified' for e in graph['edges'])
+    assert all(e['check']=='passed' for e in graph['edges'])
+    assert not traverse(out,['doc'],verified_only=True)['nodes']
     assert validate_edge('AMENDS','SourceDocument','SourceDocument').ok
     assert not validate_edge('ARBITRARY','SourceDocument','SourceDocument').ok
     with pytest.raises(ValueError):traverse(out,['doc'],hops=4)

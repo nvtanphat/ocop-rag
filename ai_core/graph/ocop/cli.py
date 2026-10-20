@@ -4,7 +4,6 @@ import argparse,json,os
 from pathlib import Path
 from ai_core.graph.ocop.builder import build_graph
 from ai_core.graph.ocop.store import publish_neo4j
-from ai_core.graph.ocop.retriever import traverse
 ROOT=Path(__file__).resolve().parents[3]
 def main():
     p=argparse.ArgumentParser()

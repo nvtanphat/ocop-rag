@@ -57,7 +57,7 @@ def test_graph_does_not_duplicate_document_and_evidence_nodes(tmp_path):
     assert any(x['relation_type']=='LOCATED_IN' and x['source_entity_id']=='u-old'
                and x['target_entity_id']=='doc-old' for x in edges)
     assert result['counts']['rejected']==0
-    graph=traverse(output,['doc-old'],hops=2,relations=['CONTAINS'],direction='out',verified_only=True)
+    graph=traverse(output,['doc-old'],hops=2,relations=['LOCATED_IN'],direction='in')
     assert {n['node_id'] for n in graph['nodes']}=={'doc-old','u-old'}
     assert len(graph['edges'])==1
     assert traverse(output,['u-old'],hops=2,relations=['CONTAINS'],direction='out')['edges']==[]
@@ -149,15 +149,15 @@ def test_router_does_not_use_question_words_as_product_name():
 def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
     graph=tmp_path/'graph';graph.mkdir()
     save_rows(graph/'nodes.jsonl', [
-        {'node_id':'d','node_type':'RecognitionDecision','review_status':'verified'},
-        {'node_id':'p1','node_type':'Product','review_status':'verified'},
-        {'node_id':'p2','node_type':'Product','review_status':'verified'},
+        {'node_id':'d','node_type':'RecognitionDecision','review_status':'verified','check':'human_verified'},
+        {'node_id':'p1','node_type':'Product','review_status':'verified','check':'human_verified'},
+        {'node_id':'p2','node_type':'Product','review_status':'verified','check':'human_verified'},
     ])
     save_rows(graph/'edges.jsonl', [
         {'edge_id':'e1','relation_type':'RECOGNIZES','source_entity_id':'d',
-         'target_entity_id':'p1','review_status':'verified'},
+         'target_entity_id':'p1','review_status':'verified','check':'human_verified'},
         {'edge_id':'e2','relation_type':'RECOGNIZES','source_entity_id':'d',
-         'target_entity_id':'p2','review_status':'verified'},
+         'target_entity_id':'p2','review_status':'verified','check':'human_verified'},
     ])
     from_product=traverse(graph,['p1'],hops=2,relations=['RECOGNIZES'],verified_only=True)
     assert 'p2' not in {x['node_id'] for x in from_product['nodes']}

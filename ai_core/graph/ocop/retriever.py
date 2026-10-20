@@ -6,6 +6,7 @@ from pathlib import Path
 from ai_core.graph.ocop.builder import records, SCHEMA_REVISION
 from ai_core.graph.ocop.ontology import EDGE_ENDPOINTS
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
+from ai_core.graph.ocop.grounding import usable, public_record
 
 
 def traverse(
@@ -17,7 +18,7 @@ def traverse(
     verified_only: bool = False,
     limit: int = 100,
     direction: str = "both",
-    grounded_only: bool = False,
+    include_failed: bool = False,
 ) -> dict:
     if direction not in ("out", "in", "both"):
         raise ValueError("invalid direction")
@@ -29,42 +30,42 @@ def traverse(
     if not allowed.issubset(EDGE_ENDPOINTS):
         raise ValueError("Unknown graph relation")
     # Version-aware fail-closed read; legacy isolated graph fixtures may omit a manifest.
-    manifest = validate_graph_snapshot(graph_dir, allow_legacy=not grounded_only)
-    if grounded_only and not manifest.get("grounding"):
-        raise ValueError("graph lacks automatic grounding; rebuild corpus")
-    if grounded_only and manifest.get("schema_revision") != SCHEMA_REVISION:
-        raise ValueError("graph grounding policy changed; rebuild corpus")
+    manifest = validate_graph_snapshot(graph_dir, allow_legacy=True)
+    if manifest.get('status') != 'legacy_unverified' and not include_failed:
+        if not manifest.get('checks') or manifest.get('schema_revision') != SCHEMA_REVISION:
+            raise ValueError('graph check policy changed; rebuild corpus')
     immutable = graph_dir / "snapshots" / str(manifest.get("graph_version", ""))
     if immutable.is_dir():
         validate_graph_snapshot(immutable)
         graph_dir = immutable
-    node_file = graph_dir / ("agent_nodes.jsonl" if grounded_only else "nodes.jsonl")
-    edge_file = graph_dir / ("agent_edges.jsonl" if grounded_only else "edges.jsonl")
-    nodes = {n["node_id"]: n for n in records(node_file) if n.get("review_status") != "rejected"}
+    node_file = graph_dir / "nodes.jsonl"
+    edge_file = graph_dir / "edges.jsonl"
+    nodes = {n["node_id"]: (n if include_failed else public_record(n)) for n in records(node_file)
+             if (include_failed or usable(n)) and (not verified_only or n.get("check") == "human_verified")}
     edges = {}
     adj = defaultdict(list)
     for e in records(edge_file):
         if e["relation_type"] not in allowed:
             continue
-        if e.get("review_status") == "rejected":
+        if not include_failed and not usable(e):
             continue
-        if verified_only and e["review_status"] != "verified":
+        if verified_only and e.get("check") != "human_verified":
             continue
         start, end = e["source_entity_id"], e["target_entity_id"]
         if start not in nodes or end not in nodes:
             continue
         if verified_only and (
-            nodes[start]["review_status"] != "verified" or nodes[end]["review_status"] != "verified"
+            nodes[start].get("check") != "human_verified" or nodes[end].get("check") != "human_verified"
         ):
             continue
-        edges[e["edge_id"]] = e
+        edges[e["edge_id"]] = e if include_failed else public_record(e)
         if direction in ("out", "both"):
             adj[start].append(e)
         if direction in ("in", "both"):
             adj[end].append(e)
     distance = {}
     for seed in seed_ids:
-        if seed in nodes and (not verified_only or nodes[seed]["review_status"] == "verified"):
+        if seed in nodes and (not verified_only or nodes[seed].get("check") == "human_verified"):
             distance.setdefault(seed, 0)
             if len(distance) >= limit:
                 break
@@ -108,7 +109,7 @@ def traverse(
         "nodes": [nodes[n] for n in sorted(distance)],
         "edges": reached_edges,
         "paths": paths,
-        "grounded_only": grounded_only,
+        "include_failed": include_failed,
         "graph_version": manifest.get("graph_version"),
         "seed_ids": [s for s in seed_ids if s in distance],
         "hops": hops,

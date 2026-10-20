@@ -190,6 +190,14 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             rejected.append({"relation": relation, "source_entity_id": start,
                              "target_entity_id": end, "evidence_unit_id": evidence_id,
                              "reason": reason})
+            identity = stable_id("kg_edge", source_id, [start, relation, end], revision=version)
+            if identity not in edges:
+                edges[identity] = {"edge_id": identity, "relation_type": relation,
+                    "source_entity_id": start, "target_entity_id": end, "source_id": source_id,
+                    "evidence_unit_id": evidence_id, "evidence_unit_ids": [evidence_id],
+                    "review_status": status, "corpus_version": version,
+                    "properties": attributes or {}, "citations": [evidence_ref] if evidence_ref else [],
+                    "construction_error": reason}
         if status not in ALLOWED_STATUSES:
             reject("invalid_edge_status"); return
         if start not in nodes or end not in nodes:
@@ -235,7 +243,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
         if attributes:
             row['properties'] = attributes
         old = edges.get(edge_id)
-        if old:
+        if old and not old.get('construction_error'):
             identity_fields=("relation_type", "source_entity_id", "target_entity_id", "source_id", "review_status")
             if any(old.get(key)!=row.get(key) for key in identity_fields):
                 raise ValueError(f"Conflicting duplicate edge collision: {edge_id}")
@@ -471,6 +479,23 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
         add_edge(row["relation_type"],aliases.get(row["source_entity_id"],row["source_entity_id"]),
                  aliases.get(row["target_entity_id"],row["target_entity_id"]),
                  row["evidence_unit_id"],row["source_id"],_status(row))
+    # Invalid input assertions remain inspectable in the same graph; their
+    # construction error can never be promoted by the semantic or review gate.
+    failed_entities = {r.get('entity_id'): r['reason'] for r in rejected if r.get('entity_id')}
+    for filename in ('entities.jsonl', 'business_entities.jsonl'):
+        for row in records(knowledge / filename):
+            identity = row.get('entity_id')
+            if identity not in failed_entities or identity in nodes:
+                continue
+            kind = row.get('kind') or {'source_document': 'SourceDocument',
+                'evidence_unit': 'EvidenceUnit', 'article': 'Article', 'clause': 'Clause'}.get(row.get('entity_type'), 'Mention')
+            refs = row.get('evidence', [])
+            add_node(identity, kind, source_id=row['source_id'],
+                evidence_ids=row.get('evidence_unit_ids') or [r['evidence_unit_id'] for r in refs if isinstance(r, dict) and r.get('evidence_unit_id')],
+                status=_status(row) if filename == 'entities.jsonl' else row.get('status', 'candidate'),
+                label=str(row.get('label') or row.get('name') or kind),
+                properties=_with_provenance(row), citations=refs)
+            nodes[identity]['construction_error'] = failed_entities[identity]
     for node in nodes.values():
         if node['node_type'] in {'SourceDocument','RecognitionDecision','LocalGuidance'}:
             number=(node['properties'].get('document_number_candidate') or
@@ -482,8 +507,8 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
     if review_decisions is not None:
         from ai_core.graph.ocop.review import apply_decisions
         review_manifest=apply_decisions(out_nodes,out_edges,evidence_by_id,review_decisions)
-    from ai_core.graph.ocop.grounding import materialize_grounded_graph
-    agent_nodes, agent_edges, excluded, grounding = materialize_grounded_graph(
+    from ai_core.graph.ocop.grounding import check_graph
+    out_nodes, out_edges, checks = check_graph(
         out_nodes, out_edges, evidence_by_id, registry=document_registry)
     # A fingerprint of the *source bytes* also detects edits to evidence text,
     # even if node IDs, spans and labels themselves happen not to change.
@@ -495,8 +520,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                           "corpus_version":version,"candidate_mode":include_candidates,
                           "source_complete":source_complete,
                           "human_review":review_manifest,
-                          'grounding': grounding, 'agent_nodes': agent_nodes, 'agent_edges': agent_edges,
-                          'excluded_assertions': excluded,
+                          'checks': checks,
                           "schema_revision":SCHEMA_REVISION},ensure_ascii=False,sort_keys=True,
                          separators=(",",":"))
     graph_version = content_sha256(payload)[:20]
@@ -508,17 +532,13 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
     try:
         _write_jsonl(stage/"nodes.jsonl",out_nodes)
         _write_jsonl(stage/"edges.jsonl",out_edges)
-        _write_jsonl(stage/"rejected.jsonl",rejected)
-        _write_jsonl(stage/'agent_nodes.jsonl', agent_nodes)
-        _write_jsonl(stage/'agent_edges.jsonl', agent_edges)
-        _write_jsonl(stage/'excluded_assertions.jsonl', excluded)
-        snapshot_files = ('nodes.jsonl', 'edges.jsonl', 'rejected.jsonl', 'agent_nodes.jsonl',
-                          'agent_edges.jsonl', 'excluded_assertions.jsonl')
+        snapshot_files = ('nodes.jsonl', 'edges.jsonl')
         file_hashes={f:content_sha256((stage/f).read_bytes()) for f in
                      snapshot_files}
         manifest={"graph_version":graph_version,"source_knowledge_version":version,
             "human_review":review_manifest,
-            'grounding': grounding,
+            'checks': checks,
+            'construction_failures': rejected,
             "source_knowledge_sha256":source_fingerprint, "schema_revision":SCHEMA_REVISION,
             "status":"local_ready" if source_complete else "partial_debug_not_production",
             "source_complete":source_complete,
@@ -550,6 +570,9 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             shutil.copyfile(stage/filename,temp_file)
             os.replace(temp_file,output/filename)
         os.replace(stage/"manifest.json",output/"manifest.json")
+        # Remove only obsolete active-layout files; historical snapshots remain immutable.
+        for filename in ('agent_nodes.jsonl', 'agent_edges.jsonl', 'excluded_assertions.jsonl', 'rejected.jsonl'):
+            (output/filename).unlink(missing_ok=True)
         return manifest
     finally:
         shutil.rmtree(stage,ignore_errors=True)

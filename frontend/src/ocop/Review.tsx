@@ -84,6 +84,7 @@ export default function Review() {
       {!item ? <p>Chọn một mục để xem giá trị ứng viên và ảnh nguồn.</p> : <>
         <h3>{item.label || item.type}</h3><p>{item.type} · {item.source_id}</p>
         <p>{item.priority} · {item.review_status}</p>
+        <p>{item.check} · {item.origin}{item.check_reason && ` · ${item.check_reason}`}</p>
         <ul>{item.reasons.map(reason => <li key={reason}>{({score_star_or_temporal_assertion:'Điểm, sao hoặc hiệu lực cần xác nhận',document_role_or_responsibility:'Giấy tờ đầu vào hoặc trách nhiệm cần đối chiếu',source_structure_or_other_candidate:'Cấu trúc nguồn hoặc danh mục cần xác nhận',quality_mismatch_requires_review:'Kiểm số học hoặc chứng cứ chưa đủ',missing_ocr_value:'OCR chưa đọc được giá trị',needs_rereview:'Nội dung đã đổi, cần duyệt lại'} as Record<string,string>)[reason] || reason}</li>)}</ul>
         {item.latest_decision && <details><summary>Quyết định gần nhất</summary><p>{item.latest_decision.reviewer} · {item.latest_decision.timestamp} · {item.latest_decision.decision}</p><p>{item.latest_decision.notes}</p>{item.latest_decision.correction && <pre>{JSON.stringify(item.latest_decision.correction,null,2)}</pre>}</details>}
         <details open><summary>Giá trị máy trích</summary><pre>{JSON.stringify(item.properties,null,2)}</pre></details>

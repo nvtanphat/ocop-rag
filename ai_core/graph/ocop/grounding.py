@@ -1,4 +1,4 @@
-"""Materialize the Agent's automatically checked view of the same graph snapshot.
+"""Check every assertion in the single graph, retaining failures for review.
 
 Text alignment is necessary but not entailment. Each supported predicate has a
 positive, bounded check; unsupported/ambiguous assertions get a reason, never a
@@ -21,6 +21,22 @@ from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_doc
 
 
 _LLM_PROVENANCE_KEYS = {"extraction_method", "llm_enriched_attributes"}
+USABLE_CHECKS = frozenset({"passed", "human_verified"})
+
+
+def usable(row):
+    return row.get("check") in USABLE_CHECKS
+
+
+def public_record(row):
+    """Consumers never receive the unchecked originals retained for reviewers."""
+    return {key: value for key, value in row.items()
+            if key not in {"machine_candidate", "attribute_candidates", "human_review"}}
+
+
+def _origin(row):
+    method = row.get("properties", {}).get("extraction_method", "")
+    return "llm:" + method.split(":", 1)[1] if method.startswith("llm_candidate:") else "deterministic"
 _DOCUMENT_CUES = {
     "REPLACES": r"thay\s+thế|hết\s+hiệu\s+lực",
     "AMENDS": r"sửa\s+đổi|bổ\s+sung",
@@ -439,6 +455,7 @@ def _prune_invalid_parents(accepted, edges, exclude):
     for edge in edges:
         if (
             edge["relation_type"] == "OWNED_BY"
+            and edge.get("check") != "human_verified"
             and not _entails(edge, accepted[edge["source_entity_id"]], accepted[edge["target_entity_id"]], {})
             and not _checked_ownership_proof(edge, edges, accepted)
         ):
@@ -506,6 +523,8 @@ def _add_supported_attributes(view, node, peers, exclude):
             claims.append(accepted_claim)
             view["properties"][accepted_claim["attribute"]] = claim["value"]
         else:
+            view.setdefault("attribute_checks", []).append({"attribute": claim["attribute"],
+                "check": "failed", "check_reason": "attribute_association_not_proven_or_conflicting"})
             exclude(
                 "attribute",
                 node["node_id"] + ":" + claim["attribute"],
@@ -515,7 +534,7 @@ def _add_supported_attributes(view, node, peers, exclude):
         view["attribute_claims"] = claims
 
 
-def materialize_grounded_graph(nodes, edges, units, *, registry=None):
+def check_graph(nodes, edges, units, *, registry=None):
     registry = registry or {}
     accepted, exclusions = {}, []
 
@@ -542,7 +561,9 @@ def materialize_grounded_graph(nodes, edges, units, *, registry=None):
     }
     for node in nodes:
         identity, kind = node["node_id"], node["node_type"]
-        reason = _node_exclusion_reason(node, units, registry)
+        human = node.get("check") == "human_verified"
+        reason = node.get("construction_error") or (
+            None if human and _has_citations(node) else _node_exclusion_reason(node, units, registry))
         if reason:
             exclude("node", identity, reason)
             continue
@@ -563,6 +584,8 @@ def materialize_grounded_graph(nodes, edges, units, *, registry=None):
         # Keep verified business values in the reviewed view only; this automatic
         # view deliberately exposes observations, not legal/scoring decisions.
         _add_supported_attributes(view, node, nodes, exclude)
+        if human:
+            view["properties"] = deepcopy(node.get("properties", {}))
         view["validation"] = {
             "status": "source_grounded",
             "method": "literal_entity_or_registered_identity",
@@ -578,13 +601,15 @@ def materialize_grounded_graph(nodes, edges, units, *, registry=None):
             _checked_ownership_proof(edge, out_edges, by_id) if edge["relation_type"] == "OWNED_BY" else []
         )
         reason = None
-        if edge.get("review_status") == "rejected":
+        if edge.get("construction_error"):
+            reason = edge["construction_error"]
+        elif edge.get("review_status") == "rejected":
             reason = "rejected_assertion"
         elif src not in accepted or dst not in accepted:
             reason = "endpoint_not_accepted"
         elif not _has_citations(edge):
             reason = "incomplete_provenance"
-        elif not (
+        elif edge.get("check") != "human_verified" and not (
             ownership_proof
             or (
                 _document_relation_supported(edge, by_id[src], by_id[dst], registry)
@@ -624,14 +649,28 @@ def materialize_grounded_graph(nodes, edges, units, *, registry=None):
     # Local predicate checks do not establish graph-wide cardinality. Ambiguous
     # parentage is excluded in full; never choose whichever parent was read first.
     out_edges = _prune_invalid_parents(accepted, out_edges, exclude)
-    return (
-        list(accepted.values()),
-        out_edges,
-        exclusions,
-        {
-            "policy": "automatic_source_and_predicate_checks_not_legal_verification",
-            "nodes": len(accepted),
-            "edges": len(out_edges),
-            "exclusions": dict(sorted(Counter(r["reason"] for r in exclusions).items())),
-        },
-    )
+    checked_edges = {row["edge_id"]: row for row in out_edges}
+    reasons = {(r["record_type"], r["record_id"]): r["reason"] for r in exclusions}
+    def annotate(original, accepted_row, kind, identity):
+        row = deepcopy(accepted_row if accepted_row is not None else original)
+        row.pop("construction_error", None)
+        row.pop("check_reason", None)
+        row["origin"] = _origin(original)
+        if accepted_row is None:
+            row["check"] = "failed"
+            row["check_reason"] = reasons[(kind, identity)]
+        else:
+            row["check"] = "human_verified" if original.get("check") == "human_verified" else "passed"
+            # Keep the exact reviewed content/hash while exposing only checked
+            # properties to consumers. There is still one row per assertion.
+            row["machine_candidate"] = deepcopy(original.get("machine_candidate") or original)
+        if original.get("human_review"):
+            row["human_review"] = deepcopy(original["human_review"])
+        return row
+    checked_nodes = [annotate(n, accepted.get(n["node_id"]), "node", n["node_id"]) for n in nodes]
+    checked_relations = [annotate(e, checked_edges.get(e["edge_id"]), "edge", e["edge_id"]) for e in edges]
+    summary = {"policy": "source_predicate_and_ledger_checks", "nodes": {}, "edges": {}}
+    for category, rows in (("nodes", checked_nodes), ("edges", checked_relations)):
+        counts = Counter(row["check"] for row in rows)
+        summary[category] = {status: counts[status] for status in ("passed", "failed", "human_verified")}
+    return checked_nodes, checked_relations, summary

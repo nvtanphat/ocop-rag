@@ -145,9 +145,9 @@ class OcopSystemPipeline:
             and graph.get("source_knowledge_version") == knowledge.get("corpus_version")
             and index.get("status") in ("sparse_ready", "hybrid_ready")
             and graph.get("status") == "local_ready" and files_ok and review_current
-            and graph.get('schema_revision') == SCHEMA_REVISION and bool(graph.get('grounding'))
+            and graph.get('schema_revision') == SCHEMA_REVISION and bool(graph.get('checks'))
             and all((self.data/'graph'/name).is_file() for name in
-                    ('agent_nodes.jsonl','agent_edges.jsonl','excluded_assertions.jsonl'))
+                    ('nodes.jsonl','edges.jsonl'))
         )
         updating = (self.data / ".promoting").exists()
         result = {
@@ -162,7 +162,7 @@ class OcopSystemPipeline:
             "corpus_version": index.get("corpus_version"),
             "dense_ready": bool(index.get("dense", {}).get("enabled", False)),
             "graph_ready": graph.get("status") == "local_ready",
-            'automatic_graph': graph.get('grounding', {}),
+            'automatic_graph': graph.get('checks', {}),
             "human_review_current":review_current,
             "business_semantics_ready": business_ready,
             "semantic_proposals": knowledge.get("semantic_proposals",{}),
@@ -278,7 +278,7 @@ class OcopSystemPipeline:
                     old_graph = _load_json(self.data / "graph" / "manifest.json")
                     from ai_core.graph.ocop.review import ledger_path,ledger_digest
                     if (reuse_knowledge and old_graph.get("status") == "local_ready"
-                            and old_graph.get('schema_revision') == SCHEMA_REVISION and old_graph.get('grounding')
+                            and old_graph.get('schema_revision') == SCHEMA_REVISION and old_graph.get('checks')
                             and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")
                             and old_graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
                                 ==ledger_digest(ledger_path(self.root))):
@@ -299,7 +299,7 @@ class OcopSystemPipeline:
                         if not password:
                             raise RuntimeError("NEO4J_PASSWORD is required for Neo4j publishing")
                         graph["neo4j"] = publish_neo4j(stage / "graph", uri=options.neo4j_uri,
-                                user=options.neo4j_user, password=password, verified_only=False, grounded_only=True)
+                                user=options.neo4j_user, password=password, verified_only=False)
                         _write_json(stage / "graph" / "manifest.json", graph)
                     self._promote(stage)
                 except Exception:

@@ -91,7 +91,7 @@ def test_reconcile_rekeys_and_deduplicates_relations_after_endpoint_linking():
 
 
 def test_traversal_excludes_rejected_assertions_and_caps_initial_seeds(tmp_path):
-    nodes = [{'node_id': str(i), 'node_type': 'Product', 'review_status': status}
+    nodes = [{'node_id': str(i), 'node_type': 'Product', 'review_status': status, 'check': 'failed' if status == 'rejected' else 'passed'}
              for i, status in enumerate(['needs_review', 'rejected', 'needs_review'])]
     (tmp_path / 'nodes.jsonl').write_text(''.join(json.dumps(n) + '\n' for n in nodes))
     (tmp_path / 'edges.jsonl').write_text('')

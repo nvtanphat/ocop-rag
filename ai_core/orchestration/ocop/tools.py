@@ -368,7 +368,7 @@ class ToolRegistry:
                 return {"results":[],"status":"graph_integrity_failed"}
             seed=slots.get("graph_seed_ids") or context.get("graph_seed_ids") or []
             from ai_core.graph.ocop.builder import SCHEMA_REVISION
-            if not graph_manifest.get('grounding') or graph_manifest.get('schema_revision') != SCHEMA_REVISION:
+            if not graph_manifest.get('checks') or graph_manifest.get('schema_revision') != SCHEMA_REVISION:
                 return {'results': [], 'status': 'graph_requires_grounding_rebuild'}
             graph_path = self.graph_dir/'snapshots'/graph_manifest['graph_version']
             if not graph_path.is_dir():
@@ -376,14 +376,14 @@ class ToolRegistry:
             if not seed and context.get("retrieved_evidence_ids"):
                 source_ids=set(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
-                seed=[n["node_id"] for n in records(graph_path/'agent_nodes.jsonl')
-                      if n.get("node_type")=="EvidenceUnit" and
+                seed=[n["node_id"] for n in records(graph_path/'nodes.jsonl')
+                      if n.get("check") in {"passed", "human_verified"} and n.get("node_type")=="EvidenceUnit" and
                       source_ids.intersection(n.get("evidence_unit_ids",[]))][:6]
             semantic=("HAS_ARTICLE","HAS_CLAUSE","HAS_POINT","MINIMUM_FOR","HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_SUBCRITERION","HAS_OPTION","HAS_CONDITION",
                 "REQUIRES_EVIDENCE","RECOGNIZES","OWNED_BY","BASED_ON","AMENDS","REPLACES",
                 "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","HAS_RECORD","DECLARED_BY","SUPPORTED_BY")
             graph=traverse(graph_path,list(seed),hops=2,relations=list(semantic),
-                           verified_only=False,grounded_only=True,
+                           verified_only=False,
                            limit=75,direction="both")
             # Only checked assertions enter generation. Source text is linked as
             # provenance, never reintroduced wholesale as an accepted relation.

@@ -47,6 +47,22 @@ def decide(root,target,decision='approve',correction=None):
     rebuild_reviewed_graph(root)
 
 
+def test_failed_dangling_edge_remains_reviewable_without_promotion(corpus):
+    base=corpus/'data/processed/ocop'; path=base/'knowledge/business_relations.jsonl'
+    relation=json.loads(path.read_text(encoding='utf-8'))
+    relation['target_entity_id']='missing:owner'
+    path.write_text(json.dumps(relation)+'\n',encoding='utf-8')
+    build_graph(base/'knowledge',base/'graph')
+    items=load_queue(corpus)
+    decide(corpus,next(i['target_id'] for i in items if i['type']=='EvidenceUnit'))
+    decide(corpus,'product:synthetic')
+    edge=next(i for i in load_queue(corpus) if i['type']=='OWNED_BY')
+    decide(corpus,edge['target_id'])
+    current=next(i for i in load_queue(corpus) if i['target_id']==edge['target_id'])
+    assert current['check']=='failed' and current['check_reason']=='missing_endpoint'
+    assert not traverse(base/'graph',['product:synthetic'],relations=['OWNED_BY'])['edges']
+
+
 def test_approve_is_scoped_and_verified_edge_requires_both_endpoints(corpus):
     items=load_queue(corpus);proof=next(i for i in items if i['type']=='EvidenceUnit')
     edge=next(i for i in items if i['type']=='OWNED_BY')
@@ -60,11 +76,10 @@ def test_approve_is_scoped_and_verified_edge_requires_both_endpoints(corpus):
     from ai_core.orchestration.ocop.tools import ToolRegistry
     result=ToolRegistry(corpus).dispatch('search_graph',query='Synthetic product',
         slots={'graph_seed_ids':['product:synthetic']},context={})
-    # Review storage remains available above, but approval cannot make a name
-    # absent from the source or an unentailed ownership edge usable by the Agent.
-    assert result['grounded_only'] is True
-    assert not any(n['node_id']=='owner:synthetic' for n in result['nodes'])
-    assert not any(e['relation_type']=='OWNED_BY' for e in result['edges'])
+    # Explicit ledger decisions, with evidence and endpoints approved, are usable.
+    assert result['include_failed'] is False
+    assert any(n['node_id']=='owner:synthetic' and n['check']=='human_verified' for n in result['nodes'])
+    assert any(e['relation_type']=='OWNED_BY' and e['check']=='human_verified' for e in result['edges'])
 
 
 def test_correct_preserves_ocr_and_reject_overrides_append_only(corpus):

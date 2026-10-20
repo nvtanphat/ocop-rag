@@ -1,11 +1,12 @@
 """Final graph acceptance regressions using synthetic evidence only."""
 
 import json
+from graph_check_helpers import checked_records
 
 import pytest
 
 from ai_core.graph.ocop.builder import build_graph, records
-from ai_core.graph.ocop.grounding import materialize_grounded_graph
+from graph_check_helpers import accepted_graph
 from ai_core.knowledge.ocop.extractor import extract_semantics
 from ai_core.processing.ocop.business_candidates import candidates
 
@@ -58,7 +59,7 @@ def recognition_graph(tmp_path):
 
 def test_ownership_accepts_checked_same_record_with_explicit_rowspan(tmp_path):
     nodes, edges, units = recognition_graph(tmp_path)
-    accepted, relations, _, _ = materialize_grounded_graph(
+    accepted, relations, _, _ = accepted_graph(
         nodes, edges, units, registry={nodes[0]["source_id"]: {"source_kind": "recognition_decision"}}
     )
     assert len([e for e in relations if e["relation_type"] == "OWNED_BY"]) == 2
@@ -84,11 +85,11 @@ def test_ownership_cannot_borrow_another_record_or_unchecked_link(tmp_path):
         products[0],
         owners[1],
     ]
-    _, accepted, _, _ = materialize_grounded_graph(nodes, edges, units, registry=registry)
+    _, accepted, _, _ = accepted_graph(nodes, edges, units, registry=registry)
     assert not any(e["relation_type"] == "OWNED_BY" for e in accepted)
     owners[1]["review_status"] = "rejected"
     edges.append(owners[0] | {"review_status": "rejected"})
-    _, accepted, _, _ = materialize_grounded_graph(nodes, edges, units, registry=registry)
+    _, accepted, _, _ = accepted_graph(nodes, edges, units, registry=registry)
     assert not any(e["relation_type"] == "OWNED_BY" for e in accepted)
 
 
@@ -100,7 +101,7 @@ def test_ownership_support_must_survive_graph_shape_checks(tmp_path):
         }
     }
     edges = [e for e in edges if e["relation_type"] != "HAS_RECORD"]
-    _, accepted, _, _ = materialize_grounded_graph(nodes, edges, units, registry=registry)
+    _, accepted, _, _ = accepted_graph(nodes, edges, units, registry=registry)
     assert not any(e["relation_type"] == "OWNED_BY" for e in accepted)
 
 
@@ -140,7 +141,7 @@ def test_textual_ownership_rejects_negation_and_conditions(prefix):
         "evidence_unit_ids": ["unit"],
         "review_status": "candidate",
     }
-    _, edges, _, _ = materialize_grounded_graph(nodes, [edge], {"unit": {"text": text}})
+    _, edges, _, _ = accepted_graph(nodes, [edge], {"unit": {"text": text}})
     assert not edges
 
 
@@ -189,7 +190,7 @@ def legal_graph(text, relation, *, method=None):
         "review_status": "candidate",
         "properties": properties,
     }
-    return materialize_grounded_graph(
+    return accepted_graph(
         nodes,
         [edge],
         units,
@@ -256,8 +257,8 @@ def test_builder_keeps_llm_origin_on_generated_evidence_edges(tmp_path):
         list(records(knowledge / "business_entities.jsonl")) + output["entities"],
     )
     build_graph(knowledge, graph)
-    product = next(n for n in records(graph / "agent_nodes.jsonl") if n["node_type"] == "Product")
-    links = [e for e in records(graph / "agent_edges.jsonl") if e["source_entity_id"] == product["node_id"]]
+    product = next(n for n in checked_records(graph / "nodes.jsonl") if n["node_type"] == "Product")
+    links = [e for e in checked_records(graph / "edges.jsonl") if e["source_entity_id"] == product["node_id"]]
     assert links
     assert all(e["properties"]["extraction_method"] == "llm_candidate:offline" for e in links)
     assert all(e["review_status"] != "verified" for e in links)

@@ -1,5 +1,6 @@
 """Automatic graph acceptance and real downstream wiring, without human decisions."""
 import json
+from graph_check_helpers import checked_records
 
 from ai_core.knowledge.ocop.extractor import extract_semantics
 from ai_core.graph.ocop.builder import build_graph, records
@@ -37,10 +38,10 @@ def build(tmp_path, text='Điều 1. Trách nhiệm\n1. UBND cấp xã tiếp nh
 
 def test_machine_extraction_reaches_agent_without_human_verification(tmp_path):
     graph, manifest = build(tmp_path)
-    assert manifest['grounding']['edges'] > 0
+    assert manifest['checks']['edges']['passed'] > 0
     result = ToolRegistry(tmp_path).dispatch('search_graph', query='Điều 1 liên quan khoản nào', slots={},
         context={'retrieved_evidence_ids': ['unit:article']})
-    assert result['grounded_only'] is True
+    assert result['include_failed'] is False
     assert any(e['relation_type'] == 'HAS_CLAUSE' for e in result['edges'])
     assert result['results']
     assert all(r['source_spans'][0]['source_sha256'] == 'a' * 64 for r in result['results'])
@@ -50,15 +51,15 @@ def test_machine_extraction_reaches_agent_without_human_verification(tmp_path):
 
 def test_checked_traversal_has_path_evidence_and_no_score_promotion(tmp_path):
     graph, _ = build(tmp_path)
-    article = next(n for n in records(graph / 'agent_nodes.jsonl') if n['node_type'] == 'Article')
-    result = traverse(graph, [article['node_id']], hops=2, grounded_only=True)
+    article = next(n for n in checked_records(graph / 'nodes.jsonl') if n['node_type'] == 'Article')
+    result = traverse(graph, [article['node_id']], hops=2)
     assert any(n['node_type'] == 'Point' for n in result['nodes'])
     assert any(len(path['edge_ids']) == 2 for path in result['paths'])
     assert all(e['citations'] and e['validation']['legal_verified'] is False for e in result['edges'])
 
 
 def test_cooccurrence_and_negated_ownership_are_excluded(tmp_path):
-    from ai_core.graph.ocop.grounding import materialize_grounded_graph
+    from graph_check_helpers import accepted_graph
     for quote in ['Sản phẩm: Mật ong và HTX Hoa Sen cùng dự hội chợ',
                   'Sản phẩm: Mật ong không thuộc sở hữu của HTX Hoa Sen',
                   'Sản phẩm: Mật ong do HTX Hoa Sen sản xuất']:
@@ -70,7 +71,7 @@ def test_cooccurrence_and_negated_ownership_are_excluded(tmp_path):
         edge = {'edge_id': 'edge:1', 'source_entity_id': 'p', 'target_entity_id': 'o',
                 'source_id': 'SOURCE.TEST', 'relation_type': 'OWNED_BY', 'citations': [ref],
                 'evidence_unit_ids': ['unit:1'], 'review_status': 'needs_review'}
-        _, edges, excluded, _ = materialize_grounded_graph(nodes, [edge], {'unit:1': {'text': quote}})
+        _, edges, excluded, _ = accepted_graph(nodes, [edge], {'unit:1': {'text': quote}})
         assert edges == []
         assert excluded[-1]['reason'] == 'predicate_not_entailed_by_supported_verifier'
 
@@ -86,15 +87,15 @@ def test_graph_attribute_proof_is_not_lost_and_invalid_proof_is_rejected(tmp_pat
     entities = list(records(knowledge / 'business_entities.jsonl')) + result['entities']
     write(knowledge / 'business_entities.jsonl', entities)
     build_graph(knowledge, graph)
-    product = next(n for n in records(graph / 'agent_nodes.jsonl') if n['node_type'] == 'Product')
+    product = next(n for n in checked_records(graph / 'nodes.jsonl') if n['node_type'] == 'Product')
     assert product['properties']['packaging'] == 'chai thủy tinh'
     assert product['attribute_claims'][0]['status'] == 'source_grounded'
     assert product['attribute_claims'][0]['evidence'][0]['quote'] in source['text']
     result['entities'][0]['attribute_claims'][0]['evidence'][0]['source_sha256'] = 'b' * 64
     write(knowledge / 'business_entities.jsonl', entities)
     build_graph(knowledge, graph)
-    assert not any(n['node_type'] == 'Product' for n in records(graph / 'agent_nodes.jsonl'))
-    assert any(r['reason'] == 'business_attribute_missing_evidence' for r in records(graph / 'rejected.jsonl'))
+    assert not any(n['node_type'] == 'Product' for n in checked_records(graph / 'nodes.jsonl'))
+    assert any(r['reason'] == 'business_attribute_missing_evidence' for r in json.loads((graph / 'manifest.json').read_text())['construction_failures'])
 
 
 def test_agent_executes_text_to_checked_multihop_graph_with_machine_sources(tmp_path):
@@ -138,7 +139,7 @@ def test_public_graph_uses_checked_snapshot_and_detects_tampering(tmp_path, monk
     assert response.status_code == 200
     assert response.json()['kind'] == 'source_grounded_graph'
     assert response.json()['nodes']
-    (graph / 'agent_edges.jsonl').write_text('tampered', encoding='utf-8')
+    (graph / 'edges.jsonl').write_text('tampered', encoding='utf-8')
     assert client.get('/api/ocop/graph').status_code == 409
     routes._graph_data.cache_clear()
 
@@ -163,12 +164,12 @@ def test_recognition_table_links_are_checked_but_scores_stay_out(tmp_path):
     (knowledge / 'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'contract-test',
         'document_registry':{sid:{'source_kind':'recognition_decision','document_number':'1/QĐ-UBND'}}}))
     build_graph(knowledge, graph)
-    nodes = list(records(graph / 'agent_nodes.jsonl'))
-    edges = list(records(graph / 'agent_edges.jsonl'))
+    nodes = list(checked_records(graph / 'nodes.jsonl'))
+    edges = list(checked_records(graph / 'edges.jsonl'))
     assert sum(n['node_type']=='RecognitionRecord' for n in nodes) == 2
     assert sum(e['relation_type']=='RECOGNIZES' for e in edges) == 2
     assert sum(e['relation_type']=='DECLARED_BY' for e in edges) == 2
-    assert not any(e['relation_type']=='OWNED_BY' for e in edges)
+    assert sum(e['relation_type']=='OWNED_BY' for e in edges) == 2
     assert all('star_rating_candidate' not in n['properties'] and 'score_candidate' not in n['properties'] for n in nodes)
     assert all('sao' not in n['label'] for n in nodes if n['node_type']=='RecognitionRecord')
 
@@ -183,9 +184,9 @@ def test_negated_feature_does_not_enter_agent_properties(tmp_path):
         {'kind':'Product','anchor':'Mật ong','attributes':{'packaging':'chai thủy tinh'}}]}))
     write(knowledge / 'business_entities.jsonl', list(records(knowledge / 'business_entities.jsonl')) + output['entities'])
     build_graph(knowledge, graph)
-    product = next(n for n in records(graph / 'agent_nodes.jsonl') if n['node_type']=='Product')
+    product = next(n for n in checked_records(graph / 'nodes.jsonl') if n['node_type']=='Product')
     assert 'packaging' not in product['properties']
-    assert any(e['reason']=='attribute_association_not_proven_or_conflicting' for e in records(graph / 'excluded_assertions.jsonl'))
+    assert any(e['check_reason']=='attribute_association_not_proven_or_conflicting' for e in product['attribute_checks'])
 
 
 def test_entity_cannot_borrow_a_different_documents_evidence(tmp_path):
@@ -198,12 +199,12 @@ def test_entity_cannot_borrow_a_different_documents_evidence(tmp_path):
     output['entities'][0]['source_id'] = 'OTHER.SOURCE'
     write(knowledge / 'business_entities.jsonl', list(records(knowledge / 'business_entities.jsonl')) + output['entities'])
     build_graph(knowledge, graph)
-    assert not any(n['node_type']=='Product' for n in records(graph / 'agent_nodes.jsonl'))
-    assert any(r['reason']=='business_entity_source_mismatch' for r in records(graph / 'rejected.jsonl'))
+    assert not any(n['node_type']=='Product' for n in checked_records(graph / 'nodes.jsonl'))
+    assert any(r['reason']=='business_entity_source_mismatch' for r in json.loads((graph / 'manifest.json').read_text())['construction_failures'])
 
 
 def test_competing_parent_links_are_excluded_as_a_whole():
-    from ai_core.graph.ocop.grounding import materialize_grounded_graph
+    from graph_check_helpers import accepted_graph
     ref = {'source_id':'SOURCE.TEST','evidence_unit_id':'unit:forms','pdf_page':1,
            'bbox':[0,0,100,100],'source_sha256':'a'*64,'quote':'Mẫu 01, Mẫu 02: Tên sản phẩm'}
     nodes = [{'node_id':identity,'node_type':kind,'label':label,'source_id':'SOURCE.TEST',
@@ -213,7 +214,7 @@ def test_competing_parent_links_are_excluded_as_a_whole():
     edges = [{'edge_id':'edge:'+parent,'relation_type':'HAS_FIELD','source_entity_id':parent,
               'target_entity_id':'field','source_id':'SOURCE.TEST','review_status':'needs_review',
               'citations':[ref],'evidence_unit_ids':['unit:forms']} for parent in ['f1','f2']]
-    accepted, relationships, exclusions, _ = materialize_grounded_graph(nodes, edges,
+    accepted, relationships, exclusions, _ = accepted_graph(nodes, edges,
         {'unit:forms':{'text':ref['quote']}})
     assert not any(n['node_id']=='field' for n in accepted)
     assert not relationships

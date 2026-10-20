@@ -15,7 +15,7 @@ export interface Overview {
   pages: { pages?: number; ocr_executed?: number; needs_review?: number; tables_detected?: number }
   knowledge: { units?: number; criterion_candidates?: number; recognition_candidates?: number; form_candidates?: number }
   index: { corpus_version?: string; status?: string; counts?: { chunks?: number }; dense?: { enabled?: boolean } }
-  graph: { status?: string; counts?: { nodes?: number; edges?: number }; grounding?: { nodes?: number; edges?: number }; neo4j?: { enabled?: boolean } }
+  graph: { status?: string; counts?: { nodes?: number; edges?: number }; checks?: { nodes: CheckCounts; edges: CheckCounts }; neo4j?: { enabled?: boolean } }
   verification: string
 }
 export interface Citation {
@@ -46,35 +46,13 @@ export interface AskResult {
   corpus_version?: string | null
   route?: { strategy?: string; slots?: Record<string, unknown>; reason_codes?: string[] }
 }
-export interface Criterion {
-  candidate_id: string
-  source_id: string
-  evidence_unit_id: string
-  label_candidate: string
-  pdf_page: number
-  score_candidate: number | null
-  review_status: string
-}
-export interface Recognition {
-  candidate_id: string
-  source_id: string
-  evidence_unit_id: string
-  row_text: string
-  pdf_page: number
-  star_candidate: number | null
-  review_status: string
-}
-export interface FormCandidate {
-  candidate_id: string
-  source_id: string
-  form_number: number
-  title: string
-  pdf_page: number
-  fields_candidate: string[]
-  review_status: string
-}
+export interface Criterion extends GraphNode { linked_labels: string[] }
+export interface Recognition extends GraphNode { linked_labels: string[] }
+export interface FormCandidate extends GraphNode { linked_labels: string[] }
 export interface GraphNode {
   node_id: string
+  check: "passed" | "human_verified"
+  origin: string
   node_type: string
   label: string
   source_id?: string
@@ -128,9 +106,12 @@ export const api = {
 }
 
 export interface ReviewItem {
+  check?: 'passed' | 'failed' | 'human_verified'; check_reason?: string; origin?: string
   latest_decision: {decision: string; reviewer: string; timestamp: string; notes: string; correction?: object} | null
   dependencies: Array<{target_id: string; label: string | null; type: string; review_status: string}>
   target_id: string; content_hash: string; type: string; label: string | null; source_id: string
   priority: string; state: string; reasons: string[]; review_status: string; properties: Record<string, unknown>
   citations: Array<{source_id: string; pdf_page: number; bbox: number[] | null; quote: string; source_sha256: string; crop_url?: string}>
 }
+
+interface CheckCounts { passed: number; failed: number; human_verified: number }

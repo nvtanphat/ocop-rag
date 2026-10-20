@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import sys
 import types
-from pathlib import Path
 import pytest
 from ai_core.graph.ocop.builder import build_graph
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
@@ -66,8 +65,8 @@ def test_graph_rejects_unsupported_verified_source_entity(tmp_path):
                                'evidence_unit_ids':['nonexistent']}])
     out=tmp_path/'out';manifest=build_graph(k,out)
     assert manifest['counts']['rejected']>=1
-    assert not any(row['node_id']=='fake' for row in
-                   map(json.loads,(out/'nodes.jsonl').read_text().splitlines()))
+    assert not any(row['node_id']=='fake' and row['check']!='failed' for row in
+                   map(json.loads,(out/'nodes.jsonl').read_text(encoding='utf-8').splitlines()))
 
 
 def test_verified_business_entity_rejected_if_evidence_not_verified(tmp_path):
@@ -76,8 +75,8 @@ def test_verified_business_entity_rejected_if_evidence_not_verified(tmp_path):
                                     'unit_kind':'article','text':'OCR chưa xác minh','spans':[{'pdf_page':3}]}])
     dump(k/'business_entities.jsonl',[entity('product','Product')])
     out=tmp_path/'out'; build_graph(k,out)
-    assert not any(x['node_id']=='product' for x in
-                   map(json.loads,(out/'nodes.jsonl').read_text().splitlines()))
+    assert not any(x['node_id']=='product' and x['check']!='failed' for x in
+                   map(json.loads,(out/'nodes.jsonl').read_text(encoding='utf-8').splitlines()))
 
 
 def test_business_relation_proof_page_must_match(tmp_path):
@@ -86,7 +85,7 @@ def test_business_relation_proof_page_must_match(tmp_path):
                                       entity('record','RecognitionRecord')])
     dump(k/'business_relations.jsonl',[rel(page=20)])
     out=tmp_path/'out';build_graph(k,out)
-    assert not any(x['relation_type']=='HAS_RECORD' for x in
+    assert not any(x['relation_type']=='HAS_RECORD' and x['check']!='failed' for x in
                    map(json.loads,(out/'edges.jsonl').read_text(encoding='utf-8').splitlines()))
 
 
@@ -97,8 +96,10 @@ def test_valid_business_relation_is_preserved_and_provenance_verified(tmp_path):
     dump(k/'business_relations.jsonl',[rel()])
     out=tmp_path/'out';build_graph(k,out)
     result=traverse(out,['decision'],hops=1,relations=['HAS_RECORD'],verified_only=True,direction='out')
-    assert 'record' in {n['node_id'] for n in result['nodes']}
-    assert result['edges'][0]['evidence_unit_id']=='u1'
+    assert result['nodes'] == []  # Input status is not a ledger decision.
+    raw = [json.loads(line) for line in (out/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
+    record = next(e for e in raw if e['relation_type']=='HAS_RECORD')
+    assert record['check']=='failed' and record['evidence_unit_id']=='u1'
 
 
 def test_graph_preserves_cell_citations_and_source_hash(tmp_path):
@@ -152,7 +153,7 @@ def test_graph_fails_closed_when_source_span_lacks_sha(tmp_path):
     dump(k/'evidence_units.jsonl',[unit])
     out=tmp_path/'graph';manifest=build_graph(k,out)
     edges=[json.loads(x) for x in (out/'edges.jsonl').read_text(encoding='utf-8').splitlines()]
-    assert not any(e['relation_type']=='LOCATED_IN' for e in edges)
+    assert not any(e['relation_type']=='LOCATED_IN' and e['check']!='failed' for e in edges)
     assert manifest['counts']['rejected']>=1
 
 
@@ -221,12 +222,13 @@ def test_neo4j_publication_is_one_snapshot_transaction(monkeypatch,tmp_path):
                                        entity('record','RecognitionRecord')])
     dump(k/'business_relations.jsonl',[rel()]);manifest=build_graph(k,g)
     session,driver=fake_backend(monkeypatch)
-    outcome=publish_neo4j(g,password='unused',verified_only=True,batch_size=1)
+    outcome=publish_neo4j(g,password='unused',batch_size=1)
     assert outcome['graph_version']==manifest['graph_version']
-    assert outcome['snapshot_id'].endswith(':verified')
+    assert outcome['snapshot_id'].endswith(':checked')
     assert session.executed==1 and driver.closed
     txcalls=session.tx.calls
-    assert any('MERGE (a)-[r:HAS_RECORD' in q for q,_ in txcalls)
+    assert any('MERGE (a)-[r:LOCATED_IN' in q for q,_ in txcalls)
+    assert not any('MERGE (a)-[r:HAS_RECORD' in q for q,_ in txcalls)
     assert all('snapshot_id:$snapshot_id' in q for q,_ in txcalls[:-1])
     assert 'OcopGraphActive' in txcalls[-1][0]  # active pointer updated LAST
     assert all(v['snapshot_id']==outcome['snapshot_id'] for _,v in txcalls)

@@ -130,13 +130,15 @@ def apply_decisions(nodes,edges,units,path):
         proof=bool(row.get('evidence_unit_ids')) and set(row['evidence_unit_ids'])<=unit_approval
         row['review_status']='verified' if proof else 'needs_review'
         row['human_review']['state']='applied' if proof else 'waiting_for_evidence_review'
+        if proof: row['check']='human_verified'
     for row in edges:
         if row['edge_id'] not in desired: continue
         proof=(bool(row.get('evidence_unit_ids')) and set(row['evidence_unit_ids'])<=unit_approval
-               and all(by_id[i]['review_status']=='verified'
+               and all(by_id.get(i,{}).get('review_status')=='verified'
                        for i in (row['source_entity_id'],row['target_entity_id'])))
         row['review_status']='verified' if proof else 'needs_review'
         row['human_review']['state']='applied' if proof else 'waiting_for_endpoints_or_evidence'
+        if proof: row['check']='human_verified'
     return {'ledger_sha256':ledger_digest(path),'decisions':len(decisions),
             'matched':len(desired),'verified_nodes':sum(n['review_status']=='verified' for n in nodes),
             'verified_edges':sum(e['review_status']=='verified' for e in edges),
@@ -218,6 +220,8 @@ def load_queue(root, *, graph_dir=None, knowledge_dir=None):
                 prior=max(matches,key=lambda d:datetime.fromisoformat(d['timestamp']))
                 state='stale_content_needs_review';reasons.append('needs_rereview');p=min(p,'P2')
         item.update(priority=p,reasons=reasons,state=state,review_status=row['review_status'],
+                    check=row['check'], origin=row['origin'],
+                    **({'check_reason':row['check_reason']} if row['check']=='failed' else {}),
                     human_review=deepcopy(row.get('human_review',{})),
                     latest_decision=deepcopy(decision or prior))
         for index,ref in enumerate(item['citations']):

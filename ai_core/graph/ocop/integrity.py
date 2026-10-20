@@ -22,9 +22,7 @@ def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False,
         if allow_legacy:
             return manifest
         raise ValueError("graph snapshot lacks integrity hashes")
-    required = ('nodes.jsonl', 'edges.jsonl', 'rejected.jsonl')
-    if manifest.get('grounding'):
-        required += ('agent_nodes.jsonl', 'agent_edges.jsonl', 'excluded_assertions.jsonl')
+    required = ('nodes.jsonl', 'edges.jsonl')
     for filename in required:
         actual_file = path / filename
         if not actual_file.is_file() or content_sha256(actual_file.read_bytes()) != expected.get(filename):
