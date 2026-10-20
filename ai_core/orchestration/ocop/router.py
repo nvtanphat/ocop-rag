@@ -9,10 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 import re
-import unicodedata
 from ai_core.orchestration.ocop.contracts import Intent, Route
 from ai_core.orchestration.ocop.capabilities import (
-    Capability, TOOL_REGISTRY, CAPABILITY_TO_TOOLS, PRIVATE_TOOLS, MAX_TOOL_CALLS,
+    Capability, TOOL_REGISTRY, CAPABILITY_TO_TOOLS, MAX_TOOL_CALLS,
 )
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
 from ai_core.orchestration.ocop.semantic import (
@@ -106,9 +105,16 @@ def extract_slots(query: str) -> dict:
     years=list(dict.fromkeys(YEARS.findall(query)))
     if years:slots["years"]=years
     lower=_norm(query)
+    page=re.search(r'\btrang\s*(?:pdf\s*)?(\d{1,4})\b', lower)
+    if page and int(page[1])>0:slots['pdf_page']=int(page[1])
+    sheet=re.search(r'\bphieu\s*(?:so\s*)?(\d{1,3})\b',lower)
+    if sheet and int(sheet[1])>0:slots['sheet_number']=int(sheet[1])
+    if re.search(r'\b(?:phuong\s+)?thanh sen\b',lower):
+        slots['region']='Thành Sen'
     for name in sorted(REGIONS,key=len,reverse=True):
         if re.search(r"(?<!\w)"+re.escape(_norm(name))+r"(?!\w)",lower):
-            slots["region"]=name;break
+            if 'region' not in slots:slots["region"]=name
+            break
     matched=PRODUCT.search(query)
     if matched:
         raw=matched.group(1).strip()
@@ -155,6 +161,7 @@ FOLLOWUP_SCOPE_KEYS=frozenset({
     'document_code','article_id','form_id','form_ids','star_rating','as_of_date',
     'years','region','product_name','product_group','criterion_id',
     'recognition_year','assessment_year',
+    'pdf_page','sheet_number',
 })
 
 
@@ -374,8 +381,11 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
         required=list(dict.fromkeys(x for c in capabilities for x in CAPABILITY_TO_TOOLS[c]))
     if (slots.get('years') and not slots.get('document_code') and
         effective in (Intent.PROCEDURE_FORM,Intent.CRITERIA_LOOKUP,Intent.SECTOR_COMPLIANCE,Intent.OCOP_OVERVIEW)
-        and 'search_regulations' in required and not (explicit & private_caps)):
+        and 'search_regulations' in required and not (explicit & private_caps)
+        and not (slots.get('region') and has_any(lower, ('hạn nộp', 'hạn đăng ký', 'thời hạn nộp')))):
         required=list(dict.fromkeys(['resolve_temporal_applicability',*required]))
+    if slots.get('pdf_page') and slots.get('document_code') and not (explicit & private_caps):
+        required=['lookup_legal_unit']
     missing=[]
     if effective in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE):
         for key in ("tenant_id","dossier_id"):

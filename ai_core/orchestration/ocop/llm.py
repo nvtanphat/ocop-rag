@@ -22,7 +22,7 @@ class OllamaClient(_RouteMixin):
         self.model=model;self.url=url.rstrip("/");self.timeout=timeout
     @traced("ocop.llm.ollama_chat")
     def chat(self,system:str,user:str,*,format_json:bool=False,max_tokens:int=1024,schema:dict|None=None)->str:
-        data={"model":self.model,"stream":False,
+        data={"model":self.model,"stream":False,"think":False,
               "messages":[{"role":"system","content":system},{"role":"user","content":user}],
               "options":{"temperature":0.1,"num_ctx":8192,"num_predict":max_tokens}}
         if schema is not None:

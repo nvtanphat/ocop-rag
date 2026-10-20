@@ -9,6 +9,8 @@ from ai_core.orchestration.ocop.verification import check_source_markers,check_s
 # Tool outputs are untrusted data, even when a tool is allowlisted. A failed
 # lookup must never donate stale rows to the grounding context.
 BAD_RESULT_STATUSES = frozenset({
+    'requested_pdf_page_not_indexed',
+    'sheet_scope_unavailable',
     'tool_unavailable','dependency_unavailable','invalid_tool_output',
     'backend_unavailable','index_unavailable','not_ready','not_found','unknown',
     'document_not_found_or_ambiguous','local_guidance_not_in_corpus',
@@ -128,6 +130,10 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
             for key in ('results','nodes'):
                 if isinstance(payload.get(key,[]),list):
                     records.extend(x for x in payload.get(key,[]) if isinstance(x,dict))
+    # Reserve context for the graph tool that the plan actually executed.
+    # Eight earlier BM25 hits must not silently erase the relation proof.
+    graph_rows=[row for row in records if row.get('graph_edge_id')]
+    records=graph_rows[:4]+[row for row in records if not row.get('graph_edge_id')]+graph_rows[4:]
     citations,contexts,selected=_evidence(records)
     if not contexts:
         return {"answer":"Chưa tìm thấy bằng chứng nguồn đủ để trả lời trong dữ liệu đã lập chỉ mục.",

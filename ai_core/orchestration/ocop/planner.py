@@ -16,6 +16,8 @@ MAX_TOOLS = MAX_TOOL_CALLS
 # A transport/contract failure is not a legitimate zero-hit lookup. Never
 # disguise these errors as a successful text recovery.
 RECOVERY_BLOCKING_STATUSES = frozenset({
+    'requested_pdf_page_not_indexed',
+    'sheet_scope_unavailable',
     'tool_unavailable', 'dependency_unavailable', 'invalid_tool_output',
     'backend_unavailable', 'index_unavailable', 'not_ready',
     'document_not_found_or_ambiguous', 'recognition_year_scope_unverified',

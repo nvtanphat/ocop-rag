@@ -85,6 +85,34 @@ class ToolRegistry:
             mode=context.get("retrieval_mode","sparse")
             doc=slots.get("document_code")
             source_filter=self._resolve_source_id(doc) if doc else None
+            if slots.get('sheet_number'):
+                from ai_core.graph.ocop.integrity import validate_graph_snapshot
+                try:
+                    gm=validate_graph_snapshot(self.graph_dir,allow_partial=context.get('allow_partial_debug') is True)
+                    im=json.loads((self.index_dir/'manifest.json').read_text(encoding='utf8'))
+                    if gm['source_knowledge_version']!=im.get('source_knowledge_version'):
+                        raise ValueError('sheet graph/index version mismatch')
+                    path=self.graph_dir/'snapshots'/gm['graph_version']
+                    validate_graph_snapshot(path,allow_partial=context.get('allow_partial_debug') is True)
+                    nodes={n['node_id']:n for n in records(path/'nodes.jsonl') if n.get('check') in {'passed','human_verified'}}
+                    seeds=[n for n in nodes.values() if n['node_type']=='CriterionSheet' and
+                           str(n.get('properties',{}).get('sheet_number'))==str(slots['sheet_number']) and
+                           (not doc or source_filter and n['source_id']==source_filter)]
+                    if len(seeds)!=1:raise ValueError('sheet not unique')
+                    ids={seeds[0]['node_id']};edges=[e for e in records(path/'edges.jsonl') if
+                        e.get('check') in {'passed','human_verified'} and e['relation_type'] in
+                        {'HAS_CRITERION','HAS_SUBCRITERION','HAS_OPTION'} and
+                        e['source_entity_id'] in nodes and e['target_entity_id'] in nodes]
+                    while True:
+                        children={e['target_entity_id'] for e in edges if e['source_entity_id'] in ids}
+                        if children<=ids:break
+                        ids.update(children)
+                    units={uid for identity in ids-{seeds[0]['node_id']} for uid in nodes[identity].get('evidence_unit_ids',[])}
+                    hits=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,top_k=40)
+                    scoped=[hit for hit in hits if hit.get('evidence_unit_id') in units]
+                    return {'results':scoped[:8], 'status':'checked_sheet_text' if scoped else 'sheet_scope_unavailable'}
+                except (ValueError,KeyError,OSError):
+                    return {'results':[], 'status':'sheet_scope_unavailable'}
             region=slots.get('region')
             q=normalize(query)
             # Local deadlines are jurisdiction-specific: never answer with a
@@ -100,7 +128,9 @@ class ToolRegistry:
                     sources=json.loads(sources_path.read_text(encoding='utf-8')).get('sources',[])
                 local=list(dict.fromkeys(str(src['source_id']) for src in sources
                     if src.get('source_kind')=='local_guidance' and
-                    _jurisdiction_key(str(src.get('jurisdiction') or ''))==_jurisdiction_key(str(region))
+                    _jurisdiction_key(str(region)) in {
+                        _jurisdiction_key(str(src.get('jurisdiction') or '')),
+                        _jurisdiction_key(re.split(r'\s+-\s+', str(src.get('jurisdiction') or ''))[-1])}
                     and src.get('source_id')))
                 if not local:
                     return {'results':[], 'status':'local_guidance_not_in_corpus',
@@ -162,6 +192,13 @@ class ToolRegistry:
             article=slots.get("article_id")
             if code and not self._resolve_source_id(code):
                 return {"results":[],"status":"document_not_found_or_ambiguous"}
+            if slots.get('pdf_page'):
+                source=self._resolve_source_id(code) if code else None
+                if not source:
+                    return {'results':[], 'status':'document_not_found_or_ambiguous'}
+                rows=exact_lookup(self.index_dir,source_id=source,pdf_page=int(slots['pdf_page']),
+                                  include_candidates=False,limit=20)
+                return {'results':rows, 'status':'exact_pdf_page' if rows else 'requested_pdf_page_not_indexed'}
             if article:
                 candidates=exact_lookup(self.index_dir,contains="Điều "+article,limit=10000)
             else:
@@ -177,6 +214,29 @@ class ToolRegistry:
                 candidates=[x for x in candidates if all(
                     re.search(r"(?<!\d)"+re.escape(number)+r"(?!\d)",
                         str(x.get("source_id", ""))) for number in required)]
+            if article and len(candidates)==1 and (self.index_dir/'evidence_units.jsonl').is_file():
+                anchor=candidates[0]
+                units=[{**u,'corpus_version':anchor.get('corpus_version')} for u in
+                       records(self.index_dir/'evidence_units.jsonl') if u['source_id']==anchor['source_id']]
+                active=False;scope=[];last_page=None
+                for unit in units:
+                    if unit.get('unit_kind')=='page':continue
+                    if unit.get('unit_id')==anchor.get('unit_id'):active=True
+                    elif active and unit.get('unit_kind')=='article':break
+                    if not active:continue
+                    page=unit.get('spans',[{}])[0].get('pdf_page')
+                    if last_page is not None and page is not None and page>last_page+1:break
+                    scope.append(unit);last_page=page
+                allowed={u['unit_id'] for u in scope}
+                # Reuse existing BM25 chunk order within the exact article's
+                # observed contiguous units, stopping at the next article.
+                # Keep each chunk's own page/span rather than merging pages.
+                if len(scope)>1:
+                    hits=search(self.index_dir,query,source_id=anchor['source_id'],top_k=40)
+                    scoped=[hit for hit in hits if hit.get('evidence_unit_id') in allowed]
+                    seen={hit.get('evidence_unit_id') for hit in scoped}
+                    return {'results':(scoped+[u for u in scope if u['unit_id'] not in seen])[:12],
+                            'status':'exact_article_with_continuations', 'scope_unit_ids':sorted(allowed)}
             return {"results":candidates[:12]}
         if name=="lookup_evidence_requirements":
             if slots.get('years') and not slots.get('document_code'):
@@ -352,7 +412,8 @@ class ToolRegistry:
                 return {'results':[], 'note':'graph_not_built', 'status':'graph_not_built'}
             from ai_core.graph.ocop.integrity import validate_graph_snapshot
             try:
-                graph_manifest=validate_graph_snapshot(self.graph_dir)
+                graph_manifest=validate_graph_snapshot(self.graph_dir,
+                    allow_partial=context.get('allow_partial_debug') is True)
                 index_manifest_file=self.index_dir/"manifest.json"
                 if index_manifest_file.is_file():
                     index_manifest=json.loads(index_manifest_file.read_text(encoding="utf-8"))
@@ -373,23 +434,44 @@ class ToolRegistry:
             graph_path = self.graph_dir/'snapshots'/graph_manifest['graph_version']
             if not graph_path.is_dir():
                 return {'results': [], 'status': 'graph_integrity_failed'}
+            checked_nodes=[n for n in records(graph_path/'nodes.jsonl')
+                           if n.get('check') in {'passed','human_verified'}]
+            if not seed:
+                source_filter=self._resolve_source_id(slots.get('document_code'))
+                qnorm=' '+normalize(query)+' '
+                # Literal checked labels and a uniquely resolved document are
+                # grounded seeds; a generic LLM product slot is not an alias.
+                seed=[n['node_id'] for n in checked_nodes if
+                      (not source_filter or n['source_id']==source_filter) and (
+                      (source_filter and n['node_type']=='SourceDocument') or
+                      (n['node_type'] in {'Product','Organization'} and len(normalize(n['label']))>=4
+                       and ' '+normalize(n['label'])+' ' in qnorm.replace('?', ' ').replace('.', ' ')))]
             if not seed and context.get("retrieved_evidence_ids"):
-                source_ids=set(context["retrieved_evidence_ids"])
+                source_ids=list(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
-                seed=[n["node_id"] for n in records(graph_path/'nodes.jsonl')
-                      if n.get("check") in {"passed", "human_verified"} and n.get("node_type")=="EvidenceUnit" and
-                      source_ids.intersection(n.get("evidence_unit_ids",[]))][:6]
+                seed=list(dict.fromkeys(n['node_id'] for uid in source_ids for n in checked_nodes
+                      if n.get('node_type')=='EvidenceUnit' and uid in n.get('evidence_unit_ids',[])))[:6]
             semantic=("HAS_ARTICLE","HAS_CLAUSE","HAS_POINT","MINIMUM_FOR","HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_SUBCRITERION","HAS_OPTION","HAS_CONDITION",
                 "REQUIRES_EVIDENCE","RECOGNIZES","OWNED_BY","BASED_ON","AMENDS","REPLACES",
                 "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","HAS_RECORD","DECLARED_BY","SUPPORTED_BY")
+            requested=[]
+            folded=normalize(query)
+            for phrase,predicate in (('thay the','REPLACES'),('sua doi','AMENDS'),
+                                     ('can cu van ban','BASED_ON'),('dinh chi hieu luc','SUSPENDS')):
+                if phrase in folded:requested.append(predicate)
+            if requested and slots.get('document_code'):
+                semantic=tuple(requested)
             graph=traverse(graph_path,list(seed),hops=2,relations=list(semantic),
                            verified_only=False,
-                           limit=75,direction="both")
+                             limit=75,direction="both",allow_partial_debug=context.get('allow_partial_debug') is True)
             # Only checked assertions enter generation. Source text is linked as
             # provenance, never reintroduced wholesale as an accepted relation.
             by_node={n['node_id']:n for n in graph['nodes']}
             facts=[]
-            ranked=sorted(graph['edges'], key=lambda e:(e['relation_type']=='SUPPORTED_BY',e['edge_id']))
+            preferred={'OWNED_BY':0,'RECOGNIZES':1,'DECLARED_BY':2,'HAS_RECORD':3}
+            ranked=sorted(graph['edges'], key=lambda e:(e['relation_type']=='SUPPORTED_BY',
+                e['source_entity_id'] not in seed and e['target_entity_id'] not in seed,preferred.get(e['relation_type'],4),
+                e['edge_id']))
             for edge in ranked:
                 source,target=by_node[edge['source_entity_id']],by_node[edge['target_entity_id']]
                 refs=edge['citations']
@@ -398,6 +480,7 @@ class ToolRegistry:
                     'text':source['label']+' ['+edge['relation_type']+'] '+target['label'],
                     'source_spans':refs,'review_status':'machine_extracted',
                     'validation':edge['validation'], 'graph_edge_id':edge['edge_id'],
+                    'check':edge['check'], 'graph_node_ids':[source['node_id'],target['node_id']],
                     'corpus_version':graph_manifest['source_knowledge_version']})
                 if len(facts)>=8:break
             graph['results']=facts

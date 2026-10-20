@@ -40,12 +40,14 @@ class OcopState(TypedDict,total=False):
 
 
 class OcopAgent:
-    def __init__(self,root:Path,*,llm:OllamaClient|None=None,retrieval_mode:str='sparse',rerank:bool=False):
+    def __init__(self,root:Path,*,llm:OllamaClient|None=None,retrieval_mode:str='sparse',rerank:bool=False,
+                 allow_partial_debug:bool=False):
         self.root=Path(root)
         self.tools=ToolRegistry(self.root)
         self.llm=llm
         self.retrieval_mode=retrieval_mode
         self.rerank=rerank
+        self.allow_partial_debug=allow_partial_debug is True
         self._checkpoint=None
 
     def route(self,state:OcopState)->dict:
@@ -97,6 +99,7 @@ class OcopAgent:
         # Never import authenticated, tenant, verified_criteria, verified_answers,
         # graph_seed_ids, temporal_rule or server permissions from a user dict.
         context={'retrieval_mode':self.retrieval_mode,'rerank':self.rerank,
+                 'allow_partial_debug':self.allow_partial_debug,
                  'business_intent':Route.model_validate(state['route']).intent.value,
                  'debug_candidates':bool(state.get('debug_candidates',False)),
                  'dossier_id':(state.get('session') or {}).get('dossier_id')}
@@ -326,6 +329,14 @@ class OcopAgent:
             return {'answer':{'answer':'Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.',
                               'status':'out_of_scope','citations':[]}}
         outputs=state.get('results') or []
+        if any((item.get('output') or {}).get('status')=='requested_pdf_page_not_indexed' for item in outputs):
+            return {'answer':{'answer':'Trang PDF được yêu cầu chưa có trong corpus đã lập chỉ mục; '
+                              'không dùng trang khác để suy ra nội dung trang này.',
+                              'status':'insufficient_page_scope','citations':[]}}
+        if any((item.get('output') or {}).get('status')=='sheet_scope_unavailable' for item in outputs):
+            return {'answer':{'answer':'Tầng tra cứu chưa có cây phiếu đã kiểm tra khớp số phiếu và nguồn '
+                              'được hỏi; không dùng phương án của phiếu khác.',
+                              'status':'insufficient_sheet_scope','citations':[]}}
         if any(x.get('tool') in ('review_dossier','estimate_score') for x in outputs):
             outcome=outputs[0].get('output',{}) if outputs else {'status':'not_found'}
             # Never make empty candidate data into a passing dossier or score.
@@ -444,6 +455,14 @@ class OcopAgent:
     def ask(self,query:str,*,session:dict|None=None,context:dict|None=None,
             auth_context:AuthContext|None=None,debug_candidates:bool=False,
             require_langgraph:bool=False)->AgentResponse:
+        for folder in (self.tools.index_dir, getattr(self.tools,'graph_dir',self.root/'data/processed/ocop/graph')):
+            manifest_file=folder/'manifest.json'
+            if manifest_file.is_file():
+                manifest=json.loads(manifest_file.read_text(encoding='utf-8'))
+                partial=(manifest.get('source_complete') is False or
+                         str(manifest.get('status', '')).startswith('partial_'))
+                if partial and not self.allow_partial_debug:
+                    raise RuntimeError('partial corpus requires explicit allow_partial_debug=True')
         initial:OcopState={'query':query,'session':session or {},'context':context or {},
                            'auth':auth_context,'debug_candidates':debug_candidates}
         engine='langgraph'
@@ -476,6 +495,11 @@ class OcopAgent:
             final.update(self.verify(final))
             final.update(self.answer(final))
         route=Route.model_validate(final['route']);payload=final['answer']
+        if self.allow_partial_debug:
+            payload={**payload, 'answer':'[partial_debug_corpus]\n'+payload['answer'],
+                     'status':'partial_debug_corpus',
+                     'claim_verification':{**payload.get('claim_verification',{}),
+                         'answer_status':payload['status'], 'corpus_status':'partial_debug_corpus'}}
         return AgentResponse(answer=payload['answer'],intent=route.intent,status=payload['status'],
             citations=payload['citations'],tools_used=[r['tool'] for r in final.get('results',[])],
             workflow_engine=engine,route=route,corpus_version=self._corpus_version(),

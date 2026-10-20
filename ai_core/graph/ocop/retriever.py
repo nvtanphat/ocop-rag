@@ -19,6 +19,7 @@ def traverse(
     limit: int = 100,
     direction: str = "both",
     include_failed: bool = False,
+    allow_partial_debug: bool = False,
 ) -> dict:
     if direction not in ("out", "in", "both"):
         raise ValueError("invalid direction")
@@ -30,13 +31,13 @@ def traverse(
     if not allowed.issubset(EDGE_ENDPOINTS):
         raise ValueError("Unknown graph relation")
     # Version-aware fail-closed read; legacy isolated graph fixtures may omit a manifest.
-    manifest = validate_graph_snapshot(graph_dir, allow_legacy=True)
+    manifest = validate_graph_snapshot(graph_dir, allow_legacy=True, allow_partial=allow_partial_debug)
     if manifest.get('status') != 'legacy_unverified' and not include_failed:
         if not manifest.get('checks') or manifest.get('schema_revision') != SCHEMA_REVISION:
             raise ValueError('graph check policy changed; rebuild corpus')
     immutable = graph_dir / "snapshots" / str(manifest.get("graph_version", ""))
     if immutable.is_dir():
-        validate_graph_snapshot(immutable)
+        validate_graph_snapshot(immutable, allow_partial=allow_partial_debug)
         graph_dir = immutable
     node_file = graph_dir / "nodes.jsonl"
     edge_file = graph_dir / "edges.jsonl"
@@ -78,7 +79,8 @@ def traverse(
             continue
         # Do not fan out from a document/decision hub reached indirectly:
         # e.g. Product -> RecognitionDecision -> all unrelated products.
-        if cur not in seed_ids and nodes[cur]["node_type"] in ("SourceDocument", "RecognitionDecision"):
+        if cur not in seed_ids and nodes[cur]["node_type"] in (
+                "SourceDocument", "RecognitionDecision", "Organization", "EvidenceUnit"):
             continue
         for e in adj[cur]:
             if len(seen_edges) >= limit:

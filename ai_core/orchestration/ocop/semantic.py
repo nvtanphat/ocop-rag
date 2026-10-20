@@ -42,6 +42,8 @@ def private_scoring_action(q: str) -> bool:
 
 
 def private_dossier_action(q: str) -> bool:
+    if has_any(q, ('hồ sơ riêng', 'dossier riêng', 'hồ sơ nội bộ')):
+        return True
     if has_any(q, ('hồ sơ tôi cần chuẩn bị', 'hồ sơ của tôi cần chuẩn bị',
                     'hồ sơ tôi cần nộp', 'tôi cần chuẩn bị hồ sơ',
                     'hồ sơ gồm những gì', 'hồ sơ cần có gì')):
@@ -101,7 +103,8 @@ def detect_capabilities(query: str, slots: dict) -> tuple[list[Capability], list
         add(Capability.SECTOR_COMPLIANCE,'compliance_signal')
     if private_dossier_action(q):add(Capability.REVIEW_DOSSIER,'private_dossier_action')
     if private_scoring_action(q):add(Capability.ESTIMATE_SCORE,'private_scoring_action')
-    if has_any(q,('liên quan đến','mối quan hệ','đối chiếu','liên hệ với',
+    if (slots.get('document_code') and has_any(q, ('thay thế', 'sửa đổi văn bản',
+            'sửa đổi quyết định', 'bổ sung văn bản', 'căn cứ văn bản'))) or has_any(q,('liên quan đến','mối quan hệ','đối chiếu','liên hệ với',
                   'kết hợp các','liên hệ giữa')) or (Capability.EVIDENCE_REQUIREMENTS in found and Capability.CRITERIA in found):
         add(Capability.RELATION_REASONING,'relational_signal')
     if not found:add(Capability.OVERVIEW,'general_ocop_question')
