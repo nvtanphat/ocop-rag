@@ -224,3 +224,28 @@ def test_named_advisory_role_is_actor_and_submitted_to_chair_is_not():
     es={e['entity_id']:e for e in result['business_entities']}
     actors={es[r['source_entity_id']]['label'] for r in result['business_relations'] if r['relation_type']=='RESPONSIBLE_FOR'}
     assert actors=={'Cơ quan tham mưu quản lý OCOP cấp tỉnh'}
+
+
+def test_mid_line_actor_after_sentence_end_starts_a_new_step():
+    from ai_core.knowledge.ocop.extractor import _rule_sentences
+    from ai_core.knowledge.ocop.procedures import _procedure_sentences
+    text = ("a) Chủ thể OCOP chuẩn bị hồ sơ đăng ký tham gia đánh giá, nâng hạng theo\n"
+            "quy định tại điểm b khoản 1 Điều 6 Quyết định này UBND cấp xã chuẩn bị hồ sơ\n"
+            "theo quy định tại khoản 2 Điều 6 Quyết định này. UBND cấp tỉnh chuẩn bị hồ sơ")
+    steps = _procedure_sentences(text, _rule_sentences)
+    assert [s.split()[0:3] for s in steps] == [["a)", "Chủ", "thể"], ["UBND", "cấp", "xã"], ["UBND", "cấp", "tỉnh"]]
+    assert all(step in text for step in steps)          # literal slices, nothing inserted
+
+
+def test_delegation_inside_a_sentence_is_not_split():
+    from ai_core.knowledge.ocop.extractor import _rule_sentences
+    from ai_core.knowledge.ocop.procedures import _procedure_sentences
+    text = "Chủ tịch UBND cấp tỉnh giao UBND cấp xã tổ chức họp đánh giá sản phẩm."
+    assert _procedure_sentences(text, _rule_sentences) == [text]
+
+
+def test_ocr_tone_variant_of_de_nghi_still_marks_a_recipient():
+    from ai_core.knowledge.ocop.procedures import _subjects
+    text = ("Hội đồng cấp trung ương tổ chức họp, báo cáo kết quả đánh giá và để nghị "
+            "Bộ trưởng Bộ Nông nghiệp và Môi trường công nhận sản phẩm.")
+    assert [m[0] for m in _subjects(text)] == ["Hội đồng cấp trung ương"]

@@ -18,6 +18,12 @@ def write_json(path: Path, value: dict):
 
 
 def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
+    # Hermetic: never read the developer's .env (it may hold a paid API key).
+    import ai_core.orchestration.ocop.llm as llm_mod
+    monkeypatch.setattr(llm_mod, "load_env_file", lambda path=None: None)
+    for key in ("OCOP_EXTRACT_LLM_PROVIDER", "OCOP_EXTRACT_LLM_MODEL", "OCOP_EXTRACT_OPENAI_BASE_URL",
+                "OCOP_EXTRACT_OPENAI_API_KEY", "OCOP_EXTRACT_LLM_GLEANINGS", "OCOP_EXTRACT_LLM_WORKERS"):
+        monkeypatch.delenv(key, raising=False)
     system = OcopSystemPipeline(tmp_path)
     monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self: (12, "approved-snapshot"))
     calls = []
@@ -38,8 +44,14 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         calls.append("evidence")
         output_dir.mkdir(parents=True)
         from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
+        from ai_core.knowledge.ocop.llm_proposals import semantic_profile
+        client = kwargs.get("semantic_client")
+        # Same semantic_proposals contract as the real extractor, so reuse is exercised honestly.
+        semantic = {"enabled": client is not None, "processed_unit_count": 0, "errors": 0,
+                    "model": "none" if client is None else semantic_profile(
+                        client.model, kwargs.get("semantic_max_units", 50), kwargs.get("semantic_gleanings", 1))}
         manifest = {"complete": True, "source_snapshot_sha256": "approved-snapshot",
-                    "pipeline_version": KNOWLEDGE_VERSION,
+                    "pipeline_version": KNOWLEDGE_VERSION, "semantic_proposals": semantic,
                     "corpus_version": "knowledge-fixture", "counts": {"evidence_units": 2}}
         write_json(output_dir / "manifest.json", manifest)
         for filename in ("evidence_units.jsonl", "entities.jsonl", "relations.jsonl",
@@ -179,3 +191,13 @@ def test_invalid_new_bundle_rolls_back_after_directory_promotion(tmp_path, monke
     assert (system.data / 'index' / 'manifest.json').read_bytes() == before
     assert system.status(validate_sources=True)['state'] == 'ready'
     assert not (system.data / '.promoting').exists()
+
+
+def test_llm_extraction_is_reused_until_the_extraction_model_changes(tmp_path, monkeypatch):
+    system, calls = fixture_pipeline(tmp_path, monkeypatch)
+    assert PipelineOptions().semantic_extract is True
+    system.ensure()
+    assert system.ensure()["reused"] is True and calls.count("evidence") == 1
+    monkeypatch.setenv("OCOP_EXTRACT_LLM_MODEL", "another-model")
+    system.ensure()
+    assert calls.count("evidence") == 2   # different model: knowledge is extracted again

@@ -36,7 +36,8 @@ def _norm(text):
 
 
 def _recipient(text,match):
-    return bool(re.search(r'(?:đề\s+nghị|đề\s+xuất|gửi|đến|cho|về|trình|tới|của|lên|từ|họp)\s*$',text[:match.start()],re.I))
+    # OCR often misreads the tone of "đề" ("để", "đê"); the cue still marks a recipient.
+    return bool(re.search(r'(?:đ[ềểêe]\s+nghị|đ[ềểêe]\s+xuất|gửi|đến|cho|về|trình|tới|của|lên|từ|họp)\s*$',text[:match.start()],re.I))
 
 
 def _subjects(text):
@@ -75,7 +76,23 @@ def _procedure_sentences(text, sentences):
             chunks.append(text[start:offset].strip());start=offset
         offset+=len(raw)
     chunks.append(text[start:].strip())
-    return [statement for chunk in chunks for statement in sentences(chunk)]
+    return [part for chunk in chunks for statement in sentences(chunk)
+            for part in _split_mid_line_actors(statement)]
+
+
+# A clause ends at punctuation or at a closing legal self-reference ("... Quyết định này"),
+# which OCR often leaves without its period.
+_CLAUSE_END=re.compile(r'(?:[.;]|\b(?:Quyết\s+định|Nghị\s+định|Thông\s+tư|Nghị\s+quyết|Điều|khoản)\s+này)\s*$',re.I)
+_LIST_MARKER=re.compile(r'(?:\d{1,2}(?:\.\d{1,2})*|[a-zđ]|\(\d+\))[.)]?',re.I)
+
+
+def _split_mid_line_actors(statement):
+    """Start a new step where a fresh acting subject follows a clause end; slices stay literal."""
+    cuts=[m.start() for m in _subjects(statement)
+          if m.start()>0 and _CLAUSE_END.search(statement[:m.start()])
+          and not _LIST_MARKER.fullmatch(statement[:m.start()].strip())]
+    bounds=[0,*cuts,len(statement)]
+    return [part for a,b in zip(bounds,bounds[1:]) if (part:=statement[a:b].strip())]
 
 
 def _scope_header(text):

@@ -31,6 +31,7 @@ from .contracts import (
 PROMPT_VERSION = code_fingerprint('semantic', [Path(__file__), Path(__file__).with_name('contracts.py'),
     Path(__file__).resolve().parents[2]/'orchestration/ocop/llm.py'])
 CHUNK_CHARS = 2500
+ALL_UNITS = 100_000  # default: every eligible EvidenceUnit; omissions are still counted
 CHUNK_OVERLAP = 200
 
 
@@ -381,8 +382,8 @@ def _call(client: StructuredLLM, cache: _Cache, body: str, gleanings: int = 0) -
 
 def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
             cache_dir: Path | None = None, max_workers: int = 1, gleanings: int = 0) -> dict:
-    if not (0 <= max_units <= 500):
-        raise ValueError('max_units must be 0..500')
+    if not (0 <= max_units <= ALL_UNITS):
+        raise ValueError(f'max_units must be 0..{ALL_UNITS}')
     if not (1 <= max_workers <= 16):
         raise ValueError('max_workers must be 1..16')
     if isinstance(gleanings, bool) or not isinstance(gleanings, int) or not 0 <= gleanings <= 3:

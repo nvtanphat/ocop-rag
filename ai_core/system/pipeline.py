@@ -73,7 +73,7 @@ class PipelineOptions:
     neo4j_user: str = "neo4j"
     refresh: bool = False
     semantic_extract: bool = True
-    semantic_max_units: int = 50
+    semantic_max_units: int = 100_000  # every eligible unit; lower it only to cap API spend
 
 
 class OcopSystemPipeline:
