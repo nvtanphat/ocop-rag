@@ -108,8 +108,10 @@ class ToolRegistry:
                         if children<=ids:break
                         ids.update(children)
                     units={uid for identity in ids-{seeds[0]['node_id']} for uid in nodes[identity].get('evidence_unit_ids',[])}
-                    hits=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,top_k=40)
-                    scoped=[hit for hit in hits if hit.get('evidence_unit_id') in units]
+                    # Apply checked sheet membership before top-K; filtering
+                    # forty document-wide hits can lose the entire sheet.
+                    scoped=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,
+                                  top_k=8,evidence_unit_ids=units)
                     return {'results':scoped[:8], 'status':'checked_sheet_text' if scoped else 'sheet_scope_unavailable'}
                 except (ValueError,KeyError,OSError):
                     return {'results':[], 'status':'sheet_scope_unavailable'}

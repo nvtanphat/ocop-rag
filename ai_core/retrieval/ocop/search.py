@@ -14,7 +14,7 @@ from ai_core.retrieval.ocop.index_pipeline import (
 
 
 def _dense_hits(query:str,manifest:dict,limit:int,*,source_id:str|None=None,
-                include_needs_review:bool=True)->list[tuple[str,float]]:
+                include_needs_review:bool=True,evidence_unit_ids:set[str]|None=None)->list[tuple[str,float]]:
     dense=manifest.get("dense") or {}
     if not dense.get("enabled"):
         raise RuntimeError("Dense index not built. Run index-ocop -- --with-dense first")
@@ -28,6 +28,9 @@ def _dense_hits(query:str,manifest:dict,limit:int,*,source_id:str|None=None,
     conditions=[]
     if source_id:
         conditions.append(models.FieldCondition(key="source_id",match=models.MatchValue(value=source_id)))
+    if evidence_unit_ids is not None:
+        conditions.append(models.FieldCondition(key='evidence_unit_id',
+                          match=models.MatchAny(any=sorted(evidence_unit_ids))))
     if not include_needs_review:
         conditions.append(models.FieldCondition(key="review_status",match=models.MatchValue(value="verified")))
     if manifest.get('corpus_version'):
@@ -174,7 +177,8 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
            source_id:str|None=None,include_needs_review:bool=True,rerank:bool=False,
            reranker_model:str="BAAI/bge-reranker-v2-m3",
            reranker_revision:str|None=None,expand_parent:bool=False,
-           parent_max_chars:int=2400,rerank_candidates:int=40)->list[dict]:
+           parent_max_chars:int=2400,rerank_candidates:int=40,
+           evidence_unit_ids:set[str]|None=None)->list[dict]:
     if mode not in ("sparse","hybrid","dense"):
         raise ValueError("mode must be sparse, dense or hybrid")
     if top_k<=0:raise ValueError("top_k must be positive")
@@ -183,10 +187,12 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
     if expand_parent and parent_max_chars<100:raise ValueError('parent_max_chars must be >=100')
     manifest,ordered,chunks,bm25=_read_checked_index(index_dir)
     allowed=lambda cid: ((source_id is None or chunks[cid]["source_id"]==source_id)
+                          and (evidence_unit_ids is None or chunks[cid]['evidence_unit_id'] in evidence_unit_ids)
                           and (include_needs_review or chunks[cid]["review_status"] == "verified"))
     # Determine admissible postings before scoring/ranking; top-K oversampling
     # cannot guarantee that a rare target document survives global ranking.
     allowed_positions={i for i,ch in enumerate(ordered) if allowed(ch["chunk_id"])}
+    if not allowed_positions:return []
     pool_size=max(top_k,rerank_candidates if rerank else top_k)
     sparse=[];sparse_scores={}
     if mode in ("sparse","hybrid"):
@@ -195,8 +201,9 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
             if allowed(cid):sparse.append(cid);sparse_scores[cid]=score
     dense=[];dense_scores={}
     if mode in ("dense","hybrid"):
+        scope={'evidence_unit_ids':evidence_unit_ids} if evidence_unit_ids is not None else {}
         for cid,score in _dense_hits(query,manifest,max(40,pool_size*2),source_id=source_id,
-                                      include_needs_review=include_needs_review):
+                                      include_needs_review=include_needs_review,**scope):
             if cid in chunks and allowed(cid):dense.append(cid);dense_scores[cid]=score
     fused=rrf([lst for lst in (sparse,dense) if lst]) if mode=="hybrid" else (
           {cid:score for cid,score in sparse_scores.items()} if mode=="sparse" else dense_scores)

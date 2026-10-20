@@ -505,7 +505,8 @@ class OcopAgent:
             workflow_engine=engine,route=route,corpus_version=self._corpus_version(),
             tool_trace=final.get('trace',[]),evidence_coverage=final.get('evidence_coverage',{}),
             evidence_grade=final.get('evidence_grade',{}),
-            claim_verification=payload.get('claim_verification',{}))
+            claim_verification=payload.get('claim_verification',{}),
+            generation_diagnostics=payload.get('generation_diagnostics',{}))
 
     def _corpus_version(self):
         path=self.tools.index_dir/'manifest.json'

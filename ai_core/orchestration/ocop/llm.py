@@ -8,6 +8,9 @@ from ai_core.system.telemetry import traced
 _ROUTER_SYSTEM=("Bạn là router cho OCOP. Chỉ trả JSON với intent và slots. "
                 "Không ra lệnh tools. Không suy đoán tenant_id/dossier_id.")
 
+class ModelOutputTruncated(RuntimeError):
+    """A transport succeeded but its unfinished output must not be published."""
+
 class _RouteMixin:
     def chat_structured(self, system: str, user: str, *, schema: dict, max_tokens: int = 1024) -> str:
         return self.chat(system, user, format_json=True, max_tokens=max_tokens, schema=schema)
@@ -34,9 +37,14 @@ class OllamaClient(_RouteMixin):
         try:
             with urllib.request.urlopen(req,timeout=self.timeout) as response:
                 out=json.load(response)
+            if not isinstance(out,dict) or not isinstance(out.get('message'),dict):
+                raise ValueError('Invalid Ollama response schema')
             if out.get('done_reason') == 'length':
-                raise RuntimeError('Configured Ollama response truncated')
-            return str(out["message"]["content"])
+                raise ModelOutputTruncated('Configured Ollama response truncated')
+            content=out['message'].get('content')
+            if not isinstance(content,str) or not content.strip():
+                raise ValueError('Invalid Ollama text content')
+            return content
         except (urllib.error.URLError,TimeoutError,OSError,KeyError,ValueError) as exc:
             raise RuntimeError("Configured Ollama model unavailable") from exc
 

@@ -80,7 +80,7 @@ nguồn; **T** = output Ollama bị cắt ở giới hạn token, trả trích n
 24 lượt không exception; tối đa 3 tool/câu, toàn bộ thuộc registry, giới hạn vẫn là 5.
 API debug `/api/ocop/query` bằng TestClient cho #4/#6/#12: 3 × 200; production trên
 cùng root partial: 3 × 503 đúng cổng, không 500; cờ debug gửi vào production bị 422.
-Frontend build, TypeScript, lint F và toàn bộ pytest đạt.
+Kết quả kiểm tra lại và phạm vi lint được ghi cụ thể bên dưới.
 
 Phase 2: xếp hạng/chọn excerpt cho câu nhiều vế (#2); OCR II/III (#5); Qwen thiếu
 claim citation, thêm kết luận ngoài câu hỏi, output dài (#3); quy tắc/phân hạng chưa
@@ -100,3 +100,40 @@ Kiểm tra lại: `python -m pytest -q`: **670 passed, 1 skipped**;
 frontend `npm run build`: đạt; Ruff F trên các tệp thay đổi: đạt.
 Kiểm tra rộng orchestration phát hiện 5 F401 có sẵn trong `evidence_grader.py` và
 `verification.py` (không nằm trong thay đổi này).
+
+## Lượt sửa tiếp theo và kiểm chứng tổng hợp
+
+Đã tái hiện lỗi bằng `python -m pytest -q tests/ocop/test_answer_debug_followup.py`:
+9 test đầu thất bại trước sửa; test scope bổ sung xác nhận 60 đoạn ngoài phiếu đẩy
+đoạn thuộc phiếu ra khỏi top-40. Sửa đúng tầng, không thay đổi công thức BM25:
+
+- Answer assembly chỉ in 4/8 evidence đã chọn khi không dùng LLM hoặc khi LLM bị chặn:
+  nay hiển thị toàn bộ tối đa 8 excerpt đã chọn, giữ nguyên ID/trang/SHA/trạng thái.
+- Tool phiếu lọc membership sau top-40 của văn bản: chuyển bộ lọc ID evidence từ
+  cây phiếu đã kiểm tra xuống retrieval trước top-K (cả sparse và dense).
+  Test tích hợp dựng graph partial thật từ fixture phiếu tổng hợp, kiểm phương án nối
+  trang 3–4 còn được trả về dù có 60 đoạn cùng nguồn bên ngoài scope.
+- Lỗi claim bất kỳ đều bị báo chung thành lỗi điểm/sao: nay trả đúng
+  `generation_diagnostics.layer/reasons` xuyên Agent/API; giữ nguyên kết quả claim guard.
+  `source_not_verified`, `missing_claim_citation` không bị che thành lỗi citation ID.
+- Ollama trả JSON null/list, message null hoặc content sai kiểu có thể gây crash hoặc
+  bị ép thành chuỗi: kiểm schema, chuyển thành lỗi có kiểm soát. Output bị cắt có
+  reason `model_output_truncated`, không lẫn với lỗi kết nối; không công bố phần sinh dở.
+- Prompt trả lời yêu cầu ngắn, mỗi câu một ý, ưu tiên nguyên văn và tránh thêm điểm/sao
+  ngoài yêu cầu. Không bỏ bất kỳ cổng xác minh nào và không nâng nguồn thành verified.
+
+14 regression mới trong `test_answer_debug_followup.py`: đạt, gồm TestClient xác nhận
+diagnostics còn trong HTTP response khi lỗi schema, truncation và nguồn chưa verified.
+Kiểm tra bổ sung Ollama **thật** tại `D:/tmp/ocop-e2e-followup-20261021`:
+`run_synthetic_api.py`, `api_results.json` và `synthetic-root/` nằm ngoài repo.
+Ba câu tổng hợp (khái niệm OCOP / Điều 6 / hồ sơ riêng) × hai chế độ: **6/6 HTTP 200**,
+0 crash, mọi marker khớp citation có thật trong fixture; thực tế tối đa 1 tool/câu (giới hạn 5),
+hồ sơ riêng 0 tool/citation. Hai câu có evidence ở chế độ LLM vẫn bị claim guard chặn
+vì nguồn tổng hợp chưa verified hoặc model thiếu citation cho từng claim: đúng chính sách.
+Đây **không** phải chạy lại 12 câu trên 39 trang PDF thật, không thay thế kết quả PDF.
+
+Toàn bộ `python -m pytest -q`: **684 passed, 1 skipped** (28,66 giây).
+Frontend build và `npx tsc --noEmit`: đạt; Ruff F các tệp thay đổi: đạt.
+Vẫn thiếu đầu vào 39 trang để kiểm chứng #2 sau sửa; OCR II/III ở #5 chưa sửa khi chưa
+có PDF/crop để đối chiếu. Không OCR thêm, không sửa PDF/registry/lock, không tạo
+`data/processed` trong repo. Chưa tuyên bố hoàn tất toàn bộ tiêu chí E2E ban đầu.
