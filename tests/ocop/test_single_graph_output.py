@@ -1,6 +1,15 @@
 """One checked graph contract, exercised through the builder and consumers."""
 import json
 
+
+def test_splitting_actors_does_not_drop_a_leading_condition(tmp_path):
+    from test_operational_graph import build
+    graph, _ = build(tmp_path, 'Điều 7. Trình tự\n1. Đối với sản phẩm đăng ký lại, '
+                     'Chủ tịch UBND cấp tỉnh xem xét hồ sơ, UBND cấp tỉnh có văn bản và gửi hồ sơ.')
+    edges = list(records(graph / 'edges.jsonl'))
+    assert any(e['relation_type'] == 'RESPONSIBLE_FOR' for e in edges)
+    assert not any(e['relation_type'] == 'RESPONSIBLE_FOR' and e['check'] == 'passed' for e in edges)
+
 from ai_core.graph.ocop.builder import build_graph, records
 from ai_core.graph.ocop.retriever import traverse
 
@@ -93,3 +102,21 @@ def test_public_catalogs_cannot_bypass_graph_checks(tmp_path, monkeypatch):
         assert response.json()['kind'] == 'checked_graph'
         assert 'UNSAFE' not in response.text
     routes._graph_data.cache_clear()
+
+
+def test_negated_submission_is_not_a_checked_evidence_requirement(tmp_path):
+    from test_operational_graph import build
+    graph, _ = build(tmp_path, 'Điều 6. Hồ sơ\n1. UBND cấp xã chuẩn bị hồ sơ, không nộp phiếu kiểm nghiệm.')
+    edges = list(records(graph / 'edges.jsonl'))
+    assert not any(e['relation_type']=='REQUIRES_EVIDENCE' and e['check']=='passed' for e in edges)
+    assert not any(r['relation_type']=='REQUIRES_EVIDENCE'
+                   for r in records(graph.parent / 'knowledge/business_relations.jsonl'))
+
+
+def test_checked_actor_can_inherit_an_explicit_collective_header(tmp_path):
+    from test_operational_graph import build
+    graph, _ = build(tmp_path, 'Điều 4. Trách nhiệm\n1. Các Bộ: Y tế, Công Thương, Nông nghiệp và Môi trường\na) Chủ động rà soát hồ sơ.')
+    nodes={r['node_id']:r for r in records(graph / 'nodes.jsonl')}
+    actors={nodes[e['source_entity_id']]['label'] for e in records(graph / 'edges.jsonl')
+            if e['relation_type']=='RESPONSIBLE_FOR' and e['check']=='passed'}
+    assert actors == {'Bộ Y tế','Bộ Công Thương','Bộ Nông nghiệp và Môi trường'}

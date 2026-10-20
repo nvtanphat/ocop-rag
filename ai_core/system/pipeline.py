@@ -57,6 +57,18 @@ def _semantic_profile(options: "PipelineOptions") -> str:
     return semantic_profile(extraction_model_name(), options.semantic_max_units, extraction_gleanings())
 
 
+def _semantic_complete(metadata: dict, options: "PipelineOptions") -> bool:
+    if not options.semantic_extract:
+        return True
+    eligible = metadata.get('eligible_unit_count')
+    selected = metadata.get('selected_unit_count')
+    return (metadata.get('enabled') is True and metadata.get('errors') == 0
+            and isinstance(eligible, int) and isinstance(selected, int)
+            and selected == (eligible if options.semantic_max_units is None else min(eligible, options.semantic_max_units))
+            and metadata.get('processed_unit_count') == selected
+            and metadata.get('model') == _semantic_profile(options))
+
+
 @dataclass(frozen=True)
 class PipelineOptions:
     dpi: int = 300
@@ -73,7 +85,7 @@ class PipelineOptions:
     neo4j_user: str = "neo4j"
     refresh: bool = False
     semantic_extract: bool = True
-    semantic_max_units: int = 100_000  # every eligible unit; lower it only to cap API spend
+    semantic_max_units: int | None = None  # every eligible unit unless explicitly capped
 
 
 class OcopSystemPipeline:
@@ -200,10 +212,7 @@ class OcopSystemPipeline:
                     and runtime_config_ok
                     and page_config.get("parser_version") == PARSER_VERSION)
                 knowledge_manifest = _load_json(self.data / "knowledge" / "manifest.json")
-                semantic_ok = (not options.semantic_extract or
-                     (knowledge_manifest.get("semantic_proposals",{}).get("enabled") and
-                     knowledge_manifest["semantic_proposals"].get("processed_unit_count") is not None and
-                     knowledge_manifest["semantic_proposals"].get("model") == _semantic_profile(options)))
+                semantic_ok = _semantic_complete(knowledge_manifest.get('semantic_proposals', {}), options)
                 if dense_config_ok and pdf_config_ok and mongo_ok and neo4j_ok and semantic_ok:
                     return {**current, "reused": True}
             # Construct the complete pipeline away from the live artifact tree.
@@ -227,9 +236,7 @@ class OcopSystemPipeline:
                         and runtime_config_ok
                         and page_config.get("parser_version") == PARSER_VERSION)
                     knowledge_semantics = knowledge_config.get("semantic_proposals", {})
-                    semantic_match = (not options.semantic_extract or
-                         (knowledge_semantics.get("enabled") and
-                          knowledge_semantics.get("model") == _semantic_profile(options)))
+                    semantic_match = _semantic_complete(knowledge_semantics, options)
                     from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
                     reuse_knowledge = (reuse_pages and knowledge_config.get("complete")
                         and knowledge_config.get("pipeline_version") == KNOWLEDGE_VERSION
@@ -267,6 +274,8 @@ class OcopSystemPipeline:
                             semantic_gleanings=extraction_gleanings() if options.semantic_extract else 1)
                     if not knowledge.get("complete"):
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
+                    if not _semantic_complete(knowledge.get('semantic_proposals', {}), options):
+                        raise RuntimeError('LLM extraction incomplete; rerun to resume cached chunks before publication')
                     index = build_index(
                         knowledge=stage / "knowledge", index_dir=stage / "index",
                         with_dense=options.dense,

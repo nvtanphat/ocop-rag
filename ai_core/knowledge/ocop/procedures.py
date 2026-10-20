@@ -2,7 +2,6 @@
 from __future__ import annotations
 import json
 import re
-from ai_core.domain.ocop_ids import stable_id
 from ai_core.processing.ocop.temporal_candidates import _DMY,_iso
 from .contracts import EntityType
 from .authorities import find_authorities, resolve
@@ -13,7 +12,7 @@ AUTHORITY=re.compile(
     r'|(?:Chủ\s+tịch\s+)?(?:Tổ\s+tư\s+vấn\s+)?Hội\s+đồng(?:\s+(?:đánh\s+giá,?\s+phân\s+hạng(?:\s+sản\s+phẩm)?(?:\s+OCOP)?|OCOP))?\s+cấp\s+(?:tỉnh|trung\s+ương)'
     r'|Phòng\s+Nông\s+nghiệp\s+và\s+Môi\s+trường'
     r'|cơ\s+quan\s+tham\s+mưu\s+quản\s+lý\s+OCOP(?:\s+cấp\s+tỉnh|\s+của\s+Bộ(?:\s+Nông\s+nghiệp\s+và\s+Môi\s+trường)?)?',re.I)
-ACTION=re.compile(r'\s*(?:sẽ\s+)?(?:chủ\s+trì|tổ[\s.]+chức|tiếp\s+nhận|đánh\s+giá|kiểm\s+tra|giao|thành\s+lập|quyết\s+định|ban\s+hành|công\s+nhận|thu\s+hồi|chuẩn\s+bị|rà\s+soát|tăng\s+cường|chỉ\s+đạo|thông\s+tin|tổng\s+hợp|phối\s+hợp|hướng\s+dẫn|thông\s+báo|xem\s+xét|đề\s+nghị|gửi|có\s+trách\s+nhiệm|chịu\s+trách\s+nhiệm)',re.I)
+ACTION=re.compile(r'\s*(?:sẽ\s+)?(?:chủ\s+trì|tổ[\s.]+chức|tiếp\s+nhận|đánh\s+giá|kiểm\s+tra|giao|thành\s+lập|quyết\s+định|ban\s+hành|công\s+nhận|thu\s+hồi|chuẩn\s+bị|rà\s+soát|tăng\s+cường|chỉ\s+đạo|thông\s+tin|tổng\s+hợp|phối\s+hợp|hướng\s+dẫn|thông\s+báo|xem\s+xét|đề\s+nghị|gửi|có\s+trách\s+nhiệm|có\s+văn\s+bản|chịu\s+trách\s+nhiệm)',re.I)
 TRIGGER=re.compile(r'hồ\s+sơ|công\s+bố|đăng\s+ký|nộp|tiếp\s+nhận|công\s+nhận|đánh\s+giá|thu\s+hồi|rà\s+soát|thương\s+mại\s+điện\s+tử|giám\s+sát|liên\s+hệ|hướng\s+dẫn',re.I)
 DURATION=re.compile(r'(?<!\d)(\d{1,3})\s*(ngày\s+làm\s+việc|ngày(?!\s+l[àảa]m))\b',re.I)
 CALENDAR=re.compile(r'(?:trước\s+ngày|chậm\s+nhất(?:\s+ngày)?)\s*(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{4})?|\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?)',re.I)
@@ -82,7 +81,7 @@ def _procedure_sentences(text, sentences):
 
 # A clause ends at punctuation or at a closing legal self-reference ("... Quyết định này"),
 # which OCR often leaves without its period.
-_CLAUSE_END=re.compile(r'(?:[.;]|\b(?:Quyết\s+định|Nghị\s+định|Thông\s+tư|Nghị\s+quyết|Điều|khoản)\s+này)\s*$',re.I)
+_CLAUSE_END=re.compile(r'(?:[.;,]|\b(?:Quyết\s+định|Nghị\s+định|Thông\s+tư|Nghị\s+quyết|Điều|khoản)\s+này)\s*$',re.I)
 _LIST_MARKER=re.compile(r'(?:\d{1,2}(?:\.\d{1,2})*|[a-zđ]|\(\d+\))[.)]?',re.I)
 
 
@@ -90,6 +89,8 @@ def _split_mid_line_actors(statement):
     """Start a new step where a fresh acting subject follows a clause end; slices stay literal."""
     cuts=[m.start() for m in _subjects(statement)
           if m.start()>0 and _CLAUSE_END.search(statement[:m.start()])
+          and ACTION.search(statement[:m.start()])
+          and not re.search(r'\b(?:nếu|trường\s+hợp|trừ\s+khi)\b',statement[:m.start()],re.I)
           and not _LIST_MARKER.fullmatch(statement[:m.start()].strip())]
     bounds=[0,*cuts,len(statement)]
     return [part for a,b in zip(bounds,bounds[1:]) if (part:=statement[a:b].strip())]
@@ -98,6 +99,11 @@ def _split_mid_line_actors(statement):
 def _scope_header(text):
     """Only the declaration before the first lettered point can supply an actor."""
     return re.split(r'(?m)^\s*[a-zđ][.)]\s+',text,maxsplit=1,flags=re.I)[0]
+
+
+def collective_authorities(header):
+    match=re.fullmatch(r'\s*\d+[.)]\s*Các\s+Bộ\s*:\s*([^\n]+)\s*',header,re.I)
+    return ['Bộ '+name.strip() for name in match[1].split(',') if name.strip()] if match else []
 
 
 def _deadline(text):
@@ -148,6 +154,9 @@ def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,re
             return
         for match in DOCUMENT.finditer(statement):
             prefix=re.split(r'[;.!?]',statement[:match.start()])[-1]
+            if re.search(r'\b(?:không|chưa|nếu|trường\s+hợp|trừ\s+khi|chỉ\s+áp\s+dụng)\b', prefix, re.I):
+                omitted['document_requirement_negated_or_conditional']+=1
+                continue
             required=bool(re.search(
                 r'chuẩn\s+bị|(?:phải|cần)\s+có|nộp|cung\s+cấp|gửi\s+kèm|'
                 r'hồ\s+sơ[^;.!?]*(?:bao\s+gồm|gồm)|yêu\s+cầu\s*:\s*(?:có)?',prefix,re.I))
@@ -172,7 +181,6 @@ def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,re
                 'conditional_candidate':not procedure and not bool(re.search(r'yêu\s+cầu|phải\s+có',statement,re.I))})
 
     def steps(sid,scope,base,primary=None):
-        unit=index[base.evidence_unit_id]
         record={'source_id':sid,'evidence_unit_id':base.evidence_unit_id,'pdf_page':base.pdf_page}
         for ordinal,statement in enumerate(_procedure_sentences(base.quote,sentences)):
             key=(scope,base.evidence_unit_id,statement)

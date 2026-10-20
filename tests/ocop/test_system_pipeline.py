@@ -48,6 +48,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         client = kwargs.get("semantic_client")
         # Same semantic_proposals contract as the real extractor, so reuse is exercised honestly.
         semantic = {"enabled": client is not None, "processed_unit_count": 0, "errors": 0,
+                    "eligible_unit_count": 0, "selected_unit_count": 0, "omitted_unit_count": 0,
                     "model": "none" if client is None else semantic_profile(
                         client.model, kwargs.get("semantic_max_units", 50), kwargs.get("semantic_gleanings", 1))}
         manifest = {"complete": True, "source_snapshot_sha256": "approved-snapshot",
@@ -201,3 +202,14 @@ def test_llm_extraction_is_reused_until_the_extraction_model_changes(tmp_path, m
     monkeypatch.setenv("OCOP_EXTRACT_LLM_MODEL", "another-model")
     system.ensure()
     assert calls.count("evidence") == 2   # different model: knowledge is extracted again
+
+
+def test_incomplete_llm_run_is_resumed_instead_of_reused(tmp_path, monkeypatch):
+    system, calls = fixture_pipeline(tmp_path, monkeypatch)
+    system.ensure()
+    path=system.data/'knowledge/manifest.json'
+    manifest=json.loads(path.read_text(encoding='utf-8'))
+    manifest['semantic_proposals']['errors']=1
+    write_json(path,manifest)
+    system.ensure()
+    assert calls.count('evidence') == 2

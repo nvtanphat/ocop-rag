@@ -249,3 +249,23 @@ def test_ocr_tone_variant_of_de_nghi_still_marks_a_recipient():
     text = ("Hội đồng cấp trung ương tổ chức họp, báo cáo kết quả đánh giá và để nghị "
             "Bộ trưởng Bộ Nông nghiệp và Môi trường công nhận sản phẩm.")
     assert [m[0] for m in _subjects(text)] == ["Hội đồng cấp trung ương"]
+
+
+def test_explicit_actor_after_prose_does_not_own_the_preceding_action():
+    result=extract([unit('DOC.CURRENT',6,
+        'Điều 7. Trình tự\n1. Tổ chức đánh giá hồ sơ tại địa phương, Chủ tịch UBND cấp xã tổ chức họp đánh giá hồ sơ.')])
+    steps=[e for e in result['business_entities'] if e['kind']=='ProcedureStep']
+    assert steps
+    assert all(e['attributes']['statement_candidate'].startswith('Chủ tịch UBND cấp xã') for e in steps)
+
+
+def test_written_submission_by_second_actor_is_a_separate_literal_step():
+    from ai_core.knowledge.ocop.extractor import _rule_sentences
+    from ai_core.knowledge.ocop.procedures import _procedure_sentences, _subjects
+    text = ('Chủ tịch UBND cấp tỉnh xem xét kết quả đánh giá, '
+            'UBND cấp tỉnh có văn bản và gửi hồ sơ đến Bộ Nông nghiệp và Môi trường.')
+    parts = _procedure_sentences(text, _rule_sentences)
+    assert len(parts) == 2
+    assert [[m[0] for m in _subjects(p)] for p in parts] == [
+        ['Chủ tịch UBND cấp tỉnh'], ['UBND cấp tỉnh']]
+    assert all(p in text for p in parts)

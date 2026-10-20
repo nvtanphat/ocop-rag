@@ -18,6 +18,7 @@ import json
 import os
 import re
 import tempfile
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Protocol
@@ -31,7 +32,6 @@ from .contracts import (
 PROMPT_VERSION = code_fingerprint('semantic', [Path(__file__), Path(__file__).with_name('contracts.py'),
     Path(__file__).resolve().parents[2]/'orchestration/ocop/llm.py'])
 CHUNK_CHARS = 2500
-ALL_UNITS = 100_000  # default: every eligible EvidenceUnit; omissions are still counted
 CHUNK_OVERLAP = 200
 
 
@@ -168,9 +168,9 @@ GLEANING_PROMPT = ("MANY entities and relations were missed in the previous extr
                    "refer to the PREVIOUS entities followed by your new entities.")
 
 
-def semantic_profile(model: str, max_units: int, gleanings: int = 1) -> str:
+def semantic_profile(model: str, max_units: int | None, gleanings: int = 1) -> str:
     """Identity of an LLM extraction run; changes invalidate reused knowledge."""
-    return f"{model}:{PROMPT_VERSION}:g{gleanings}:{max_units}"
+    return f"{model}:{PROMPT_VERSION}:g{gleanings}:{max_units if max_units is not None else 'all'}"
 
 
 def norm_label(text: str) -> str:
@@ -222,7 +222,18 @@ class _Cache:
         if self.dir is None:
             return None
         path = self.dir / f"{key}.json"
-        return json.loads(path.read_text(encoding='utf-8'))['response'] if path.is_file() else None
+        if not path.is_file():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding='utf-8'))
+            raw = payload.get('response') if isinstance(payload, dict) else None
+            decoded = json.loads(raw) if isinstance(raw, str) else None
+            if not isinstance(decoded, dict) or any(not isinstance(decoded.get(k, []), list)
+                                                  for k in ('entities', 'relations', 'rules')):
+                return None
+            return raw
+        except (ValueError, UnicodeError):
+            return None  # An interrupted/corrupt cache write must not poison every resume.
 
     def put(self, key: str, response: str) -> None:
         if self.dir is None:
@@ -380,10 +391,10 @@ def _call(client: StructuredLLM, cache: _Cache, body: str, gleanings: int = 0) -
     return merged
 
 
-def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
+def propose(units: list[dict], client: StructuredLLM, *, max_units: int | None = None,
             cache_dir: Path | None = None, max_workers: int = 1, gleanings: int = 0) -> dict:
-    if not (0 <= max_units <= ALL_UNITS):
-        raise ValueError(f'max_units must be 0..{ALL_UNITS}')
+    if max_units is not None and (isinstance(max_units, bool) or not isinstance(max_units, int) or max_units < 0):
+        raise ValueError('max_units must be a nonnegative integer or None')
     if not (1 <= max_workers <= 16):
         raise ValueError('max_workers must be 1..16')
     if isinstance(gleanings, bool) or not isinstance(gleanings, int) or not 0 <= gleanings <= 3:
@@ -415,7 +426,8 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
     for (unit, start, body), (response, error) in zip(jobs, results):
         sid, uid = unit['source_id'], unit['unit_id']
         if response is None:
-            failures.append({'evidence_unit_id': uid, 'error_type': error})
+            failures.append({'evidence_unit_id': uid, 'chunk_start': start,
+                             'chunk_end': start + len(body), 'error_type': error})
             failed_units.add(uid)
             continue
         ok_units.add(uid)
@@ -500,16 +512,30 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int = 50,
             rid = stable_id('llm_rule', sid, [uid, kind, norm_label(ev.quote)], revision='business')
             rules[rid] = BusinessRule(rule_id=rid, source_id=sid, kind=kind, statement=ev.quote, evidence=[ev])
     validate_business_graph(list(ent.values()), list(rel.values()))
+    chunk_counts = Counter(u['unit_id'] for u, _, _ in jobs)
+    failed_counts = Counter(row['evidence_unit_id'] for row in failures)
+    statuses = [{'evidence_unit_id': u['unit_id'],
+                 'status': 'failed' if u['unit_id'] in failed_units else 'processed',
+                 'chunk_count': chunk_counts[u['unit_id']],
+                 'completed_chunk_count': chunk_counts[u['unit_id']] - failed_counts[u['unit_id']]}
+                for u in target_units]
+    omissions = [{'evidence_unit_id': u['unit_id'], 'reason': 'semantic_unit_budget_exceeded'}
+                 for u in eligible_units[len(target_units):]]
+    omissions.extend({'evidence_unit_id': u['unit_id'], 'reason': 'semantic_unit_failed'}
+                     for u in target_units if u['unit_id'] in failed_units)
     return {
         'entities': [e.model_dump(mode='json') for e in ent.values()],
         'relations': [r.model_dump(mode='json') for r in rel.values()],
         'rules': [r.model_dump(mode='json') for r in rules.values()],
-        'errors': failures,
+        'errors': [{'evidence_unit_id': r['evidence_unit_id'], 'error_type': r['error_type']} for r in failures],
+        'chunk_errors': failures,
         'processed_unit_count': len(ok_units - failed_units),
         'eligible_unit_count': len(eligible_units),
         'selected_unit_count': len(target_units),
-        'omissions': [{'evidence_unit_id': u['unit_id'], 'reason': 'semantic_unit_budget_exceeded'}
-                     for u in eligible_units[max_units:]],
+        'omissions': omissions,
+        'unit_statuses': statuses + [{'evidence_unit_id': u['unit_id'], 'status': 'not_selected',
+                                    'chunk_count': 0, 'completed_chunk_count': 0}
+                                   for u in eligible_units[len(target_units):]],
         'chunk_count': len(jobs),
         'grounding': stats,
     }

@@ -14,7 +14,7 @@ import math
 import json
 
 from ai_core.knowledge.ocop.authorities import find_authorities, resolve
-from ai_core.knowledge.ocop.procedures import _subjects
+from ai_core.knowledge.ocop.procedures import _subjects, _scope_header, ACTION, collective_authorities
 from ai_core.processing.ocop.business_candidates import _recognition_layout, _row_text
 from ai_core.knowledge.ocop.shapes import PARENT_SHAPES
 from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_document_number
@@ -41,6 +41,7 @@ _DOCUMENT_CUES = {
     "REPLACES": r"thay\s+thế|hết\s+hiệu\s+lực",
     "AMENDS": r"sửa\s+đổi|bổ\s+sung",
     "BASED_ON": r"căn\s+cứ",
+    "SUSPENDS": r"tạm\s+(?:ngưng|ngừng|đình\s+chỉ)\s+hiệu\s+lực",
 }
 _UNCERTAIN = re.compile(r"\b(?:không|chưa|nếu|trường hợp|có thể|dự kiến|trừ khi)\b", re.I)
 
@@ -103,9 +104,71 @@ def _quotes(row):
     return [norm(c.get("quote")) for c in row.get("citations", []) if c.get("quote")]
 
 
+def _procedure_actor_labels(node, units):
+    props=node.get('properties', {})
+    statement=props.get('statement_candidate') or node['label']
+    subjects=_subjects(statement)
+    if subjects:
+        return [m[0] for m in subjects]
+    body=re.sub(r'^\s*(?:\d+[.)]|[a-zđ][.)])\s*', '', statement, flags=re.I)
+    body=re.sub(r'^(?:Chủ\s+động|Thường\s+xuyên)\s+', '', body, flags=re.I)
+    context=props.get('context_statement_candidate') or ''
+    if not ACTION.match(body) or statement not in context:
+        return []
+    header=_scope_header(context).strip()
+    if not any(context in units.get(uid, {}).get('text', '') for uid in node.get('evidence_unit_ids', [])):
+        return []
+    if not any(header == c.get('quote', '').strip() for c in node.get('citations', [])):
+        return []
+    collective=collective_authorities(header)
+    if collective:
+        return collective
+    return [m[0] for m in _subjects(header) if re.fullmatch(r'\s*:\s*',header[m.end():])]
+
+
 def _number(node):
-    found = re.match(r"\s*(\d+(?:\.\d+)*)[.,)]?\s", node["label"])
-    return found[1] if found else None
+    found = re.match(r"\s*(\d+(?:[.,]\d+)*)[.,)]?\s*(?=[^\W\d_])", node["label"])
+    return found[1].replace(',', '.') if found else None
+
+
+def _option_parent_supported(source, target, units):
+    """Check row scope locally, or across one explicitly linked table boundary."""
+    a, b = source['properties'], target['properties']
+    def table_unit(node, props):
+        for ref in node.get('citations', []):
+            unit = units.get(ref.get('evidence_unit_id'), {})
+            if (ref.get('row') == props['row']
+                    and unit.get('structured', {}).get('table_id') == props.get('table_id')):
+                return unit, ref.get('pdf_page')
+        return {}, None
+
+    previous, page = table_unit(source, a)
+    current, next_page = table_unit(target, b)
+    if not previous or not current:
+        return False
+    if previous['unit_id'] == current['unit_id']:
+        if a['row'] >= b['row']:
+            return False
+        ranges = [(current, a['row'], b['row'])]
+    else:
+        if (page is None or next_page != page + 1
+                or source['source_id'] != target['source_id']
+                or a.get('sheet_number_candidate') is None
+                or a.get('sheet_number_candidate') != b.get('sheet_number_candidate')):
+            return False
+        hints = current.get('structured', {}).get('table_continuity', [])
+        if not any(h.get('from_pdf_page') == page and h.get('to_pdf_page') == next_page
+                   and h.get('from_table_id') == a.get('table_id')
+                   and h.get('to_table_id') == b.get('table_id') for h in hints):
+            return False
+        ranges = [(previous, a['row'], math.inf), (current, -1, b['row'])]
+    for unit, start, end in ranges:
+        for cell in unit.get('structured', {}).get('cells', []):
+            text = str(cell.get('text') or '')
+            if start < int(cell.get('row', -1)) < end and (
+                    _number({'label': text}) or re.match(r'\s*phần\s+[abc]\b', text, re.I)):
+                return False
+    return True
 
 
 def _recognition_role(node, units, role):
@@ -209,7 +272,7 @@ def _entity_typed(node, units):
             )
         )
     if kind == "ProcedureStep":
-        return bool(_subjects(node.get("properties", {}).get("statement_candidate") or label))
+        return bool(_procedure_actor_labels(node, units))
     return kind in {"EvidenceUnit", "Authority", "FormField"}
 
 
@@ -320,14 +383,8 @@ def _entails(edge, source, target, units):
     if relation == "HAS_OPTION":
         if not b.get("parent_identified") or a.get("row") is None or b.get("row") is None:
             return False
-        if a.get("table_id") != b.get("table_id") or int(a["row"]) >= int(b["row"]):
-            return False  # cross-table continuity requires a stronger verifier
-        for uid in edge["evidence_unit_ids"]:
-            for cell in units.get(uid, {}).get("structured", {}).get("cells", []):
-                if a["row"] < int(cell.get("row", -1)) < b["row"] and re.match(
-                    r"\s*(?:\d+(?:\.\d+)+[.,)]?\s|phần\s+[abc]\b)", str(cell.get("text") or ""), re.I
-                ):
-                    return False  # another criterion intervenes; row proximity is not parentage
+        if not _option_parent_supported(source, target, units):
+            return False
         return not bool(
             re.match(r"\s*(?:không đánh giá|ghi chú|chú ý|chỉ áp dụng|tổng)", target["label"], re.I)
         )
@@ -355,11 +412,21 @@ def _entails(edge, source, target, units):
         )
     if relation == "RESPONSIBLE_FOR":
         statement = b.get("statement_candidate") or target["label"]
-        if re.search(r"\b(?:nếu|trường hợp|trừ khi|có thể|dự kiến|không|chưa)\b", statement, re.I):
+        conditional = r"\b(?:nếu|trường\s+hợp|trừ\s+khi|có\s+thể|dự\s+kiến|không|chưa|đối\s+với)\b"
+        if re.search(conditional, statement, re.I):
             return False
+        # A split action can inherit a condition earlier in the same source
+        # sentence. Do not discard it just because another actor starts a slice.
+        for uid in target.get('evidence_unit_ids', []):
+            text = units.get(uid, {}).get('text', '')
+            if statement in text:
+                prefix = text[:text.index(statement)]
+                local_prefix = re.split(r'[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+', prefix, flags=re.I)[-1]
+                if re.search(conditional, local_prefix, re.I):
+                    return False
         return any(
-            (canonical := resolve(m[0])) and canonical["canonical_id"] == a.get("canonical_id")
-            for m in _subjects(statement)
+            (canonical := resolve(label)) and canonical["canonical_id"] == a.get("canonical_id")
+            for label in _procedure_actor_labels(target, units)
         )
     if relation == "REQUIRES_EVIDENCE":
         # Re-read the parent statement, not a citation containing only the document noun.
@@ -373,7 +440,7 @@ def _entails(edge, source, target, units):
                 if label not in sentence:
                     continue
                 prefix = sentence[: sentence.index(label)]
-                if re.search(r"không\s+(?:cần|phải|yêu cầu)|nếu|trường hợp|trừ khi|chỉ áp dụng", sentence):
+                if _UNCERTAIN.search(sentence) or re.search(r"chỉ\s+áp\s+dụng", sentence):
                     continue
                 if re.search(
                     r"(?:phải có|nộp|gửi kèm|cung cấp|hồ sơ[^;.!?]*(?:bao gồm|gồm))\s*:?[^;.!?]*$", prefix
@@ -495,10 +562,11 @@ def _node_exclusion_reason(node, units, registry):
         reason = "incomplete_provenance"
     elif kind == "Authority":
         if not any(
-            (canonical := resolve(m[0]))
+            (canonical := resolve(label))
             and canonical["canonical_id"] == node.get("properties", {}).get("canonical_id")
             for c in node.get("citations", [])
-            for m in find_authorities(c.get("quote", ""))
+            for label in ([m[0] for m in find_authorities(c.get("quote", ""))]
+                          + collective_authorities(c.get("quote", "")))
         ):
             reason = "authority_alias_not_grounded"
     elif kind != "EvidenceUnit" and not _literal(node):

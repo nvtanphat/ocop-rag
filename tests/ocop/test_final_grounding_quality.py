@@ -11,6 +11,59 @@ from ai_core.knowledge.ocop.extractor import extract_semantics
 from ai_core.processing.ocop.business_candidates import candidates
 
 
+def sheet_graph(tmp_path):
+    from tests.ocop.test_criterion_sheets import fixture
+    from tests.ocop.test_legal_structure import extract, REGISTRY
+
+    units = fixture()
+    knowledge = tmp_path / 'knowledge'
+    knowledge.mkdir()
+    (knowledge / 'manifest.json').write_text(json.dumps({
+        'complete': True, 'corpus_version': 'synthetic', 'document_registry': REGISTRY,
+    }), encoding='utf-8')
+    for name, rows in {'evidence_units': units, **extract(units)}.items():
+        (knowledge / f'{name}.jsonl').write_text(
+            ''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
+    graph = tmp_path / 'graph'
+    build_graph(knowledge, graph)
+    return list(records(graph / 'nodes.jsonl')), list(records(graph / 'edges.jsonl')), units
+
+
+def test_numbered_criterion_accepts_printed_comma_and_no_space(tmp_path):
+    nodes, _, _ = sheet_graph(tmp_path)
+    for label in ('1.1, Tiêu chí', '3.1.Tiêu chí'):
+        assert next(n for n in nodes if n['label'] == label)['check'] == 'passed'
+
+
+def test_cross_page_option_requires_explicit_continuity_and_unbroken_scope(tmp_path):
+    from copy import deepcopy
+    from ai_core.graph.ocop.grounding import _entails
+
+    nodes, edges, units = sheet_graph(tmp_path)
+    by_id = {n['node_id']: n for n in nodes}
+    option = next(n for n in nodes if n['label'] == 'Phương án cao')
+    edge = next(e for e in edges if e['relation_type'] == 'HAS_OPTION'
+                and e['target_entity_id'] == option['node_id'])
+    assert edge['check'] == 'passed'
+    source = by_id[edge['source_entity_id']]
+    target = option.get('machine_candidate', option)
+    source = source.get('machine_candidate', source)
+    units = {u['unit_id']: u for u in units}
+    assert _entails(edge, source, target, units)
+    without_hint = deepcopy(units)
+    for u in without_hint.values():
+        u['structured'].pop('table_continuity', None)
+    assert not _entails(edge, source, target, without_hint)
+    other_sheet = deepcopy(target)
+    other_sheet['properties']['sheet_number_candidate'] = '99'
+    assert not _entails(edge, source, other_sheet, units)
+    intervening = deepcopy(units)
+    previous = next(u for u in intervening.values()
+                    if u['structured'].get('table_id') == 'table:3')
+    previous['structured']['cells'].append({'row': 6, 'col': 0, 'text': '1.2. Autre'})
+    assert not _entails(edge, source, target, intervening)
+
+
 def recognition_graph(tmp_path):
     from test_business_knowledge_upgrade import _recognition_fixture
 
@@ -262,3 +315,18 @@ def test_builder_keeps_llm_origin_on_generated_evidence_edges(tmp_path):
     assert links
     assert all(e["properties"]["extraction_method"] == "llm_candidate:offline" for e in links)
     assert all(e["review_status"] != "verified" for e in links)
+
+
+def test_explicit_registered_suspension_has_a_checked_predicate():
+    _, edges, _, _ = legal_graph('Điều 1. Tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.', 'SUSPENDS')
+    assert [e['relation_type'] for e in edges] == ['SUSPENDS']
+
+
+@pytest.mark.parametrize('text', [
+    'Không tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.',
+    'Nếu tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg thì thông báo.',
+    '1. Tạm đình chỉ hiệu lực văn bản trước đây.\n2. Quyết định số 148/QĐ-TTg được nhắc đến.',
+])
+def test_suspension_cannot_borrow_a_number_or_ignore_modality(text):
+    _, edges, _, _ = legal_graph(text, 'SUSPENDS')
+    assert edges == []

@@ -36,7 +36,7 @@ def main() -> None:
     run.add_argument("--dense", action="store_true", help="Build real EmbeddingGemma/Qdrant vectors")
     run.add_argument("--semantic-extract", action=argparse.BooleanOptionalAction, default=True,
                      help="Use the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules (enabled by default; --no-semantic-extract disables it)")
-    run.add_argument("--semantic-max-units", type=int, default=100_000,
+    run.add_argument("--semantic-max-units", type=int, default=None,
                      help="Maximum EvidenceUnits sent to the extraction LLM (default: all eligible units)")
     run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and Ollama Qwen3.5 2B")
     run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")

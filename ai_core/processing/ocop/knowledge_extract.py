@@ -486,7 +486,7 @@ def extract_entities_relations(units:list[dict],sources:dict[str,dict])->tuple[l
 
 
 def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|None=None,
-                      semantic_client=None, semantic_max_units:int=50,
+                      semantic_client=None, semantic_max_units:int|None=None,
                       semantic_cache_dir:Path|None=None, semantic_workers:int=1,
                       semantic_gleanings:int=1)->dict:
     manifest=json.loads((input_dir/"manifest.json").read_text(encoding="utf-8"))
@@ -562,8 +562,9 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
         llm_stats['eligible_unit_count'] = proposed['eligible_unit_count']
         llm_stats['selected_unit_count'] = proposed['selected_unit_count']
         llm_stats['omitted_unit_count'] = len(proposed['omissions'])
-        semantics["business_llm_errors"]=proposed["errors"]
+        semantics["business_llm_errors"]=proposed["chunk_errors"]
         semantics['business_llm_omissions'] = proposed['omissions']
+        semantics['business_llm_unit_statuses'] = proposed['unit_statuses']
     # Validate the combined graph, including any opt-in LLM proposals; isolated
     # validation per extractor is insufficient once datasets are merged.
     validate_business_graph(
