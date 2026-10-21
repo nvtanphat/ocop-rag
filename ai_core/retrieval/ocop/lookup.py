@@ -10,15 +10,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ai_core.graph.ocop.builder import records as _iter_jsonl
 from ai_core.retrieval.ocop.index_pipeline import ROOT
-
-
-def _iter_jsonl(path: Path):
-    if path.is_file():
-        with path.open(encoding="utf-8") as fh:
-            for line in fh:
-                if line.strip():
-                    yield json.loads(line)
 
 
 def exact_lookup(

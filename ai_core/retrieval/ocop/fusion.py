@@ -1,12 +1,8 @@
 """Deterministic coverage ordering; source text and review status are never rewritten."""
 import re
-import unicodedata
 import json
 
-
-def _fold(text):
-    return ''.join(c for c in unicodedata.normalize('NFD',text.casefold())
-                   if unicodedata.category(c)!='Mn').replace('đ','d')
+from ai_core.orchestration.ocop.semantic import normalize as _fold
 
 
 def criterion_facets(question):
