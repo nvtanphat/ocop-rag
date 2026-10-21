@@ -574,9 +574,8 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             shutil.copyfile(stage/filename,temp_file)
             os.replace(temp_file,output/filename)
         os.replace(stage/"manifest.json",output/"manifest.json")
-        # Remove only obsolete active-layout files; historical snapshots remain immutable.
-        for filename in ('agent_nodes.jsonl', 'agent_edges.jsonl', 'excluded_assertions.jsonl', 'rejected.jsonl'):
-            (output/filename).unlink(missing_ok=True)
+        # Historical snapshots remain immutable.
+        (output / 'rejected.jsonl').unlink(missing_ok=True)
         return manifest
     finally:
         shutil.rmtree(stage,ignore_errors=True)
