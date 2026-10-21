@@ -182,6 +182,13 @@
       "pdf_page": 6
     }
   ],
+  "validation_anchor_pages": [
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 13,
+      "reason": "Evidence for superseded_by/REPLACES; already present in regression 22, no extra OCR beyond the 71-page union"
+    }
+  ],
   "supplemental_pages": [
     {
       "source_id": "VN.LAW.17.2023",
