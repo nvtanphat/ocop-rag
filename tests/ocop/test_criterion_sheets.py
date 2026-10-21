@@ -77,7 +77,7 @@ def test_missing_continuity_does_not_guess_parent_for_top_row():
 
 
 def test_table_continuity_can_propose_two_columns_without_changing_default():
-    from ai_core.processing.ocop.table_continuity import possible_continuations
+    from ocop_ocr.table_continuity import possible_continuations
     pre={'source_id':'DOC.CURRENT','pdf_page':3,'height_pt':700,
          'tables':[{'table_id':'before','bbox':[0,300,500,690],'col_count':2,'row_count':4}]}
     cur={'source_id':'DOC.CURRENT','pdf_page':4,'height_pt':700,

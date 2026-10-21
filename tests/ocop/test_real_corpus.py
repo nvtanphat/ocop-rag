@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from ai_core.processing.ocop_audit import audit
-from ai_core.processing.ocop.registry import compare_lock, load_registry, snapshot
+from ocop_contracts.registry import compare_lock, load_registry, snapshot
 
 ROOT = Path(__file__).resolve().parents[2]
 

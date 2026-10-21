@@ -19,7 +19,7 @@ def test_unicode_source_path_and_locked_bytes_survive_zip(tmp_path):
     pdf.write_bytes(data)
     entry = {"source_id": "VN.ND.111.2021", "path": path.as_posix(), "source_kind": "labeling_amendment"}
     (root / "configs/ocop_sources.json").write_text(json.dumps({"schema_version": 1, "sources": [entry]}), encoding="utf-8")
-    from ai_core.processing.ocop.registry import snapshot, load_registry
+    from ocop_contracts.registry import snapshot, load_registry
     lock = snapshot(root, load_registry(root / "configs/ocop_sources.json"))
     (root / "configs/ocop_sources.lock.json").write_text(json.dumps(lock), encoding="utf-8")
     out = tmp_path / "package.zip"
@@ -39,7 +39,7 @@ def test_current_release_excludes_all_derived_and_runtime_data(tmp_path):
     pdf = root / 'data/raw/ocop/central_current/26-ttg-2026.signed.pdf'
     pdf.parent.mkdir(parents=True)
     pdf.write_bytes(b'%PDF-1.4\nlocked\n')
-    from ai_core.processing.ocop.registry import snapshot, load_registry
+    from ocop_contracts.registry import snapshot, load_registry
     entry = {'source_id': 'VN.OCOP.QD26.2026',
              'path': pdf.relative_to(root).as_posix(), 'source_kind': 'ocop_framework'}
     (root / 'configs/ocop_sources.json').write_text(json.dumps({'schema_version': 1, 'sources': [entry]}), encoding='utf-8')

@@ -5,7 +5,7 @@ approval of real OCOP data. Real builder/check integration is tested separately.
 """
 import json
 
-from ai_core.domain.ocop_ids import content_sha256
+from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION
 
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import fitz
 from pathlib import Path
-from ai_core.processing.ocop.table_parser import native_tables
+from ocop_ocr.table_parser import native_tables
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.knowledge.ocop.extractor import extract_semantics
 

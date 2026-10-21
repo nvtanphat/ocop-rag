@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from ai_core.domain.ocop_models import SourceDocument
-from ai_core.processing.ocop.registry import snapshot
+from ocop_contracts.models import SourceDocument
+from ocop_contracts.registry import snapshot
 
 
 def _source_pdf(path:Path,*,scanned_first_page:bool=False)->None:
@@ -56,9 +56,9 @@ def _locked_project(root:Path)->list[SourceDocument]:
 
 
 def test_run_pipeline_processes_only_selected_pages_and_stays_partial(tmp_path,monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as ocr_module
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
-    from ai_core.processing.ocop.ocr_types import OCRResult
+    import ocop_ocr.easy_viet_ocr as ocr_module
+    import ocop_ocr.pdf_pipeline as pipeline
+    from ocop_ocr.ocr_types import OCRResult
 
     root=tmp_path/"project"
     _locked_project(root)
@@ -123,7 +123,7 @@ def test_run_pipeline_processes_only_selected_pages_and_stays_partial(tmp_path,m
     assert validate_graph_snapshot(graph,allow_partial=True)["status"]=="partial_debug_not_production"
 
     from ai_core.system.pipeline import OcopSystemPipeline
-    from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
+    from ocop_ocr.artifact_cache import PARSER_VERSION
     from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
     (root/"data/processed/ocop/pages/manifest.json").write_text(json.dumps({
         **manifest,"parser_version":PARSER_VERSION}),encoding="utf-8")

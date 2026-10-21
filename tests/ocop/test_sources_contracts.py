@@ -7,17 +7,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from ai_core.domain.ocop_models import (
-    Criterion,
-    EvidenceUnit,
-    RecognitionRecord,
-    ReviewStatus,
-    ScoreOption,
-    SourceDocument,
-    SourceSpan,
-)
-from ai_core.processing.ocop.profiler import profile_pdf
-from ai_core.processing.ocop.registry import compare_lock, load_registry, snapshot
+from ocop_contracts.models import EvidenceUnit, SourceDocument, SourceSpan
+from ocop_ocr.profiler import profile_pdf
+from ocop_contracts.registry import compare_lock, load_registry, snapshot
 
 
 @pytest.fixture
@@ -92,19 +84,6 @@ def test_evidence_unit_requires_pdf_provenance():
         EvidenceUnit(unit_id="e1", source_id="s", unit_kind="criterion", text="abc", spans=[], extractor_version="p1")
 
 
-def test_scored_criterion_defaults_to_unverified():
-    span = SourceSpan(pdf_page=3)
-    criterion = Criterion(criterion_id="1.1", sheet_id="x", title="Tiêu chí", max_points=3, evidence_unit_id="E")
-    assert criterion.review_status == ReviewStatus.NEEDS_REVIEW
-    opt = ScoreOption(option_id="o", description="điểm", points=3, spans=[span])
-    assert opt.review_status == ReviewStatus.NEEDS_REVIEW
-
-
-def test_invalid_star_rejected():
-    with pytest.raises(ValidationError):
-        RecognitionRecord(record_id="x", decision_source_id="s", product_name="P", star_rating=6, spans=[SourceSpan(pdf_page=1)])
-
-
 def test_native_pdf_profiler(pdf_root: Path):
     records = profile_pdf(pdf_root / "data/raw/ocop/sample.pdf", "VN.TEST.SAMPLE")
     assert len(records) == 1
@@ -127,31 +106,14 @@ def test_image_only_page_needs_ocr(pdf_root: Path):
 
 
 def test_ocop_schema_is_independent_of_other_domains():
-    from ai_core.domain.ocop_models import EvidenceUnit, SourceDocument
+    from ocop_contracts.models import EvidenceUnit, SourceDocument
 
     assert EvidenceUnit.model_fields["unit_id"].is_required()
     assert SourceDocument.model_fields["source_kind"].is_required()
 
 
-def test_decimal_points_are_preserved():
-    from decimal import Decimal
-
-    option = ScoreOption(option_id="x", description="mức điểm", points="0.1", spans=[SourceSpan(pdf_page=8)])
-    assert option.points == Decimal("0.1")
-    assert option.model_dump(mode="json")["points"] == "0.1"
-
-
-def test_unverified_star_requirement_defaults_to_review():
-    from ai_core.domain.ocop_models import StarRequirement
-
-    req = StarRequirement(criterion_id="1.1", star_level=5, spans=[SourceSpan(pdf_page=20)])
-    assert req.review_status == ReviewStatus.NEEDS_REVIEW
-    with pytest.raises(ValidationError):
-        StarRequirement(criterion_id="1.1", star_level=6, spans=[SourceSpan(pdf_page=20)])
-
-
 def test_stable_ids_are_reproducible_and_domain_scoped():
-    from ai_core.domain.ocop_ids import stable_id
+    from ocop_contracts.ids import stable_id
 
     uid = stable_id("criterion", "VN.OCOP.QD26.2026", ["PLII", "sheet-01", "1.1"])
     assert uid == stable_id("criterion", "VN.OCOP.QD26.2026", ["PLII", "sheet-01", "1.1"])
@@ -161,7 +123,7 @@ def test_stable_ids_are_reproducible_and_domain_scoped():
 
 
 def test_stable_ids_reject_missing_hierarchy():
-    from ai_core.domain.ocop_ids import stable_id
+    from ocop_contracts.ids import stable_id
 
     with pytest.raises(ValueError):
         stable_id("criterion", "VN.OCOP.QD26.2026", [])
@@ -170,7 +132,7 @@ def test_stable_ids_reject_missing_hierarchy():
 
 
 def test_content_fingerprint_separate_from_unit_identity():
-    from ai_core.domain.ocop_ids import content_sha256, stable_id
+    from ocop_contracts.ids import content_sha256, stable_id
 
     a = stable_id("criterion", "VN.OCOP.QD26.2026", ["1.1"])
     assert a == stable_id("criterion", "VN.OCOP.QD26.2026", ["1.1"])

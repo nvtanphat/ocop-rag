@@ -1,6 +1,6 @@
 """Page units: merged line fragments keep block spans, table text is not duplicated, blank score cells show candidates."""
 from ai_core.processing.ocop.knowledge_extract import page_units
-from ai_core.processing.ocop.layout import join_blocks_by_line
+from ocop_contracts.layout import join_blocks_by_line
 from ai_core.retrieval.ocop.index_pipeline import build_chunks
 
 

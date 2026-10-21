@@ -11,7 +11,7 @@ from ai_core.graph.ocop.retriever import traverse
 @pytest.fixture
 def corpus(tmp_path):
     import fitz
-    from ai_core.processing.ocop.registry import SourceDocument,snapshot,sha256_file
+    from ocop_contracts.registry import SourceDocument,snapshot,sha256_file
     pdf=tmp_path/'data/raw/ocop/synthetic.pdf';pdf.parent.mkdir(parents=True)
     doc=fitz.open();page=doc.new_page();page.insert_text((20,30),'Synthetic product and owner');doc.save(pdf);doc.close()
     source=SourceDocument(source_id='SYNTHETIC',path='data/raw/ocop/synthetic.pdf',source_kind='recognition_decision')
@@ -156,7 +156,7 @@ def test_review_refuses_old_graph_schema_and_mixed_knowledge(corpus):
 
 def test_batch_crops_check_sources_once_and_deduplicate(corpus,monkeypatch):
     from ai_core.graph.ocop.review import render_queue_crops
-    from ai_core.processing.ocop import pdf_loader
+    from ocop_contracts import pdf_loader
     real=pdf_loader.checked_sources;calls=[]
     def checked(*args):calls.append(1);return real(*args)
     monkeypatch.setattr(pdf_loader,'checked_sources',checked)

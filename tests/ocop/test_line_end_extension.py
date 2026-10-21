@@ -3,14 +3,14 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image
 
-from ai_core.processing.ocop.easy_viet_ocr import (
+from ocop_ocr.easy_viet_ocr import (
     _extend_line_ends,
     _is_checkbox_glyph,
     _marker_follows_ocr_text,
     _tighten_line_boxes,
     _without_table_rules,
 )
-from ai_core.processing.ocop.ocr_postcorrect import (
+from ocop_ocr.ocr_postcorrect import (
     _correct_community_share_threshold_pair,
     _correct_safe_ocop_spellings,
 )

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 from enum import Enum
 import math
 from typing import Any
@@ -122,85 +121,6 @@ class EvidenceUnit(StrictModel):
     review_status: ReviewStatus = ReviewStatus.MACHINE_EXTRACTED
     confidence: float | None = Field(default=None, ge=0, le=1)
     unit_hash: str | None = None
-
-
-class ScoreOption(StrictModel):
-    option_id: str
-    description: str
-    points: Decimal = Field(ge=0)
-    spans: list[SourceSpan] = Field(min_length=1)
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class Criterion(StrictModel):
-    criterion_id: str
-    sheet_id: str
-    title: str
-    max_points: Decimal = Field(ge=0)
-    score_options: list[ScoreOption] = Field(default_factory=list)
-    evidence_unit_id: str
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class FormField(StrictModel):
-    field_id: str
-    form_id: str
-    label: str
-    required: bool | None = None  # None unless source establishes requirement
-    spans: list[SourceSpan] = Field(min_length=1)
-
-
-class ProductGroup(StrictModel):
-    group_id: str
-    name: str
-    evidence_unit_id: str
-    parent_id: str | None = None
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class CriterionSheet(StrictModel):
-    sheet_id: str
-    source_id: str
-    group_id: str
-    title: str
-    max_points: Decimal | None = Field(default=None, ge=0)
-    evidence_unit_id: str
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class StarRequirement(StrictModel):
-    criterion_id: str
-    star_level: int = Field(ge=1, le=5)
-    condition_text: str | None = None
-    spans: list[SourceSpan] = Field(min_length=1)
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class FormTemplate(StrictModel):
-    form_id: str
-    title: str
-    source_id: str
-    evidence_unit_id: str
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class EvidenceRequirement(StrictModel):
-    requirement_id: str
-    description: str
-    evidence_unit_id: str
-    criterion_id: str | None = None
-    required_when: str | None = None
-    review_status: ReviewStatus = ReviewStatus.NEEDS_REVIEW
-
-
-class RecognitionRecord(StrictModel):
-    record_id: str
-    decision_source_id: str
-    product_name: str
-    organization_name: str | None = None
-    star_rating: int | None = Field(default=None, ge=1, le=5)
-    evaluation_year: int | None = None
-    spans: list[SourceSpan] = Field(min_length=1)
 
 
 class RetrievalChunk(StrictModel):

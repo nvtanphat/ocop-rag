@@ -152,7 +152,7 @@ CLAIMS_SCHEMA = {
         'missing': {'type': 'array', 'items': {'type': 'string'}}}}
 
 
-def _parse_claims(raw, citation_count):
+def _parse_claims(raw):
     """JSON claims -> ([(text, [source numbers])], missing); None when the model did not return the schema."""
     try:
         data = json.loads(raw)
@@ -292,7 +292,7 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)
         structured=getattr(llm,'chat_structured',None)
         raw=(structured(system,prompt,schema=CLAIMS_SCHEMA,max_tokens=1024) if callable(structured)
              else llm.chat(system,prompt,max_tokens=1024))
-        parsed=_parse_claims(raw,len(citations)) if isinstance(raw,str) else None
+        parsed=_parse_claims(raw) if isinstance(raw,str) else None
         if parsed is not None:
             return _publish_claims(parsed,citations,selected,contexts,fusion)
         text=raw

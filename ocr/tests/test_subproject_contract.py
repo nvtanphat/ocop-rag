@@ -1,5 +1,4 @@
 """Public import boundaries for the independent OCR distribution."""
-import importlib
 import subprocess
 import sys
 
@@ -28,9 +27,3 @@ import ocop_ocr.legend_proposals
 '''
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-
-
-def test_legacy_import_is_same_module_for_existing_callers():
-    assert importlib.import_module("ai_core.processing.ocop.pdf_pipeline") is importlib.import_module(
-        "ocop_ocr.pdf_pipeline"
-    )

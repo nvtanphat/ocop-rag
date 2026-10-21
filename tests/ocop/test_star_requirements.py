@@ -93,7 +93,7 @@ def test_cached_marker_disagreement_is_omitted_without_rewriting_ocr():
 def test_pixel_groups_recognize_internal_runs_without_guessing_repeated_letters():
     import cv2
     import numpy as np
-    from ai_core.processing.ocop.legend_proposals import asterisk_groups
+    from ocop_ocr.legend_proposals import asterisk_groups
     image = np.full((30,400),255,dtype=np.uint8)
     cv2.putText(image,'(*** - 3; **** - 4; ***** - 5)',(8,20),cv2.FONT_HERSHEY_SIMPLEX,.45,0,1,cv2.LINE_AA)
     assert [text for text,_ in asterisk_groups(image)]==['***','****','*****']

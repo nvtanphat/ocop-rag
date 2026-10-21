@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from PIL import Image
 
-from ai_core.processing.ocop import easy_viet_ocr
+from ocop_ocr import easy_viet_ocr
 
 
 def _region(left, top, right, bottom):
