@@ -108,8 +108,3 @@ def audit_shapes(units, layers, *, max_page_area_ratio=0.35, bbox_tolerance=2.0)
             'raw_relation_duplicate_groups':raw_duplicates,
             'classification':'manual_review_required','repairs_applied':False}
 
-
-def audit_graph_shapes(nodes, edges):
-    counts=Counter((e['relation_type'],e['source_entity_id'],e['target_entity_id']) for e in edges)
-    return {'duplicate_edges':[{'relation_type':k[0],'source':k[1],'target':k[2],'count':v}
-                              for k,v in counts.items() if v>1]}

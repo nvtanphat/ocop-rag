@@ -40,8 +40,6 @@ VERSION = code_fingerprint("evidence", [
     _ROOT / "domain" / "ocop_models.py", _ROOT / "domain" / "ocop_ids.py", _ROOT / "domain" / "ocop_citations.py"])
 LEGAL_START = re.compile(r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?[1-9]\b.*)\s*$", re.IGNORECASE)
 LEGAL_REFERENCE = re.compile(r"\b\d{1,4}/20\d{2}/(?:QĐ-TTg|NĐ-CP|NQ-CP|QH\d+|QĐ-UBND|TT-[A-ZĐ]+)\b",re.IGNORECASE)
-YEAR = re.compile(r"\b(?:năm\s+)?(20\d{2})\b",re.IGNORECASE)
-STAR = re.compile(r"\b([1-5])\s*(?:sao|\*)\b",re.IGNORECASE)
 FORM = re.compile(r"\bMẫu\s*(?:số)?\s*0?([1-9])\b",re.IGNORECASE)
 TERMS = {"chứng nhận": "certificate", "hợp tác xã": "organization", "doanh nghiệp": "organization", "thực phẩm": "food", "sản phẩm": "product", "an toàn thực phẩm": "food_safety", "truy xuất nguồn gốc": "traceability", "tiêu chí": "criterion", "chấm điểm": "scoring", "phụ lục": "annex"}
 

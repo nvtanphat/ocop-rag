@@ -661,7 +661,7 @@ def _repeated_asterisk_suffixes(gray_crop: np.ndarray) -> list[tuple[str, float,
 
 def _marker_follows_ocr_text(marker_bbox: list[float], cell_bbox: list[float], blocks: list[dict]) -> bool:
     """Reject asterisk-like connected components that overlap ordinary OCR text."""
-    marker_x0, marker_y0, marker_x1, marker_y1 = marker_bbox
+    marker_x0, marker_y0, _, marker_y1 = marker_bbox
     cell_x0, cell_y0, cell_x1, cell_y1 = cell_bbox
     marker_center_y = (marker_y0 + marker_y1) / 2
     marker_height = marker_y1 - marker_y0

@@ -1,6 +1,6 @@
 """Shape constraints use only synthetic candidate dictionaries."""
 import pytest
-from ai_core.knowledge.ocop.shapes import audit_shapes, audit_graph_shapes
+from ai_core.knowledge.ocop.shapes import audit_shapes
 
 
 def ent(kind,attrs=None,eid='e'):
@@ -56,11 +56,6 @@ def test_bbox_threshold_configurable_and_non_mutating():
     assert audit_shapes([u],{'business_entities':[e]})['counts']['citation_page_area']==1
     assert 'citation_page_area' not in audit_shapes([u],{'business_entities':[e]},max_page_area_ratio=.7)['counts']
     assert e['evidence'][0]['bbox']==[0,0,100,60]
-
-
-def test_duplicate_edges_all_relations():
-    edge={'relation_type':'ANY','source_entity_id':'a','target_entity_id':'b'}
-    assert audit_graph_shapes([], [edge,dict(edge)])['duplicate_edges'][0]['count']==2
 
 
 @pytest.mark.parametrize('kind',['SourceDocument','Article','Clause','RecognitionDecision','LocalGuidance','CriterionSheet'])

@@ -56,38 +56,6 @@ def get_pair_token_budget(root: Path | None = None) -> int:
     return DEFAULT_PAIR_TOKEN_BUDGET
 
 
-def get_embedding_model_id(root: Path | None = None) -> str:
-    cfg = load_models_config(root)
-    val = cfg.get("embedding", {}).get("model_id")
-    if isinstance(val, str) and val.strip():
-        return val.strip()
-    return DEFAULT_EMBEDDING_MODEL
-
-
-def get_embedding_revision(root: Path | None = None) -> str | None:
-    cfg = load_models_config(root)
-    val = cfg.get("embedding", {}).get("revision")
-    if isinstance(val, str) and val.strip():
-        return val.strip()
-    return DEFAULT_EMBEDDING_REVISION
-
-
-def get_reranker_model_id(root: Path | None = None) -> str:
-    cfg = load_models_config(root)
-    val = cfg.get("reranker", {}).get("model_id")
-    if isinstance(val, str) and val.strip():
-        return val.strip()
-    return DEFAULT_RERANKER_MODEL
-
-
-def get_reranker_revision(root: Path | None = None) -> str | None:
-    cfg = load_models_config(root)
-    val = cfg.get("reranker", {}).get("revision")
-    if isinstance(val, str) and val.strip():
-        return val.strip()
-    return DEFAULT_RERANKER_REVISION
-
-
 def resolve_local_model_path(model_id: str, root: Path | None = None) -> tuple[str, bool]:
     """Resolve model_id to local directory if downloaded locally, returning (path_or_id, is_local_dir)."""
     p = Path(model_id)

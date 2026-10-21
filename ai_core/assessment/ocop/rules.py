@@ -5,7 +5,6 @@ No interpretation of OCR score candidates as verified rules; no official star aw
 from __future__ import annotations
 from decimal import Decimal
 
-DECISIONS=frozenset({"satisfied","missing","insufficient_evidence","not_applicable","needs_human_review"})
 
 def checklist(requirements:list[dict],submitted:list[dict])->list[dict]:
     # Only caller-authorized dossier evidence is compared with verified rules.
