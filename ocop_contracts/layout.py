@@ -40,7 +40,13 @@ def _by_region_lines(positioned: list[tuple]) -> list[tuple]:
             if lines:
                 first = lines[-1][0][2]
                 overlap = min(box[3], first[3]) - max(box[1], first[1])
-                if overlap >= 0.5 * min(box[3] - box[1], first[3] - first[1]):
+                # Tall OCR boxes from neighbouring printed lines can overlap
+                # vertically. Text fragments on one line must still occupy
+                # separate horizontal ranges (allow two points of box noise).
+                horizontal_conflict = (item[1].get('layout_region', {}).get('label') == 'text'
+                    and any(min(box[2], other[2][2])-max(box[0],other[2][0])>2
+                            for other in lines[-1]))
+                if overlap >= 0.5 * min(box[3] - box[1], first[3] - first[1]) and not horizontal_conflict:
                     lines[-1].append(item)
                     continue
             lines.append([item])

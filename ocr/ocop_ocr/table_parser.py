@@ -110,6 +110,18 @@ def _keep_persistent_vertical_rules(projection: np.ndarray, centers: list[int]) 
     return kept,len(centers)-len(kept)
 
 
+def _connected_horizontal_rules(mask, xs, ys):
+    """Reject floating text strokes; preserve observed partial-cell borders.
+
+    A row boundary must meet two persistent vertical rules. The outermost
+    candidates stay intact so a broken bottom border cannot truncate a table.
+    """
+    if len(xs)<3 or len(ys)<3:
+        return ys
+    return [y for index,y in enumerate(ys) if index in {0,len(ys)-1} or sum(
+        bool(np.any(mask[max(0,y-5):y+6,max(0,x-5):x+6])) for x in xs)>=2]
+
+
 def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[dict]:
     """Detect ruled grids from full raster; report table candidates for review.
 
@@ -145,6 +157,8 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
         detected_xs=_merge_nearby(_line_centers((subv>0).sum(axis=0),max(12,int(h*.12))),max(11,ww//90))
         xs,rejected_xs=_keep_persistent_vertical_rules(subv,detected_xs)
         ys=_merge_nearby(_line_centers((subh>0).sum(axis=1),max(12,int(w*.16))),max(5,hh//260))
+        detected_y_count=len(ys)
+        ys=_connected_horizontal_rules(subh,xs,ys)
         if len(xs)<3 or len(ys)<3 or (len(xs)-1)*(len(ys)-1)<min_cells:
             continue
         if len(xs)>70 or len(ys)>160:
@@ -182,6 +196,7 @@ def raster_tables(image, page, blocks: list[dict], *, min_cells: int=4) -> list[
                            "cells":cells,"review_status":"needs_review",
                            "warnings":["grid_cells_are_candidates_only","review_merged_cells_and_asterisks"],
                            "extraction_quality":{"observed_row_rules":len(ys),
+                             "floating_horizontal_candidates_rejected":detected_y_count-len(ys),
                              "observed_column_rules":len(detected_xs),
                              "retained_column_rules":len(xs),
                              "fragmented_column_rules_rejected":rejected_xs,
