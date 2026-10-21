@@ -52,6 +52,34 @@ def test_recognition_decision_keeps_explicit_implementation_responsibility():
     assert any(r['relation_type'] == 'RESPONSIBLE_FOR' for r in result['business_relations'])
 
 
+def test_council_organized_by_an_advisory_team_is_not_the_subject_of_that_report_step():
+    from ai_core.knowledge.ocop.procedures import _subjects
+    text = ('Tổ tư vấn tổng hợp kết quả đánh giá, tính trung bình điểm của các thành viên, '
+            'xây dựng báo cáo trình Chủ tịch Hội đồng đánh giá, phân hạng cấp trung ương '
+            'để tổ chức Hội đồng cấp trung ương đánh giá, phân hạng.')
+    assert not _subjects(text)
+
+
+def test_historical_letter_criteria_are_scoped_to_their_numbered_group():
+    from tests.ocop.test_criterion_sheets import table
+    header = unit('DOC.CURRENT', 3, '1. Bộ sản phẩm: Rau củ\n'
+                  '(Sản phẩm: Thực phẩm. Nhóm: Thực phẩm tươi sống)', 'paragraph')
+    rows = table(3, [('Phần A: SẢN PHẨM',40), ('1. TỔ CHỨC SẢN XUẤT',18),
+        ('a) Nguồn gốc sản phẩm',5), ('Sản phẩm trồng tại xã dưới 50%',1),
+        ('b) Gia tăng giá trị',3), ('Ứng dụng máy móc',2)])
+    result = extract([header, rows], kinds={'DOC.CURRENT':'ocop_historical'})
+    entities = {e['entity_id']:e for e in result['business_entities']}
+    for option, criterion in [('Sản phẩm trồng tại xã dưới 50%','a) Nguồn gốc sản phẩm'),
+                              ('Ứng dụng máy móc','b) Gia tăng giá trị')]:
+        edges = [r for r in result['business_relations'] if r['relation_type']=='HAS_OPTION'
+                 and entities[r['target_entity_id']]['label']==option]
+        assert edges and {entities[r['source_entity_id']]['label'] for r in edges} == {criterion}
+    assert any(r['relation_type']=='HAS_SUBCRITERION'
+               and entities[r['source_entity_id']]['label']=='1. TỔ CHỨC SẢN XUẤT'
+               and entities[r['target_entity_id']]['label']=='a) Nguồn gốc sản phẩm'
+               for r in result['business_relations'])
+
+
 def test_next_annex_stops_the_last_criterion_sheet():
     from tests.ocop.test_criterion_sheets import table
     units = fixture()

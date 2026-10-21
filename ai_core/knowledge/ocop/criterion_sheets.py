@@ -124,12 +124,12 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
             continue
         state=states.get(sid)
         if not state or state['sheet']!=sheet_id:
-            state={'sheet':sheet_id,'part':None,'numbers':{},'parent':None,'page':page,'table':table_id}
+            state={'sheet':sheet_id,'part':None,'group':None,'numbers':{},'parent':None,'page':page,'table':table_id}
         elif (page,table_id)!=(state['page'],state['table']):
             hints=index[uid].get('structured',{}).get('table_continuity',[])
             continuous=any(h['from_pdf_page']==state['page'] and h['from_table_id']==state['table'] for h in hints)
             if not continuous:
-                state['parent']=None;state['part']=None;state['numbers']={}
+                state['parent']=None;state['part']=None;state['group']=None;state['numbers']={}
                 omitted['score_table_without_continuity']+=1
         states[sid]=state
         state.update(page=page,table=table_id)
@@ -159,8 +159,14 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
                 criterion=entities[cid];criterion.attributes['sheet_number_candidate']=number
                 part=criterion.attributes.get('part_letter')
                 if part:
-                    state['part']=cid;state['parent']=cid
+                    state['part']=cid;state['parent']=cid;state['group']=None
                     connect('HAS_CRITERION',sheet_id,cid,ev)
+                elif criterion.attributes.get('criterion_letter'):
+                    if state['group']:
+                        connect('HAS_SUBCRITERION',state['group'],cid,ev)
+                    else:
+                        omitted['letter_criterion_without_observed_group']+=1
+                    state['parent']=cid
                 else:
                     match=re.match(r'\s*(\d+(?:\.\d+)*)',criterion.label)
                     if not match:
@@ -172,6 +178,8 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
                     else:
                         omitted['criterion_without_part_or_numbered_parent']+=1
                     state['numbers'][key]=cid;state['parent']=cid
+                    if '.' not in key:
+                        state['group']=cid
             elif oid in entities:
                 entities[oid].attributes['sheet_number_candidate']=number
                 parent=state['parent']

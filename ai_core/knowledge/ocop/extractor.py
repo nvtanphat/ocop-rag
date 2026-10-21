@@ -225,6 +225,7 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
 
     for _,rows in sorted(score_tables.items(),key=lambda item:str(item[0])):
         parent_id = None
+        group_number = None
         criteria_by_number: dict[str, str] = {}
         for row in sorted(rows,key=lambda rec:int(rec.get('row',0))):
             raw = str(row.get('label_candidate') or '')
@@ -239,17 +240,24 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
             if score is not None and (not isinstance(score,int) or not 0<=score<=100):
                 score=None
             part=part_re.match(label)
-            if part or heading_re.match(label) or is_section(label):
+            letter=(re.match(r'^\s*([a-zđ])\)\s+\S',label,re.I)
+                    if source_kinds.get(row['source_id'])=='ocop_historical' else None)
+            if part or heading_re.match(label) or is_section(label) or letter:
                 number = numbering_re.match(label).group(1) if numbering_re.match(label) else None
+                if part:
+                    group_number=None
+                elif number and '.' not in number:
+                    group_number=number
                 criterion_id=add(EntityType.CRITERION, _short_label(label),row,ev,
                     key=f'numbered:{row["candidate_id"]}',attributes={
                         'max_points_candidate':score,
-                        'level':0 if part else number.count('.') + 1 if number else None,
+                        'level':0 if part else 3 if letter else number.count('.') + 1 if number else None,
                         'part_letter':part[1].upper() if part else None,
+                        'criterion_letter':letter[1].casefold() if letter else None,
                         'table_id':row.get('table_id'),
                         'row':row.get('row')})
                 # The parent is found by numbering ("2.1" under "2"), only within this same table.
-                parent_number = number.rsplit('.', 1)[0] if number and '.' in number else None
+                parent_number = group_number if letter else number.rsplit('.', 1)[0] if number and '.' in number else None
                 if parent_number and parent_number in criteria_by_number:
                     link('HAS_SUBCRITERION', criteria_by_number[parent_number], criterion_id, ev)
                 if number:

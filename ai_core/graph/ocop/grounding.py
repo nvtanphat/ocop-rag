@@ -131,9 +131,17 @@ def _number(node):
     return found[1].replace(',', '.') if found else None
 
 
-def _option_parent_supported(source, target, units):
+def _criterion_letter(node):
+    match=re.match(r'\s*([a-zđ])\)\s+\S',node['label'],re.I)
+    return (match[1].casefold() if match and node.get('properties', {}).get('criterion_letter')
+            == match[1].casefold() else None)
+
+
+def _option_parent_supported(source, target, units, *, stop_at_letters=True):
     """Check row scope locally, or across one explicitly linked table boundary."""
     a, b = source['properties'], target['properties']
+    if a.get('row') is None or b.get('row') is None:
+        return False
     def table_unit(node, props):
         for ref in node.get('citations', []):
             unit = units.get(ref.get('evidence_unit_id'), {})
@@ -166,7 +174,8 @@ def _option_parent_supported(source, target, units):
         for cell in unit.get('structured', {}).get('cells', []):
             text = str(cell.get('text') or '')
             if start < int(cell.get('row', -1)) < end and (
-                    _number({'label': text}) or re.match(r'\s*phần\s+[abc]\b', text, re.I)):
+                    _number({'label': text}) or re.match(r'\s*phần\s+[abc]\b', text, re.I)
+                    or stop_at_letters and re.match(r'\s*[a-zđ]\)\s+\S',text,re.I)):
                 return False
     return True
 
@@ -220,7 +229,7 @@ def _entity_typed(node, units):
     if kind == "Point":
         return bool(re.match(r"[a-zđ][.)]\s", norm(label)))
     if kind == "Criterion":
-        return bool(_number(node) or re.match(r"phần\s+[abc]\b", norm(label)))
+        return bool(_number(node) or _criterion_letter(node) or re.match(r"phần\s+[abc]\b", norm(label)))
     if kind == "CriterionSheet":
         return bool(re.search(r"(?:bộ\s+)?sản phẩm\s*:", norm(label)))
     if kind == "ScoreOption":
@@ -377,6 +386,9 @@ def _entails(edge, source, target, units):
             or a.get("sheet_number_candidate") is not None
             and a.get("sheet_number_candidate") == b.get("sheet_number_candidate")
         )
+        if _criterion_letter(target):
+            return bool(same_scope and parent and '.' not in parent
+                        and _option_parent_supported(source,target,units,stop_at_letters=False))
         return bool(
             same_scope
             and child
