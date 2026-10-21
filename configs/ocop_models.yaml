@@ -11,6 +11,7 @@ llm:
 embedding:
   provider: sentence_transformers
   model_id: google/embeddinggemma-300m
+  revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
   dimension: 768
   encode_query: encode_query
   encode_document: encode_document
@@ -18,7 +19,8 @@ embedding:
   requires_license_acceptance: true
 reranker:
   provider: sentence_transformers
-  model_id: Alibaba-NLP/gte-multilingual-reranker-base
+  model_id: BAAI/bge-reranker-v2-m3
+  revision: 953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e
   pair_token_budget: 1024
 ocr:
   provider: easyocr_craft_vietocr_vgg_transformer_local_only

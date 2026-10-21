@@ -295,6 +295,7 @@ class OcopSystemPipeline:
                         mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
                         embedding_model=options.embedding_model, embedding_revision=options.embedding_revision,
                         qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
+                        model_max_tokens=__import__('ai_core.retrieval.ocop.models_config', fromlist=['get_model_max_tokens']).get_model_max_tokens(self.root),
                     )
                     if index["source_knowledge_version"] != knowledge["corpus_version"] or graph["source_knowledge_version"] != knowledge["corpus_version"]:
                         raise RuntimeError("Cross-store corpus version mismatch")

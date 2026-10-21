@@ -227,3 +227,45 @@ def test_long_parent_expansion_never_mix_another_parent(tmp_path):
     assert len(hits)==1
     assert len(hits[0]['parent_context'])<=210
     assert 'bí mật mẫu kiểm thử' not in hits[0]['parent_context']
+
+
+def test_graph_enriched_chunk_respects_model_max_tokens_not_target_chunk_budget(tmp_path, monkeypatch):
+    import types
+    import ai_core.retrieval.ocop.index_pipeline as ip
+    # Create knowledge base
+    kb = tmp_path / 'kb'
+    kb.mkdir()
+    unit = make_unit('Điều 1. Danh mục\n' + 'hồ sơ sản phẩm OCOP ' * 100)
+    with (kb / 'evidence_units.jsonl').open('w', encoding='utf-8') as fh:
+        fh.write(json.dumps(unit, ensure_ascii=False) + '\n')
+    (kb / 'manifest.json').write_text(json.dumps({'complete': True, 'corpus_version': 'v1', 'counts': {'pages': 1}}), encoding='utf-8')
+    
+    # Create a graph dir to trigger enrich_chunks
+    graph_dir = tmp_path / 'graph'
+    graph_dir.mkdir()
+    (graph_dir / 'manifest.json').write_text(json.dumps({
+        'status': 'local_ready', 'graph_version': 'g1',
+        'source_knowledge_version': 'v1', 'checks': True, 'schema_revision': 'ocop-graph-single-v4'
+    }), encoding='utf-8')
+    (graph_dir / 'nodes.jsonl').write_text('', encoding='utf-8')
+    (graph_dir / 'edges.jsonl').write_text('', encoding='utf-8')
+    
+    # Mock enrich_chunks to simulate adding rich graph context that expands chunk to 650 tokens
+    # (exceeds default retrieval target chunk budget 512, but well within embeddinggemma model_max_tokens 2048)
+    def mock_enrich(chunks, *args, **kwargs):
+        for c in chunks:
+            c['text_for_embedding'] = c['text_for_embedding'] + ' ' + ('ngữ cảnh cấu trúc từ đồ thị tri thức OCOP ' * 80)
+        return chunks
+    
+    monkeypatch.setattr('ai_core.retrieval.ocop.graph_context.enrich_chunks', mock_enrich)
+    
+    idx = tmp_path / 'idx'
+    manifest = ip.build_index(knowledge=kb, index_dir=idx, graph_dir=graph_dir, allow_partial=True)
+    
+    # Read generated chunks
+    chunks = [json.loads(line) for line in (idx / 'chunks.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
+    assert len(chunks) > 0
+    # The chunk expanded past 512 tokens
+    assert chunks[0]['estimated_tokens'] > 512
+    # But because 650 < 2048 (model_max_tokens), it MUST NOT be marked over_budget
+    assert chunks[0]['over_budget'] is False, f"Expected over_budget=False, got True (tokens={chunks[0]['estimated_tokens']})"

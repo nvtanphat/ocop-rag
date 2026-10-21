@@ -22,6 +22,13 @@ from typing import Iterable
 
 from ai_core.domain.ocop_ids import code_fingerprint,stable_id,content_sha256
 from ai_core.domain.ocop_models import RetrievalChunk
+from ai_core.retrieval.ocop.models_config import (
+    DEFAULT_TARGET_CHUNK_TOKENS,
+    DEFAULT_MODEL_MAX_TOKENS,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_REVISION,
+    get_model_max_tokens,
+)
 
 ROOT=Path(__file__).resolve().parents[3]
 # The chunker and index builder code identify the index format.
@@ -118,14 +125,14 @@ def structured_records(knowledge:Path, units:list[dict])->list[dict]:
     return out
 
 
-def split_units(unit:dict,*,max_words:int=200,overlap:int=24,token_budget:int=512)->list[str]:
+def split_units(unit:dict,*,max_words:int=200,overlap:int=24,token_budget:int=DEFAULT_TARGET_CHUNK_TOKENS)->list[str]:
     """Backward-compatible text API; structured child metadata comes from build_chunks."""
     from ai_core.retrieval.ocop.structure_chunker import plan_chunks
     return [p.text for p in plan_chunks(unit,max_words=max_words,overlap=overlap,token_budget=token_budget)]
 
 
 def build_chunks(units:Iterable[dict],version:str,*,max_words:int=200,overlap:int=24,
-                 token_budget:int=512,source_metadata:dict|None=None,
+                 token_budget:int=DEFAULT_TARGET_CHUNK_TOKENS,source_metadata:dict|None=None,
                  counter=None)->list[dict]:
     from ai_core.retrieval.ocop.structure_chunker import plan_chunks
     if token_budget<64:raise ValueError("token_budget must be >= 64")
@@ -307,12 +314,13 @@ def build_dense(chunks:list[dict],*,collection:str,model_id:str,revision:str|Non
 
 
 def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24,
-                with_dense:bool=False,embedding_model:str="google/embeddinggemma-300m",
-                embedding_revision:str|None=None,
+                with_dense:bool=False,embedding_model:str=DEFAULT_EMBEDDING_MODEL,
+                embedding_revision:str|None=DEFAULT_EMBEDDING_REVISION,
                 with_mongo:bool=False,mongo_uri:str="mongodb://127.0.0.1:27017",
                 mongo_database:str="ocop_rag",
                 qdrant_host:str="localhost",qdrant_port:int=6333,
-                token_budget:int=512,tokenizer_path:str|None=None,
+                token_budget:int=DEFAULT_TARGET_CHUNK_TOKENS,tokenizer_path:str|None=None,
+                model_max_tokens:int|None=None,
                 allow_partial:bool=False,graph_dir:Path|None=None)->dict:
     src=json.loads((knowledge/"manifest.json").read_text(encoding="utf-8"))
     source_complete=bool(src.get("complete"))
@@ -335,6 +343,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
     graph_header=json.loads((graph_dir/'manifest.json').read_text(encoding='utf8')) if (graph_dir/'manifest.json').is_file() else {}
     corpus_version=hashlib.sha256((INDEX_VERSION+"|"+src["corpus_version"]+
         f"|{max_words}|{overlap}|{token_budget}|{tokenizer_fingerprint}|{metadata_hash}|{graph_header.get('graph_version','')}").encode()).hexdigest()[:20]
+    model_limit = model_max_tokens or get_model_max_tokens()
     counter=_local_token_counter(tokenizer_path) if tokenizer_path else None
     chunks=build_chunks(selected,corpus_version,max_words=max_words,overlap=overlap,
                         token_budget=token_budget,source_metadata=metadata,counter=counter)
@@ -349,7 +358,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
         from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
         for chunk in chunks:
             chunk['estimated_tokens']=(counter or estimated_tokens)(chunk['text_for_embedding'])
-            chunk['over_budget']=chunk['estimated_tokens']>token_budget
+            chunk['over_budget']=chunk['estimated_tokens']>model_limit
     if not chunks:raise RuntimeError("No indexable OCOP chunks")
     index_dir.mkdir(parents=True,exist_ok=True)
     count=_write_jsonl(index_dir/"chunks.jsonl",chunks)
@@ -371,7 +380,8 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
            "over_budget_chunks":sum(bool(c['over_budget']) for c in chunks),
            "max_estimated_tokens":max(c['estimated_tokens'] for c in chunks)},
        "config":{"max_words":max_words,"overlap":overlap,
-                 "token_budget":token_budget,"tokenizer_path":tokenizer_path}}
+                 "token_budget":token_budget,"model_max_tokens":model_limit,
+                 "tokenizer_path":tokenizer_path}}
     _write_json(index_dir/"manifest.json",manifest)
     if with_dense:
         # Do not mark as dense_ready until indexing Qdrant succeeds.
@@ -402,8 +412,10 @@ def main():
     p.add_argument("--output",type=Path,default=Path("data/processed/ocop/index"))
     p.add_argument("--max-words",type=int,default=200)
     p.add_argument("--overlap",type=int,default=24)
-    p.add_argument("--token-budget",type=int,default=512,
-                   help="Total source+context+body token budget; estimated unless tokenizer path supplied")
+    p.add_argument("--token-budget",type=int,default=DEFAULT_TARGET_CHUNK_TOKENS,
+                   help="Target retrieval chunk token budget; estimated unless tokenizer path supplied")
+    p.add_argument("--model-max-tokens",type=int,default=None,
+                   help="Hard maximum token limit for embedding model (defaults to configs/ocop_models.yaml)")
     p.add_argument("--tokenizer-path",default=None,
                    help="Optional local HF tokenizer directory (no downloads); requires transformers")
     p.add_argument("--allow-partial",action="store_true",
@@ -413,8 +425,8 @@ def main():
                    help="Materialize OCOP evidence/chunks/facts in separate MongoDB database")
     p.add_argument("--mongo-uri",default="mongodb://127.0.0.1:27017")
     p.add_argument("--mongo-database",default="ocop_rag")
-    p.add_argument("--embedding-model",default="google/embeddinggemma-300m")
-    p.add_argument("--embedding-revision",default=None,
+    p.add_argument("--embedding-model",default=DEFAULT_EMBEDDING_MODEL)
+    p.add_argument("--embedding-revision",default=DEFAULT_EMBEDDING_REVISION,
                    help="Pinned Hugging Face model commit; recommended for repeatable index releases")
     p.add_argument("--qdrant-host",default="localhost")
     p.add_argument("--qdrant-port",type=int,default=6333)
@@ -426,6 +438,7 @@ def main():
        with_mongo=args.with_mongo,mongo_uri=args.mongo_uri,mongo_database=args.mongo_database,
        qdrant_host=args.qdrant_host,qdrant_port=args.qdrant_port,
        token_budget=args.token_budget,tokenizer_path=args.tokenizer_path,
+       model_max_tokens=args.model_max_tokens,
        allow_partial=args.allow_partial)
     print(json.dumps(out,indent=2,ensure_ascii=False))
 
