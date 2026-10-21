@@ -6,7 +6,7 @@ import time
 from ai_core.orchestration.ocop.llm import load_env_file
 
 
-def run_sequential_check(project_root: Path, base_dir: Path, output_dir: Path, pages: list[int]):
+def run_sequential_check(project_root: Path, base_dir: Path, output_dir: Path, pages: list[int], reference_dir: Path | None = None):
     """Run sequential 1-worker OCR and compare against parallel dataset."""
     args = [
         sys.executable, "-m", "ocop_ocr", "run",
@@ -23,6 +23,8 @@ def run_sequential_check(project_root: Path, base_dir: Path, output_dir: Path, p
         raise SystemExit(result.returncode)
 
     def load(folder):
+        if not folder.exists():
+            return {}
         return {
             (r["source_id"], r["pdf_page"]): r
             for file in folder.glob("*.pages.jsonl")
@@ -30,7 +32,8 @@ def run_sequential_check(project_root: Path, base_dir: Path, output_dir: Path, p
         }
 
     sequential = load(output_dir / "_raw")
-    parallel = load(base_dir / "ocr-dataset-round2-71/_raw")
+    ref_raw = (reference_dir or (base_dir / "ocr-dataset-pilot-51-r2")) / "_raw"
+    parallel = load(ref_raw)
     rows = []
     for key, value in sequential.items():
         before = parallel.get(key)
@@ -63,5 +66,7 @@ if __name__ == "__main__":
     base = Path("D:/AgentAI/OCOP-RAG")
     out = base / "ocr-dataset-sequential-five"
     report = run_sequential_check(root, base, out, [1, 7, 18, 28, 29])
-    (base / "pilot-evidence/sequential-five.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    evidence_dir = base / "pilot-evidence"
+    if evidence_dir.exists():
+        (evidence_dir / "sequential-five.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))

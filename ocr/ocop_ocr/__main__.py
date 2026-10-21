@@ -32,7 +32,7 @@ def main():
         command.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
         command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
         if name == "run":
-            command.add_argument("--cache", type=Path)
+            command.add_argument("--cache", "--cache-dir", dest="cache", type=Path)
             command.add_argument("--dpi", type=int, default=300)
             command.add_argument("--page", action="append", help="SOURCE_ID:PAGE (pilot only)")
             command.add_argument("--without-ocr", action="store_true")
