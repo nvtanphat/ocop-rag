@@ -8,7 +8,7 @@ from ai_core.orchestration.ocop.tools import ToolRegistry
 
 
 def test_recognition_lookup_reads_checked_graph_without_candidate_index(tmp_path):
-    from tests.ocop.test_final_grounding_quality import recognition_graph
+    from tests.ocop.test_graph_entailment_acceptance import recognition_graph
     nodes, _, _ = recognition_graph(tmp_path)
     registry = ToolRegistry(tmp_path)
     registry.graph_dir = tmp_path / 'graph'
@@ -107,7 +107,7 @@ def test_vietnamese_bm25_handles_decomposed_accents_and_exact_form_criterion(tmp
 
 
 def test_structural_context_keeps_cross_page_parent_and_original_row(tmp_path):
-    from tests.ocop.test_final_grounding_quality import sheet_graph
+    from tests.ocop.test_graph_entailment_acceptance import sheet_graph
     from ai_core.retrieval.ocop.index_pipeline import build_chunks
     from ai_core.retrieval.ocop.graph_context import enrich_chunks
     _,_,units=sheet_graph(tmp_path)
@@ -135,7 +135,7 @@ def test_table_chunks_do_not_fill_budget_with_another_criterion():
 
 def test_parent_context_never_compares_row_numbers_across_pages(tmp_path,monkeypatch):
     from tests.ocop import test_criterion_sheets as sheets
-    from tests.ocop.test_final_grounding_quality import sheet_graph
+    from tests.ocop.test_graph_entailment_acceptance import sheet_graph
     from ai_core.retrieval.ocop.index_pipeline import build_chunks
     from ai_core.retrieval.ocop.graph_context import enrich_chunks
     units=sheets.fixture()
@@ -162,7 +162,7 @@ def test_fusion_removes_redundant_cell_but_keeps_inherited_owner_cell():
 
 
 def test_lookup_rejects_tampered_immutable_snapshot_with_graph_reason(tmp_path):
-    from tests.ocop.test_final_grounding_quality import recognition_graph
+    from tests.ocop.test_graph_entailment_acceptance import recognition_graph
     recognition_graph(tmp_path)
     graph=tmp_path/'graph'
     header=json.loads((graph/'manifest.json').read_text(encoding='utf8'))

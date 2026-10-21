@@ -68,7 +68,7 @@ def test_missing_requested_page_cannot_recover_into_other_pages(tmp_path):
 
 
 def test_graph_can_seed_literal_product_without_file_order_bias(tmp_path):
-    from tests.ocop.test_final_grounding_quality import recognition_graph
+    from tests.ocop.test_graph_entailment_acceptance import recognition_graph
     nodes, _, _ = recognition_graph(tmp_path)
     product = next(n for n in nodes if n['node_type'] == 'Product' and n['check'] == 'passed')
     registry = ToolRegistry(tmp_path)

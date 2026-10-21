@@ -86,7 +86,7 @@ def test_harness_metric_is_measured_not_invented(tmp_path):
     assert release_gate(report)['status']=='blocked'
 
 
-def test_release_gate_blocks_recall_regression_and_forbidden_tool():
+def test_release_gate_blocks_recall_drop_and_forbidden_tool():
     baseline={'results':{'sparse':{'evaluated':10,'recall_at_10':.9}}}
     candidate={'results':{'sparse':{'status':'completed','evaluated':10,'recall_at_10':.75}},
                'trajectory':{'forbidden_calls':1}}

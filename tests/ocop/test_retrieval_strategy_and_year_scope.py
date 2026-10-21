@@ -41,7 +41,7 @@ def _store(tmp_path):
     return ToolRegistry(tmp_path)
 
 
-def test_path_stage_reflects_allowlisted_tools():
+def test_path_phase_reflects_allowlisted_tools():
     assert choose_retrieval_path([])==RetrievalPath.NONE
     assert choose_retrieval_path(['lookup_form'])==RetrievalPath.PINPOINT
     assert choose_retrieval_path(['search_regulations'])==RetrievalPath.TEXT

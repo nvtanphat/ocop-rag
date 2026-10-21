@@ -1,4 +1,4 @@
-"""Source geometry regressions using actual PDF parsing, without model mocks."""
+"""Source geometry coordinate transformations using actual PDF parsing, without model mocks."""
 from pathlib import Path
 
 import fitz

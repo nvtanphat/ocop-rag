@@ -1,4 +1,4 @@
-"""Independent negative and boundary regression tests (synthetic fixtures only)."""
+"""Independent negative and boundary safety tests (synthetic fixtures only)."""
 from __future__ import annotations
 import json
 from pathlib import Path

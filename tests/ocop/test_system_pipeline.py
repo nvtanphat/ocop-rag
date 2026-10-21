@@ -171,7 +171,7 @@ def test_explicit_dense_requirement_does_not_silently_accept_sparse(tmp_path, mo
     assert system.status()["state"] == "not_ready"
 
 
-def test_dense_upgrade_does_not_rerun_pdf_or_extraction(tmp_path, monkeypatch):
+def test_dense_indexing_does_not_rerun_pdf_or_extraction(tmp_path, monkeypatch):
     system, calls = fixture_pipeline(tmp_path, monkeypatch)
     system.ensure()
     import ai_core.retrieval.ocop.index_pipeline as index_mod

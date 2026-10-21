@@ -139,7 +139,7 @@ def test_temporal_effect_does_not_capture_reference_in_another_clause():
 
 
 def test_owner_relation_uses_the_same_record_and_explicit_merged_owner():
-    from tests.ocop.test_business_knowledge_upgrade import _recognition_fixture
+    from tests.ocop.test_business_entity_extraction import _recognition_fixture
     u = _recognition_fixture()
     result = extract_semantics([u],{u['source_id']:'recognition_decision'},
                                candidates([u],{u['source_id']:'recognition_decision'}))

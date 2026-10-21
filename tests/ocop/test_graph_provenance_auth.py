@@ -1,4 +1,4 @@
-"""Regressions for graph identity, document-first retrieval, router and auth.
+"""Contracts for graph identity, document-first retrieval, router and auth.
 
 These tests use synthetic fixtures and do not require Ollama/Neo4j/Qdrant.
 """

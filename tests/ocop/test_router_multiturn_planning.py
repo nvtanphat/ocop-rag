@@ -1,4 +1,4 @@
-"""Safety and correctness regressions for the single OCOP router/agent workflow.
+"""Safety and correctness contracts for the single OCOP router/agent workflow.
 
 All fixtures are synthetic and explicitly NOT a public OCOP quality benchmark.
 """

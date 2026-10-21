@@ -1,4 +1,4 @@
-"""Evidence-bound semantic extraction regressions, independent of OCR models."""
+"""Evidence-bound semantic extraction contracts, independent of OCR models."""
 from __future__ import annotations
 import fitz
 from pathlib import Path

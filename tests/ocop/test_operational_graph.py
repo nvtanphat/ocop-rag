@@ -145,7 +145,7 @@ def test_public_graph_uses_checked_snapshot_and_detects_tampering(tmp_path, monk
 
 
 def test_recognition_table_links_are_checked_but_scores_stay_out(tmp_path):
-    from test_business_knowledge_upgrade import _recognition_fixture
+    from test_business_entity_extraction import _recognition_fixture
     from ai_core.processing.ocop.business_candidates import candidates
     graph, _ = build(tmp_path)
     knowledge = graph.parent / 'knowledge'

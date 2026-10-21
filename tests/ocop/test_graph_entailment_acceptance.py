@@ -1,4 +1,4 @@
-"""Final graph acceptance regressions using synthetic evidence only."""
+"""Graph acceptance and edge entailment contracts using synthetic evidence only."""
 
 import json
 from graph_check_helpers import checked_records
@@ -83,7 +83,7 @@ def test_cross_page_option_requires_explicit_continuity_and_unbroken_scope(tmp_p
 
 
 def recognition_graph(tmp_path):
-    from test_business_knowledge_upgrade import _recognition_fixture
+    from test_business_entity_extraction import _recognition_fixture
 
     table = _recognition_fixture()
     table["spans"][0]["source_sha256"] = "a" * 64

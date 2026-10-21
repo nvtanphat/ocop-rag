@@ -83,7 +83,7 @@ def test_vietnamese_unaccented_query_recovers_accented_document(tmp_path):
     assert any(r['chunk_id']=='criterion' for r in module.search(idx,'tieu chi',mode='sparse'))
 
 
-def test_reranker_candidate_depth_not_limited_to_3x_final_k(tmp_path,monkeypatch):
+def test_reranker_candidate_depth_not_limited_to_3x_target_count(tmp_path,monkeypatch):
     rows=[_row(f'item_{i:02}',f'ho so thang diem {i}') for i in range(20)]
     idx=_index(tmp_path/'idx',rows)
     seen=[]
