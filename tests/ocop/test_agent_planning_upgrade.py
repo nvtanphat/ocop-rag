@@ -3,7 +3,6 @@
 All fixtures are synthetic and explicitly NOT a public OCOP quality benchmark.
 """
 from __future__ import annotations
-from datetime import date
 import json
 from pathlib import Path
 import pytest
@@ -11,7 +10,6 @@ from ai_core.orchestration.ocop.router import route_query,extract_slots
 from ai_core.orchestration.ocop.contracts import Intent,Route,AuthContext
 from ai_core.orchestration.ocop.planner import build_plan,needs_recovery
 from ai_core.orchestration.ocop.workflow import OcopAgent
-from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.retrieval.ocop.index_pipeline import create_bm25
 
 

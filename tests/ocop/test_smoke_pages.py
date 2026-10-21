@@ -61,7 +61,7 @@ def test_run_pipeline_processes_only_selected_pages_and_stays_partial(tmp_path,m
     from ai_core.processing.ocop.ocr_types import OCRResult
 
     root=tmp_path/"project"
-    sources=_locked_project(root)
+    _locked_project(root)
     real_find_spec=importlib.util.find_spec
     monkeypatch.setattr(importlib.util,"find_spec",lambda name:
         object() if name in {"easyocr","vietocr"} else real_find_spec(name))

@@ -128,7 +128,7 @@ def test_safe_ocop_spelling_repairs_preserve_raw_ocr_text():
     block = {"block_id": "b-spelling", "text": raw, "bbox": [0, 0, 220, 12]}
     page = {"ocr_engine": "easyocr_vietocr", "blocks": [block], "tables": []}
 
-    out = postcorrect_artifact(page, model)
+    postcorrect_artifact(page, model)
 
     assert block["text"] == "Hồ sơ; xử lý; trồng phổ biến; sản phẩm"
     assert block["ocr_raw_text"] == raw

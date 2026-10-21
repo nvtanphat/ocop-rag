@@ -32,7 +32,6 @@ def check_sensitive_claims(answer:str,evidence_rows:list[dict])->dict:
 
 # Claim-level verification. Supports an optional audited semantic entailment
 # backend; lexical overlap alone is never called semantic proof.
-from dataclasses import dataclass,asdict
 import unicodedata
 
 # Do not split decimal numbers such as 3.5 (which would create two claims).

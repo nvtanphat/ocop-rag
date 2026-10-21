@@ -1,7 +1,6 @@
 """Adversarial, offline tests for context-preserving OCOP legal/table chunking."""
 from __future__ import annotations
 import json
-from pathlib import Path
 import pytest
 from ai_core.processing.ocop.knowledge_extract import page_units
 from ai_core.retrieval.ocop.index_pipeline import split_units, build_chunks, build_index

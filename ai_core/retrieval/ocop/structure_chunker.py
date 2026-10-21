@@ -200,7 +200,6 @@ def _table_data(unit: dict) -> tuple[str,list[tuple[int,str,list[dict]]],tuple[s
     if not remaining:
         remaining=rows
         header_rows=set()
-    header_cells=[c for rid,_,cs in rows if rid in header_rows for c in cs]
     return source,remaining,explicit_headers,inferred,tuple(sorted(header_rows))
 
 

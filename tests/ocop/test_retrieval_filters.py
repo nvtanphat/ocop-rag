@@ -2,14 +2,12 @@
 
 No weights or external Qdrant service are needed for these contract tests.
 """
-import gzip
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from ai_core.retrieval.ocop.index_pipeline import create_bm25, BM25Search
+from ai_core.retrieval.ocop.index_pipeline import create_bm25
 from ai_core.retrieval.ocop.search import search
 from ai_core.evaluation.ocop.harness import evaluate_retrieval
 

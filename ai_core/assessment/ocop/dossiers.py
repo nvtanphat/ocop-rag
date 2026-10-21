@@ -5,7 +5,6 @@ No public index or public graph writes. The API layer must authenticate callers.
 from __future__ import annotations
 import hashlib,json,os,re
 from pathlib import Path
-from ai_core.domain.ocop_ids import stable_id
 
 ID_RE=re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
 

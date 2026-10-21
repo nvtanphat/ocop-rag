@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import pytest
 
-from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY, Capability
+from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.planner import build_plan, _ordered_tasks
 from ai_core.orchestration.ocop.contracts import Intent, Route

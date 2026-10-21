@@ -1,6 +1,5 @@
 """Declarative candidate shape audit. Reports only; never repairs candidates."""
 from collections import Counter, defaultdict
-import re
 from ai_core.domain.ocop_citations import quote_bbox
 from .star_requirements import SHEET
 

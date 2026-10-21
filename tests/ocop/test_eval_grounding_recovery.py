@@ -1,7 +1,6 @@
 """Production gates for source-backed claims, evidence grading and eval harness."""
 from __future__ import annotations
 import json
-from pathlib import Path
 import pytest
 from ai_core.orchestration.ocop.verification import verify_claims
 from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite

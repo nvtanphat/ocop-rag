@@ -1,5 +1,4 @@
 """Router regression tests for historical, safety and multilingual edge cases."""
-import pytest
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.contracts import Intent
 from ai_core.orchestration.ocop.planner import build_plan

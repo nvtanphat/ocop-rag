@@ -3,7 +3,7 @@
 No interpretation of OCR score candidates as verified rules; no official star awards.
 """
 from __future__ import annotations
-from decimal import Decimal,InvalidOperation
+from decimal import Decimal
 
 DECISIONS=frozenset({"satisfied","missing","insufficient_evidence","not_applicable","needs_human_review"})
 

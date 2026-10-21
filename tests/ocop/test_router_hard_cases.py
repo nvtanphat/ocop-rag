@@ -1,7 +1,6 @@
 """Adversarial contract checks, not part of OCOP project upstream test suite.
 Fixtures are synthetic; they make no claims about real OCOP documents.
 """
-from pathlib import Path
 import json
 import pytest
 from ai_core.orchestration.ocop.router import route_query

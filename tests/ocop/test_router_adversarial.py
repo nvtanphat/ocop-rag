@@ -5,7 +5,6 @@ Run from OCOP-GraphRAG project root:
 Requires OCOP-GraphRAG on PYTHONPATH (e.g. PYTHONPATH=. on macOS/Linux).
 Tests only pure functions, no external model/index required.
 """
-import pytest
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.contracts import Intent
 from ai_core.orchestration.ocop.planner import build_plan

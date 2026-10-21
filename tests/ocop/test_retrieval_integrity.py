@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from ai_core.retrieval.ocop import search as module
-from ai_core.retrieval.ocop.index_pipeline import create_bm25, BM25Search
+from ai_core.retrieval.ocop.index_pipeline import create_bm25
 
 
 def _row(cid, text, *, review='verified', parent=None, source='VN.TEST'):

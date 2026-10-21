@@ -5,10 +5,8 @@ are retrieval diagnostics, not a proof of legal applicability. Conservative,
 source-aware, and suitable for offline deterministic regression tests.
 """
 from __future__ import annotations
-from dataclasses import dataclass, asdict
 import re
 import unicodedata
-from typing import Any
 
 STOPWORDS = frozenset('cho tôi về là những các của và theo cần có với một trong được như nào gì hãy thì khi OCOP sản phẩm'.casefold().split())
 STRUCTURED_TOOLS = frozenset({'lookup_product_subgroup','lookup_criterion','lookup_evidence_requirements','lookup_form','lookup_recognition','resolve_temporal_applicability'})
