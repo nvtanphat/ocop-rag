@@ -207,6 +207,8 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
                      reason_codes=['historical_year_conflicts_with_pinned_document'])
     is_compare=temporal_question(lower,slots)
     has_multihop=_contains(lower,MULTIHOP)
+    is_authority=_contains(lower,('tham quyen','co quan nao','ai cong nhan','ai co tham quyen',
+                                  'ai quyet dinh','cap nao cong nhan','cap nao co tham quyen'))
     # Asking *which criteria make a product eligible* is a criteria question,
     # not a lookup in an already-approved product recognition list.
     normative_star_question = bool(slots.get('star_rating')) and _contains(lower, (
@@ -214,7 +216,7 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
         'can nhung gi', 'quy dinh the nao',
     )) and not _contains(lower, ('danh sach', 'liet ke', 'da duoc cong nhan',
                                   'san pham nao duoc cong nhan', 'bao nhieu san pham'))
-    is_recognition=_contains(lower,RECOGNITION+("danh sach san pham ocop", "san pham ocop 3 sao",
+    is_recognition=not is_authority and _contains(lower,RECOGNITION+("danh sach san pham ocop", "san pham ocop 3 sao",
         "san pham ocop 4 sao", "san pham ocop 5 sao", "liet ke san pham ocop"))
     is_criteria=_contains(lower,CRITERIA) or normative_star_question or bool(slots.get('star_rating') and
         _contains(lower,('dieu kien','yeu cau','can dat','de dat','can dap ung')))
@@ -257,7 +259,8 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
     if has_multihop and (is_criteria or is_form or is_compliance or is_recognition):
         scores[Intent.MULTIHOP_REASONING]=80
     if is_compare:scores[Intent.TEMPORAL_COMPARE]=75
-    if updates.get("article_id") and updates.get("document_code"):scores[Intent.EXACT_LOOKUP]=70
+    if is_authority:scores[Intent.EXACT_LOOKUP]=88
+    elif updates.get("article_id") and updates.get("document_code"):scores[Intent.EXACT_LOOKUP]=70
     if _contains(lower,CLASSIFICATION):scores[Intent.PRODUCT_CLASSIFICATION]=65
     if is_compliance:scores[Intent.SECTOR_COMPLIANCE]=60
     if is_recognition and not normative_star_question:
@@ -313,7 +316,9 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
         if is_form:required.insert(0,"lookup_form")
         if is_recognition:required.insert(0,"lookup_recognition")
     if effective==Intent.TEMPORAL_COMPARE and is_criteria:required.insert(0,"lookup_criterion")
-    if effective==Intent.EXACT_LOOKUP and is_criteria:required.append("lookup_criterion")
+    if effective==Intent.EXACT_LOOKUP:
+        if is_authority and "search_regulations" not in required:required.append("search_regulations")
+        if is_criteria:required.append("lookup_criterion")
     if effective==Intent.PROCEDURE_FORM and is_criteria:required.append("lookup_criterion")
     # When a question asks about procedural requirements instead of an
     # identified FormTemplate, search the procedure text. Returning the first
@@ -381,6 +386,8 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
         # An exact query with no extra business dimension needs only lookup.
         if explicit=={Capability.EXACT_ARTICLE}:composed=['lookup_legal_unit']
         required=list(dict.fromkeys(x for x in composed if x in TOOLS))
+        if is_authority:
+            required=list(dict.fromkeys(['lookup_legal_unit', 'search_regulations', *required]))
         if Capability.TEMPORAL in explicit and Capability.RECOGNITION in explicit:
             required=['lookup_recognition']+[x for x in required if x!='lookup_recognition']
     if explicit & private_caps:

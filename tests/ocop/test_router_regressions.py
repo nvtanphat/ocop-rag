@@ -293,3 +293,21 @@ def test_unknown_product_producer_question_without_index_support_is_not_forced_i
     from ai_core.orchestration.ocop.contracts import Intent
     route = route_query("Sản phẩm HANA do ai sản xuất?", indexed_content_bigram_coverage=lambda q: 0.0)
     assert route.intent == Intent.OUT_OF_SCOPE
+
+
+def test_authority_questions_route_to_exact_lookup_with_legal_tools():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+    authority_questions = [
+        "Cơ quan nào có thẩm quyền công nhận sản phẩm OCOP 5 sao?",
+        "Ai công nhận sản phẩm OCOP 5 sao?",
+        "Thẩm quyền công nhận sản phẩm OCOP 4 sao thuộc về cơ quan nào?",
+        "UBND cấp tỉnh có thẩm quyền công nhận sản phẩm OCOP mấy sao?",
+        "Cơ quan nào quyết định công nhận kết quả đánh giá phân hạng OCOP?",
+        "Ai có thẩm quyền cấp giấy chứng nhận sản phẩm OCOP?",
+    ]
+    for q in authority_questions:
+        route = route_query(q)
+        assert route.intent == Intent.EXACT_LOOKUP, f"Failed intent for: {q} (got {route.intent})"
+        assert "lookup_legal_unit" in route.required_tools, f"Missing lookup_legal_unit for: {q}"
+        assert "search_regulations" in route.required_tools, f"Missing search_regulations for: {q}"

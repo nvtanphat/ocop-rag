@@ -94,7 +94,11 @@ def detect_capabilities(query: str, slots: dict) -> tuple[list[Capability], list
                    'hồ sơ tôi cần chuẩn bị', 'hồ sơ gồm những gì')):
         add(Capability.PROCEDURE_FORM,'procedure_form_signal')
     if temporal_question(q,slots):add(Capability.TEMPORAL,'legal_temporal_signal')
-    if has_any(q,('công nhận','đã đạt ocop','đạt sao ocop','sản phẩm được công nhận',
+    is_authority = has_any(q, ('tham quyen', 'co quan nao', 'ai cong nhan', 'ai co tham quyen',
+                               'ai quyet dinh', 'cap nao cong nhan', 'cap nao co tham quyen'))
+    if is_authority:
+        add(Capability.EXACT_ARTICLE, 'authority_signal')
+    if not is_authority and has_any(q,('công nhận','đã đạt ocop','đạt sao ocop','sản phẩm được công nhận',
                   'sản phẩm ocop 3 sao','sản phẩm ocop 4 sao','sản phẩm ocop 5 sao',
                   'danh sách sản phẩm ocop', 'sản phẩm đạt sao')):
         add(Capability.RECOGNITION,'recognition_signal')
