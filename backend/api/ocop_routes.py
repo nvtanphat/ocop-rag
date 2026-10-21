@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ConfigDict
 
 from ai_core.orchestration.ocop.workflow import OcopAgent
-from ai_core.orchestration.ocop.llm import OllamaClient
+from ai_core.orchestration.ocop.llm import make_answer_client
 from ai_core.system.pipeline import OcopSystemPipeline
 
 ROOT = Path(os.environ.get('OCOP_ROOT',Path(__file__).resolve().parents[2])).resolve()
@@ -218,7 +218,7 @@ def _checked_snapshot():
 @lru_cache(maxsize=128)
 def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = ""):
     # Never reuse an agent holding an obsolete index/graph after rebuild.
-    return OcopAgent(ROOT, llm=OllamaClient(url=os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434")) if with_llm else None, retrieval_mode=retrieval_mode)
+    return OcopAgent(ROOT, llm=make_answer_client() if with_llm else None, retrieval_mode=retrieval_mode)
 
 
 # Previous conversational topic/slots only; never stores authority or dossier content.

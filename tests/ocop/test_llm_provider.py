@@ -313,3 +313,33 @@ def test_graph_keeps_llm_provenance_only_for_llm_rows():
     assert _with_provenance({"attributes": {"a": 1}, "extraction_method": "deterministic_from_structure"}) == {"a": 1}
     assert _with_provenance({"attributes": {}, "extraction_method": "llm_candidate:gpt-6-sol"}) == \
         {"extraction_method": "llm_candidate:gpt-6-sol"}
+
+
+def test_answer_client_defaults_to_local_ollama(monkeypatch):
+    from ai_core.orchestration.ocop.llm import make_answer_client
+    for key in ("OCOP_ANSWER_LLM_PROVIDER", "OCOP_ANSWER_LLM_MODEL", "OCOP_LLM_MODEL"):
+        monkeypatch.delenv(key, raising=False)
+    client = make_answer_client()
+    assert isinstance(client, OllamaClient) and client.model == "qwen3.5:2b"
+
+
+def test_answer_client_reuses_the_extraction_api_when_openai(monkeypatch):
+    from ai_core.orchestration.ocop.llm import make_answer_client
+    monkeypatch.setenv("OCOP_ANSWER_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://example.invalid/v1")
+    monkeypatch.setenv("OCOP_EXTRACT_OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OCOP_EXTRACT_LLM_MODEL", "m-extract")
+    for key in ("OCOP_ANSWER_LLM_MODEL", "OCOP_ANSWER_OPENAI_BASE_URL", "OCOP_ANSWER_OPENAI_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    client = make_answer_client()
+    assert isinstance(client, OpenAICompatClient)
+    assert client.model == "m-extract" and client.url == "https://example.invalid/v1"
+
+
+def test_openai_length_finish_is_reported_as_truncation(monkeypatch):
+    from ai_core.orchestration.ocop.llm import ModelOutputTruncated
+    payload = {"choices": [{"finish_reason": "length", "message": {"content": "nửa câu"}}]}
+    monkeypatch.setattr(llm_mod.urllib.request, "urlopen", lambda req, timeout: io.BytesIO(json.dumps(payload).encode()))
+    client = OpenAICompatClient(model="m", base_url="https://example.invalid/v1", api_key="k", retries=0)
+    with pytest.raises(ModelOutputTruncated):
+        client.chat("s", "u")

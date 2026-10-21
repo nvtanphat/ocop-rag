@@ -1,5 +1,5 @@
-"""LLM adapters. Ollama serves the optional answer/router path; candidate entity/feature
-extraction may instead use an OpenAI-compatible API (OCOP_EXTRACT_*). No hidden model download."""
+"""LLM adapters: local Ollama or an OpenAI-compatible API, chosen separately for candidate
+extraction (OCOP_EXTRACT_*) and for answers/routing (OCOP_ANSWER_*). No hidden model download."""
 from __future__ import annotations
 import json,os,time,urllib.error,urllib.request
 from pathlib import Path
@@ -51,7 +51,7 @@ class OllamaClient(_RouteMixin):
 class OpenAICompatClient(_RouteMixin):
     """Chat Completions over HTTPS. The API key is read from the environment, never logged or persisted."""
     def __init__(self,model:str,base_url:str,api_key:str,timeout:float=120,reasoning_budget:int=2048,retries:int=4):
-        if not api_key:raise RuntimeError("OCOP_EXTRACT_OPENAI_API_KEY is not set")
+        if not api_key:raise RuntimeError("OpenAI-compatible API key is not set (OCOP_EXTRACT_OPENAI_API_KEY or OCOP_ANSWER_OPENAI_API_KEY)")
         self.model=model;self.url=base_url.rstrip("/");self._key=api_key
         self.timeout=timeout;self.reasoning_budget=reasoning_budget;self.retries=retries
     def __repr__(self)->str:return f"OpenAICompatClient(model={self.model!r}, base_url={self.url!r})"
@@ -71,8 +71,10 @@ class OpenAICompatClient(_RouteMixin):
                                    method="POST")
         try:
             choice=self._post(req)['choices'][0]
-            if choice.get('finish_reason') in {'length','content_filter'}:
-                raise RuntimeError('Configured OpenAI-compatible response truncated or filtered')
+            if choice.get('finish_reason')=='length':
+                raise ModelOutputTruncated('Configured OpenAI-compatible response truncated')
+            if choice.get('finish_reason')=='content_filter':
+                raise RuntimeError('Configured OpenAI-compatible response filtered')
             content=choice['message']['content']
         except (urllib.error.URLError,TimeoutError,OSError,KeyError,IndexError,TypeError,ValueError) as exc:
             detail=f"HTTP {exc.code}: {_error_message(exc)}" if isinstance(exc,urllib.error.HTTPError) else type(exc).__name__
@@ -137,3 +139,21 @@ def make_extraction_client()->OllamaClient|OpenAICompatClient:
                                   api_key=os.getenv("OCOP_EXTRACT_OPENAI_API_KEY",""))
     if provider!="ollama":raise RuntimeError(f"Unsupported OCOP_EXTRACT_LLM_PROVIDER: {provider}")
     return OllamaClient(model=model,url=os.getenv("OCOP_OLLAMA_URL","http://127.0.0.1:11434"))
+
+def answer_provider()->str:
+    load_env_file()
+    return os.getenv("OCOP_ANSWER_LLM_PROVIDER","ollama").strip().lower()
+
+def make_answer_client()->OllamaClient|OpenAICompatClient:
+    """Client for routing and answer generation: OCOP_ANSWER_LLM_PROVIDER=ollama (default, local
+    OCOP_LLM_MODEL) or openai. The OpenAI-compatible endpoint and key default to the extraction ones,
+    so one configured API serves both."""
+    provider=answer_provider()
+    if provider=="openai":
+        return OpenAICompatClient(
+            model=os.getenv("OCOP_ANSWER_LLM_MODEL") or os.getenv("OCOP_EXTRACT_LLM_MODEL","gpt-6-sol"),
+            base_url=os.getenv("OCOP_ANSWER_OPENAI_BASE_URL") or os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL","https://api.openai.com/v1"),
+            api_key=os.getenv("OCOP_ANSWER_OPENAI_API_KEY") or os.getenv("OCOP_EXTRACT_OPENAI_API_KEY",""))
+    if provider!="ollama":raise RuntimeError(f"Unsupported OCOP_ANSWER_LLM_PROVIDER: {provider}")
+    return OllamaClient(model=os.getenv("OCOP_LLM_MODEL","qwen3.5:2b"),
+                        url=os.getenv("OCOP_OLLAMA_URL","http://127.0.0.1:11434"))

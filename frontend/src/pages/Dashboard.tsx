@@ -47,7 +47,7 @@ function SystemView({ overview, health, refresh, refreshing }: { overview: Overv
     <div className="ocop-section-line compact"><h2>Tổng quan hệ thống</h2><button className="ocop-button-quiet" onClick={refresh} disabled={refreshing}><RefreshCcw size={16} className={refreshing?'ocop-spinning':''}/> Làm mới</button></div>
     <div className="ocop-health-banner"><span className={`ocop-status-dot ${health?.status==='ready'?'online':'offline'}`}/><div><strong>{health?.status==='ready'?'Chỉ mục dữ liệu OCOP sẵn sàng':'Không thể xác nhận trạng thái chỉ mục'}</strong><p>Corpus version: {overview?.index.corpus_version || 'Chưa có'} · Chế độ kiểm tra dữ liệu ứng viên</p></div></div>
     <div className="ocop-component-list">{features.map(([name,detail,ok])=><div className="ocop-component" key={name}><span className={`ocop-component-icon ${ok?'healthy':''}`}>{ok?<Check size={17}/>:<Activity size={17}/>}</span><div><strong>{name}</strong><small>{detail}</small></div><span className={`ocop-pill ${ok?'good':'neutral'}`}>{ok?'Có dữ liệu':'Chưa sẵn sàng'}</span></div>)}</div>
-    <div className="ocop-notice"><ShieldAlert size={18}/><div><strong>Chưa phải hệ thống được nghiệm thu hoàn chỉnh</strong><p>Dense retrieval, Neo4j và Qwen3.5 2B chưa được khẳng định hoạt động từ bảng điều khiển này. Trạng thái OCR là ứng viên, không có hiệu lực xác nhận pháp lý.</p></div></div>
+    <div className="ocop-notice"><ShieldAlert size={18}/><div><strong>Chưa phải hệ thống được nghiệm thu hoàn chỉnh</strong><p>Dense retrieval, Neo4j và LLM diễn giải chưa được khẳng định hoạt động từ bảng điều khiển này. Trạng thái OCR là ứng viên, không có hiệu lực xác nhận pháp lý.</p></div></div>
   </div>
 }
 

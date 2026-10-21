@@ -71,7 +71,7 @@ export default function Chat({ sources, denseReady, messages, setMessages, openP
     </div>
     <div className="ocop-composer-wrap">
       {advanced && <div className="ocop-chat-options"><div><strong>Chế độ truy xuất</strong><div className="ocop-segmented"><button className={mode === 'sparse' ? 'active' : ''} onClick={() => setMode('sparse')}>BM25</button><button disabled={!denseReady} className={mode === 'hybrid' ? 'active' : ''} onClick={() => setMode('hybrid')}>Hybrid {!denseReady && '· chưa có index'}</button></div></div>
-        <label className="ocop-toggle-line"><input type="checkbox" checked={llm} onChange={e => setLlm(e.target.checked)}/><span>Dùng Qwen3.5 2B để diễn giải</span><small>Yêu cầu Ollama đang chạy</small></label></div>}
+        <label className="ocop-toggle-line"><input type="checkbox" checked={llm} onChange={e => setLlm(e.target.checked)}/><span>Dùng LLM để diễn giải</span><small>Theo cấu hình OCOP_ANSWER_LLM_PROVIDER của máy chủ</small></label></div>}
       <form className="ocop-composer" onSubmit={e => { e.preventDefault(); void submit(draft) }}>
         <textarea aria-label="Nhập câu hỏi OCOP" rows={2} placeholder="Nhập câu hỏi về tiêu chí, hồ sơ, quy định OCOP..." value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void submit(draft) } }}/>
         <div className="ocop-composer-actions"><button type="button" className="ocop-advanced-btn" onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}><SlidersHorizontal size={15}/> {mode === 'sparse' ? 'BM25' : 'Hybrid'} · {llm ? 'Qwen 2B' : 'Evidence-only'}</button>

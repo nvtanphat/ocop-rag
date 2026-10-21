@@ -38,7 +38,7 @@ def main() -> None:
                      help="Use the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules (enabled by default; --no-semantic-extract disables it)")
     run.add_argument("--semantic-max-units", type=int, default=None,
                      help="Maximum EvidenceUnits sent to the extraction LLM (default: all eligible units)")
-    run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and Ollama Qwen3.5 2B")
+    run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and the answer LLM")
     run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")
     run.add_argument("--mongo", action="store_true", help="Also materialize structured data in MongoDB")
     run.add_argument("--neo4j", action="store_true", help="Also publish graph into Neo4j")
@@ -115,8 +115,11 @@ def main() -> None:
         cli.error("--build-only and --query are mutually exclusive")
     try:
         if args.full:
-            from ai_core.system.runtime import verify_ollama_model
-            verify_ollama_model(os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"), "qwen3.5:2b")
+            from ai_core.orchestration.ocop.llm import answer_provider
+            if answer_provider() == "ollama":
+                from ai_core.system.runtime import verify_ollama_model
+                verify_ollama_model(os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"),
+                                    os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"))
         prepared = system.ensure(PipelineOptions(
             refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, mongo=args.mongo or args.full, neo4j=args.neo4j or args.full,
             dpi=args.dpi,
@@ -137,8 +140,8 @@ def main() -> None:
             if effective_mode != "sparse" and not prepared["dense_ready"]:
                 raise RuntimeError("Dense vectors missing. Re-run with --dense or use --retrieval-mode sparse")
             from ai_core.orchestration.ocop.workflow import OcopAgent
-            from ai_core.orchestration.ocop.llm import OllamaClient
-            llm = None if args.no_llm else OllamaClient(url=os.environ.get("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"))
+            from ai_core.orchestration.ocop.llm import make_answer_client
+            llm = None if args.no_llm else make_answer_client()
             answer = OcopAgent(system.root, llm=llm, retrieval_mode=effective_mode,
                                rerank=args.rerank).ask(args.query)
             print(answer.model_dump_json(indent=2))
