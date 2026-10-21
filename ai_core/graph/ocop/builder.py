@@ -534,12 +534,12 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
     # A complete immutable snapshot is persisted first. The old root layout
     # remains for existing callers; its manifest is committed LAST. Readers
     # with a manifest verify all hashes, and refuse torn/mixed generations.
-    stage = Path(tempfile.mkdtemp(prefix=".graph-stage-", dir=output))
+    staging_dir = Path(tempfile.mkdtemp(prefix=".graph-staging-", dir=output))
     try:
-        _write_jsonl(stage/"nodes.jsonl",out_nodes)
-        _write_jsonl(stage/"edges.jsonl",out_edges)
+        _write_jsonl(staging_dir/"nodes.jsonl",out_nodes)
+        _write_jsonl(staging_dir/"edges.jsonl",out_edges)
         snapshot_files = ('nodes.jsonl', 'edges.jsonl')
-        file_hashes={f:content_sha256((stage/f).read_bytes()) for f in
+        file_hashes={f:content_sha256((staging_dir/f).read_bytes()) for f in
                      snapshot_files}
         manifest={"graph_version":graph_version,"source_knowledge_version":version,
             "human_review":review_manifest,
@@ -552,35 +552,35 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             "node_ids_sha256":content_sha256("\n".join(n["node_id"] for n in out_nodes)),
             "edge_ids_sha256":content_sha256("\n".join(e["edge_id"] for e in out_edges)),
             "file_sha256":file_hashes, "candidate_mode":include_candidates, "neo4j":{"enabled":False}}
-        _write_json(stage/"manifest.json",manifest)
+        _write_json(staging_dir/"manifest.json",manifest)
         snapshots = output / "snapshots"
         snapshots.mkdir(exist_ok=True)
         snapshot_dir = snapshots/graph_version
         if snapshot_dir.exists():
             from ai_core.graph.ocop.integrity import validate_graph_snapshot
             validate_graph_snapshot(snapshot_dir,allow_partial=allow_partial)
-            if (snapshot_dir/"manifest.json").read_bytes() != (stage/"manifest.json").read_bytes():
+            if (snapshot_dir/"manifest.json").read_bytes() != (staging_dir/"manifest.json").read_bytes():
                 raise ValueError("Snapshot version collision")
         else:
             # Atomic creation of an immutable directory on the same filesystem.
             pending = Path(tempfile.mkdtemp(prefix=".snapshot-pending-", dir=snapshots))
             try:
                 for filename in (*snapshot_files, 'manifest.json'):
-                    shutil.copyfile(stage/filename,pending/filename)
+                    shutil.copyfile(staging_dir/filename,pending/filename)
                 os.replace(pending,snapshot_dir)
             finally:
                 if pending.exists():
                     shutil.rmtree(pending,ignore_errors=True)
         for filename in snapshot_files:
             temp_file=output/("."+filename+".next")
-            shutil.copyfile(stage/filename,temp_file)
+            shutil.copyfile(staging_dir/filename,temp_file)
             os.replace(temp_file,output/filename)
-        os.replace(stage/"manifest.json",output/"manifest.json")
+        os.replace(staging_dir/"manifest.json",output/"manifest.json")
         _prune_snapshots(output, review_decisions, {graph_version, prior_active})
         (output / 'rejected.jsonl').unlink(missing_ok=True)
         return manifest
     finally:
-        shutil.rmtree(stage,ignore_errors=True)
+        shutil.rmtree(staging_dir,ignore_errors=True)
 
 
 def _prune_snapshots(output, ledger, protected):

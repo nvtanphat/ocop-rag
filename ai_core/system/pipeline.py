@@ -207,7 +207,7 @@ class OcopSystemPipeline:
                     return {**current, "reused": True}
             # Construct the complete pipeline away from the live artifact tree.
             with tempfile.TemporaryDirectory(prefix="ocop-build-", dir=self.data) as temporary:
-                stage = Path(temporary)
+                staging_dir = Path(temporary)
                 try:
                     from ai_core.processing.ocop.knowledge_extract import extract_artifacts
                     from ai_core.retrieval.ocop.index_pipeline import build_index
@@ -229,14 +229,14 @@ class OcopSystemPipeline:
                                 ("business_entities.jsonl", "business_relations.jsonl", "business_rules.jsonl"))
                         and semantic_match)
                     if reuse_pages:
-                        shutil.copytree(self.data / "pages", stage / "pages")
+                        shutil.copytree(self.data / "pages", staging_dir / "pages")
                         page = page_config
                     else:
-                        page = materialize_dataset(dataset, stage / "pages", dataset_manifest)
+                        page = materialize_dataset(dataset, staging_dir / "pages", dataset_manifest)
                     if not page.get("complete"):
                         raise RuntimeError("PDF parser did not produce a complete source-locked corpus")
                     if reuse_knowledge:
-                        shutil.copytree(self.data / "knowledge", stage / "knowledge")
+                        shutil.copytree(self.data / "knowledge", staging_dir / "knowledge")
                         knowledge = knowledge_config
                     else:
                         semantic_client = None
@@ -244,15 +244,15 @@ class OcopSystemPipeline:
                             from ai_core.orchestration.ocop.llm import (
                                 extraction_gleanings, extraction_workers, make_extraction_client)
                             semantic_client = make_extraction_client()
-                        knowledge = extract_artifacts(self.root, input_dir=stage / "pages",
-                            output_dir=stage / "knowledge", semantic_client=semantic_client,
+                        knowledge = extract_artifacts(self.root, input_dir=staging_dir / "pages",
+                            output_dir=staging_dir / "knowledge", semantic_client=semantic_client,
                             semantic_max_units=options.semantic_max_units,
                             semantic_cache_dir=self.data / "cache" / "llm",
                             semantic_workers=extraction_workers() if options.semantic_extract else 1,
                             semantic_gleanings=extraction_gleanings() if options.semantic_extract else 1)
                     knowledge["ocr_dataset_version"] = dataset_manifest["ocr_version"]
                     knowledge["ocr_dataset_digest"] = dataset_manifest["dataset_digest"]
-                    _write_json(stage / "knowledge" / "manifest.json", knowledge)
+                    _write_json(staging_dir / "knowledge" / "manifest.json", knowledge)
                     if not knowledge.get("complete"):
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
                     if not _semantic_complete(knowledge.get('semantic_proposals', {}), options):
@@ -264,18 +264,18 @@ class OcopSystemPipeline:
                             and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")
                             and old_graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
                                 ==ledger_digest(ledger_path(self.root))):
-                        shutil.copytree(self.data / "graph", stage / "graph")
+                        shutil.copytree(self.data / "graph", staging_dir / "graph")
                         graph = old_graph
                     else:
                         from ai_core.graph.ocop.review import ledger_path
                         prior_graph = self.data / 'graph'
                         if (prior_graph / 'snapshots').is_dir():
-                            shutil.copytree(prior_graph / 'snapshots', stage / 'graph' / 'snapshots', dirs_exist_ok=True)
+                            shutil.copytree(prior_graph / 'snapshots', staging_dir / 'graph' / 'snapshots', dirs_exist_ok=True)
                             if (prior_graph / 'manifest.json').is_file():
-                                shutil.copy2(prior_graph / 'manifest.json', stage / 'graph' / 'manifest.json')
-                        graph = build_graph(stage / "knowledge", stage / "graph",review_decisions=ledger_path(self.root))
+                                shutil.copy2(prior_graph / 'manifest.json', staging_dir / 'graph' / 'manifest.json')
+                        graph = build_graph(staging_dir / "knowledge", staging_dir / "graph",review_decisions=ledger_path(self.root))
                     index = build_index(
-                        knowledge=stage / "knowledge", index_dir=stage / "index",
+                        knowledge=staging_dir / "knowledge", index_dir=staging_dir / "index",
                         with_dense=options.dense,
                         with_mongo=options.mongo,
                         mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
@@ -294,10 +294,10 @@ class OcopSystemPipeline:
                         password = os.getenv("NEO4J_PASSWORD")
                         if not password:
                             raise RuntimeError("NEO4J_PASSWORD is required for Neo4j publishing")
-                        graph["neo4j"] = publish_neo4j(stage / "graph", uri=options.neo4j_uri,
+                        graph["neo4j"] = publish_neo4j(staging_dir / "graph", uri=options.neo4j_uri,
                                 user=options.neo4j_user, password=password, verified_only=False)
-                        _write_json(stage / "graph" / "manifest.json", graph)
-                    self._promote(stage)
+                        _write_json(staging_dir / "graph" / "manifest.json", graph)
+                    self._promote(staging_dir)
                 except Exception:
                     # TemporaryDirectory removes partial products; current published corpus is untouched.
                     raise
@@ -315,14 +315,14 @@ class OcopSystemPipeline:
                 raise RuntimeError(f"Post-publish corpus validation failed: {result}")
             return {**result, "reused": False}
 
-    def _promote(self, stage: Path) -> None:
+    def _promote(self, staging_dir: Path) -> None:
         """Promote a checked local bundle with rollback on filesystem errors.
 
         Multiple directory renames cannot be transactionally atomic: API readers
         should not query while promotion is underway. Existing builds are saved
         until all renames finish. External DB publications have their own lifecycle.
         """
-        backup = stage / "_backup"
+        backup = staging_dir / "_backup"
         backup.mkdir()
         promotion_marker = self.data / ".promoting"
         promotion_marker.write_text("updating\n", encoding="utf-8")
@@ -334,7 +334,7 @@ class OcopSystemPipeline:
                 if target.exists():
                     target.rename(backup / name)
                     moved.append(name)
-                (stage / name).rename(target)
+                (staging_dir / name).rename(target)
                 installed.append(name)
             # Validate the *installed* bundle while backups are still on disk.
             # Prior behavior could publish an invalid bundle and only notice
