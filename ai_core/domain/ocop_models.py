@@ -227,22 +227,6 @@ class RetrievalChunk(StrictModel):
     over_budget: bool = False
 
 
-class CorpusRelease(StrictModel):
-    version: str
-    snapshot_sha256: str
-    source_count: int = Field(ge=0)
-    page_count: int = Field(ge=0)
-    status: str = "staging"
-
-
-class RouteDecision(StrictModel):
-    intent: str
-    strategy: str
-    required_tools: list[str] = Field(default_factory=list)
-    slots: dict[str, Any] = Field(default_factory=dict)
-    needs_clarification: bool = False
-    missing_slots: list[str] = Field(default_factory=list)
-
 
 def cell_display_text(cell: dict) -> str:
     """Cell text for indexing; blanks always stay explicit and OCR candidates stay unverified."""

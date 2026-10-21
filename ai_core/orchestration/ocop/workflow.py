@@ -33,7 +33,6 @@ class OcopState(TypedDict,total=False):
     results:list[dict]
     answer:dict
     auth:AuthContext|None
-    debug_candidates:bool
     trace:list[dict]
     evidence_coverage:dict
     evidence_grade:dict
@@ -101,7 +100,6 @@ class OcopAgent:
         context={'retrieval_mode':self.retrieval_mode,'rerank':self.rerank,
                  'allow_partial_debug':self.allow_partial_debug,
                  'business_intent':Route.model_validate(state['route']).intent.value,
-                 'debug_candidates':bool(state.get('debug_candidates',False)),
                  'dossier_id':(state.get('session') or {}).get('dossier_id')}
         if slots.get('as_of_date'):context['as_of_date']=slots['as_of_date']
         elif isinstance(provided.get('as_of_date'),str) and re.fullmatch(r'20\d{2}-\d{2}-\d{2}',provided['as_of_date']):
@@ -448,12 +446,11 @@ class OcopAgent:
         if isinstance(provided.get('as_of_date'),str) and re.fullmatch(
             r'20\d{2}-\d{2}-\d{2}',provided['as_of_date']):
             safe_context['as_of_date']=provided['as_of_date']
-        return {**initial,'session':safe_session,'context':safe_context,'auth':None,
-                'debug_candidates':False}
+        return {**initial,'session':safe_session,'context':safe_context,'auth':None}
 
     @traced("ocop.agent.ask")
     def ask(self,query:str,*,session:dict|None=None,context:dict|None=None,
-            auth_context:AuthContext|None=None,debug_candidates:bool=False,
+            auth_context:AuthContext|None=None,
             require_langgraph:bool=False)->AgentResponse:
         for folder in (self.tools.index_dir, getattr(self.tools,'graph_dir',self.root/'data/processed/ocop/graph')):
             manifest_file=folder/'manifest.json'
@@ -464,7 +461,7 @@ class OcopAgent:
                 if partial and not self.allow_partial_debug:
                     raise RuntimeError('partial corpus requires explicit allow_partial_debug=True')
         initial:OcopState={'query':query,'session':session or {},'context':context or {},
-                           'auth':auth_context,'debug_candidates':debug_candidates}
+                           'auth':auth_context}
         engine='langgraph'
         checkpointer=None;invoke_config=None
         # Private dossier state must not be recorded in plaintext LangGraph

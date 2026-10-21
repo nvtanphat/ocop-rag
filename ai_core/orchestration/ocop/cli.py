@@ -13,7 +13,6 @@ def main():
     p.add_argument("--require-langgraph",action="store_true")
     p.add_argument("--retrieval-mode",choices=("sparse","dense","hybrid"),default="sparse")
     p.add_argument("--rerank",action="store_true")
-    p.add_argument("--debug-candidates",action="store_true")
     p.add_argument("--allow-partial-debug",action="store_true",
                    help="Explicit offline debug only; every response is marked partial_debug_corpus")
     p.add_argument("--session-json",type=Path,default=None,help="Authenticated session from trusted app, not untrusted PDF")
@@ -21,7 +20,7 @@ def main():
     session=json.loads(a.session_json.read_text(encoding="utf-8")) if a.session_json else {}
     agent=OcopAgent(a.root.resolve(),llm=OllamaClient() if a.with_llm else None,
                     retrieval_mode=a.retrieval_mode,rerank=a.rerank,allow_partial_debug=a.allow_partial_debug)
-    result=agent.ask(a.query,session=session,context={"debug_candidates":a.debug_candidates},
+    result=agent.ask(a.query,session=session,context={},
                      require_langgraph=a.require_langgraph)
     print(result.model_dump_json(indent=2))
 if __name__=="__main__":main()

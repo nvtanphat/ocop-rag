@@ -110,6 +110,3 @@ def detect_capabilities(query: str, slots: dict) -> tuple[list[Capability], list
     if not found:add(Capability.OVERVIEW,'general_ocop_question')
     return found,reasons
 
-
-def ensure_explicit_region(text: str, current: str|None) -> str|None:
-    return current
