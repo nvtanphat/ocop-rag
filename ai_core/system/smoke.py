@@ -140,6 +140,8 @@ def main()->None:
     parser.add_argument("--page",action="append",type=_parse_page,required=True,
                         metavar="SOURCE_ID:PAGE",help="Selected PDF page; repeat for additional pages")
     parser.add_argument("--ocr-dataset", type=Path, required=True, help="Previously produced OCR dataset")
+    parser.add_argument("--semantic-extract", action=argparse.BooleanOptionalAction, default=True,
+                        help="Run the configured extraction LLM on pilot evidence (default: enabled)")
     parser.add_argument("--question",action="append",default=[],
                         help="Question to ask the local OCOP agent; repeatable")
     parser.add_argument("--dpi",type=int,default=110,
@@ -209,8 +211,18 @@ def main()->None:
 
         from ai_core.processing.ocop.knowledge_extract import extract_artifacts
         knowledge_dir=processed/"knowledge"
+        semantic_client=None
+        semantic_workers=1
+        semantic_gleanings=0
+        if args.semantic_extract:
+            from ai_core.orchestration.ocop.llm import make_extraction_client, extraction_workers, extraction_gleanings
+            semantic_client=make_extraction_client()
+            semantic_workers=extraction_workers()
+            semantic_gleanings=extraction_gleanings()
         knowledge_manifest=extract_artifacts(output_root,input_dir=pages_dir,
-            output_dir=knowledge_dir,max_pages=len(pages))
+            output_dir=knowledge_dir,max_pages=len(pages),semantic_client=semantic_client,
+            semantic_workers=semantic_workers,semantic_gleanings=semantic_gleanings,
+            semantic_cache_dir=processed/'semantic_cache')
 
         from ai_core.graph.ocop.builder import build_graph
         graph_manifest=build_graph(knowledge_dir,processed/"graph",allow_partial=True)

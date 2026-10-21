@@ -1,5 +1,6 @@
 """Declarative candidate shape audit. Reports only; never repairs candidates."""
 from collections import Counter, defaultdict
+import re
 from ai_core.domain.ocop_citations import quote_bbox
 from .star_requirements import SHEET
 
@@ -47,7 +48,7 @@ def audit_shapes(units, layers, *, max_page_area_ratio=0.35, bbox_tolerance=2.0)
     page_boxes={}
     framework=set()
     for u in units:
-        if u.get('structured',{}).get('source_kind')=='ocop_framework':
+        if u.get('structured',{}).get('source_kind') in {'ocop_framework','ocop_historical'}:
             framework.add(u['source_id'])
         if u.get('unit_kind')=='page':
             for span in u.get('spans',[]):
@@ -68,7 +69,7 @@ def audit_shapes(units, layers, *, max_page_area_ratio=0.35, bbox_tolerance=2.0)
         if kind=='CriterionSheet':
             # Index-only sheets have no actual scoring header/table yet.
             actual=any(e['source_id']==u['source_id'] and
-                any(m[1]==str(attrs.get('sheet_number')) for m in SHEET.finditer(u.get('text','')))
+                any(str(int(m[1]))==str(attrs.get('sheet_number')) for m in SHEET.finditer(u.get('text','')))
                 for u in units)
             actual=actual or bool(children[(e['entity_id'],'HAS_CRITERION')])
             if not actual:
@@ -98,7 +99,20 @@ def audit_shapes(units, layers, *, max_page_area_ratio=0.35, bbox_tolerance=2.0)
                         abs(a-b)>bbox_tolerance for a,b in zip(box,expected)):
                     report('citation_quote_geometry_mismatch',e,citation=ref,expected_bbox=expected)
     for sid in sorted(framework):
-        for kind,expected in [('CriterionSheet',26),('StarLevel',5)]:
+        sheets=set(); stars=set()
+        for unit in units:
+            if unit['source_id']!=sid:
+                continue
+            cells=unit.get('structured',{}).get('cells',[])
+            for cell in cells:
+                if re.match(r'^\s*Bộ\s+sản\s+phẩm\s*:',str(cell.get('text','')),re.I):
+                    sheets.update(str(int(c['text'])) for c in cells if c['row']==cell['row']
+                                  and c['col']<cell['col'] and re.fullmatch(r'\d{1,2}',str(c.get('text','')).strip()))
+            stars.update(re.findall(r'\bhạng\s+([1-5])\s+sao',unit.get('text',''),re.I))
+        for kind,observed in [('CriterionSheet',sheets),('StarLevel',stars)]:
+            if not observed:
+                continue  # no source index/thresholds observed: do not invent an expected count
+            expected=len(observed)
             count=sum(e['source_id']==sid and e['kind']==kind for e in entities)
             if count!=expected:
                 report('framework_count',{'source_id':sid,'kind':kind},expected=expected,observed=count)

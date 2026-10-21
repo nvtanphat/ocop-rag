@@ -31,11 +31,11 @@ def extract_star_requirements(units, kinds, candidate_sets, index, entities,
                 'interpretation_verified':False, **(attrs or {})})
 
     article3 = {(e.source_id,r.evidence_unit_id) for e in entities.values()
-                if e.kind == EntityType.ARTICLE and e.attributes.get('article_number') == '3'
+                if e.kind == EntityType.ARTICLE and re.search(r'phân\s+hạng|xếp\s+hạng|bộ\s+tiêu\s+chí', str(e.attributes.get('title_candidate') or ''), re.I)
                 for r in e.evidence}
     for unit in units:
         sid = unit['source_id']
-        if kinds.get(sid) != 'ocop_framework' or (sid,unit['unit_id']) not in article3:
+        if kinds.get(sid) not in {'ocop_framework','ocop_historical'} or (sid,unit['unit_id']) not in article3:
             continue
         for statement in sentences(unit.get('text') or ''):
             level = re.search(r'\bhạng\s+([1-5])\s+sao',statement,re.I)
@@ -57,16 +57,26 @@ def extract_star_requirements(units, kinds, candidate_sets, index, entities,
     pages = defaultdict(set)
     headers = defaultdict(dict)
     legends = defaultdict(list)
+    boundaries = defaultdict(list)
+    ambiguous_headers = defaultdict(set)
     for unit in units:
         sid = unit['source_id']
-        if kinds.get(sid) != 'ocop_framework' or not unit.get('spans'):
+        if kinds.get(sid) not in {'ocop_framework','ocop_historical'} or not unit.get('spans'):
             continue
         page = int(unit['spans'][0]['pdf_page'])
         pages[sid].add(page)
         text = unit.get('text') or ''
-        header = SHEET.search(text)
-        if header:
-            headers[sid][page] = header[1]
+        record = {'source_id':sid,'evidence_unit_id':unit['unit_id'],'pdf_page':page}
+        if unit.get('unit_kind') != 'page' and re.search(r'^\s*Phụ\s+lục\s+[IVX]+\b',text,re.I|re.M):
+            boundaries[sid].append(page)
+        for header in SHEET.finditer(text) if unit.get('unit_kind') != 'page' else []:
+            title=text[header.start():].splitlines()[0]
+            ev=ref(record,index,text=title)
+            key=(page,ev.bbox[1] if ev.bbox else 0)
+            number=str(int(header[1]))
+            if key in headers[sid] and headers[sid][key]!=number:
+                ambiguous_headers[sid].add(key)
+            headers[sid][key] = number
         if unit.get('unit_kind') != 'page' and LEGEND.search(text):
             observed = defaultdict(set)
             for match in MAPPING.finditer(text):
@@ -84,11 +94,12 @@ def extract_star_requirements(units, kinds, candidate_sets, index, entities,
                 omitted['star_legend_mapping_not_observed'] += 1
                 continue
             record = {'source_id':sid,'evidence_unit_id':unit['unit_id'],'pdf_page':page}
-            legends[sid].append((page,mapping,ref(record,index,text=text)))
+            ev=ref(record,index,text=text)
+            legends[sid].append(((page,ev.bbox[1] if ev.bbox else 0),mapping,ev))
 
     for row in candidate_sets.get('criterion_candidates',[]):
         sid = row['source_id']
-        if kinds.get(sid) != 'ocop_framework':
+        if kinds.get(sid) not in {'ocop_framework','ocop_historical'}:
             continue
         uid = row['evidence_unit_id']
         unit = index[uid]
@@ -118,15 +129,19 @@ def extract_star_requirements(units, kinds, candidate_sets, index, entities,
             continue
         level, observed_in = next(iter(marks.items()))
         page = int(row.get('pdf_page') or unit['spans'][0]['pdf_page'])
-        starts = [p for p in headers[sid] if p <= page]
+        top=min((c['bbox'][1] for c in cells if c.get('bbox')),default=0)
+        starts = [p for p in headers[sid] if p <= (page,top)]
         if not starts:
             omitted['option_star_missing_sheet_header'] += 1
             continue
         start = max(starts)
-        next_start = min((p for p in headers[sid] if p > start),default=float('inf'))
+        if start in ambiguous_headers[sid] or any(start[0]<b<=page for b in boundaries[sid]):
+            omitted['option_star_ambiguous_or_closed_sheet']+=1
+            continue
+        next_start = min((p for p in headers[sid] if p > start),default=(float('inf'),float('inf')))
         matches = [(p,mapping,ev) for p,mapping,ev in legends[sid]
                    if start <= p < next_start and level in mapping
-                   and all(pn in pages[sid] for pn in range(start,max(page,p)+1))]
+                   and all(pn in pages[sid] for pn in range(start[0],max(page,p[0])+1))]
         if len(matches) != 1:
             omitted['option_star_missing_unambiguous_sheet_legend'] += 1
             continue

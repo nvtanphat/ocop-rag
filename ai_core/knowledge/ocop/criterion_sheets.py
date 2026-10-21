@@ -13,6 +13,8 @@ def _norm(text):
 
 def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omitted,add,link,ref):
     headers=defaultdict(dict)
+    boundaries=defaultdict(list)
+    ambiguous_headers=defaultdict(set)
 
     def attach(eid,ev):
         if ev not in entities[eid].evidence:
@@ -27,10 +29,12 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
 
     for u in units:
         sid=u['source_id']
-        if kinds.get(sid)!='ocop_framework' or not u.get('spans'):
+        if kinds.get(sid) not in {'ocop_framework','ocop_historical'} or not u.get('spans'):
             continue
         page=int(u['spans'][0]['pdf_page']);text=u.get('text') or ''
         record={'source_id':sid,'evidence_unit_id':u['unit_id'],'pdf_page':page}
+        if u['unit_kind'] != 'page' and re.search(r'^\s*Phụ\s+lục\s+[IVX]+\b',text,re.I|re.M):
+            boundaries[sid].append(page)
         if u['unit_kind']=='article':
             match=re.search(r'(\d+)\s+nhóm\s+sản\s+phẩm\s*:\s*(.*?)(?:\.\s*Danh\s+mục)',text,re.I|re.S)
             if match:
@@ -53,6 +57,8 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
         # Index entries are explicit numbered rows, not assumed form pages.
         for cell in u.get('structured',{}).get('cells',[]):
             label=str(cell.get('text') or '').strip()
+            if re.match(r'^\d{1,2}\s*Bộ\s+sản\s+phẩm\s*:',label,re.I):
+                omitted['sheet_index_number_joined_to_label']+=1
             if not re.match(r'^Bộ\s+sản\s+phẩm\s*:',label,re.I):
                 continue
             same=[c for c in u['structured']['cells'] if c['row']==cell['row'] and c['col']<cell['col']]
@@ -60,31 +66,38 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
             if number:
                 row={**record,'row':cell['row'],'table_id':u['structured'].get('table_id')}
                 ev=ref(row,index)
-                sheet(sid,number,label,row,ev)
+                sheet(sid,str(int(number)),label,row,ev)
             elif same:
                 row={**record,'row':cell['row'],'table_id':u['structured'].get('table_id')}
                 ev=ref(row,index)
                 add(EntityType.CRITERION_SHEET,label,row,ev,key=f'unknown-sheet:{u["unit_id"]}:{cell["row"]}',
                     attributes={'sheet_number':None,'group_candidate':None,'subgroup_candidate':None})
                 omitted['sheet_index_missing_number']+=1
-        header=SHEET.search(text) if u['unit_kind']!='page' else None
-        if not header:
-            continue
-        ev=ref(record,index,text=text)
-        number=header[1]
-        sheet_id=sheet(sid,number,text[header.start():].splitlines()[0],record,ev)
-        headers[sid][page]=(number,sheet_id,ev)
-        classification=re.search(r'\(\s*Sản\s+phẩm\s*:\s*(.*?)\.\s*Nhóm\s*:\s*([^\)]+)',text,re.I|re.S)
-        if classification:
-            group_text,subgroup_text=(v.strip() for v in classification.groups())
-            group=add(EntityType.PRODUCT_GROUP,' '.join(group_text.split()),record,ev,key=f'group:{_norm(group_text)}')
-            sub=add(EntityType.PRODUCT_SUBGROUP,' '.join(subgroup_text.split()),record,ev,
-                    key=f'subgroup:{_norm(group_text)}:{_norm(subgroup_text)}')
-            link('HAS_SUBGROUP',group,sub,ev);link('USES_SHEET',sub,sheet_id,ev)
-            entities[sheet_id].attributes.update(group_candidate=' '.join(group_text.split()),
-                                                 subgroup_candidate=' '.join(subgroup_text.split()))
-        else:
-            omitted['sheet_header_missing_classification']+=1
+        matches=list(SHEET.finditer(text)) if u['unit_kind']!='page' else []
+        for position,header in enumerate(matches):
+            fragment=text[header.start():matches[position+1].start() if position+1<len(matches) else len(text)]
+            title=fragment.splitlines()[0]
+            position_ev=ref(record,index,text=title)
+            ev=ref(record,index,text=fragment)
+            number=str(int(header[1]))
+            sheet_id=sheet(sid,number,title,record,ev)
+            top=position_ev.bbox[1] if position_ev.bbox else 0
+            key=(page,top)
+            if key in headers[sid] and headers[sid][key][0]!=number:
+                omitted['sheet_headers_geometry_ambiguous']+=1
+                ambiguous_headers[sid].add(key)
+            headers[sid][key]=(number,sheet_id,ev)
+            classification=re.search(r'\(\s*Sản\s+phẩm\s*:\s*(.*?)\.\s*Nhóm\s*:\s*([^\)]+)',fragment,re.I|re.S)
+            if classification:
+                group_text,subgroup_text=(v.strip() for v in classification.groups())
+                group=add(EntityType.PRODUCT_GROUP,' '.join(group_text.split()),record,ev,key=f'group:{_norm(group_text)}')
+                sub=add(EntityType.PRODUCT_SUBGROUP,' '.join(subgroup_text.split()),record,ev,
+                        key=f'subgroup:{_norm(group_text)}:{_norm(subgroup_text)}')
+                link('HAS_SUBGROUP',group,sub,ev);link('USES_SHEET',sub,sheet_id,ev)
+                entities[sheet_id].attributes.update(group_candidate=' '.join(group_text.split()),
+                                                     subgroup_candidate=' '.join(subgroup_text.split()))
+            else:
+                omitted['sheet_header_missing_classification']+=1
 
     missing=sum(1 for entity in entities.values()
         if entity.kind==EntityType.CRITERION_SHEET and
@@ -98,10 +111,17 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
     for (sid,uid,table_id),records in sorted(rows.items(),key=lambda item:(item[0][0],
             int(index[item[0][1]]['spans'][0]['pdf_page']),str(item[0][2]))):
         page=int(index[uid]['spans'][0]['pdf_page'])
-        starts=[p for p in headers[sid] if p<=page]
+        table_cells=index[uid].get('structured',{}).get('cells',[])
+        table_top=min((c['bbox'][1] for c in table_cells if c.get('bbox')),default=0)
+        starts=[p for p in headers[sid] if p<=(page,table_top)]
         if not starts:
             continue
         start=max(starts);number,sheet_id,header_ev=headers[sid][start]
+        if start in ambiguous_headers[sid]:
+            continue
+        if any(start[0]<boundary<=page for boundary in boundaries[sid]):
+            omitted['score_table_after_next_annex']+=1
+            continue
         state=states.get(sid)
         if not state or state['sheet']!=sheet_id:
             state={'sheet':sheet_id,'part':None,'numbers':{},'parent':None,'page':page,'table':table_id}

@@ -43,9 +43,18 @@ def test_sheet_observed_vs_index_only_and_framework_counts():
             'unit_kind':'paragraph','structured':{'source_kind':'ocop_framework'},'spans':[]}]
     result=audit_shapes(units,{'business_entities':[ent('CriterionSheet',{'sheet_number':'1'})]})
     assert result['counts']['sheet_requires_criterion']==1
-    assert result['counts']['framework_count']==2
+    assert 'framework_count' not in result['counts']  # no source index observed
     units[0]['text']='index only'
     assert audit_shapes(units,{'business_entities':[ent('CriterionSheet',{'sheet_number':'1'})]})['counts']['sheet_source_not_observed']==1
+
+
+def test_framework_count_comes_from_observed_index_instead_of_fixed_26():
+    units=[{'unit_id':'index','source_id':'S','text':'Index','unit_kind':'table','spans':[],
+            'structured':{'source_kind':'ocop_framework','cells':[
+                {'row':0,'col':0,'text':'01'}, {'row':0,'col':1,'text':'Bộ sản phẩm: First'},
+                {'row':1,'col':0,'text':'02'}, {'row':1,'col':1,'text':'Bộ sản phẩm: Second'}]}}]
+    result=audit_shapes(units,{'business_entities':[ent('CriterionSheet',{'sheet_number':'1'})]})
+    assert [v['expected'] for v in result['violations'] if v['constraint']=='framework_count']==[2]
 
 
 def test_bbox_threshold_configurable_and_non_mutating():

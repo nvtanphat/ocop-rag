@@ -10,7 +10,7 @@ import unicodedata
 from collections import defaultdict
 from ocop_contracts.ids import stable_id
 
-FORM_HEADER=re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?([1-3])\b",re.I)
+FORM_HEADER=re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?(\d{1,3})(?!\d)",re.I)
 AMOUNT=re.compile(r"(?<!\d)(\d{1,3})(?:[,.]0+)?\s*(?:điểm)?\s*$",re.I)
 STARS=re.compile(r"(?<!\d)([1-5])\s*sao\b",re.I)
 
@@ -83,6 +83,31 @@ def _resolved_value(row: dict, columns: dict[str,int], role: str) -> str | None:
     return value or None
 
 
+def recognition_layout_for_unit(unit: dict, units) -> tuple[int | None, dict[str,int]]:
+    """Re-derive a missing header from adjacent source tables, never supplied column roles."""
+    prior=None
+    tables=[u for u in units if u.get('source_id')==unit.get('source_id')
+            and u.get('unit_kind') in {'table','criterion_table_candidate'} and u.get('spans')]
+    tables.sort(key=lambda u:(u['spans'][0]['pdf_page'],
+        min((c['bbox'][1] for c in u.get('structured',{}).get('cells',[]) if c.get('bbox')),default=0)))
+    for current in tables:
+        rows=_row_text(current.get('structured',{}).get('cells',[]))
+        header,columns=_recognition_layout(rows)
+        page=current['spans'][0]['pdf_page']
+        count=current.get('structured',{}).get('col_count') or max(
+            (int(c['col'])+1 for r in rows for c in r['cells']),default=0)
+        has_sequence_header=any(_header_key(c.get('text')) in _HEADER_ROLES['sequence'] for r in rows for c in r['cells'])
+        if columns:
+            prior=(page,count,columns)
+        elif not has_sequence_header and prior and page in {prior[0],prior[0]+1} and count==prior[1]:
+            columns=prior[2];header=-1;prior=(page,count,columns)
+        else:
+            prior=None
+        if current.get('unit_id')==unit.get('unit_id'):
+            return header,columns
+    return None,{}
+
+
 def _compact(value: str | None) -> str | None:
     compact=" ".join(str(value or "").split())
     return compact or None
@@ -125,7 +150,7 @@ def candidates(units:list[dict],source_kinds:dict[str,str])->dict[str,list[dict]
     for unit in units:
         sid=unit["source_id"];uid=unit["unit_id"];kind=source_kinds.get(sid,"")
         page=unit["spans"][0]["pdf_page"]
-        if kind=="ocop_framework" and unit["unit_kind"]=="form":
+        if kind in {"ocop_framework","ocop_historical"} and unit["unit_kind"]=="form":
             m=FORM_HEADER.search(unit["text"][:140]);key=(sid,m.group(1)) if m else (sid,uid)
             if key not in seen_forms:
                 seen_forms.add(key)
@@ -164,7 +189,7 @@ def candidates(units:list[dict],source_kinds:dict[str,str])->dict[str,list[dict]
                     "crop_score_candidate":candidate_score,
                     "review_status":"needs_review"})
         elif kind=="recognition_decision":
-            header_row,layout_columns=_recognition_layout(rows)
+            header_row,layout_columns=recognition_layout_for_unit(unit,units)
             for row in rows:
                 if not row["text"]:continue
                 is_header=header_row is not None and int(row["row"])==header_row

@@ -15,7 +15,7 @@ import json
 
 from ai_core.knowledge.ocop.authorities import find_authorities, resolve
 from ai_core.knowledge.ocop.procedures import _subjects, _scope_header, ACTION, collective_authorities
-from ai_core.processing.ocop.business_candidates import _recognition_layout, _row_text
+from ai_core.processing.ocop.business_candidates import _row_text
 from ai_core.knowledge.ocop.shapes import PARENT_SHAPES
 from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_document_number
 
@@ -172,10 +172,11 @@ def _option_parent_supported(source, target, units):
 
 
 def _recognition_role(node, units, role):
+    from ai_core.processing.ocop.business_candidates import recognition_layout_for_unit
     for ref in node.get("citations", []):
         unit = units.get(ref.get("evidence_unit_id"), {})
         rows = _row_text(unit.get("structured", {}).get("cells", []))
-        header, columns = _recognition_layout(rows)
+        header, columns = recognition_layout_for_unit(unit, units.values())
         if header is None or role not in columns:
             continue
         for row in rows:
@@ -188,12 +189,13 @@ def _recognition_role(node, units, role):
 
 
 def _record_rows(node, units):
+    from ai_core.processing.ocop.business_candidates import recognition_layout_for_unit
     for ref in node.get("citations", []):
         if ref.get("row") is None or ref.get("cell_id"):
             continue
         unit = units.get(ref["evidence_unit_id"], {})
         rows = _row_text(unit.get("structured", {}).get("cells", []))
-        header, columns = _recognition_layout(rows)
+        header, columns = recognition_layout_for_unit(unit, units.values())
         if header is None or not {"sequence", "product", "producer"} <= columns.keys():
             continue
         for row in rows:
@@ -228,7 +230,7 @@ def _entity_typed(node, units):
         )
     if kind == "Organization":
         return bool(
-            re.match(r"(?:htx|hợp tác xã|công ty|doanh nghiệp|hộ kinh doanh|tổ hợp tác)\s+\S+", norm(label))
+            re.match(r"(?:htx|hợp tác xã|công ty|doanh nghiệp|hộ kinh doanh|hộ sản xuất|cơ sở|tổ hợp tác)\s+\S+", norm(label))
         )
     if kind == "Product":
         literal = re.escape(norm(label))

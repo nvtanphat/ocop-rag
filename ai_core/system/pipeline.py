@@ -267,6 +267,11 @@ class OcopSystemPipeline:
                         graph = old_graph
                     else:
                         from ai_core.graph.ocop.review import ledger_path
+                        prior_graph = self.data / 'graph'
+                        if (prior_graph / 'snapshots').is_dir():
+                            shutil.copytree(prior_graph / 'snapshots', stage / 'graph' / 'snapshots', dirs_exist_ok=True)
+                            if (prior_graph / 'manifest.json').is_file():
+                                shutil.copy2(prior_graph / 'manifest.json', stage / 'graph' / 'manifest.json')
                         graph = build_graph(stage / "knowledge", stage / "graph",review_decisions=ledger_path(self.root))
                     index = build_index(
                         knowledge=stage / "knowledge", index_dir=stage / "index",

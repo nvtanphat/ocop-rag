@@ -280,6 +280,7 @@ def record_decision(root,target_id,digest,decision,reviewer,*,correction=None,no
         if decision=='correct' and item['type']=='EvidenceUnit':
             raise ValueError('approve or reject the literal evidence unit; correct the business assertion instead')
         row={'target_id':target_id,'content_hash':digest,'decision':decision,'correction':correction,
+             'graph_version':json.loads((Path(root)/'data/processed/ocop/graph/manifest.json').read_text(encoding='utf-8'))['graph_version'],
              'reviewer':reviewer.strip(),'timestamp':datetime.now(timezone.utc).isoformat(),'notes':notes,
              'target_locator':{'source_id':item['source_id'],'type':item['type'],
                 'source_pages':[{'pdf_page':r.get('pdf_page'),'source_sha256':r.get('source_sha256')}

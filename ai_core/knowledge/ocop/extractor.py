@@ -452,6 +452,18 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
     extract_procedures(units,source_kinds,candidate_sets,evidence_by_id,entities,
                        omitted,add,link,_ref,_rule_sentences)
 
+    replaced_by={}
+    for relation in relations.values():
+        if relation.relation_type in {'REPLACES','AMENDS'}:
+            old=entities[relation.target_entity_id].source_id
+            new=entities[relation.source_entity_id].source_id
+            replaced_by.setdefault(old,set()).add(new)
+    for entity in entities.values():
+        if source_kinds.get(entity.source_id)=='ocop_historical':
+            entity.attributes['historical']=True
+            if entity.source_id in replaced_by:
+                entity.attributes['superseded_by']=','.join(sorted(replaced_by[entity.source_id]))
+                entity.attributes['supersession_interpretation_verified']=False
     typed_entities=sorted(entities.values(),key=lambda x:x.entity_id)
     typed_relations=sorted(relations.values(),key=lambda x:x.relation_id)
     validate_business_graph(typed_entities,typed_relations,source_registry=source_registry)

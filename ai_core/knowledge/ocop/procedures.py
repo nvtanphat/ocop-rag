@@ -6,12 +6,6 @@ from ai_core.processing.ocop.temporal_candidates import _DMY,_iso
 from .contracts import EntityType
 from .authorities import find_authorities, resolve
 
-AUTHORITY=re.compile(
-    r'(?:Chủ\s+tịch\s+)?(?:UBND|Ủy\s+ban\s+nhân\s+dân|Uỷ\s+ban\s+nhân\s+dân)\s+(?:cấp\s+(?:xã|tỉnh)|phường\s+Thành\s+Sen)'
-    r'|(?:Bộ\s+trưởng\s+)?Bộ\s+(?:Nông\s+nghiệp\s+và\s+Môi\s+trường|Y\s+tế|Công\s+Thương|Khoa\s+học\s+và\s+Công\s+nghệ)'
-    r'|(?:Chủ\s+tịch\s+)?(?:Tổ\s+tư\s+vấn\s+)?Hội\s+đồng(?:\s+(?:đánh\s+giá,?\s+phân\s+hạng(?:\s+sản\s+phẩm)?(?:\s+OCOP)?|OCOP))?\s+cấp\s+(?:tỉnh|trung\s+ương)'
-    r'|Phòng\s+Nông\s+nghiệp\s+và\s+Môi\s+trường'
-    r'|cơ\s+quan\s+tham\s+mưu\s+quản\s+lý\s+OCOP(?:\s+cấp\s+tỉnh|\s+của\s+Bộ(?:\s+Nông\s+nghiệp\s+và\s+Môi\s+trường)?)?',re.I)
 ACTION=re.compile(r'\s*(?:sẽ\s+)?(?:chủ\s+trì|tổ[\s.]+chức|tiếp\s+nhận|đánh\s+giá|kiểm\s+tra|giao|thành\s+lập|quyết\s+định|ban\s+hành|công\s+nhận|thu\s+hồi|chuẩn\s+bị|rà\s+soát|tăng\s+cường|chỉ\s+đạo|thông\s+tin|tổng\s+hợp|phối\s+hợp|hướng\s+dẫn|thông\s+báo|xem\s+xét|đề\s+nghị|gửi|có\s+trách\s+nhiệm|có\s+văn\s+bản|chịu\s+trách\s+nhiệm)',re.I)
 TRIGGER=re.compile(r'hồ\s+sơ|công\s+bố|đăng\s+ký|nộp|tiếp\s+nhận|công\s+nhận|đánh\s+giá|thu\s+hồi|rà\s+soát|thương\s+mại\s+điện\s+tử|giám\s+sát|liên\s+hệ|hướng\s+dẫn',re.I)
 DURATION=re.compile(r'(?<!\d)(\d{1,3})\s*(ngày\s+làm\s+việc|ngày(?!\s+l[àảa]m))\b',re.I)
@@ -121,10 +115,14 @@ def _deadline(text):
 
 
 def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,ref,sentences):
-    allowed={'ocop_framework','ocop_amendment','local_guidance','food_safety_decree','food_safety_resolution'}
+    allowed={'ocop_framework','ocop_historical','ocop_amendment','local_guidance','food_safety_decree','food_safety_resolution'}
     covered=set();seen=set();forms_seen=set()
+    procedure_articles={(article.source_id, article.attributes.get('article_number')) for article in entities.values()
+        if article.kind==EntityType.ARTICLE and re.search(
+            r'trình\s+tự|thủ\s+tục|hồ\s+sơ|đánh\s+giá|công\s+nhận|thu\s+hồi|trách\s+nhiệm|tổ\s+chức\s+thực\s+hiện',
+            str(article.attributes.get('title_candidate') or ''), re.I)}
     framework_units={e.evidence_unit_id for article in entities.values()
-        if article.kind==EntityType.ARTICLE and article.attributes.get('article_number') in {'4','5','6','7','8'}
+        if article.kind==EntityType.ARTICLE and (article.source_id, article.attributes.get('article_number')) in procedure_articles
         for e in article.evidence}
 
     def attach(eid,ev):
@@ -271,7 +269,7 @@ def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,re
 
     clauses=[e for e in entities.values() if e.kind==EntityType.CLAUSE and kinds.get(e.source_id) in allowed]
     for clause in clauses:
-        if kinds[clause.source_id]=='ocop_framework' and clause.attributes.get('article_number') not in {'4','5','6','7','8'}:
+        if kinds[clause.source_id] in {'ocop_framework','ocop_historical'} and (clause.source_id, clause.attributes.get('article_number')) not in procedure_articles:
             continue
         if not any(TRIGGER.search(e.quote) for e in clause.evidence):
             continue
@@ -299,7 +297,7 @@ def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,re
             if annex is None:
                 omitted['form_reference_missing_annex']+=1
         if kinds[sid]=='local_guidance':
-            area=re.search(r'phường\s+Thành\s+Sen\b',text,re.I)
+            area=re.search(r'(?:phường|xã|thị trấn|huyện|quận|thành phố|tỉnh)\s+[A-ZĐ][^\W\d_]*(?:\s+[A-ZĐ][^\W\d_]*){0,4}',text)
             if area:
                 area_ev=ref(record,index,text=area[0])
                 guidance=add(EntityType.LOCAL_GUIDANCE,sid,record,area_ev,key='local-guidance')
@@ -320,19 +318,23 @@ def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,re
     # Document requirements in a criterion heading, option, or explicit note.
     # Select a parent only from an observed row or a continuity-backed parent
     # whose evidence actually includes this table unit.
-    criteria=[e for e in entities.values() if e.kind==EntityType.CRITERION]
+    options_by_row=set()
+    criteria_by_unit={}
+    for entity in entities.values():
+        for proof in entity.evidence:
+            if entity.kind==EntityType.SCORE_OPTION:
+                options_by_row.add((entity.source_id,proof.evidence_unit_id,proof.row))
+            elif entity.kind==EntityType.CRITERION:
+                criteria_by_unit.setdefault((entity.source_id,proof.evidence_unit_id),[]).append(entity)
     for row in candidates.get('criterion_candidates',[]):
-        if row.get('score_candidate') is not None or any(
-                e.kind==EntityType.SCORE_OPTION and e.source_id==row['source_id'] and
-                any(r.evidence_unit_id==row['evidence_unit_id'] and r.row==row['row'] for r in e.evidence)
-                for e in entities.values()):
+        if row.get('score_candidate') is not None or (row['source_id'],row['evidence_unit_id'],row['row']) in options_by_row:
             continue  # scored alternatives describe assessment, not submitted papers
         label=str(row.get('label_candidate') or '')
         if not DOCUMENT.search(label):
             continue
         uid=row['evidence_unit_id'];page=int(row['pdf_page']);sid=row['source_id']
-        preceding=[e for e in criteria if e.source_id==sid and any(r.evidence_unit_id==uid for r in e.evidence)
-            and (e.evidence[0].pdf_page<page or (e.evidence[0].pdf_page==page and
+        preceding=[e for e in criteria_by_unit.get((sid,uid),[])
+            if (e.evidence[0].pdf_page<page or (e.evidence[0].pdf_page==page and
                  e.attributes.get('row',10**9)<=row['row']))]
         if not preceding:
             omitted['evidence_requirement_without_criterion_parent']+=1

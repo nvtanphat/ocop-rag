@@ -36,7 +36,7 @@ EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "HAS_RECORD": (frozenset({"RecognitionDecision"}), frozenset({"RecognitionRecord"})),
     "DECLARED_BY": (frozenset({"RecognitionRecord"}), frozenset({"Organization"})),
     "OWNED_BY": (frozenset({"Product"}), frozenset({"Organization"})),
-    "BASED_ON": (frozenset({"RecognitionDecision"}), frozenset({"Regulation","SourceDocument"})),
+    "BASED_ON": (frozenset({"RecognitionDecision","SourceDocument"}), frozenset({"Regulation","SourceDocument"})),
     "APPLIES_IN": (frozenset({"LocalGuidance"}), frozenset({"AdministrativeArea"})),
     "AMENDS": (frozenset({"Regulation","SourceDocument"}), frozenset({"Regulation","SourceDocument"})),
     "REPLACES": (frozenset({"Regulation","SourceDocument"}), frozenset({"Regulation","SourceDocument"})),

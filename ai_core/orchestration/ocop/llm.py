@@ -51,6 +51,7 @@ class OllamaClient(_RouteMixin):
 class OpenAICompatClient(_RouteMixin):
     """Chat Completions over HTTPS. The API key is read from the environment, never logged or persisted."""
     def __init__(self,model:str,base_url:str,api_key:str,timeout:float=120,reasoning_budget:int=2048,retries:int=4):
+        if not model or not model.strip():raise RuntimeError("Extraction/answer model is empty; configure OCOP_EXTRACT_LLM_MODEL or OCOP_ANSWER_LLM_MODEL")
         if not api_key:raise RuntimeError("OpenAI-compatible API key is not set (OCOP_EXTRACT_OPENAI_API_KEY or OCOP_ANSWER_OPENAI_API_KEY)")
         self.model=model;self.url=base_url.rstrip("/");self._key=api_key
         self.timeout=timeout;self.reasoning_budget=reasoning_budget;self.retries=retries

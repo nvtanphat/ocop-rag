@@ -75,7 +75,7 @@ def audit_arithmetic(units, layers):
             parts.setdefault(src,set()).add(dst)
     references={}
     for unit in units:
-        if unit.get('unit_kind')!='article' or not re.match(r'\s*Điều\s+3\b',unit.get('text',''),re.I):
+        if unit.get('unit_kind')!='article' or not re.search(r'Phần\s+[ABC]\s*:',unit.get('text',''),re.I):
             continue
         values={}
         headings=list(re.finditer(r'Phần\s+([ABC])\s*:',unit['text'],re.I))

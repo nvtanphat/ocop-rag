@@ -18,6 +18,9 @@ import json
 import os
 import re
 import tempfile
+import logging
+import sys
+from threading import BoundedSemaphore, Lock
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -29,8 +32,9 @@ from .contracts import (
     EntityType, ENTITY_ATTRIBUTE_KEYS, RELATION_TYPES, validate_business_graph,
 )
 
-PROMPT_VERSION = code_fingerprint('semantic', [Path(__file__), Path(__file__).with_name('contracts.py'),
-    Path(__file__).resolve().parents[2]/'orchestration/ocop/llm.py'])
+PROMPT_VERSION = code_fingerprint('semantic', [Path(__file__), Path(__file__).with_name('contracts.py')])
+LOG = logging.getLogger(__name__)
+_GLOBAL_CALLS = BoundedSemaphore(4)
 CHUNK_CHARS = 2500
 CHUNK_OVERLAP = 200
 
@@ -56,7 +60,7 @@ KIND_DEFINITIONS = {
                  'an explanatory parenthesis); NOT an answer option (rows starting with □), NOT eligibility '
                  'of applicants',
     'EvidenceType': 'a named document/paper that must be submitted or kept as proof',
-    'ProductGroup': 'one of the six OCOP product groups (ngành/nhóm sản phẩm), copied whole: '
+    'ProductGroup': 'an explicitly listed OCOP product group (ngành/nhóm sản phẩm), copied whole: '
                     '"dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch" is ONE group; '
                     'NOT a "Bộ sản phẩm" (criterion sheet) name and NOT a fragment of a group name',
     'ProductSubgroup': 'a product subgroup printed after "Nhóm:" in a sheet heading; '
@@ -358,15 +362,25 @@ def _ask(client: StructuredLLM, cache: _Cache, prompt: str) -> dict:
         structured = getattr(client, 'chat_structured', None)
         for token_limit in (1600, 4096):
             try:
-                raw = (structured(SYSTEM, prompt, schema=response_schema(), max_tokens=token_limit)
-                       if callable(structured) else client.chat(SYSTEM, prompt, format_json=True, max_tokens=token_limit))
+                with _GLOBAL_CALLS:
+                    raw = (structured(SYSTEM, prompt, schema=response_schema(), max_tokens=token_limit)
+                           if callable(structured) else client.chat(SYSTEM, prompt, format_json=True, max_tokens=token_limit))
                 break
             except RuntimeError as exc:
+                if 'response filtered' in str(exc):
+                    raw = json.dumps({'_omission': 'provider_content_filter'})
+                    break
+                if 'truncated' in str(exc) and token_limit == 4096:
+                    cache.put(key, json.dumps({'_split': True}))
                 if 'truncated' not in str(exc) or token_limit == 4096:
                     raise
     response = json.loads(raw)
     if not isinstance(response, dict):
-        raise ValueError('not an object')
+        response = {'_omission': 'response_not_object'}
+        raw = json.dumps(response)
+    if response.get('_split'):
+        from ai_core.orchestration.ocop.llm import ModelOutputTruncated
+        raise ModelOutputTruncated('cached chunk split required: response truncated')
     if any(not isinstance(response.get(key, []), list) for key in ('entities', 'relations', 'rules')):
         raise ValueError('extraction collections must be arrays')
     if fresh:
@@ -377,10 +391,15 @@ def _ask(client: StructuredLLM, cache: _Cache, prompt: str) -> dict:
 def _call(client: StructuredLLM, cache: _Cache, body: str, gleanings: int = 0) -> dict:
     """First pass plus GraphRAG-style gleaning passes that ask only for missed items."""
     merged = _ask(client, cache, body)
+    if merged.get('_omission'):
+        return merged
     for _ in range(gleanings):
         previous = {k: merged.get(k) or [] for k in ('entities', 'relations', 'rules')}
         extra = _ask(client, cache, f"{body}\n\n{GLEANING_PROMPT}\nPREVIOUS EXTRACTION:\n"
                                     f"{json.dumps(previous, ensure_ascii=False)}")
+        if extra.get('_omission'):
+            merged.setdefault('_gleaning_omissions',[]).append(extra['_omission'])
+            break
         added = 0
         for k in ('entities', 'relations', 'rules'):
             items = extra.get(k) if isinstance(extra.get(k), list) else []
@@ -404,24 +423,43 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int | None =
                       and u.get('text', '').strip()]
     target_units = eligible_units[:max_units]
     jobs = [(u, start, body) for u in target_units for start, body in _chunks(u['text'])]
+    progress_lock=Lock()
+    attempts=0
 
     def run(job):
+        nonlocal attempts
         try:
-            return _call(client, cache, job[2], gleanings), None
+            return [(job, (_call(client, cache, job[2], gleanings), None))]
         except (RuntimeError, ValueError, TypeError, KeyError, IndexError, OSError) as exc:
-            return None, type(exc).__name__ + (f': {exc}' if isinstance(exc, RuntimeError) else '')
+            if 'truncated' in str(exc) and len(job[2]) > 32:
+                unit, start, body = job
+                half = len(body) // 2
+                LOG.info('split extraction chunk unit=%s start=%d chars=%d', unit['unit_id'], start, len(body))
+                return run((unit, start, body[:half])) + run((unit, start + half, body[half:]))
+            return [(job, (None, type(exc).__name__ + (f': {exc}' if isinstance(exc, RuntimeError) else '')))]
+        finally:
+            with progress_lock:
+                attempts+=1
+                if attempts==1 or attempts%10==0:
+                    print(f'OCOP extraction: chunk attempts={attempts}, selected units={len(target_units)}',
+                          file=sys.stderr,flush=True)
 
     if max_workers == 1:
-        results = [run(job) for job in jobs]
+        batches = [run(job) for job in jobs]
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            results = list(pool.map(run, jobs))
+            batches = list(pool.map(run, jobs))
+    flattened = [item for batch in batches for item in batch]
+    jobs = [job for job, _ in flattened]
+    results = [result for _, result in flattened]
+    LOG.info('extraction finished chunks=%d selected_units=%d', len(jobs), len(target_units))
 
     stats = {'dropped_entities': 0, 'dropped_attributes': 0, 'dropped_relations': 0, 'dropped_rules': 0}
     ent: dict[str, BusinessEntity] = {}
     rel: dict[str, BusinessRelation] = {}
     rules: dict[str, BusinessRule] = {}
     failures, ok_units, failed_units = [], set(), set()
+    terminal_omissions = []
     method = f'llm_candidate:{client.model}'
     for (unit, start, body), (response, error) in zip(jobs, results):
         sid, uid = unit['source_id'], unit['unit_id']
@@ -431,6 +469,13 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int | None =
             failed_units.add(uid)
             continue
         ok_units.add(uid)
+        for reason in response.get('_gleaning_omissions',[]):
+            terminal_omissions.append({'evidence_unit_id': uid, 'chunk_start': start,
+                'chunk_end': start + len(body), 'reason': reason, 'permanent': True, 'pass': 'gleaning'})
+        if response.get('_omission'):
+            terminal_omissions.append({'evidence_unit_id': uid, 'chunk_start': start,
+                'chunk_end': start + len(body), 'reason': response['_omission'], 'permanent': True})
+            continue
         grounder = _Grounder(unit, start, start + len(body))
         by_anchor: dict[tuple[str, str], str] = {}
         by_index: dict[int, tuple[str, str, str]] = {}
@@ -523,6 +568,7 @@ def propose(units: list[dict], client: StructuredLLM, *, max_units: int | None =
                  for u in eligible_units[len(target_units):]]
     omissions.extend({'evidence_unit_id': u['unit_id'], 'reason': 'semantic_unit_failed'}
                      for u in target_units if u['unit_id'] in failed_units)
+    omissions.extend(terminal_omissions)
     return {
         'entities': [e.model_dump(mode='json') for e in ent.values()],
         'relations': [r.model_dump(mode='json') for r in rel.values()],

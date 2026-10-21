@@ -146,6 +146,8 @@ def _with_provenance(row: dict) -> dict:
 
 def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = True,
                 allow_partial: bool = False, review_decisions: Path | None = None) -> dict:
+    prior_active = (json.loads((output / 'manifest.json').read_text(encoding='utf-8')).get('graph_version')
+                    if (output / 'manifest.json').is_file() else None)
     src = json.loads((knowledge / "manifest.json").read_text(encoding="utf-8"))
     source_complete=bool(src.get("complete"))
     if not source_complete and not allow_partial:
@@ -574,8 +576,28 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
             shutil.copyfile(stage/filename,temp_file)
             os.replace(temp_file,output/filename)
         os.replace(stage/"manifest.json",output/"manifest.json")
-        # Historical snapshots remain immutable.
+        _prune_snapshots(output, review_decisions, {graph_version, prior_active})
         (output / 'rejected.jsonl').unlink(missing_ok=True)
         return manifest
     finally:
         shutil.rmtree(stage,ignore_errors=True)
+
+
+def _prune_snapshots(output, ledger, protected):
+    """Keep three recent snapshots plus active and explicitly ledger-pinned ones."""
+    snapshots = (output / 'snapshots').resolve()
+    choices = [p for p in snapshots.iterdir() if p.is_dir() and not p.is_symlink()
+               and re.fullmatch(r'[0-9a-f]{20}', p.name)]
+    protected = set(protected)
+    if ledger and Path(ledger).is_file():
+        for line in Path(ledger).read_text(encoding='utf-8').splitlines():
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            if not event.get('graph_version'):
+                return  # legacy ledger cannot identify its snapshot: preserve provenance
+            protected.add(event['graph_version'])
+    protected.update(p.name for p in sorted(choices, key=lambda p: p.stat().st_mtime_ns, reverse=True)[:3])
+    for path in choices:
+        if path.name not in protected and path.resolve().is_relative_to(snapshots):
+            shutil.rmtree(path)

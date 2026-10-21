@@ -53,6 +53,24 @@ def test_merged_rowspan_is_provenance_bound_not_last_seen():
     assert '1' not in rows[2]['resolved_columns']
 
 
+def test_recognition_continuation_uses_adjacent_header_but_not_missing_owner():
+    from copy import deepcopy
+    header=_recognition_fixture()
+    continuation=deepcopy(header)
+    continuation['unit_id']='unit:continuation'
+    continuation['spans'][0]['pdf_page']=4
+    continuation['structured']['table_id']='table:next'
+    continuation['structured']['cells']=[c for c in continuation['structured']['cells'] if c['row']==1]
+    continuation['text']='1 | HTX Sen Huế | Hạt sen | Thôn A | Nguyễn An | 83,8 | 4 sao'
+    kinds={header['source_id']:'recognition_decision'}
+    rows=candidates([header,continuation],kinds)['recognition_candidates']
+    match=next(r for r in rows if r['evidence_unit_id']=='unit:continuation')
+    assert match['producer_candidate']=='HTX Sen Huế' and match['product_candidate']=='Hạt sen'
+    continuation['spans'][0]['pdf_page']=6
+    rows=candidates([header,continuation],kinds)['recognition_candidates']
+    assert next(r for r in rows if r['evidence_unit_id']=='unit:continuation')['producer_candidate'] is None
+
+
 def test_header_grounded_recognition_inherited_owner_with_proof():
     unit=_recognition_fixture()
     sid=unit['source_id']
