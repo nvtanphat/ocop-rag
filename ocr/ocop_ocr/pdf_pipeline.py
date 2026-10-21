@@ -14,6 +14,9 @@ import math
 import os
 import time
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+import multiprocessing
 from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
@@ -25,7 +28,7 @@ from ocop_ocr.native_extractor import extract_native
 from ocop_contracts.layout import join_blocks_by_line,layout_page
 from ocop_ocr.table_parser import native_tables
 from ocop_ocr.easy_viet_ocr import ENGINE, run_easy_viet_ocr
-from ocop_ocr.pdf_quality import score_page_quality
+from ocop_ocr.pdf_quality import score_page_quality, refresh_attention
 from ocop_ocr.raster_preprocess import prepare_raster, restore_geometry
 from ocop_ocr.profiler import profile_pdf
 from ocop_contracts.ids import code_fingerprint
@@ -162,6 +165,7 @@ def extract_page(page, profile: dict, *, source_id: str, dpi: int = 300,
                     "ocr_noise_candidates":ocr_noise_candidates,
                     "ocr_confidence_mean":round(sum(confidences)/len(confidences),4) if confidences else None,
                     "needs_human_verification":bool(use_ocr or tables or warnings)})
+    refresh_attention(payload)
     if trace is not None:
         trace["page_artifact"] = deepcopy(payload)
     return payload
@@ -229,6 +233,8 @@ def _page_job(job: tuple, *, before_ocr=None) -> dict:
             "needs_human_verification":True,"quarantined":True})
     art["source_sha256"] = digest
     if not art.get("quarantined"):
+        from .legend_proposals import annotate_page_images
+        annotate_page_images(filename, art, digests[1] if len(digests) > 1 else "ocop_framework")
         art["_cache_integrity_sha256"]=_cache_hash(art)
         write_json(cachefile,art)
     return art
@@ -236,6 +242,7 @@ def _page_job(job: tuple, *, before_ocr=None) -> dict:
 
 
 def _record_page(fh, art, counts):
+    refresh_attention(art)
     status="quarantined" if art.get("quarantined") else art["review_status"]
     counts[status]+=1
     counts["ocr_executed"]+=int(art.get("ocr_engine") is not None)
@@ -293,17 +300,56 @@ def _postcorrection_model(root:Path,sources,locked:dict,cache_dir:Path):
     return DiacriticModel.from_lines(lines)
 
 
-def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Path,
+_WORKER_WARMED = False
+
+
+def _worker_init(ocr: bool):
+    if ocr:
+        import torch
+        torch.set_num_threads(2)
+
+
+def _worker_page(job, *, warmup_job=None):
+    def warmup():
+        global _WORKER_WARMED
+        if _WORKER_WARMED:
+            return
+        if warmup_job is None:
+            raise RuntimeError("missing canonical OCR warmup page")
+        filename, source_id, profile, dpi, tables = warmup_job
+        import fitz
+        with fitz.open(filename) as document:
+            extract_page(document[profile['pdf_page'] - 1], profile, source_id=source_id,
+                         dpi=dpi, enable_ocr=True, enable_tables=tables)
+        _WORKER_WARMED = True
+    return _page_job(job, before_ocr=warmup)
+
+
+def run_pipeline(root:Path, *, registry:Path, lock:Path, output:Path, cache_dir:Path,
+                 workers:int=1, **options)->dict:
+    """Legacy Python calls default to serial; independent CLI defaults to three."""
+    if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
+        raise ValueError("workers must be a positive integer")
+    if workers == 1:
+        return _run_pipeline(root, registry=registry, lock=lock, output=output,
+                             cache_dir=cache_dir, **options)
+    with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
+                             initializer=_worker_init, initargs=(options.get("ocr", True),)) as executor:
+        return _run_pipeline(root, registry=registry, lock=lock, output=output,
+                             cache_dir=cache_dir, executor=executor, **options)
+
+
+def _run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Path,
                  dpi:int=300,ocr:bool=True,tables:bool=True,
                  max_pages:int|None=None,source_filter:str|None=None,
-                 pages:set[tuple[str,int]]|None=None,force:bool=False)->dict:
+                 pages:set[tuple[str,int]]|None=None,force:bool=False,
+                 apply_postcorrection:bool=True, executor=None)->dict:
     if not 100<=dpi<=450:
         raise ValueError("dpi must be within 100-450")
     if max_pages is not None and max_pages<1:
         raise ValueError("max_pages must be positive")
     import fitz
     # Bound native inference thread pools on small machines.
-    os.environ.setdefault("OMP_THREAD_LIMIT","1")
     os.environ.setdefault("OPENBLAS_NUM_THREADS","1")
     root=root.resolve()
     sources,locked=checked_sources(root,registry,lock)
@@ -326,7 +372,7 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
             raise ValueError(f"unknown source_id in pages: {sorted(unknown)}")
         if source_filter and any(source_id!=source_filter for source_id,_ in selected_pages):
             raise ValueError("pages selection conflicts with source_filter")
-    postcorrection=_postcorrection_model(root,sources,locked,cache_dir) if ocr else None
+    postcorrection=_postcorrection_model(root,sources,locked,cache_dir) if ocr and apply_postcorrection else None
     if source_filter:
         sources=[s for s in sources if s.source_id==source_filter]
         if not sources:
@@ -344,8 +390,8 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
         if find_spec("easyocr") is None or find_spec("vietocr") is None:
             raise RuntimeError("scan OCR requires EasyOCR and VietOCR; install the .[easy_vietocr] extra")
         try:
-            from ocop_ocr.easy_viet_ocr import runtime_signature
-            ocr_runtime = runtime_signature()
+            from ocop_ocr.easy_viet_ocr import runtime_signature, asset_signature
+            ocr_runtime = asset_signature() if executor is not None else runtime_signature()
         except Exception as exc:
             raise RuntimeError(f"easy_viet_ocr_model_load_failed:{type(exc).__name__}:{str(exc)[:180]}") from exc
     model_version=(f"easyocr={package_version('easyocr')};vietocr={package_version('vietocr')};"
@@ -361,6 +407,7 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
               "ocr_enabled":ocr,"table_detection_enabled":tables,
               "ocr_runtime_signature":ocr_runtime,
               "model_versions":model_version,"sources":[],"counts":{},
+              "errors": [],
               "ocr_postcorrection_model_sha256":postcorrection.sha256 if postcorrection else None}
     manifest['ocr_warmup']={'executed':False,'policy':'canonical_locked_scan_discard_v1',
                             'cache_written':False,'page_artifact_written':False}
@@ -401,6 +448,17 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
         if missing:
             raise ValueError(f"PDF page selection is out of range: {sorted(missing)}")
     inspected=0
+    warmup_job = None
+    if executor is not None and ocr:
+        for spec in sorted(locked_sources, key=lambda s: s.source_id):
+            filename = (root / spec.path).resolve()
+            digest = next(s['sha256'] for s in locked['sources'] if s['source_id'] == spec.source_id)
+            profile = next((p for p in _source_profiles(filename, spec.source_id, digest, cache_dir)
+                            if p.get('needs_ocr_review')), None)
+            if profile is not None:
+                warmup_job = (str(filename), spec.source_id, profile, dpi, tables)
+                break
+        manifest['ocr_warmup']['policy'] = 'canonical_locked_scan_per_worker_discard_v1'
     for source in sources:
         if selected_pages is not None and source.source_id not in profiles_by_source:
             continue
@@ -428,10 +486,16 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path,output:Path,cache_dir:Pa
                 key=build_cache_key(digest,profile["pdf_page"],dpi=dpi,ocr_engine=ENGINE if ocr else "native_only",
                                     extract_ocr=ocr,detect_tables=tables,model_version=model_version)
                 target=cache_path(cache_dir,source.source_id,key)
-                allowed.append((str(filepath),source.source_id,profile,str(target),force,dpi,ocr,tables,digest))
+                allowed.append((str(filepath),source.source_id,profile,str(target),force,dpi,ocr,tables,digest,
+                                source.source_kind.value))
             with tmp_path.open("w",encoding="utf-8") as fh:
-                for job in allowed:
-                    art=_page_job(job,before_ocr=warmup)
+                results = (executor.map(partial(_worker_page, warmup_job=warmup_job), allowed)
+                           if executor is not None else
+                           (_page_job(job, before_ocr=warmup) for job in allowed))
+                for art in results:
+                    if art.get("quarantined"):
+                        manifest["errors"].append({"source_id": art["source_id"], "pdf_page": art["pdf_page"],
+                                                   "warnings": art.get("warnings", [])})
                     if postcorrection is not None:
                         # Applied after the page cache, which keeps the raw OCR transcription.
                         art=postcorrect_artifact(art,postcorrection)

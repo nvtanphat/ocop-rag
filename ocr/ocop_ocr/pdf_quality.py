@@ -40,3 +40,24 @@ def score_page_quality(profile:dict,blocks:list[dict],tables:list[dict],word_blo
        'requires_manual_score_validation':bool(tables),
        'quality_is_not_legal_verification':True,
     }
+
+
+def refresh_attention(artifact: dict) -> dict:
+    """Recompute diagnostics after cache lookup without changing text or boxes."""
+    quality = score_page_quality(artifact.get('profile', {}), artifact.get('blocks', []),
+                                 artifact.get('tables', []), artifact.get('ocr_words', []))
+    artifact['page_quality'] = quality
+    artifact['ocr_confidence_mean'] = quality['mean_block_ocr_confidence']
+    flags = set(artifact.get('warnings', []))
+    if artifact.get('profile', {}).get('needs_ocr_review') and not artifact.get('ocr_engine'):
+        flags.add('ocr_required_but_not_executed')
+    if quality['potential_score_cells_blank']:
+        flags.add('potential_score_cells_blank')
+    if quality['mean_block_ocr_confidence'] is not None and quality['mean_block_ocr_confidence'] < .8:
+        flags.add('low_ocr_confidence')
+    if any(c.get('score_ocr_candidates') for t in artifact.get('tables', []) for c in t.get('cells', [])):
+        flags.add('unverified_score_ocr_candidates')
+    artifact['ocr_attention'] = sorted(flags)
+    artifact['needs_human_verification'] = bool(flags or artifact.get('ocr_engine') or artifact.get('tables')
+                                                 or artifact.get('review_status') == 'needs_review')
+    return artifact

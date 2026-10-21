@@ -3,7 +3,7 @@
 Immutable PDF inputs are checked against the approved snapshot. Everything
 produced from those inputs is built off-line in a temporary tree, validated,
 then promoted. Existing corpus artifacts remain available if construction
-fails. OCR is cached by the existing PDF parser, never faked here.
+fails. RAG reads an independently produced OCR dataset and never executes OCR.
 """
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ import tempfile
 from typing import Any, Iterator
 
 from ocop_contracts.pdf_loader import checked_sources
+from ocop_contracts.dataset import DEFAULT_DATASET, SCHEMA_VERSION, read_dataset, materialize_dataset
+from ocop_contracts.locking import process_lock
 
 PARTS = ("pages", "knowledge", "index", "graph")
 
@@ -37,18 +39,10 @@ def _write_json(path: Path, value: dict) -> None:
 
 @contextmanager
 def _exclusive_lock(path: Path) -> Iterator[None]:
-    """Single build writer. Leave crash artifacts alone for explicit recovery."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        descriptor = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError as exc:
-        raise RuntimeError(f"Another OCOP build may be active: {path}") from exc
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as fh:
-            fh.write(str(os.getpid()) + "\n")
+    """OS lock is released automatically when the build process dies."""
+    with process_lock(path):
         yield
-    finally:
-        path.unlink(missing_ok=True)
+
 
 
 def _semantic_profile(options: "PipelineOptions") -> str:
@@ -71,6 +65,7 @@ def _semantic_complete(metadata: dict, options: "PipelineOptions") -> bool:
 
 @dataclass(frozen=True)
 class PipelineOptions:
+    ocr_dataset: Path | None = None
     dpi: int = 300
     dense: bool = False
     mongo: bool = False
@@ -102,21 +97,7 @@ class OcopSystemPipeline:
         )
         return len(sources), lock["aggregate_sha256"]
 
-    @staticmethod
-    def _ocr_runtime_matches(page_manifest: dict[str, Any]) -> bool:
-        stored = page_manifest.get("ocr_runtime_signature")
-        if stored:
-            try:
-                from ocop_ocr.easy_viet_ocr import asset_signature
-                if stored != asset_signature():
-                    return False
-            except RuntimeError:
-                # Existing extracted pages remain usable when model files are not mounted.
-                return True
-        return True
-
     def status(self, *, validate_sources: bool = False) -> dict[str, Any]:
-        from ocop_ocr.artifact_cache import PARSER_VERSION
         page = _load_json(self.data / "pages" / "manifest.json")
         knowledge = _load_json(self.data / "knowledge" / "manifest.json")
         index = _load_json(self.data / "index" / "manifest.json")
@@ -148,7 +129,9 @@ class OcopSystemPipeline:
         review_current=(graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
                         ==ledger_digest(ledger_path(self.root)))
         lineage_ok = bool(
-            business_consistent and page.get("parser_version")==PARSER_VERSION and
+            business_consistent and page.get("schema_version")==SCHEMA_VERSION
+            and bool(page.get("dataset_digest"))
+            and knowledge.get("ocr_dataset_digest")==page.get("dataset_digest") and
             source_ok and snapshot and page.get("complete") and knowledge.get("complete")
             and page.get("input_snapshot_sha256") == snapshot
             and knowledge.get("source_snapshot_sha256") == snapshot
@@ -168,8 +151,9 @@ class OcopSystemPipeline:
             "sources": sources,
             "source_snapshot_sha256": snapshot,
             "pdf_pages": page.get("counts", {}).get("pages", 0),
-            "pdf_parser_version": page.get("parser_version"),
-            "pdf_parser_current":page.get("parser_version")==PARSER_VERSION,
+            "pdf_parser_version": page.get("ocr_version"),
+            "pdf_parser_current":page.get("schema_version")==SCHEMA_VERSION,
+            "ocr_dataset_digest":page.get("dataset_digest"),
             "evidence_units": knowledge.get("counts", {}).get("evidence_units", knowledge.get("counts", {}).get("units", 0)),
             "corpus_version": index.get("corpus_version"),
             "dense_ready": bool(index.get("dense", {}).get("enabled", False)),
@@ -190,11 +174,21 @@ class OcopSystemPipeline:
 
     def ensure(self, options: PipelineOptions = PipelineOptions()) -> dict[str, Any]:
         """Build (or reuse) a coherent source-locked corpus, once per invocation."""
-        from ocop_ocr.artifact_cache import PARSER_VERSION
         with _exclusive_lock(self.data / ".system.lock"):
+            # A killed build cannot clean TemporaryDirectory. The exclusive OS
+            # lock proves no other builder owns these repo-local staging trees.
+            for orphan in self.data.glob("ocop-build-*"):
+                target = orphan.resolve()
+                if target.is_relative_to(self.data.resolve()) and orphan.is_dir() and not orphan.is_symlink():
+                    shutil.rmtree(orphan)
             current = self.status(validate_sources=True)
+            if not current.get("source_snapshot_sha256"):
+                raise RuntimeError(current.get("source_error", "source lock validation failed"))
             page_config = _load_json(self.data / "pages" / "manifest.json")
-            runtime_config_ok = self._ocr_runtime_matches(page_config) if not options.refresh else False
+            dataset = (options.ocr_dataset or DEFAULT_DATASET).resolve()
+            locked = _load_json(self.root / "configs/ocop_sources.lock.json")
+            dataset_manifest, _ = read_dataset(dataset, locked)
+            runtime_config_ok = page_config.get("dataset_digest") == dataset_manifest["dataset_digest"]
             if not options.refresh and current["state"] == "ready":
                 index = _load_json(self.data / "index" / "manifest.json")
                 graph = _load_json(self.data / "graph" / "manifest.json")
@@ -206,11 +200,7 @@ class OcopSystemPipeline:
                     and index.get("dense", {}).get("host") == options.qdrant_host
                     and index.get("dense", {}).get("port") == options.qdrant_port))
                 page_config = _load_json(self.data / "pages" / "manifest.json")
-                pdf_config_ok = (page_config.get("dpi") == options.dpi
-                    and page_config.get("engine_requested") == "easyocr_vietocr"
-                    and page_config.get("ocr_enabled") is True
-                    and runtime_config_ok
-                    and page_config.get("parser_version") == PARSER_VERSION)
+                pdf_config_ok = runtime_config_ok
                 knowledge_manifest = _load_json(self.data / "knowledge" / "manifest.json")
                 semantic_ok = _semantic_complete(knowledge_manifest.get('semantic_proposals', {}), options)
                 if dense_config_ok and pdf_config_ok and mongo_ok and neo4j_ok and semantic_ok:
@@ -219,7 +209,6 @@ class OcopSystemPipeline:
             with tempfile.TemporaryDirectory(prefix="ocop-build-", dir=self.data) as temporary:
                 stage = Path(temporary)
                 try:
-                    from ocop_ocr.pdf_pipeline import run_pipeline
                     from ai_core.processing.ocop.knowledge_extract import extract_artifacts
                     from ai_core.retrieval.ocop.index_pipeline import build_index
                     from ai_core.graph.ocop.builder import build_graph, SCHEMA_REVISION
@@ -227,14 +216,9 @@ class OcopSystemPipeline:
                     knowledge_config = _load_json(self.data / "knowledge" / "manifest.json")
                     # Reuse page extraction independently of knowledge version:
                     # upgrading evidence/schema MUST NOT trigger 315 expensive OCRs.
-                    reuse_pages = (not options.refresh
-                        and page_config.get("complete")
+                    reuse_pages = (not options.refresh and page_config.get("complete")
                         and page_config.get("input_snapshot_sha256") == current.get("source_snapshot_sha256")
-                        and page_config.get("dpi") == options.dpi
-                        and page_config.get("engine_requested") == "easyocr_vietocr"
-                        and page_config.get("ocr_enabled") is True
-                        and runtime_config_ok
-                        and page_config.get("parser_version") == PARSER_VERSION)
+                        and runtime_config_ok)
                     knowledge_semantics = knowledge_config.get("semantic_proposals", {})
                     semantic_match = _semantic_complete(knowledge_semantics, options)
                     from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
@@ -247,14 +231,7 @@ class OcopSystemPipeline:
                         shutil.copytree(self.data / "pages", stage / "pages")
                         page = page_config
                     else:
-                        page = run_pipeline(
-                            self.root,
-                            registry=self.root / "configs" / "ocop_sources.json",
-                            lock=self.root / "configs" / "ocop_sources.lock.json",
-                            output=stage / "pages",
-                            cache_dir=self.data / "cache",
-                            dpi=options.dpi,
-                        )
+                        page = materialize_dataset(dataset, stage / "pages", dataset_manifest)
                     if not page.get("complete"):
                         raise RuntimeError("PDF parser did not produce a complete source-locked corpus")
                     if reuse_knowledge:
@@ -272,6 +249,9 @@ class OcopSystemPipeline:
                             semantic_cache_dir=self.data / "cache" / "llm",
                             semantic_workers=extraction_workers() if options.semantic_extract else 1,
                             semantic_gleanings=extraction_gleanings() if options.semantic_extract else 1)
+                    knowledge["ocr_dataset_version"] = dataset_manifest["ocr_version"]
+                    knowledge["ocr_dataset_digest"] = dataset_manifest["dataset_digest"]
+                    _write_json(stage / "knowledge" / "manifest.json", knowledge)
                     if not knowledge.get("complete"):
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
                     if not _semantic_complete(knowledge.get('semantic_proposals', {}), options):

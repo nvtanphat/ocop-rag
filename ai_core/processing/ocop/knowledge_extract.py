@@ -31,11 +31,11 @@ _PROCESSING = Path(__file__).resolve().parent
 _ROOT = _PROCESSING.parents[1]
 # Every module whose code shapes evidence units, entities, relations, rules and temporal candidates.
 from ocop_contracts import layout as shared_layout
-from ocop_ocr import legend_proposals, easy_viet_ocr, table_continuity
+from ocop_contracts import table_continuity as shared_continuity
+
 
 VERSION = code_fingerprint("evidence", [
-    Path(shared_layout.__file__), Path(legend_proposals.__file__),
-    Path(easy_viet_ocr.__file__), Path(table_continuity.__file__),
+    Path(shared_layout.__file__), Path(shared_continuity.__file__),
     ROOT / "ocop_contracts/models.py", ROOT / "ocop_contracts/ids.py",
     *(_PROCESSING / name for name in ("knowledge_extract.py", "business_candidates.py",
                                       "temporal_candidates.py")),
@@ -79,7 +79,7 @@ def _unit(page:dict, kind:str,ordinal:str,text:str,*,structured:dict|None=None,s
         status=ReviewStatus.MACHINE_EXTRACTED
     record=EvidenceUnit(unit_id=unit_id,source_id=page["source_id"],unit_kind=kind,parent_unit_id=parent,
        hierarchy_path=[page["source_id"],str(page["pdf_page"]),kind,ordinal],text=text,
-       structured=structured or {},spans=spans or [_span(page)],extractor_version=VERSION,
+       structured={**(structured or {}), "text_reviewed": bool(page.get("reviewed"))},spans=spans or [_span(page)],extractor_version=VERSION,
        review_status=status,unit_hash=content_sha256(text)).model_dump(mode="json")
     return record
 
@@ -499,7 +499,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     source_info={s.source_id:s.model_dump(mode="json") for s in load_registry(root/"configs/ocop_sources.json")}
     snapshot=manifest["input_snapshot_sha256"]
     profile = ("none" if semantic_client is None else semantic_profile(semantic_client.model,semantic_max_units,semantic_gleanings))
-    version=hashlib.sha256((VERSION+"|"+snapshot+"|"+profile).encode()).hexdigest()[:20]
+    version=hashlib.sha256((VERSION+"|"+snapshot+"|"+profile+"|"+manifest.get("dataset_digest", "")).encode()).hexdigest()[:20]
     output_dir.mkdir(parents=True,exist_ok=True)
     units_file=output_dir/"evidence_units.jsonl";facts_file=output_dir/"domain_facts.jsonl"
     entities_file=output_dir/"entities.jsonl";relations_file=output_dir/"relations.jsonl"
@@ -525,6 +525,14 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
         sid=page["source_id"]
         generated=page_units(page,source_kind=source_info[sid]["source_kind"],
             furniture_lines=furniture_by_page.get((sid,int(page["pdf_page"])),{}))
+        image_candidates = {b.get('block_id'): b.get('image_legend_candidates', [])
+                            for b in page.get('blocks', [])}
+        for unit in generated:
+            unit['structured']['text_reviewed'] = bool(page.get('reviewed'))
+            proposals = [candidate for span in unit['spans']
+                         for candidate in image_candidates.get(span.get('block_id'), [])]
+            if proposals:
+                unit['structured']['image_legend_candidates'] = proposals
         all_units.extend(generated)
         counts["units"]+=len(generated)
         for u in generated:
@@ -534,9 +542,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
                   "source_id":sid,"text":u["text"][:3000],
                   "review_status":u["review_status"],"spans":u["spans"],
                   "structured":{k:v for k,v in u["structured"].items() if k!="cells"}})
-    from ocop_ocr.legend_proposals import propose_legend_images
-    propose_legend_images(root,source_info,page_records,all_units)
-    from ocop_ocr.table_continuity import possible_continuations
+    from ocop_contracts.table_continuity import possible_continuations
     boundary_hints=[]
     ordered_pages=sorted(page_records,key=lambda p:(p['source_id'],int(p['pdf_page'])))
     for previous,current in zip(ordered_pages,ordered_pages[1:]):

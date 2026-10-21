@@ -139,6 +139,7 @@ def main()->None:
                         help="Reuse an existing --root-out with copied configs/raw and validated source hashes")
     parser.add_argument("--page",action="append",type=_parse_page,required=True,
                         metavar="SOURCE_ID:PAGE",help="Selected PDF page; repeat for additional pages")
+    parser.add_argument("--ocr-dataset", type=Path, required=True, help="Previously produced OCR dataset")
     parser.add_argument("--question",action="append",default=[],
                         help="Question to ask the local OCOP agent; repeatable")
     parser.add_argument("--dpi",type=int,default=110,
@@ -183,13 +184,27 @@ def main()->None:
             _copy_project_inputs(project_root,output_root)
         processed=output_root/"data"/"processed"/"ocop"
         pages_dir=processed/"pages"
-        from ocop_ocr.pdf_pipeline import run_pipeline
-        page_manifest=run_pipeline(output_root,
-            registry=output_root/"configs"/"ocop_sources.json",
-            lock=output_root/"configs"/"ocop_sources.lock.json",
-            output=pages_dir,cache_dir=processed/"cache",dpi=args.dpi,pages=pages)
-        if page_manifest.get("counts",{}).get("pages")!=len(pages):
-            raise RuntimeError("PDF stage did not produce one PageArtifact per selected page")
+        from ocop_contracts.dataset import read_dataset
+        from ocop_contracts.pdf_loader import checked_sources
+        _, locked = checked_sources(output_root, output_root / "configs/ocop_sources.json",
+                                    output_root / "configs/ocop_sources.lock.json")
+        dataset_manifest, dataset_pages = read_dataset(args.ocr_dataset, locked, require_complete=False)
+        selected = [p for p in dataset_pages if (p["source_id"], p["pdf_page"]) in pages]
+        if {(p["source_id"], p["pdf_page"]) for p in selected} != pages:
+            raise RuntimeError("OCR dataset does not contain every selected pilot page")
+        pages_dir.mkdir(parents=True, exist_ok=True)
+        records = []
+        for sid in sorted({p["source_id"] for p in selected}):
+            filename = hashlib.sha256(sid.encode()).hexdigest()[:12] + ".pages.jsonl"
+            chosen = [p for p in selected if p["source_id"] == sid]
+            (pages_dir / filename).write_text("".join(json.dumps(p, ensure_ascii=False) + "\n" for p in chosen),
+                                                encoding="utf-8")
+            records.append({"source_id": sid, "artifact": filename})
+        page_manifest = {"schema_version": 2, "complete": False, "sources": records,
+                         "input_snapshot_sha256": locked["aggregate_sha256"],
+                         "dataset_digest": dataset_manifest["dataset_digest"],
+                         "ocr_version": dataset_manifest["ocr_version"], "counts": {"pages": len(selected)}}
+        (pages_dir / "manifest.json").write_text(json.dumps(page_manifest), encoding="utf-8")
         rendered=_render_sources(output_root,pages,args.dpi)
 
         from ai_core.processing.ocop.knowledge_extract import extract_artifacts

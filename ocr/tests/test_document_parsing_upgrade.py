@@ -460,6 +460,18 @@ def test_quality_reports_blank_score_candidates_without_verifying_them():
     assert quality["quality_is_not_legal_verification"] is True
 
 
+def test_skipped_scan_is_flagged_for_human_verification(tmp_path):
+    import fitz
+    from ocop_ocr.pdf_pipeline import extract_page
+    with fitz.open() as document:
+        page = document.new_page()
+        profile = {"pdf_page": 1, "width_pt": page.rect.width, "height_pt": page.rect.height,
+                   "needs_ocr_review": True, "page_class": "ocr_candidate", "largest_image_area_ratio": 1.0}
+        artifact = extract_page(page, profile, source_id="TEST", enable_ocr=False, enable_tables=False)
+    assert artifact["needs_human_verification"] is True
+    assert "ocr_required_but_not_executed" in artifact["ocr_attention"]
+
+
 def test_new_parser_version_invalidates_old_ocr_caches(tmp_path):
     from ocop_contracts.ids import code_fingerprint
 

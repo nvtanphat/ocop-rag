@@ -92,7 +92,7 @@ def propose_legend_images(root, source_info, pages, units):
     # Independently check cached, deskew-restored option markers against the
     # locked PDF raster. Keep original proposals; disagreements become omissions.
     for sid in sorted({u['source_id'] for u in units}):
-        if source_info[sid]['source_kind']!='ocop_framework':
+        if source_info[sid]['source_kind'] not in {'ocop_framework', 'ocop_historical'}:
             continue
         path=(root/source_info[sid]['path']).resolve()
         if not path.is_file():
@@ -112,3 +112,33 @@ def propose_legend_images(root, source_info, pages, units):
                         clip=fitz.Rect(cell['bbox']),colorspace=fitz.csGRAY,alpha=False)
                     gray=np.frombuffer(pix.samples,dtype=np.uint8).reshape(pix.height,pix.width)
                     cell['independent_marker_counts_candidate']=sorted({len(m) for m,_ in asterisk_groups(gray)})
+
+
+def annotate_page_images(filename, page, source_kind):
+    """Image-derived candidates belong to OCR output, before the RAG boundary."""
+    from pathlib import Path
+    sid = page['source_id']
+    units = []
+    blocks = {}
+    for index, block in enumerate(page.get('blocks', [])):
+        block_id = block.get('block_id')
+        if block_id is None:
+            continue
+        unit = {'source_id': sid, 'unit_kind': 'paragraph', 'text': block.get('text', ''),
+                'spans': [{'source_sha256': page['source_sha256'], 'pdf_page': page['pdf_page'],
+                           'block_id': block_id}], 'structured': {}}
+        units.append(unit)
+        blocks[id(unit)] = block
+    if any(c.get('image_marker_candidates') for t in page.get('tables', []) for c in t.get('cells', [])):
+        units.append({'source_id': sid, 'unit_kind': 'table', 'text': '',
+                      'spans': [{'source_sha256': page['source_sha256'], 'pdf_page': page['pdf_page']}],
+                      'structured': {'cells': [c for t in page.get('tables', []) for c in t.get('cells', [])]}})
+    if not any(re.search(r'Dấu\s+sao\s+là\s+yêu\s+cầu\s+tối\s+thiểu', u['text'], re.I) for u in units) and not any(
+            u['unit_kind'] == 'table' for u in units):
+        return
+    path = Path(filename).resolve()
+    propose_legend_images(path.parent, {sid: {'path': str(path), 'source_kind': source_kind}}, [page], units)
+    for unit in units:
+        candidates = unit['structured'].get('image_legend_candidates')
+        if candidates:
+            blocks[id(unit)]['image_legend_candidates'] = candidates

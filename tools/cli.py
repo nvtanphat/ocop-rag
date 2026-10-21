@@ -28,8 +28,9 @@ for _stream in (sys.stdout, sys.stderr):
 def main() -> None:
     cli = argparse.ArgumentParser(description="OCOP GraphRAG — one end-to-end pipeline")
     sub = cli.add_subparsers(dest="command", required=True)
-    run = sub.add_parser("run", help="Source validation → OCR → evidence → retrieval/graph → API or answer")
+    run = sub.add_parser("run", help="OCR dataset -> evidence -> retrieval/graph -> API or answer")
     run.add_argument("--root", type=Path, default=ROOT)
+    run.add_argument("--ocr-dataset", type=Path, help="Complete source-locked OCR dataset directory")
     run.add_argument("--query", help="Answer one question after preparing the corpus")
     run.add_argument("--build-only", action="store_true", help="Prepare corpus without starting the API")
     run.add_argument("--refresh", action="store_true", help="Rebuild all derived artifacts (OCR cache reused)")
@@ -121,6 +122,7 @@ def main() -> None:
                 verify_ollama_model(os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"),
                                     os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"))
         prepared = system.ensure(PipelineOptions(
+            ocr_dataset=args.ocr_dataset,
             refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, mongo=args.mongo or args.full, neo4j=args.neo4j or args.full,
             dpi=args.dpi,
             embedding_model=args.embedding_model, embedding_revision=args.embedding_revision,

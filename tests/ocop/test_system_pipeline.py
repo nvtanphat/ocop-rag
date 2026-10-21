@@ -29,15 +29,19 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
     calls = []
     from ai_core.graph.ocop.builder import build_graph as real_build_graph
 
-    def pdf(root, *, output, **kwargs):
-        calls.append("pdf")
+    dataset_manifest = {"schema_version": 1, "complete": True, "ocr_version": "fixture-ocr",
+                        "dataset_digest": "fixture-dataset", "input_snapshot_sha256": "approved-snapshot",
+                        "counts": {"pages": 1}}
+
+    def dataset_copy(root, output, manifest):
+        calls.append("dataset")
         output.mkdir(parents=True)
-        from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
-        manifest = {"complete": True, "parser_version":PARSER_VERSION,
-                    "input_snapshot_sha256": "approved-snapshot", "counts": {"pages": 1},
-                    "dpi": kwargs["dpi"], "engine_requested": "easyocr_vietocr", "ocr_enabled": True}
         write_json(output / "manifest.json", manifest)
         return manifest
+
+    import ai_core.system.pipeline as system_mod
+    monkeypatch.setattr(system_mod, "read_dataset", lambda *a, **k: (dataset_manifest, []))
+    monkeypatch.setattr(system_mod, "materialize_dataset", dataset_copy)
 
     def knowledge(root, *, input_dir, output_dir, **kwargs):
         assert (input_dir / "manifest.json").is_file()
@@ -82,11 +86,9 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         # files and hashes; only expensive OCR/index services remain mocked.
         return real_build_graph(knowledge, output, review_decisions=review_decisions)
 
-    import ai_core.processing.ocop.pdf_pipeline as pdf_mod
     import ai_core.processing.ocop.knowledge_extract as knowledge_mod
     import ai_core.retrieval.ocop.index_pipeline as index_mod
     import ai_core.graph.ocop.builder as graph_mod
-    monkeypatch.setattr(pdf_mod, "run_pipeline", pdf)
     monkeypatch.setattr(knowledge_mod, "extract_artifacts", knowledge)
     monkeypatch.setattr(index_mod, "build_index", index)
     monkeypatch.setattr(graph_mod, "build_graph", graph)
@@ -98,10 +100,10 @@ def test_run_follows_one_dependency_chain_and_reuses_corpus(tmp_path, monkeypatc
     first = system.ensure()
     assert first["state"] == "ready"
     assert first["reused"] is False
-    assert calls == ["pdf", "evidence", "graph", "index"]
+    assert calls == ["dataset", "evidence", "graph", "index"]
     second = system.ensure()
     assert second["reused"] is True
-    assert calls == ["pdf", "evidence", "graph", "index"]
+    assert calls == ["dataset", "evidence", "graph", "index"]
     assert not list(system.data.glob("ocop-build-*"))
 
 
@@ -116,6 +118,20 @@ def test_stale_retrieval_algorithm_version_requires_reindex(tmp_path,monkeypatch
     assert system.ensure()['state']=='ready'
 
 
+def test_changed_dataset_digest_forces_extraction_again(tmp_path, monkeypatch):
+    system, calls = fixture_pipeline(tmp_path, monkeypatch)
+    system.ensure()
+    import ai_core.system.pipeline as module
+    old_reader = module.read_dataset
+    def changed_reader(*args, **kwargs):
+        manifest, pages = old_reader(*args, **kwargs)
+        return {**manifest, "dataset_digest": "new-review-digest"}, pages
+    monkeypatch.setattr(module, "read_dataset", changed_reader)
+    assert system.ensure()["reused"] is False
+    assert calls.count("dataset") == 2
+    assert calls.count("evidence") == 2
+
+
 def test_failed_rebuild_preserves_previous_corpus(tmp_path, monkeypatch):
     system, _ = fixture_pipeline(tmp_path, monkeypatch)
     system.ensure()
@@ -125,7 +141,9 @@ def test_failed_rebuild_preserves_previous_corpus(tmp_path, monkeypatch):
         system.ensure(PipelineOptions(refresh=True))
     assert (system.data / "index" / "manifest.json").read_bytes() == original
     assert system.status(validate_sources=True)["state"] == "ready"
-    assert not (system.data / ".system.lock").exists()
+    from ocop_contracts.locking import process_lock
+    with process_lock(system.data / ".system.lock"):
+        pass
 
 
 def test_changed_approved_source_forces_not_ready(tmp_path, monkeypatch):
@@ -159,7 +177,7 @@ def test_dense_upgrade_does_not_rerun_pdf_or_extraction(tmp_path, monkeypatch):
     monkeypatch.setattr(index_mod, "build_index", dense_index)
     upgraded = system.ensure(PipelineOptions(dense=True))
     assert upgraded["dense_ready"] is True
-    assert calls == ["pdf", "evidence", "graph", "index", "index"]
+    assert calls == ["dataset", "evidence", "graph", "index", "index"]
     assert system.ensure(PipelineOptions(dense=True))["reused"] is True
 
 
