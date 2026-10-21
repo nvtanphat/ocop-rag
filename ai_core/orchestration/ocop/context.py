@@ -31,7 +31,9 @@ class Excerpt:
 
 def question_terms(question: str) -> list[str]:
     """Distinct content words (folded) of the question, ignoring vocabulary stopwords."""
-    return list(dict.fromkeys(get_language().content_words(question)))
+    # Document codes (qd148) and bare numbers are scope slots handled by the tools, not words to find in a passage.
+    words = [w for w in get_language().content_words(question) if not re.fullmatch(r'[a-z]{0,3}\d+', w)]
+    return list(dict.fromkeys(words))
 
 
 def _segments(text: str, limit: int = 420) -> list[str]:

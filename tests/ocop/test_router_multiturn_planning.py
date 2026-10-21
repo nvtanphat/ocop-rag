@@ -172,7 +172,7 @@ def test_llm_unsupported_score_is_rejected_even_with_valid_source_marker():
         def chat(self,*args,**kwargs):return 'Sản phẩm chắc chắn đạt 90 điểm [S1].'
     result=assemble('Mức điểm OCOP?', [{'tool':'search_regulations','output':{'results':[
         {'source_id':'D','evidence_unit_id':'u','source_spans':[{'pdf_page':2}],
-         'review_status':'needs_review','text':'Tài liệu OCR về chương trình OCOP.'}
+         'review_status':'needs_review','text':'Mức điểm OCOP theo tài liệu OCR về chương trình.'}
     ]}}],llm=BadModel())
     assert result['status']=='citation_verification_failed'
     assert '90 điểm' not in result['answer']

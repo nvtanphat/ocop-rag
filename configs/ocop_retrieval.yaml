@@ -9,7 +9,7 @@ context:
   table_excerpt_max_chars: 5000    # table rows are short; keep the whole matched table chunk
   parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
   parent_label_max_chars: 90
-  min_term_coverage: 0.5           # share of question content terms present in the prompt SOURCE text
+  min_term_coverage: 0.25          # share of question content terms present in the prompt SOURCE text; below it no generation
 retrieval:
   top_k: 8
   candidate_pool_min: 40           # sparse/dense candidates before fusion

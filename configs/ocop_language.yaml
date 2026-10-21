@@ -10,6 +10,9 @@ stopwords: [ai, cái, các, có, của, để, gì, gồm, không, là, mà, m�
   đang, cho, theo, khi, nếu, thì, hay, hoặc, bị, bằng, từ, đến, trên, dưới, nữa, lại, vậy, còn, nó, tôi, mình, bạn,
   xin, vui, lòng, giúp, biết, nói, cho, hỏi, quy, định]
 
+# Imperative/politeness words that tell the system what to do, not what to find.
+instruction_words: [trình, bày, cả, hai, liệt, kê, nêu, cho, biết, hãy, giải, thích, tóm, tắt, so, sánh, kiểm, tra, tìm, tra, cứu]
+
 # Words that open a document reference, e.g. "QĐ 26/2026", "Nghị định 15".
 document_types:
   decision: [quyết định, qđ]

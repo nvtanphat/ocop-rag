@@ -18,7 +18,7 @@ class ContextSettings(BaseModel):
     table_excerpt_max_chars: int = Field(5000, ge=200)
     parent_chain_max_tokens: int = Field(40, ge=0)
     parent_label_max_chars: int = Field(90, ge=20)
-    min_term_coverage: float = Field(0.5, ge=0, le=1)
+    min_term_coverage: float = Field(0.25, ge=0, le=1)
 
 
 class RetrievalSettings(BaseModel):

@@ -51,6 +51,7 @@ class Language(BaseModel):
     model_config = ConfigDict(extra='forbid')
     schema_version: int
     stopwords: list[str]
+    instruction_words: list[str]
     document_types: dict[str, list[str]]
     document_number_markers: dict[str, list[str]]
     structure_nouns: dict[str, list[str]]
@@ -114,7 +115,7 @@ class Language(BaseModel):
 
     @property
     def stop(self) -> frozenset[str]:
-        return frozenset(fold(w) for w in self.stopwords)
+        return frozenset(fold(w) for w in [*self.stopwords, *self.instruction_words])
 
     def content_words(self, text: str) -> list[str]:
         stop = self.stop
