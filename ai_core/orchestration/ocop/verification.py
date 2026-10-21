@@ -35,7 +35,9 @@ def check_sensitive_claims(answer:str,evidence_rows:list[dict])->dict:
 import unicodedata
 
 # Do not split decimal numbers such as 3.5 (which would create two claims).
-CLAIM_SPLIT = re.compile(r'(?<=[!?])\s+|(?<!\d)\.\s+|\n+')
+# Trailing citation markers immediately following end-of-sentence punctuation (. or ! or ?)
+# belong to the preceding claim.
+SENTENCE_TERMINATOR = re.compile(r'((?:(?<=[!?])|(?<!\d)\.)(?:\s*\[S\d+\])*)(?:\s+|\n+|$)|(?:\s*\[S\d+\])*\n+')
 CRITICAL = re.compile(r'\b(?:\d{1,3}\s*(?:điểm|sao)|\d{4}|bắt buộc|miễn|không\s+phải|hiệu lực|được công nhận|hạn cuối)\b',re.I)
 WORD = re.compile(r'[\wÀ-ỹ]+',re.U)
 
@@ -46,7 +48,19 @@ def _normalize(s:str)->str:
 
 def _split_claims(answer:str)->list[str]:
     # Marker-bearing lines can contain several independent claims.
-    return [x.strip() for x in CLAIM_SPLIT.split(answer) if x.strip()]
+    # Attach markers standing immediately after sentence terminators ("A. [S1] B") to sentence A.
+    parts = []
+    last = 0
+    for m in SENTENCE_TERMINATOR.finditer(answer):
+        part = answer[last:m.end()].strip()
+        if part:
+            parts.append(part)
+        last = m.end()
+    if last < len(answer):
+        tail = answer[last:].strip()
+        if tail:
+            parts.append(tail)
+    return parts
 
 
 def verify_claims(answer:str,citations:list[dict],evidence_rows:list[dict],

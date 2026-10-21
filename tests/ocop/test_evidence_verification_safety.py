@@ -171,3 +171,32 @@ def test_invalid_pdf_page_never_enters_generation():
 def test_failure_status_no_results_with_stale_rows_is_not_grounding():
     out=assemble('?',result([row()],status='no_results'),llm=Model('Hạt sen được công nhận 3 sao [S1].'))
     assert out['status']=='insufficient_evidence'
+
+
+def test_split_claims_attaches_trailing_markers():
+    from ai_core.orchestration.ocop.verification import _split_claims
+    # 1. Period followed by marker
+    assert _split_claims('Câu A. [S1] Câu B.') == ['Câu A. [S1]', 'Câu B.']
+    # 2. Marker before period
+    assert _split_claims('Câu A [S1]. Câu B.') == ['Câu A [S1].', 'Câu B.']
+    # 3. Multiple adjacent markers after period
+    assert _split_claims('Câu A. [S1][S2] Câu B.') == ['Câu A. [S1][S2]', 'Câu B.']
+    # 4. Marker at end of paragraph
+    assert _split_claims('Câu A. [S1]') == ['Câu A. [S1]']
+    # 5. Spaced markers after period
+    assert _split_claims('Câu A. [S1] [S2] Câu B.') == ['Câu A. [S1] [S2]', 'Câu B.']
+
+
+def test_verify_claims_assigns_citations_correctly_when_placed_after_period():
+    r1 = row('Hạt sen được công nhận 3 sao.', unit='u1', page=2)
+    r2 = row('Chè xanh được công nhận 4 sao.', unit='u2', page=3)
+    c1 = cite(unit='u1', page=2)
+    c2 = cite(unit='u2', page=3)
+    answer = 'Hạt sen được công nhận 3 sao. [S1] Chè xanh được công nhận 4 sao. [S2]'
+    v = verify_claims(answer, [c1, c2], [r1, r2])
+    assert len(v['claims']) == 2
+    assert v['claims'][0]['cited'] == [1]
+    assert v['claims'][1]['cited'] == [2]
+    assert v['claims'][0]['status'] == 'supported'
+    assert v['claims'][1]['status'] == 'supported'
+
