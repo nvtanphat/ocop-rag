@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 from datetime import date
 import re
+from ocop_contracts.ratings import level_class
 from ai_core.retrieval.ocop.search import search
 from ai_core.retrieval.ocop.lookup import exact_lookup
 from ai_core.graph.ocop.retriever import traverse
@@ -43,7 +44,7 @@ def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | N
     if stars is not None:
         values=[row.get(k) for k in ('star_rating','rating_stars','stars') if row.get(k) is not None]
         body=normalize(str(row.get('row_text') or row.get('label_candidate') or ''))
-        stated={int(m.group(1)) for m in re.finditer(r'(?<!\d)([3-5])\s*sao\b',body)}
+        stated={int(m.group(1)) for m in re.finditer(r'(?<!\d)('+level_class(certified=True)+r')\s*sao\b',body)}
         if values:
             if any(str(v).strip()!=str(stars) for v in values):return False
             if stated and stated!={stars}:return False
@@ -85,6 +86,21 @@ class ToolRegistry:
     def _graph_failure(self):
         return {'results':[], 'layer':'graph', 'reason':'checked_graph_snapshot_unavailable',
                 'status':'graph_integrity_failed' if (self.graph_dir/'manifest.json').is_file() else 'graph_not_built'}
+
+    def _framework_source(self, year: str | None = None) -> str | None:
+        """Registry source of kind `ocop_framework` for a document year, or the newest one when no year is given."""
+        path = self.root / 'configs/ocop_sources.json'
+        if not path.is_file():
+            return None
+        found = []
+        for src in json.loads(path.read_text(encoding='utf-8')).get('sources', []):
+            if src.get('source_kind') != 'ocop_framework':
+                continue
+            years = re.findall(r'(?<!\d)(20\d{2})(?!\d)', str(src.get('document_number') or src['source_id']))
+            found.append((max(years) if years else '', str(src.get('effective_from') or ''), src['source_id']))
+        if year is not None:
+            found = [x for x in found if x[0] == str(year)]
+        return max(found)[2] if found else None
 
     def _resolve_source_id(self, code:str|None) -> str|None:
         """Resolve document code to a unique corpus source; ambiguous -> unfiltered.
@@ -270,9 +286,9 @@ class ToolRegistry:
             source_filter=self._resolve_source_id(doc) if doc else None
             if doc and not source_filter:
                 return {'results':[], 'status':'document_not_found_or_ambiguous'}
-            if not source_filter and [str(y) for y in slots.get('years',[])]==['2026'] and \
+            if not source_filter and len(slots.get('years',[]))==1 and \
                 not context.get('sector_compliance',False):
-                source_filter=self._resolve_source_id('26/2026')
+                source_filter=self._framework_source(str(slots['years'][0]))
             linked_criterion=slots.get('criterion_id')
             try:
                 graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
@@ -412,13 +428,13 @@ class ToolRegistry:
                     return {"results":[],"status":"document_not_found_or_ambiguous"}
                 # For OCOP taxonomy, a broad unfiltered lexical match can
                 # accidentally select a food-safety table instead of the OCOP
-                # taxonomy annex. Prefer the specific QD26 corpus only for an
-                # unpinned current/2026 taxonomy query; older-year requests
-                # remain unpinned rather than silently applying new criteria.
+                # taxonomy annex. Prefer the registry's framework document for
+                # an unpinned query (the newest one, or the one of the asked
+                # year); a year with no framework document stays unpinned
+                # rather than silently applying another version's criteria.
                 years=[str(y) for y in slots.get('years',[])]
-                if name=='lookup_product_subgroup' and not source_filter and (
-                    not years or years==['2026']):
-                    source_filter=self._resolve_source_id('26/2026')
+                if name=='lookup_product_subgroup' and not source_filter and len(years)<=1:
+                    source_filter=self._framework_source(years[0] if years else None)
                 return {"results":search(self.index_dir,query,source_id=source_filter,
                                           mode=context.get("retrieval_mode","sparse"),top_k=16,
                                           evidence_unit_ids=set(graph.units)),
@@ -460,7 +476,8 @@ class ToolRegistry:
                                       else 'assessment_year_scope_unverified'),
                             'reason':'no_verified_records_with_requested_event_year'}
             if name=="lookup_criterion" and not document_code and not scoped_year:
-                rows.sort(key=lambda r:("QD26.2026" not in str(r.get("source_id","")),
+                current=self._framework_source()
+                rows.sort(key=lambda r:(str(r.get("source_id",""))!=current,
                                         str(r.get("source_id","")), int(r.get("pdf_page") or 0)))
             return {"results":rows[:15],"verified":False}
         if name=="search_graph":

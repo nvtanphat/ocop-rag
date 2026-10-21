@@ -4,9 +4,10 @@ Numbers here indicate *completeness signals*, not correctness or legal approval.
 """
 from __future__ import annotations
 import re
+from ocop_contracts.ratings import asterisk_quantifier
 
 _SCORE=re.compile(r'^\s*(?:\d{1,3})(?:[,.]0+)?\s*$')
-_STARS=re.compile(r'\*{3,5}')
+_STARS=re.compile(r'\*'+asterisk_quantifier())
 
 
 def score_page_quality(profile:dict,blocks:list[dict],tables:list[dict],word_blocks:list[dict]|None=None)->dict:

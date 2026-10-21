@@ -150,7 +150,7 @@ def extract_documents(units, source_kinds, registry, index, entities, relations,
         # Only operative amendment text, never a citation in an expiry clause
         # or the description of a different amending instrument.
         amendment = source_kinds.get(sid) in {'ocop_amendment','labeling_amendment'} and bool(
-            re.match(r'\s*Điều\s+1[.:]?\s*Sửa\s+đổi', text, re.I))
+            re.match(r'\s*Điều\s+\d+[.:]?\s*Sửa\s+đổi', text, re.I))
         suspension = bool(re.match(
             r'\s*Điều\s+\d+[.:]\s*Tạm\s+(?:ngưng|đình\s+chỉ)\s+hiệu\s+lực',text,re.I))
         expiry = re.search(r'hết\s+hiệu\s+lực\s+sau\s+(\d+)\s+ngày', text, re.I)

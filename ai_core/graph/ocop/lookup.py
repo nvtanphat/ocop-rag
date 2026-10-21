@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from ocop_contracts.ratings import level_class
 
 from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION, records
@@ -26,7 +27,7 @@ def authority_nodes(nodes, *, star_rating=None):
             continue
         if not any(True for _ in find_authorities(label)):
             continue
-        stars = {int(n) for n in re.findall(r'(?<!\d)([1-5])\s*sao\b', label, re.I)}
+        stars = {int(n) for n in re.findall(r'(?<!\d)(' + level_class() + r')\s*sao\b', label, re.I)}
         if star_rating is not None and int(star_rating) not in stars:
             continue
         selected.append(node)

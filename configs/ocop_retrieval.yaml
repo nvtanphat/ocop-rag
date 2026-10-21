@@ -1,0 +1,23 @@
+# Retrieval, context and fusion parameters. Each value's reason is in docs/CONFIGURATION.md.
+schema_version: 1
+context:
+  # Whole answer prompt (system + question + SOURCE blocks) budget in estimated tokens. The answer model
+  # window is llm.context_tokens in ocop_models.yaml; the rest is kept for the generated claims.
+  prompt_token_budget: 5200
+  output_reserve_tokens: 1024
+  excerpt_max_chars: 1500          # prose chunk window
+  table_excerpt_max_chars: 5000    # table rows are short; keep the whole matched table chunk
+  parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
+  parent_label_max_chars: 90
+  min_term_coverage: 0.5           # share of question content terms present in the prompt SOURCE text
+retrieval:
+  top_k: 8
+  candidate_pool_min: 40           # sparse/dense candidates before fusion
+  rrf_k: 60
+  rrf_weight_sparse: 1.0
+  rrf_weight_dense: 1.0
+  rerank_candidates: 12            # cross-encoder pairs per query (CPU budget)
+  rerank_batch_size: 4
+  rerank_threads: 6
+  rerank_cache_entries: 512
+  query_max_chars: 1500

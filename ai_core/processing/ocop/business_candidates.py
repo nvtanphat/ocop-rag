@@ -6,13 +6,14 @@ are NOT eligible for automatic legal scoring without a later validation gate.
 from __future__ import annotations
 
 import re
+from ocop_contracts.ratings import level_class
 import unicodedata
 from collections import defaultdict
 from ocop_contracts.ids import stable_id
 
 FORM_HEADER=re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?(\d{1,3})(?!\d)",re.I)
 AMOUNT=re.compile(r"(?<!\d)(\d{1,3})(?:[,.]0+)?\s*(?:điểm)?\s*$",re.I)
-STARS=re.compile(r"(?<!\d)([1-5])\s*sao\b",re.I)
+STARS=re.compile(r"(?<!\d)("+level_class()+r")\s*sao\b",re.I)
 
 
 def _header_key(value: str) -> str:

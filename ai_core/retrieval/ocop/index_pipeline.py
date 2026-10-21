@@ -381,7 +381,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
         gm=json.loads((graph_dir/'manifest.json').read_text(encoding='utf8'))
         if gm.get('source_knowledge_version')!=src['corpus_version']:
             raise ValueError('graph/index knowledge version mismatch')
-        chunks=enrich_chunks(chunks,graph_dir,allow_partial_debug=allow_partial)
+        chunks=enrich_chunks(chunks,graph_dir,allow_partial_debug=allow_partial,counter=counter)
         graph_version=gm['graph_version']
         from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
         for chunk in chunks:

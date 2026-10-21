@@ -1,6 +1,7 @@
 """Declarative candidate shape audit. Reports only; never repairs candidates."""
 from collections import Counter, defaultdict
 import re
+from ocop_contracts.ratings import level_class
 from ai_core.domain.ocop_citations import quote_bbox
 from .star_requirements import SHEET
 
@@ -108,7 +109,7 @@ def audit_shapes(units, layers, *, max_page_area_ratio=0.35, bbox_tolerance=2.0)
                 if re.match(r'^\s*Bộ\s+sản\s+phẩm\s*:',str(cell.get('text','')),re.I):
                     sheets.update(str(int(c['text'])) for c in cells if c['row']==cell['row']
                                   and c['col']<cell['col'] and re.fullmatch(r'\d{1,2}',str(c.get('text','')).strip()))
-            stars.update(re.findall(r'\bhạng\s+([1-5])\s+sao',unit.get('text',''),re.I))
+            stars.update(re.findall(r'\bhạng\s+('+level_class()+r')\s+sao',unit.get('text',''),re.I))
         for kind,observed in [('CriterionSheet',sheets),('StarLevel',stars)]:
             if not observed:
                 continue  # no source index/thresholds observed: do not invent an expected count

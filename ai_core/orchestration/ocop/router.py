@@ -16,7 +16,7 @@ from datetime import date
 from ai_core.orchestration.ocop.capabilities import CAPABILITY_TO_TOOLS, MAX_TOOL_CALLS, TOOL_REGISTRY, Capability
 from ai_core.orchestration.ocop.catalog import EntityCatalog, Match
 from ai_core.orchestration.ocop.contracts import Intent, Route
-from ai_core.orchestration.ocop.language import Language, fold, get_language
+from ai_core.orchestration.ocop.language import Language, fold, get_language, has_diacritics
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
 
 TOOLS = frozenset(TOOL_REGISTRY)
@@ -83,10 +83,11 @@ class _Patterns:
         self.sheet = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['sheet']) + r')\s*(?:so\s*)?(\d{1,3})(?!\d)')
         self.page = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['page']) + r')\s*(\d{1,4})(?!\d)')
         self.criterion = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['criterion']) + r')\s+(?:so\s+)?([a-z]?\d+(?:\.\d+){0,3})(?!\d)')
-        self.star = re.compile(r'(?<![\d.])([3-5])\s*(?:' + _alt(lang.star_noun) + r')\b')
+        self.star = re.compile(r'(?<![\d.])(' + '|'.join(str(x) for x in lang.star_levels) + r')\s*(?:' + _alt(lang.star_noun) + r')\b')
         markers = _alt(lang.locality_markers)
         self.locality_marker = re.compile(r'(?<![a-z0-9])(?:' + markers + r')\s+(?=\S)')
-        self.capitalised_run = re.compile(r'(?:[A-ZÀ-Ỹ][\wÀ-ỹ]*)(?:\s+[A-ZÀ-Ỹ][\wÀ-ỹ]*){0,3}')
+        self.word = re.compile(r'[\wÀ-ỹ]+')
+        self.markers = frozenset(unicodedata.normalize('NFC', m).casefold() for m in lang.locality_markers)
         self.locality_blocker = re.compile(r'(?:' + _alt(lang.locality_marker_blockers) + r')\s*$')
         self.product_marker = re.compile(r'(?<![a-z0-9])(?:' + _alt(lang.product_markers) + r')\s+(.+)')
         self.terminator = re.compile(r'(?<![a-z0-9])(?:' + _alt(lang.entity_terminators) + r')(?![a-z0-9])|[?.!,;:]')
@@ -121,6 +122,21 @@ def _gazetteer(lang: Language, text: str) -> list[Match]:
     """Provincial names from the vocabulary file, matched under the same accent policy as the catalog."""
     return EntityCatalog({'entities': {'region': [{'label': name, 'source_ids': []} for name in lang.localities]}}).find(
         'region', text)
+
+
+def _capitalised_run(p: _Patterns, text: str, start: int, limit: int = 4) -> str | None:
+    words, pos = [], start
+    for _ in range(limit):
+        m = p.word.match(text, pos)
+        if not m or not m.group(0)[0].isupper():
+            break
+        words.append(m.group(0))
+        pos = m.end()
+        gap = re.match(r'\s+', text[pos:])
+        if not gap:
+            break
+        pos += gap.end()
+    return ' '.join(words) or None
 
 
 def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language: Language | None = None) -> dict:
@@ -176,10 +192,14 @@ def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language:
     if regions:
         slots['region'] = regions[0].label
     else:
+        accented = has_diacritics(text)
         for m in p.locality_marker.finditer(folded):
-            name = p.capitalised_run.match(text, m.end())
+            marker = re.sub(r'\s+', ' ', text[m.start():m.end()].strip().casefold())
+            if accented and marker not in p.markers:
+                continue  # accented query: "quan" in "liên quan" is not the marker "quận"
+            name = _capitalised_run(p, text, m.end())
             if name and not p.locality_blocker.search(folded[:m.start()]):
-                slots['region'] = name.group(0)
+                slots['region'] = name
                 break
     products = catalog.find('product', text) or catalog.find('product_group', text)
     if products:

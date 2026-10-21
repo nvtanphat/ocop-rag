@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 _ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_VERSION = 1
@@ -54,6 +54,8 @@ class Language(BaseModel):
     document_types: dict[str, list[str]]
     structure_nouns: dict[str, list[str]]
     star_noun: list[str]
+    star_levels: list[int]
+    certified_star_levels: list[int]
     nationwide_labels: list[str]
     localities: list[str]
     locality_markers: list[str]

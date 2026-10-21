@@ -26,6 +26,10 @@ structure_nouns:
   page: [trang pdf, trang]
   criterion: [tiêu chí, mục]
 star_noun: [sao]
+# Rating ladder of the evaluation framework. `certified_star_levels` are the levels that carry a certificate and an
+# asterisk legend; the asterisk quantifier in table legends is derived from them.
+star_levels: [1, 2, 3, 4, 5]
+certified_star_levels: [3, 4, 5]
 
 # Jurisdiction labels that mean "whole country" (never a locality name).
 nationwide_labels: [Vietnam, Việt Nam, toàn quốc, nationwide]

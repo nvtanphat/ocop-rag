@@ -1,6 +1,7 @@
 """Pixel proposals for a damaged OCR legend; never rewrite text or verify it."""
 from __future__ import annotations
 import re
+from ocop_contracts.ratings import asterisk_quantifier, level_class
 import numpy as np
 
 
@@ -50,7 +51,7 @@ def propose_legend_images(root, source_info, pages, units):
         text=unit.get('text') or ''
         if unit.get('unit_kind')=='page' or not re.search(r'Dấu\s+sao\s+là\s+yêu\s+cầu\s+tối\s+thiểu',text,re.I):
             continue
-        literal = re.findall(r'(\*{3,5})\s*[-–—:]\s*[3-5]\s*sao',text,re.I)
+        literal = re.findall(r'(\*'+asterisk_quantifier()+r')\s*[-–—:]\s*'+level_class(certified=True)+r'\s*sao',text,re.I)
         if {len(marker) for marker in literal} == {3,4,5}:
             continue
         sid=unit['source_id'];spec=source_info[sid]
@@ -69,7 +70,7 @@ def propose_legend_images(root, source_info, pages, units):
                 if not block or not block.get('bbox'):
                     continue
                 # Corrupted OCR stars such as 44% are not level numbers.
-                levels=[int(m[1]) for m in re.finditer(r'(?<!\d)([3-5])(?![\d%])',block['text'])]
+                levels=[int(m[1]) for m in re.finditer(r'(?<!\d)('+level_class(certified=True)+r')(?![\d%])',block['text'])]
                 if not levels:
                     continue
                 box=fitz.Rect(block['bbox'])+(-1,-1,1,1)

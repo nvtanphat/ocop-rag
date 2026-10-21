@@ -7,6 +7,7 @@ this module performs entity resolution across legal jurisdictions or OCR guesses
 from __future__ import annotations
 
 import re
+from ocop_contracts.ratings import asterisk_quantifier, level_class
 from collections import Counter
 
 from ai_core.domain.ocop_citations import quote_bbox
@@ -214,7 +215,7 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
     numbering_re = re.compile(r'^\s*(\d+(?:\.\d+){0,3})')
     note_re = re.compile(r'^\s*(?:gh[iị]\s+ch[úủ]|chú\s+ý|lưu\s+ý|yêu\s+cầu|ch[iỉ]\s+áp\s+dụng|tổng\s+cộng|các\s+tiêu\s+chí|thang\s+điểm)\b|^\s*\(', re.I)
     part_re = re.compile(r'^\s*Phần\s+([ABC])\b',re.I)
-    markers_re = re.compile(r'(?<!\*)\*{3,5}(?!\*)')
+    markers_re = re.compile(r'(?<!\*)\*'+asterisk_quantifier()+r'(?!\*)')
 
     def is_section(label: str) -> bool:
         # A heading cell may include a lower-case explanatory paragraph.
@@ -386,7 +387,7 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
         star_ref=cell_evidence('star') if star_text and not column_record('star').get('inherited') else None
         if star_text and star_ref is None:
             star_text=None
-        star_match=re.search(r'(?<!\d)([1-5])\s*sao\b',star_text or '',re.I)
+        star_match=re.search(r'(?<!\d)('+level_class()+r')\s*sao\b',star_text or '',re.I)
         star_candidate=int(star_match.group(1)) if star_match else None
         try:
             ev = _ref(row, evidence_by_id)

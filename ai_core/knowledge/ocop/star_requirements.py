@@ -5,6 +5,7 @@ these candidates may be used to rank products or assess a dossier.
 """
 from __future__ import annotations
 import re
+from ocop_contracts.ratings import asterisk_quantifier, level_class
 from collections import defaultdict
 from ocop_contracts.ids import stable_id
 from .contracts import EntityType
@@ -12,8 +13,8 @@ from .contracts import EntityType
 SHEET = re.compile(r'^\s*(\d{1,2})[.)]\s*(?:Bộ\s+sản\s+phẩm\s*:|'
                    r'Sản\s+phẩm\s+(?=[^:\n]+\n\s*\(\s*Sản\s+phẩm\s*:))',re.I|re.M)
 LEGEND = re.compile(r'Dấu\s+sao\s+là\s+yêu\s+cầu\s+tối\s+thiểu',re.I)
-MAPPING = re.compile(r'(?<!\*)(\*{3,5})(?!\*)\s*[-–—:]\s*([3-5])\s*sao',re.I)
-MARKER = re.compile(r'(?<!\*)\*{3,5}(?!\*)')
+MAPPING = re.compile(r'(?<!\*)(\*'+asterisk_quantifier()+r')(?!\*)\s*[-–—:]\s*('+level_class(certified=True)+r')\s*sao',re.I)
+MARKER = re.compile(r'(?<!\*)\*'+asterisk_quantifier()+r'(?!\*)')
 THRESHOLD = re.compile(r'đạt\s+(?:từ\s+(\d+)\s+đến\s+(dưới\s+)?(\d+)|dưới\s+(\d+))',re.I)
 
 
@@ -38,7 +39,7 @@ def extract_star_requirements(units, kinds, candidate_sets, index, entities,
         if kinds.get(sid) not in {'ocop_framework','ocop_historical'} or (sid,unit['unit_id']) not in article3:
             continue
         for statement in sentences(unit.get('text') or ''):
-            level = re.search(r'\bhạng\s+([1-5])\s+sao',statement,re.I)
+            level = re.search(r'\bhạng\s+('+level_class()+r')\s+sao',statement,re.I)
             score = THRESHOLD.search(statement)
             if not level or not score:
                 continue
