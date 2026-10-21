@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+from .inference_guard import inference_slot
 from pathlib import Path
 
 import numpy as np
@@ -177,7 +178,8 @@ def _pdf_bbox(bbox, *, width_px: int, height_px: int, page) -> list[float]:
 
 
 def _detect_regions(reader, rgb: np.ndarray, *, diagnostics: dict | None = None) -> list[dict]:
-    horizontal, free = reader.detect(
+    with inference_slot():
+        horizontal, free = reader.detect(
         rgb,
         min_size=12,
         text_threshold=0.60,

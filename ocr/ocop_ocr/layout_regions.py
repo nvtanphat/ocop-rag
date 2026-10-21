@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from .inference_guard import inference_slot
 
 from ocop_contracts.registry import sha256_file
 
@@ -49,7 +50,8 @@ def detect_regions(rgb: np.ndarray) -> tuple[list[dict], str | None]:
     if layout_signature() is None:
         return [], "layout_model_unavailable"
     try:
-        result = _model(str(model_dir())).predict(np.ascontiguousarray(rgb[:, :, ::-1]))[0]
+        with inference_slot():
+            result = _model(str(model_dir())).predict(np.ascontiguousarray(rgb[:, :, ::-1]))[0]
     except Exception as exc:  # optional stage: OCR must not fail because layout did
         return [], f"layout_model_failed:{type(exc).__name__}"
     return [{"label": str(box["label"]), "score": round(float(box["score"]), 3),
