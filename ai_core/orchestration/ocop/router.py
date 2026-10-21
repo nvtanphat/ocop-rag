@@ -74,8 +74,11 @@ class _Patterns:
     def __init__(self, lang: Language):
         doc = _alt([w for words in lang.document_types.values() for w in words])
         n = lang.structure_nouns
-        number = r'(\d{1,4}(?:[/.-]\d{2,4})?(?:[/.-][a-z]+)*)'
+        number = r'(\d{1,4}(?:[/.-]\d{2,4})?(?:[/.-][a-z]+\d*)*)'
         self.document = re.compile(r'(?<![a-z0-9])(?:' + doc + r')\s*(?:so\s*)?' + number)
+        self.bare_number = re.compile(r'(?<![a-z0-9/])(\d{1,4}/(?:19|20)\d{2}(?:/[a-z]+\d*)?(?:-[a-z]+)*)(?![a-z0-9/])')
+        self.type_words = {kind: re.compile(r'(?<![a-z0-9])(?:' + _alt(words) + r')(?![a-z0-9])')
+                           for kind, words in lang.document_types.items()}
         self.article = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['article']) + r')\s*(\d{1,3})(?!\d)')
         self.form = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['form']) + r')\s*(?:so\s*)?0?([1-9]\d?)(?!\d)')
         self.form_list = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['form']) + r')\s*(?:so\s*)?0?([1-9]\d?)\b'
@@ -139,6 +142,18 @@ def _capitalised_run(p: _Patterns, text: str, start: int, limit: int = 4) -> str
     return ' '.join(words) or None
 
 
+def _document_by_title_year(lang: Language, p: _Patterns, catalog: EntityCatalog, folded: str, *, years_found: list[str]):
+    """"Luật ... 2023" -> the one catalogued law of 2023 (type word + year, both from the vocabulary/registry)."""
+    if len(set(years_found)) != 1:
+        return None
+    for kind, rx in p.type_words.items():
+        if rx.search(folded):
+            code = catalog.document_by_type_year(kind, years_found[0])
+            if code:
+                return code
+    return None
+
+
 def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language: Language | None = None) -> dict:
     """Explicit slots only; never assume a date, product group or document."""
     lang = language or get_language()
@@ -146,8 +161,12 @@ def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language:
     text = _nfc(query)
     folded = fold(text)
     slots: dict = {}
-    if m := p.document.search(folded):
+    if (m := p.document.search(folded)) and not re.fullmatch(r'(?:19|20)\d{2}', m.group(1)):
         slots['document_code'] = text[m.start(1):m.end(1)]
+    elif m := p.bare_number.search(folded):
+        slots['document_code'] = text[m.start():m.end()]
+    elif catalog is not None and (code := _document_by_title_year(lang, p, catalog, folded, years_found=YEAR.findall(text))):
+        slots['document_code'] = code
     if m := p.article.search(folded):
         slots['article_id'] = m.group(1)
     form_ids = [x.lstrip('0') for x in dict.fromkeys(m.group(1) for m in p.form.finditer(folded))]
@@ -347,6 +366,8 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
     if len(caps) > 1 and 'search_regulations' not in primary + secondary and explicit & {
             Capability.TEMPORAL, Capability.SECTOR_COMPLIANCE, Capability.RELATION_REASONING}:
         primary.append('search_regulations')
+    if Capability.RECOGNITION in explicit and 'search_regulations' not in primary:
+        secondary.append('search_regulations')   # the decision's own articles explain a list of recognised products
     if explicit == {Capability.EXACT_ARTICLE} and not facets.authority:
         primary = ['lookup_legal_unit']
     if facets.authority:

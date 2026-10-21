@@ -102,6 +102,18 @@ class ToolRegistry:
             found = [x for x in found if x[0] == str(year)]
         return max(found)[2] if found else None
 
+    def _registry_source_for_number(self, code:str) -> str|None:
+        """Registry source whose document number starts with the given number segments ("26/2026" -> "26/2026/QĐ-TTg";
+        "148" never matches "1489/..."). Ambiguity returns None."""
+        path=self.root/'configs/ocop_sources.json'
+        if not path.is_file():return None
+        wanted=[s for s in re.split(r'[/.\-\s]+',normalize(code)) if s]
+        found=[]
+        for src in json.loads(path.read_text(encoding='utf-8')).get('sources',[]):
+            have=[s for s in re.split(r'[/.\-\s]+',normalize(str(src.get('document_number') or ''))) if s]
+            if have[:len(wanted)]==wanted:found.append(src['source_id'])
+        return found[0] if len(found)==1 else None
+
     def _resolve_source_id(self, code:str|None) -> str|None:
         """Resolve document code to a unique corpus source; ambiguous -> unfiltered.
 
@@ -110,6 +122,8 @@ class ToolRegistry:
         if not code:return None
         tokens=re.findall(r"\d+",str(code))
         if not tokens:return None
+        by_number=self._registry_source_for_number(str(code))
+        if by_number:return by_number
         path=self.index_dir/"chunks.jsonl"
         if not path.is_file():return None
         matches=set()
@@ -156,7 +170,7 @@ class ToolRegistry:
                     # Apply checked sheet membership before top-K; filtering
                     # forty document-wide hits can lose the entire sheet.
                     scoped=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,
-                                  top_k=32,evidence_unit_ids=units)
+                                  top_k=32,evidence_unit_ids=units,rerank=bool(context.get('rerank',False)))
                     graph=GraphEvidence(self.graph_dir,self.index_dir,
                                         allow_partial_debug=context.get('allow_partial_debug') is True)
                     for facet in criterion_facets(query):
@@ -268,7 +282,8 @@ class ToolRegistry:
             if rows and slots.get('article_id') and not slots.get('pdf_page') and (self.index_dir/'chunks.jsonl').is_file():
                 allowed={row['evidence_unit_id'] for row in rows}
                 hits=search(self.index_dir,query,source_id=source,evidence_unit_ids=allowed,
-                            mode=context.get('retrieval_mode','sparse'),top_k=32)
+                            mode=context.get('retrieval_mode','sparse'),top_k=32,
+                            rerank=bool(context.get('rerank',False)))
                 for hit in hits:
                     unit=graph.units[hit['evidence_unit_id']]
                     hit.update({'graph_node_ids':[unit['node_id']],'check':unit['check']})

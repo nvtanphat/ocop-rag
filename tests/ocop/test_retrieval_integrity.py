@@ -87,12 +87,15 @@ def test_reranker_candidate_depth_not_limited_to_3x_target_count(tmp_path,monkey
     rows=[_row(f'item_{i:02}',f'ho so thang diem {i}') for i in range(20)]
     idx=_index(tmp_path/'idx',rows)
     seen=[]
-    def oracle_rerank(query, candidates, model_id, revision=None):
+    def oracle_rerank(query, candidates, model_id, revision=None, **kwargs):
         seen.extend(r['chunk_id'] for r in candidates)
         return sorted(candidates,key=lambda r:r['chunk_id']=='item_19',reverse=True)
     monkeypatch.setattr(module,'_rerank',oracle_rerank)
+    module.search(idx,'ho so thang diem',top_k=1,rerank=True,rerank_candidates=20)
+    assert len(seen)>=20, 'The reranker pool is the configured depth, not a fixed multiple of top_k'
+    seen.clear()
     module.search(idx,'ho so thang diem',top_k=1,rerank=True)
-    assert len(seen)>=20, 'A fixed 3x pool makes reranker miss relevant candidates'
+    assert len(seen)==module.get_settings().retrieval.rerank_candidates
 
 
 def test_unpinned_reranker_does_not_enable_remote_code(tmp_path,monkeypatch):
@@ -120,21 +123,57 @@ def test_reranker_reports_explicit_rerank_unavailable_when_model_load_fails(tmp_
     assert 'Model unavailable offline' in hits[0]['ranking_reason']
 
 
-def test_reranker_forbids_silent_truncation_when_pair_budget_exceeded(monkeypatch):
+def test_reranker_truncates_oversized_pair_explicitly_and_flags_it(monkeypatch):
     class MockTokenizer:
         def __call__(self, q, doc, **kwargs):
             return {'input_ids': list(range(1500))}  # 1500 tokens > 1024 budget
     class MockModel:
         tokenizer = MockTokenizer()
+        max_length = None
         def predict(self, pairs, **kwargs):
             return [0.9] * len(pairs)
-            
+
+    model = MockModel()
     module._load_reranker.cache_clear()
-    monkeypatch.setattr(module, '_load_reranker', lambda *a, **kw: MockModel())
-    
+    monkeypatch.setattr(module, '_load_reranker', lambda *a, **kw: model)
     candidates = [{'chunk_id': 'c1', 'text': 'đoạn văn bản OCOP dài'}]
-    with pytest.raises(RuntimeError, match='pair_token_budget'):
-        module._rerank('câu hỏi', candidates, 'BAAI/bge-reranker-v2-m3', pair_token_budget=1024)
+    out = module._rerank('câu hỏi', candidates, 'BAAI/bge-reranker-v2-m3', pair_token_budget=1024)
+    assert out[0]['rerank_input_truncated'] is True and model.max_length == 1024
+    assert out[0]['reranker_score'] == 0.9
+
+
+def test_reranker_scores_are_cached_per_query_and_passage(monkeypatch):
+    calls = []
+
+    class MockModel:
+        tokenizer = None
+        max_length = None
+        def predict(self, pairs, **kwargs):
+            calls.append(len(pairs))
+            return [0.5] * len(pairs)
+
+    module._RERANK_CACHE.clear()
+    monkeypatch.setattr(module, '_load_reranker', lambda *a, **kw: MockModel())
+    for _ in range(2):
+        module._rerank('cùng câu hỏi', [{'chunk_id': 'c9', 'text': 'cùng đoạn'}], 'm', 'r')
+    assert calls == [1]
+
+
+def test_dense_failure_of_any_kind_falls_back_to_sparse_with_reason(tmp_path, monkeypatch):
+    idx = _index(tmp_path / 'idx', [_row('alpha', 'tiêu chí đánh giá OCOP')])
+    manifest = json.loads((idx / 'manifest.json').read_text(encoding='utf-8'))
+    manifest['dense'] = {'enabled': True, 'model_id': 'x', 'dimension': 3, 'collection': 'c', 'host': 'h', 'port': 1}
+    (idx / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+
+    class QdrantDown(Exception):
+        pass
+
+    def boom(*a, **kw):
+        raise QdrantDown('connection refused')
+    monkeypatch.setattr(module, '_dense_hits', boom)
+    rows = module.search(idx, 'tiêu chí', mode='hybrid')
+    assert rows and rows[0]['retrieval_mode'] == 'sparse'
+    assert rows[0]['retrieval_fallback_reason'] == 'dense_unavailable:QdrantDown'
 
 
 def test_resolve_local_model_path(tmp_path):
@@ -150,3 +189,18 @@ def test_resolve_local_model_path(tmp_path):
     assert res_path_none == "nonexistent/model"
 
 
+
+
+def test_dense_query_is_counted_with_real_tokenizer_and_cut_explicitly():
+    class Tok:
+        def __call__(self, text, **kwargs):
+            return {'input_ids': list(range(len(text.split())))}
+
+    class Model:
+        tokenizer = Tok()
+        max_seq_length = 10
+
+    query, meta = module._fit_query(Model(), ' '.join(f'w{i}' for i in range(40)))
+    assert meta['query_truncated'] is True and meta['query_tokens'] <= 10
+    query, meta = module._fit_query(Model(), 'ngắn gọn thôi')
+    assert meta['query_truncated'] is False and query == 'ngắn gọn thôi'

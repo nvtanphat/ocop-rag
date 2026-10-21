@@ -29,6 +29,19 @@ def _digits(value: str) -> tuple[str, ...]:
     return tuple(re.findall(r'\d+', value))
 
 
+def _document_type(number: str, lang: Language) -> str | None:
+    letters = {fold(x) for x in re.findall(r'[^\W\d_]+', number)}
+    for kind, markers in lang.document_number_markers.items():
+        if letters & {fold(m) for m in markers}:
+            return kind
+    return None
+
+
+def _document_year(number: str, source_id: str) -> str | None:
+    years = re.findall(r'(?<!\d)(?:19|20)\d{2}(?!\d)', number) or re.findall(r'(?<!\d)(?:19|20)\d{2}(?!\d)', source_id)
+    return years[0] if years else None
+
+
 def _region_labels(jurisdiction: str, lang: Language) -> list[str]:
     nationwide = {fold(x) for x in lang.nationwide_labels}
     labels = []
@@ -63,7 +76,8 @@ def build_catalog(registry_path: Path, nodes: list[dict], *, language: Language 
     for source in sources:
         number = source.get('document_number')
         if number:
-            add('document', number, source_id=source['source_id'], digits=list(_digits(number)))
+            add('document', number, source_id=source['source_id'], digits=list(_digits(number)),
+                type=_document_type(number, lang), year=_document_year(number, source['source_id']))
         for label in _region_labels(str(source.get('jurisdiction') or ''), lang):
             add('region', label, source_id=source['source_id'])
     for node in nodes:
@@ -137,6 +151,11 @@ class EntityCatalog:
                 found.append(Match(kind, item['label'], tuple(item.get('source_ids') or ()), m.start(), m.end(),
                                    {k: v for k, v in item.items() if k not in ('label', 'source_ids')}))
         return sorted(found, key=lambda x: x.start)
+
+    def document_by_type_year(self, kind: str, year: str) -> str | None:
+        """Number of the only catalogued document of this type and year (None when absent or ambiguous)."""
+        found = [d['label'] for d in self._items.get('document', []) if d.get('type') == kind and d.get('year') == year]
+        return found[0] if len(found) == 1 else None
 
     def mentions(self, query: str) -> dict[str, list[Match]]:
         return {kind: found for kind in KINDS if (found := self.find(kind, query))}

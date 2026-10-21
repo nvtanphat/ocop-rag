@@ -95,3 +95,33 @@ def test_catalog_round_trip_and_tamper_detection(tmp_path):
     assert {'Tỉnh Lạng Sơn', 'Lạng Sơn'} <= set(load_catalog(tmp_path, {'entity_catalog': meta}).labels('region'))
     (tmp_path / 'entity_catalog.json').write_text('{"entities": {}}', encoding='utf-8')
     assert load_catalog(tmp_path, {'entity_catalog': meta}).empty
+
+
+def test_document_resolved_from_type_and_year_via_catalog(tmp_path):
+    registry = tmp_path / 'sources.json'
+    registry.write_text(json.dumps({'sources': [
+        {'source_id': 'X.LAW.2023', 'document_number': '17/2023/QH15', 'jurisdiction': 'Vietnam'},
+        {'source_id': 'X.ND.2021', 'document_number': '111/2021/NĐ-CP', 'jurisdiction': 'Vietnam'}]}), encoding='utf-8')
+    catalog = EntityCatalog(build_catalog(registry, []))
+    assert extract_slots('Luật hợp tác xã 2023 Điều 3', catalog=catalog)['document_code'] == '17/2023/QH15'
+    assert extract_slots('Nghị định năm 2021 Điều 4', catalog=catalog)['document_code'] == '111/2021/NĐ-CP'
+    assert extract_slots('Luật 17/2023/QH15 Điều 1')['document_code'] == '17/2023/QH15'
+    assert 'document_code' not in extract_slots('Luật hợp tác xã 2023 Điều 3')   # no catalog, no guess
+
+
+def test_liên_quan_is_not_a_district_marker():
+    assert 'region' not in extract_slots('Chủ thể liên quan đến quyết định nào?')
+
+
+def test_document_code_resolves_by_registry_number_segments(tmp_path):
+    from ai_core.orchestration.ocop.tools import ToolRegistry
+    (tmp_path / 'configs').mkdir()
+    (tmp_path / 'configs/ocop_sources.json').write_text(json.dumps({'sources': [
+        {'source_id': 'X.A.2023', 'document_number': '148/QĐ-TTg'},
+        {'source_id': 'X.B.2025', 'document_number': '1489/QĐ-TTg'},
+        {'source_id': 'X.C.2023', 'document_number': '17/2023/QH15'}]}), encoding='utf-8')
+    registry = ToolRegistry(tmp_path)
+    assert registry._resolve_source_id('148') == 'X.A.2023'          # not 1489
+    assert registry._resolve_source_id('1489') == 'X.B.2025'
+    assert registry._resolve_source_id('17/2023/QH15') == 'X.C.2023'
+    assert registry._resolve_source_id('17/2023') == 'X.C.2023'

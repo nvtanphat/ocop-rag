@@ -84,6 +84,10 @@ def select_window(text: str, terms: list[str], max_chars: int) -> tuple[str, boo
     return window, i > 0, j < len(segments) - 1
 
 
+def _clean(value) -> str:
+    return re.sub(r'\s+', ' ', str(value or '')).strip()
+
+
 def _labelled_row(row: dict) -> str | None:
     """"Column: value" pairs for a graph table row whose header cells are known."""
     cells = (row.get('structured') or {}).get('cells') or []
@@ -94,10 +98,10 @@ def _labelled_row(row: dict) -> str | None:
     header_row = min((c.get('row', 0) for c in cells), default=None)
     if header_row is None or header_row == row_no:
         return None
-    names = {c.get('col'): re.sub(r'\s+', ' ', str(c.get('text') or '')).strip() for c in cells if c.get('row') == header_row}
+    names = {c.get('col'): _clean(c.get('text')) for c in cells if c.get('row') == header_row}
     values = sorted((c for c in cells if c.get('row') == row_no), key=lambda c: c.get('col', 0))
-    pairs = [f"{names.get(c.get('col')) or 'Cột ' + str(c.get('col'))}: {re.sub(r'\s+', ' ', str(c.get('text') or '')).strip()}"
-             for c in values if str(c.get('text') or '').strip()]
+    pairs = [(names.get(c.get('col')) or 'Cột ' + str(c.get('col'))) + ': ' + _clean(c.get('text'))
+             for c in values if _clean(c.get('text'))]
     return '; '.join(pairs) if pairs else None
 
 

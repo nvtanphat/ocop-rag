@@ -197,7 +197,7 @@ def test_qdrant_scoped_search_filters_all_constraints(monkeypatch):
     monkeypatch.setattr(module,'_encode',lambda *_:np.array([[0.1,0.2,0.3]]))
     manifest={'corpus_version':'v7','dense':{'enabled':True,'dimension':3,'model_id':'mock',
              'collection':'mock','host':'localhost','port':6333}}
-    result=module._dense_hits('OCOP',manifest,5,source_id='DOC',include_needs_review=False)
-    assert result==[('yes',0.95)]
+    result,meta=module._dense_hits('OCOP',manifest,5,source_id='DOC',include_needs_review=False)
+    assert result==[('yes',0.95)] and meta['query_truncated'] is False
     constraints={x.key:x.match.value for x in collected[0]['query_filter'].must}
     assert constraints=={'source_id':'DOC','review_status':'verified','corpus_version':'v7'}

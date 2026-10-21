@@ -16,7 +16,7 @@ retrieval:
   rrf_k: 60
   rrf_weight_sparse: 1.0
   rrf_weight_dense: 1.0
-  rerank_candidates: 12            # cross-encoder pairs per query (CPU budget)
+  rerank_candidates: 8             # cross-encoder pairs per query: ~1 s per 512-token pair on 6 CPU cores
   rerank_batch_size: 4
   rerank_threads: 6
   rerank_cache_entries: 512

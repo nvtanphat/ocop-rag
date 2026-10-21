@@ -18,6 +18,14 @@ document_types:
   law: [luật]
   circular: [thông tư, tt]
 
+# Suffix letters of an official document number that identify its type: "17/2023/QH15" -> law.
+document_number_markers:
+  decision: [QĐ]
+  decree: [NĐ]
+  resolution: [NQ]
+  law: [QH]
+  circular: [TT]
+
 # Nouns that introduce a numbered structural reference.
 structure_nouns:
   article: [điều]
