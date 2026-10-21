@@ -139,15 +139,6 @@ cues:
     hồ sơ tôi cần chuẩn bị, hồ sơ gồm những gì]
   recognition_signal: [công nhận, đã đạt ocop, đạt sao ocop, sản phẩm được công nhận, danh sách sản phẩm ocop, sản phẩm đạt sao]
 
-# Column labels that identify the role of a table cell in recognition tables.
-table_roles:
-  organization: [tổ chức/cá nhân, tổ chức, cá nhân, đơn vị]
-  owner: [chủ thể, tên chủ thể, chủ thể sản xuất]
-  representative: [người đại diện, đại diện pháp luật, đại diện]
-  product: [tên sản phẩm, sản phẩm]
-  rating: [phân hạng, hạng sao, xếp hạng]
-  address: [địa chỉ, địa bàn]
-
 # Messages shown for non-answer routes.
 messages:
   out_of_scope: Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.

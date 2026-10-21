@@ -21,3 +21,10 @@ retrieval:
   rerank_threads: 6
   rerank_cache_entries: 512
   query_max_chars: 1500
+agent:
+  max_tool_calls: 5                # AGENTS.md: default maximum of five tool calls per question
+  grader_min_relevance: 0.13       # min share of question terms in a row for it to count as relevant evidence
+  scope_min_bigram_coverage: 0.60  # share of query content bigrams in one indexed chunk that reopens an unrecognised question
+  graph_hops: 2
+  graph_node_limit: 75
+  graph_max_facts: 32

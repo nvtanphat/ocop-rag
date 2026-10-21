@@ -7,7 +7,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-MAX_TOOL_CALLS = 5
+from ai_core.retrieval.ocop.settings import get_settings
+
+MAX_TOOL_CALLS = get_settings().agent.max_tool_calls
 
 
 class Capability(str, Enum):

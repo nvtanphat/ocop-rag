@@ -35,11 +35,22 @@ class RetrievalSettings(BaseModel):
     query_max_chars: int = Field(1500, ge=50)
 
 
+class AgentSettings(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    max_tool_calls: int = Field(5, ge=1, le=8)
+    grader_min_relevance: float = Field(0.13, ge=0, le=1)
+    scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
+    graph_hops: int = Field(2, ge=1, le=4)
+    graph_node_limit: int = Field(75, ge=1)
+    graph_max_facts: int = Field(32, ge=1)
+
+
 class Settings(BaseModel):
     model_config = ConfigDict(extra='forbid')
     schema_version: int = 1
     context: ContextSettings = ContextSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
+    agent: AgentSettings = AgentSettings()
 
 
 @lru_cache(maxsize=4)

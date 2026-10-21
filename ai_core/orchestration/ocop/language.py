@@ -29,11 +29,6 @@ def has_diacritics(value: str) -> bool:
     return 'đ' in decomposed or any(unicodedata.category(c) == 'Mn' for c in decomposed)
 
 
-def phrase_regex(phrase: str) -> re.Pattern:
-    words = [re.escape(w) for w in fold(phrase).split()]
-    return re.compile(r'(?<![a-z0-9])' + r'\s+'.join(words) + r'(?![a-z0-9])')
-
-
 class Followup(BaseModel):
     model_config = ConfigDict(extra='forbid')
     openers: list[str]
@@ -67,7 +62,6 @@ class Language(BaseModel):
     product_markers: list[str]
     followup: Followup
     cues: dict[str, list[str] | dict[str, list[str]]]
-    table_roles: dict[str, list[str]]
     messages: Messages
 
     @field_validator('schema_version')

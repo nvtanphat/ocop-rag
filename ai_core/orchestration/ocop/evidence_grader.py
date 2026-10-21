@@ -8,6 +8,8 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from ai_core.retrieval.ocop.settings import get_settings
+
 STOPWORDS = frozenset('cho tôi về là những các của và theo cần có với một trong được như nào gì hãy thì khi OCOP sản phẩm'.casefold().split())
 STRUCTURED_TOOLS = frozenset({'lookup_product_subgroup','lookup_criterion','lookup_evidence_requirements','lookup_form','lookup_recognition','resolve_temporal_applicability'})
 
@@ -33,13 +35,14 @@ def _text(row:dict) -> str:
 
 
 def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_tools:list[str]|tuple[str,...]=(),
-                   min_relevance:float=.13) -> dict:
+                   min_relevance:float|None=None) -> dict:
     """Inspect all required capabilities, not just whether some BM25 hit exists.
 
     grade status is *retrieval-sufficient*, never 'legal verified'. Unknown
     applicability is explicitly distinguished from contradictory evidence.
     """
     slots=slots or {}
+    min_relevance=get_settings().agent.grader_min_relevance if min_relevance is None else min_relevance
     relevant_query=tokens(query)
     scored=[];capabilities=[];missing=[];expected=set(expected_tools)
     for entry in results:

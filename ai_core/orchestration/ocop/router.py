@@ -19,11 +19,9 @@ from ai_core.orchestration.ocop.contracts import Intent, Route
 from ai_core.orchestration.ocop.language import Language, fold, get_language, has_diacritics
 from ai_core.orchestration.ocop.privacy import get_privacy
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
+from ai_core.retrieval.ocop.settings import get_settings
 
 TOOLS = frozenset(TOOL_REGISTRY)
-# Reasoned in docs/CONFIGURATION.md: min share of the query's content bigrams found in one indexed chunk
-# for an otherwise unrecognised question to be reopened as in scope.
-MIN_INDEXED_CONTENT_BIGRAM_COVERAGE = 0.60
 
 ROUTES = {
     Intent.OCOP_OVERVIEW: ('hybrid', ['search_regulations']),
@@ -433,7 +431,7 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             coverage = None
         if isinstance(coverage, (int, float)) and not isinstance(coverage, bool) and \
-                MIN_INDEXED_CONTENT_BIGRAM_COVERAGE <= coverage <= 1.0:
+                get_settings().agent.scope_min_bigram_coverage <= coverage <= 1.0:
             in_domain = reopened = True
     if explicit_oos:
         return Route(intent=Intent.OUT_OF_SCOPE, strategy='clarify', slots=slots, reason_codes=['explicit_out_of_scope'])

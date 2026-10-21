@@ -6,6 +6,7 @@ from datetime import date
 import re
 from ocop_contracts.ratings import level_class
 from ai_core.retrieval.ocop.search import search
+from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.lookup import exact_lookup
 from ai_core.graph.ocop.retriever import traverse
 from ai_core.graph.ocop.lookup import GraphEvidence
@@ -550,9 +551,9 @@ class ToolRegistry:
                 if phrase in folded:requested.append(predicate)
             if requested and slots.get('document_code'):
                 semantic=tuple(requested)
-            graph=traverse(graph_path,list(seed),hops=2,relations=list(semantic),
+            graph=traverse(graph_path,list(seed),hops=get_settings().agent.graph_hops,relations=list(semantic),
                            verified_only=False,
-                             limit=75,direction="both",allow_partial_debug=context.get('allow_partial_debug') is True)
+                             limit=get_settings().agent.graph_node_limit,direction="both",allow_partial_debug=context.get('allow_partial_debug') is True)
             # Only checked assertions enter generation. Source text is linked as
             # provenance, never reintroduced wholesale as an accepted relation.
             by_node={n['node_id']:n for n in graph['nodes']}
@@ -576,7 +577,7 @@ class ToolRegistry:
                                                     review_status=edge['review_status']):
                     proof['graph_edge_id']=edge['edge_id']
                     facts.append(proof)
-                if len(facts)>=32:break
+                if len(facts)>=get_settings().agent.graph_max_facts:break
             graph['results']=facts
             graph['status']='checked_source_graph'
             return graph

@@ -22,6 +22,7 @@ from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_re
 from ai_core.orchestration.ocop.llm import OllamaClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
 from ai_core.orchestration.ocop.catalog import load_catalog
+from ai_core.orchestration.ocop.language import get_language
 from ai_core.orchestration.ocop.privacy import redact
 
 
@@ -329,10 +330,12 @@ class OcopAgent:
                     'Vui lòng gửi từng câu riêng, chẳng hạn phân nhóm sản phẩm, tiêu chí '
                     'hoặc hồ sơ/minh chứng, để không bỏ sót nguồn cần đối chiếu.',
                     'status':'clarify','citations':[]}}
-            return {'answer':{'answer':'Cần bổ sung thông tin để xử lý: '+', '.join(route.missing_slots),
+            messages=get_language().messages
+            return {'answer':{'answer':messages.clarify_prefix+', '.join(
+                                  messages.clarify_slots.get(slot,slot) for slot in route.missing_slots),
                               'status':'clarify','citations':[]}}
         if route.intent==Intent.OUT_OF_SCOPE:
-            return {'answer':{'answer':'Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.',
+            return {'answer':{'answer':get_language().messages.out_of_scope,
                               'status':'out_of_scope','citations':[]}}
         every=state.get('results') or []
         # Optional (secondary) tools enrich an answer; their gaps are reported, never block it.
