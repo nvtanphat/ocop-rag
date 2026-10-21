@@ -121,7 +121,7 @@ def extraction_model_name()->str:
 
 def extraction_workers()->int:
     load_env_file()
-    return int(os.getenv("OCOP_EXTRACT_LLM_WORKERS","1"))
+    return int(os.getenv("OCOP_EXTRACT_LLM_WORKERS","4"))
 
 def extraction_gleanings()->int:
     load_env_file()
