@@ -35,8 +35,15 @@ def _recipient(text,match):
 
 def _subjects(text):
     mentions=list(find_authorities(text));subjects=[]
+    recipients=set()
     for i,mention in enumerate(mentions):
-        if _recipient(text,mention):
+        # A shared preposition governs the whole coordinated list ("của Bộ A,
+        # Bộ B và Bộ C"), including the document authors in legal citations.
+        coordinated_recipient=(i-1 in recipients and bool(re.fullmatch(
+            r'\s*(?:,\s*(?:và\s*)?|và\s+)\s*',
+            text[mentions[i-1].end():mention.start()], re.I)))
+        if _recipient(text,mention) or coordinated_recipient:
+            recipients.add(i)
             continue
         last=mention
         for following in mentions[i+1:]:
@@ -115,7 +122,8 @@ def _deadline(text):
 
 
 def extract_procedures(units,kinds,candidates,index,entities,omitted,add,link,ref,sentences):
-    allowed={'ocop_framework','ocop_historical','ocop_amendment','local_guidance','food_safety_decree','food_safety_resolution'}
+    allowed={'ocop_framework','ocop_historical','ocop_amendment','local_guidance',
+             'food_safety_decree','food_safety_resolution','recognition_decision'}
     covered=set();seen=set();forms_seen=set()
     procedure_articles={(article.source_id, article.attributes.get('article_number')) for article in entities.values()
         if article.kind==EntityType.ARTICLE and re.search(

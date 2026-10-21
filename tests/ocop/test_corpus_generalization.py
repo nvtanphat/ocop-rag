@@ -33,6 +33,25 @@ def test_procedure_article_title_and_authority_do_not_depend_on_known_numbers():
     assert any(r['relation_type'] == 'RESPONSIBLE_FOR' for r in result['business_relations'])
 
 
+def test_repealed_document_title_is_not_a_new_ministry_responsibility():
+    text = ('Chương II Thông tư liên tịch số 13/2014/TTLT-BYT-BNNPTNT-BCT ngày 09\n'
+            'tháng 4 năm 2014 của Bộ Y tế, Bộ Nông nghiệp và Phát triển nông thôn, Bộ Công\n'
+            'Thương hướng dẫn việc phân công, phối hợp trong quản lý nhà nước về an toàn thực\n'
+            'phẩm.')
+    result = extract([unit('DOC.ND', 34, text, 'paragraph')],
+                     kinds={'DOC.ND': 'food_safety_decree'})
+    assert not any(r['relation_type'] == 'RESPONSIBLE_FOR' for r in result['business_relations'])
+    from ai_core.knowledge.ocop.procedures import _subjects
+    assert not _subjects(text)
+
+
+def test_recognition_decision_keeps_explicit_implementation_responsibility():
+    result = extract([unit('DOC.LOCAL', 2, 'Điều 3. Tổ chức thực hiện\n'
+        '1. Giao Sở Nông nghiệp và Môi trường tổ chức công bố công khai sản phẩm được xếp hạng.')],
+        kinds={'DOC.LOCAL': 'recognition_decision'})
+    assert any(r['relation_type'] == 'RESPONSIBLE_FOR' for r in result['business_relations'])
+
+
 def test_next_annex_stops_the_last_criterion_sheet():
     from tests.ocop.test_criterion_sheets import table
     units = fixture()
