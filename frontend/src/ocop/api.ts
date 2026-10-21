@@ -42,6 +42,7 @@ export interface AskResult {
   status: string
   citations: Citation[]
   tools_used: string[]
+  tools_skipped?: string[]
   workflow_engine: string
   corpus_version?: string | null
   route?: { strategy?: string; slots?: Record<string, unknown>; reason_codes?: string[] }
@@ -77,8 +78,9 @@ const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '') + 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, init)
   if (!response.ok) {
-    const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail || `Yêu cầu thất bại (HTTP ${response.status})`)
+    const data = await response.json().catch(() => ({})) as { detail?: string | { message?: string; code?: string } }
+    const detail = typeof data.detail === 'string' ? data.detail : data.detail?.message
+    throw new Error(detail || `Yêu cầu thất bại (HTTP ${response.status})`)
   }
   return response.json() as Promise<T>
 }
