@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
-from ai_core.processing.ocop.raster_preprocess import prepare_raster, PreparedRaster, restore_geometry
+from ocop_ocr.raster_preprocess import prepare_raster, PreparedRaster, restore_geometry
 
 
 def test_blank_raster_is_unchanged():

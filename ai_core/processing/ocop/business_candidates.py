@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections import defaultdict
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 
 FORM_HEADER=re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?([1-3])\b",re.I)
 AMOUNT=re.compile(r"(?<!\d)(\d{1,3})(?:[,.]0+)?\s*(?:điểm)?\s*$",re.I)

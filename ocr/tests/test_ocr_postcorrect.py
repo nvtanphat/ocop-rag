@@ -1,7 +1,7 @@
 """Diacritic post-correction: recognizer-weighed marks chosen by context, raw OCR kept, digits and native pages untouched."""
 import pytest
 
-from ai_core.processing.ocop.ocr_postcorrect import DiacriticModel, correct_texts, postcorrect_artifact, skeleton
+from ocop_ocr.ocr_postcorrect import DiacriticModel, correct_texts, postcorrect_artifact, skeleton
 
 NATIVE = ["Quyết định của Thủ tướng Chính phủ về việc quản lý chương trình mục tiêu quốc gia.",
           "Chính phủ về việc quản lý hồ sơ kèm theo Phụ lục kèm theo.",

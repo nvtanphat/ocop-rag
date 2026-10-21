@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ocop-ocr"
+version = "0.1.0"
+description = "Source-locked OCOP PDF OCR and review dataset producer"
+requires-python = ">=3.11"
+dependencies = [
+  "ocop-contracts==0.1.0",
+  "pymupdf>=1.24", "pillow>=10", "numpy>=1.26",
+  "easyocr>=1.7.2,<2", "vietocr==0.3.13",
+  "opencv-python-headless>=4.8", "torch>=2.0",
+]
+
+[project.optional-dependencies]
+layout = ["paddleocr>=3.2,<4", "paddlepaddle>=3.0,<4"]
+dev = ["pytest>=8.2", "ruff>=0.4"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ocop_ocr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["..", "."]

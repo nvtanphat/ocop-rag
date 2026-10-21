@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 
-from ai_core.domain.ocop_ids import content_sha256
+from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION, records
 from ai_core.graph.ocop.grounding import public_record, USABLE_CHECKS
 from ai_core.graph.ocop.integrity import validate_graph_snapshot

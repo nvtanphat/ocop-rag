@@ -1,16 +1,5 @@
-"""Source-locked, streaming read-only PDF access."""
-from __future__ import annotations
+"""Compatibility import; implementation lives in ocop_contracts.pdf_loader."""
+import importlib
+import sys
 
-from pathlib import Path
-
-from ai_core.processing.ocop.registry import compare_lock, load_registry, snapshot
-import json
-
-
-def checked_sources(root: Path, registry_path: Path, lock_path: Path):
-    sources = load_registry(registry_path)
-    current = snapshot(root, sources)
-    if not lock_path.is_file():
-        raise FileNotFoundError(f"source lock missing: {lock_path}")
-    compare_lock(current, json.loads(lock_path.read_text(encoding="utf-8")))
-    return sources, current
+sys.modules[__name__] = importlib.import_module("ocop_contracts.pdf_loader")

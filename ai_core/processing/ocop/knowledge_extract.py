@@ -15,10 +15,10 @@ from collections import Counter
 from pathlib import Path
 from typing import Iterable
 
-from ai_core.domain.ocop_ids import code_fingerprint, stable_id, content_sha256
-from ai_core.domain.ocop_models import EvidenceUnit, SourceSpan, ReviewStatus, cell_display_text
-from ai_core.processing.ocop.layout import group_blocks_by_line, join_blocks_by_line
-from ai_core.processing.ocop.registry import load_registry
+from ocop_contracts.ids import code_fingerprint, stable_id, content_sha256
+from ocop_contracts.models import EvidenceUnit, SourceSpan, ReviewStatus, cell_display_text
+from ocop_contracts.layout import group_blocks_by_line, join_blocks_by_line
+from ocop_contracts.registry import load_registry
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.processing.ocop.temporal_candidates import temporal_candidates
 from ai_core.knowledge.ocop.extractor import extract_semantics
@@ -30,9 +30,15 @@ ROOT = Path(__file__).resolve().parents[3]
 _PROCESSING = Path(__file__).resolve().parent
 _ROOT = _PROCESSING.parents[1]
 # Every module whose code shapes evidence units, entities, relations, rules and temporal candidates.
+from ocop_contracts import layout as shared_layout
+from ocop_ocr import legend_proposals, easy_viet_ocr, table_continuity
+
 VERSION = code_fingerprint("evidence", [
+    Path(shared_layout.__file__), Path(legend_proposals.__file__),
+    Path(easy_viet_ocr.__file__), Path(table_continuity.__file__),
+    ROOT / "ocop_contracts/models.py", ROOT / "ocop_contracts/ids.py",
     *(_PROCESSING / name for name in ("knowledge_extract.py", "business_candidates.py",
-                                      "temporal_candidates.py", "layout.py", "legend_proposals.py", "easy_viet_ocr.py", "table_continuity.py")),
+                                      "temporal_candidates.py")),
     *(_ROOT / "knowledge" / "ocop" / name for name in ("extractor.py", "contracts.py", "quality.py",
                                                        "llm_proposals.py", "legal_structure.py", "article_tree.py", "star_requirements.py", "criterion_sheets.py", "procedures.py", "authorities.py", "shapes.py")),
     ROOT / 'configs' / 'ocop_authorities.json',
@@ -528,9 +534,9 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
                   "source_id":sid,"text":u["text"][:3000],
                   "review_status":u["review_status"],"spans":u["spans"],
                   "structured":{k:v for k,v in u["structured"].items() if k!="cells"}})
-    from ai_core.processing.ocop.legend_proposals import propose_legend_images
+    from ocop_ocr.legend_proposals import propose_legend_images
     propose_legend_images(root,source_info,page_records,all_units)
-    from ai_core.processing.ocop.table_continuity import possible_continuations
+    from ocop_ocr.table_continuity import possible_continuations
     boundary_hints=[]
     ordered_pages=sorted(page_records,key=lambda p:(p['source_id'],int(p['pdf_page'])))
     for previous,current in zip(ordered_pages,ordered_pages[1:]):

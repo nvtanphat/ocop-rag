@@ -75,7 +75,7 @@ def test_ocr_keeps_tiny_low_confidence_noise_out_of_page_text(monkeypatch):
     monkeypatch.setattr(easy_viet_ocr, "_recognize", recognize)
     monkeypatch.setattr(easy_viet_ocr, "detect_regions", lambda _rgb: ([], None))
     monkeypatch.setattr(easy_viet_ocr, "assign_regions", lambda *_args: None)
-    monkeypatch.setattr("ai_core.processing.ocop.table_parser.raster_tables", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr("ocop_ocr.table_parser.raster_tables", lambda *_args, **_kwargs: [])
 
     image=Image.new("RGB", (300, 150), "white")
     from PIL import ImageDraw

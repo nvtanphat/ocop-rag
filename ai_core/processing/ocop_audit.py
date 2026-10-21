@@ -12,8 +12,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from ai_core.processing.ocop.profiler import profile_pdf
-from ai_core.processing.ocop.registry import compare_lock, load_registry, snapshot
+from ocop_ocr.profiler import profile_pdf
+from ocop_contracts.registry import compare_lock, load_registry, snapshot
 
 ROOT = Path(__file__).resolve().parents[2]
 

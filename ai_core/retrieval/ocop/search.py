@@ -7,7 +7,7 @@ import os
 from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
-from ai_core.domain.ocop_ids import content_sha256
+from ocop_contracts.ids import content_sha256
 from ai_core.retrieval.ocop.models_config import (
     DEFAULT_RERANKER_MODEL,
     DEFAULT_RERANKER_REVISION,

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from ai_core.domain.ocop_ids import content_sha256
+from ocop_contracts.ids import content_sha256
 
 
 def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False,

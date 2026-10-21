@@ -17,7 +17,7 @@ import shutil
 import tempfile
 from typing import Any, Iterator
 
-from ai_core.processing.ocop.pdf_loader import checked_sources
+from ocop_contracts.pdf_loader import checked_sources
 
 PARTS = ("pages", "knowledge", "index", "graph")
 
@@ -107,7 +107,7 @@ class OcopSystemPipeline:
         stored = page_manifest.get("ocr_runtime_signature")
         if stored:
             try:
-                from ai_core.processing.ocop.easy_viet_ocr import asset_signature
+                from ocop_ocr.easy_viet_ocr import asset_signature
                 if stored != asset_signature():
                     return False
             except RuntimeError:
@@ -116,7 +116,7 @@ class OcopSystemPipeline:
         return True
 
     def status(self, *, validate_sources: bool = False) -> dict[str, Any]:
-        from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
+        from ocop_ocr.artifact_cache import PARSER_VERSION
         page = _load_json(self.data / "pages" / "manifest.json")
         knowledge = _load_json(self.data / "knowledge" / "manifest.json")
         index = _load_json(self.data / "index" / "manifest.json")
@@ -190,7 +190,7 @@ class OcopSystemPipeline:
 
     def ensure(self, options: PipelineOptions = PipelineOptions()) -> dict[str, Any]:
         """Build (or reuse) a coherent source-locked corpus, once per invocation."""
-        from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
+        from ocop_ocr.artifact_cache import PARSER_VERSION
         with _exclusive_lock(self.data / ".system.lock"):
             current = self.status(validate_sources=True)
             page_config = _load_json(self.data / "pages" / "manifest.json")
@@ -219,7 +219,7 @@ class OcopSystemPipeline:
             with tempfile.TemporaryDirectory(prefix="ocop-build-", dir=self.data) as temporary:
                 stage = Path(temporary)
                 try:
-                    from ai_core.processing.ocop.pdf_pipeline import run_pipeline
+                    from ocop_ocr.pdf_pipeline import run_pipeline
                     from ai_core.processing.ocop.knowledge_extract import extract_artifacts
                     from ai_core.retrieval.ocop.index_pipeline import build_index
                     from ai_core.graph.ocop.builder import build_graph, SCHEMA_REVISION

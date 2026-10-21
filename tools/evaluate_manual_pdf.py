@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.system.pipeline import OcopSystemPipeline
-from ai_core.processing.ocop.registry import sha256_file
+from ocop_contracts.registry import sha256_file
 
 DATASET = Path("data/evaluations/ocop/manual_pdf_benchmark.jsonl")
 SOURCES = Path("data/evaluations/ocop/manual_pdf_sources.json")

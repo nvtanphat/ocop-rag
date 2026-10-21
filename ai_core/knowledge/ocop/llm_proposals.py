@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Protocol
 from ai_core.domain.ocop_citations import quote_bbox
-from ai_core.domain.ocop_ids import stable_id, code_fingerprint
+from ocop_contracts.ids import stable_id, code_fingerprint
 from .contracts import (
     AttributeClaim, BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef,
     EntityType, ENTITY_ATTRIBUTE_KEYS, RELATION_TYPES, validate_business_graph,

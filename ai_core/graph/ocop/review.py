@@ -290,7 +290,7 @@ def record_decision(root,target_id,digest,decision,reviewer,*,correction=None,no
 
 
 def render_crop(root,item,index):
-    from ai_core.processing.ocop.pdf_loader import checked_sources
+    from ocop_contracts.pdf_loader import checked_sources
     root=Path(root).resolve()
     sources,_=checked_sources(root,root/'configs/ocop_sources.json',root/'configs/ocop_sources.lock.json')
     return _render_crop(root,item,index,sources,{})
@@ -298,7 +298,7 @@ def render_crop(root,item,index):
 
 def render_queue_crops(root,items):
     """One source-lock check per export; render from SHA-checked immutable bytes."""
-    from ai_core.processing.ocop.pdf_loader import checked_sources
+    from ocop_contracts.pdf_loader import checked_sources
     root=Path(root).resolve()
     sources,_=checked_sources(root,root/'configs/ocop_sources.json',root/'configs/ocop_sources.lock.json')
     source_bytes={};paths=set()

@@ -10,7 +10,7 @@ import re
 from collections import Counter
 
 from ai_core.domain.ocop_citations import quote_bbox
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 from .contracts import (
     BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef, EntityType,
     validate_business_graph,

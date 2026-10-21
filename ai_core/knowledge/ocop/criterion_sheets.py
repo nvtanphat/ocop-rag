@@ -2,7 +2,7 @@
 from __future__ import annotations
 import re
 from collections import defaultdict
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 from .contracts import EntityType
 from .star_requirements import SHEET
 

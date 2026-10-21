@@ -10,7 +10,7 @@ import re
 from datetime import date
 from typing import Iterable
 
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 
 _DMY = re.compile(r"(?<!\d)(?P<d>\d{1,2})[/-](?P<m>\d{1,2})[/-](?P<y>20\d{2})(?!\d)")
 _VI_DATE = re.compile(

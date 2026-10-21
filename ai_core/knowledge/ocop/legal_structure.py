@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 from .contracts import BusinessRule, EntityType, contains_document_number
 from ai_core.processing.ocop.temporal_candidates import _local_context
 

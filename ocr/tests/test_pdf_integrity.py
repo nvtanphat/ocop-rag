@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from ai_core.processing.ocop.easy_viet_ocr import _pdf_bbox
-from ai_core.processing.ocop.pdf_pipeline import _page_job, _validate_boxes
+from ocop_ocr.easy_viet_ocr import _pdf_bbox
+from ocop_ocr.pdf_pipeline import _page_job, _validate_boxes
 
 
 def fakepage():
@@ -31,8 +31,8 @@ def test_pixel_bbox_clamps_small_overflow_to_page():
 
 
 def test_cache_invalidates_provenance_mismatch(tmp_path, monkeypatch):
-    from ai_core.processing.ocop.artifact_cache import write_json
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
+    from ocop_ocr.artifact_cache import write_json
+    import ocop_ocr.pdf_pipeline as pipeline
     import fitz
 
     profile = {"pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0, "page_class": "native_text"}
@@ -55,7 +55,7 @@ def test_cache_invalidates_provenance_mismatch(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("tamper", ["text", "geometry"])
 def test_cache_invalidates_tampered_content_and_page_geometry(tmp_path, monkeypatch, tamper):
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
+    import ocop_ocr.pdf_pipeline as pipeline
     import fitz
 
     profile = {"pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0, "page_class": "native_text"}
@@ -85,9 +85,9 @@ def test_cache_invalidates_tampered_content_and_page_geometry(tmp_path, monkeypa
 
 def test_corrupt_profile_cache_forces_reprofiling(tmp_path, monkeypatch):
     import fitz
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
-    from ai_core.domain.ocop_models import SourceDocument
-    from ai_core.processing.ocop.registry import snapshot
+    import ocop_ocr.pdf_pipeline as pipeline
+    from ocop_contracts.models import SourceDocument
+    from ocop_contracts.registry import snapshot
 
     root = tmp_path
     source = root / "data/raw/ocop/demo.pdf"

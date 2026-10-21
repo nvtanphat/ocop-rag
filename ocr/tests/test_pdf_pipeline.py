@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from ai_core.processing.ocop.artifact_cache import build_cache_key,write_json,load_json
-from ai_core.processing.ocop.native_extractor import extract_native
-from ai_core.processing.ocop.table_parser import raster_tables
-from ai_core.processing.ocop.easy_viet_ocr import _pdf_bbox
-from ai_core.processing.ocop.ocr_types import OCRResult
-from ai_core.processing.ocop.pdf_pipeline import extract_page,run_pipeline
-from ai_core.processing.ocop.profiler import profile_pdf
-from ai_core.processing.ocop.registry import snapshot
-from ai_core.domain.ocop_models import SourceDocument
+from ocop_ocr.artifact_cache import build_cache_key,write_json,load_json
+from ocop_ocr.native_extractor import extract_native
+from ocop_ocr.table_parser import raster_tables
+from ocop_ocr.easy_viet_ocr import _pdf_bbox
+from ocop_ocr.ocr_types import OCRResult
+from ocop_ocr.pdf_pipeline import extract_page,run_pipeline
+from ocop_ocr.profiler import profile_pdf
+from ocop_contracts.registry import snapshot
+from ocop_contracts.models import SourceDocument
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def test_grid_candidates_keep_coordinates_and_review(tmp_path):
 def test_grid_ignores_repeated_dashes_inside_score_column():
     from PIL import Image,ImageDraw
     import fitz
-    from ai_core.processing.ocop.table_parser import raster_tables
+    from ocop_ocr.table_parser import raster_tables
 
     image=Image.new('RGB',(700,700),'white')
     draw=ImageDraw.Draw(image)
@@ -141,7 +141,7 @@ def test_signed_scan_is_not_treated_as_native_legal_content(monkeypatch,tmp_path
         d.save(f)
     pr=profile_pdf(f,'TEST')[0]
     assert pr['page_class']=='ocr_candidate'
-    monkeypatch.setattr('ai_core.processing.ocop.pdf_pipeline.run_easy_viet_ocr',lambda *a,**k: (OCRResult([{
+    monkeypatch.setattr('ocop_ocr.pdf_pipeline.run_easy_viet_ocr',lambda *a,**k: (OCRResult([{
         'block_id':'ocr:test', 'text':'BANG TIEU CHI *** 15 diem',
         'bbox':[10,10,300,100],'method':'mock','confidence':None,'order':0}], 'easyocr_vietocr',[]), []))
     with fitz.open(f) as d:
@@ -152,14 +152,14 @@ def test_signed_scan_is_not_treated_as_native_legal_content(monkeypatch,tmp_path
 
 
 def test_cross_page_is_not_silently_merged():
-    from ai_core.processing.ocop.layout import layout_page
+    from ocop_contracts.layout import layout_page
     x=[{'bbox':[20,20,60,38],'text':'DIEM 5','order':0}]
     ordered,warnings=layout_page(x,100,100)
     assert ordered[0]['text']=='DIEM 5' and ordered[0]['reading_order']==0
 
 
 def test_cross_page_candidate_never_materializes_merge():
-    from ai_core.processing.ocop.table_continuity import possible_continuations
+    from ocop_ocr.table_continuity import possible_continuations
     pre={'source_id':'VN.TEST','pdf_page':1,'height_pt':100,
         'tables':[{'table_id':'a','bbox':[10,50,100,95],'col_count':3,'row_count':4}]}
     cur={'source_id':'VN.TEST','pdf_page':2,'height_pt':100,
@@ -170,7 +170,7 @@ def test_cross_page_candidate_never_materializes_merge():
 
 
 def test_native_bbox_overflow_clipped_with_original_retained():
-    from ai_core.processing.ocop.pdf_pipeline import _validate_boxes
+    from ocop_ocr.pdf_pipeline import _validate_boxes
     b={'bbox':[5,10,101,35]}
     assert _validate_boxes([b],[],100,100)==1
     assert b['bbox']==[5,10,100,35]
@@ -178,7 +178,7 @@ def test_native_bbox_overflow_clipped_with_original_retained():
 
 
 def test_page_cache_hit_skips_expensive_extraction(tmp_path,document,monkeypatch):
-    import ai_core.processing.ocop.pdf_pipeline as pdf_module
+    import ocop_ocr.pdf_pipeline as pdf_module
     root=tmp_path
     target=root/'data/raw/ocop/test.pdf'
     target.parent.mkdir(parents=True)
@@ -213,7 +213,7 @@ def test_real_processed_corpus_complete_if_artifacts_available():
             pytest.fail('explicit PDF artifact corpus is incomplete')
         pytest.skip('partial dev-run manifest; no full release available')
     count=0
-    from ai_core.processing.ocop.pdf_loader import checked_sources
+    from ocop_contracts.pdf_loader import checked_sources
     _,locked=checked_sources(root,root/'configs/ocop_sources.json',root/'configs/ocop_sources.lock.json')
     digests={s['source_id']:s['sha256'] for s in locked['sources']}
     assert data['input_snapshot_sha256']==locked['aggregate_sha256']

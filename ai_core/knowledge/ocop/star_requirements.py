@@ -6,7 +6,7 @@ these candidates may be used to rank products or assess a dossier.
 from __future__ import annotations
 import re
 from collections import defaultdict
-from ai_core.domain.ocop_ids import stable_id
+from ocop_contracts.ids import stable_id
 from .contracts import EntityType
 
 SHEET = re.compile(r'^\s*(\d{1,2})[.)]\s*(?:Bộ\s+sản\s+phẩm\s*:|'

@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from ai_core.processing.ocop.registry import load_registry
+from ocop_contracts.registry import load_registry
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -164,7 +164,7 @@ def main()->None:
             if args.clean:
                 parser.error("--clean cannot remove a reused --root-out")
             try:
-                from ai_core.processing.ocop.pdf_loader import checked_sources
+                from ocop_contracts.pdf_loader import checked_sources
                 checked_sources(output_root,output_root/"configs"/"ocop_sources.json",
                                 output_root/"configs"/"ocop_sources.lock.json")
             except (RuntimeError,ValueError,FileNotFoundError,OSError) as exc:
@@ -183,7 +183,7 @@ def main()->None:
             _copy_project_inputs(project_root,output_root)
         processed=output_root/"data"/"processed"/"ocop"
         pages_dir=processed/"pages"
-        from ai_core.processing.ocop.pdf_pipeline import run_pipeline
+        from ocop_ocr.pdf_pipeline import run_pipeline
         page_manifest=run_pipeline(output_root,
             registry=output_root/"configs"/"ocop_sources.json",
             lock=output_root/"configs"/"ocop_sources.lock.json",

@@ -8,10 +8,10 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from ai_core.processing.ocop.artifact_cache import PARSER_VERSION
-from ai_core.processing.ocop.easy_viet_ocr import _pdf_bbox, run_easy_viet_ocr
-from ai_core.processing.ocop.pdf_quality import score_page_quality
-from ai_core.processing.ocop.ocr_types import OCRResult
+from ocop_ocr.artifact_cache import PARSER_VERSION
+from ocop_ocr.easy_viet_ocr import _pdf_bbox, run_easy_viet_ocr
+from ocop_ocr.pdf_quality import score_page_quality
+from ocop_ocr.ocr_types import OCRResult
 
 
 def _page(width=500, height=700):
@@ -26,7 +26,7 @@ def test_pixel_bbox_maps_to_pdf_points_and_rejects_invalid_geometry():
 
 
 def test_easyocr_detection_regions_are_merged_and_recognized_by_vietocr(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     class Detector:
         def detect(self, image, **kwargs):
@@ -50,7 +50,7 @@ def test_easyocr_detection_regions_are_merged_and_recognized_by_vietocr(monkeypa
     monkeypatch.setattr(adapter, "_detector", lambda: Detector())
     monkeypatch.setattr(adapter, "_predictor", lambda: recognizer)
     monkeypatch.setattr(adapter, "detect_regions", lambda rgb: ([], None))
-    monkeypatch.setattr("ai_core.processing.ocop.table_parser.raster_tables", lambda *a, **k: [])
+    monkeypatch.setattr("ocop_ocr.table_parser.raster_tables", lambda *a, **k: [])
 
     trace = {}
     result, tables = run_easy_viet_ocr(
@@ -72,7 +72,7 @@ def test_easyocr_detection_regions_are_merged_and_recognized_by_vietocr(monkeypa
 
 
 def test_fragments_in_separate_score_columns_are_not_merged():
-    from ai_core.processing.ocop.easy_viet_ocr import _merge_line_fragments
+    from ocop_ocr.easy_viet_ocr import _merge_line_fragments
 
     regions = [
         {"bbox_px": [10, 20, 35, 40], "polygon": []},
@@ -87,7 +87,7 @@ def test_fragments_in_separate_score_columns_are_not_merged():
 
 
 def test_fragments_with_a_large_gap_merge_inside_the_same_table_cell():
-    from ai_core.processing.ocop.easy_viet_ocr import _merge_line_fragments
+    from ocop_ocr.easy_viet_ocr import _merge_line_fragments
 
     regions = [
         {"bbox_px": [10, 10, 40, 20], "polygon": []},
@@ -106,7 +106,7 @@ def test_fragments_with_a_large_gap_merge_inside_the_same_table_cell():
 @pytest.mark.parametrize("marker", ["***", "****"])
 def test_repeated_asterisk_suffixes_detect_small_marker_glyphs(marker):
     import cv2
-    from ai_core.processing.ocop.easy_viet_ocr import _repeated_asterisk_suffixes
+    from ocop_ocr.easy_viet_ocr import _repeated_asterisk_suffixes
 
     image = np.full((24, 120), 255, dtype=np.uint8)
     cv2.putText(image, f"Text{marker}", (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
@@ -118,7 +118,7 @@ def test_repeated_asterisk_suffixes_detect_small_marker_glyphs(marker):
 @pytest.mark.parametrize("text", ["xxxxx", "aaaaa", "abcddd"])
 def test_repeated_matching_letter_glyphs_are_not_asterisk_markers(text):
     import cv2
-    from ai_core.processing.ocop.easy_viet_ocr import _repeated_asterisk_suffixes
+    from ocop_ocr.easy_viet_ocr import _repeated_asterisk_suffixes
 
     image = np.full((24, 160), 255, dtype=np.uint8)
     cv2.putText(image, text, (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
@@ -136,7 +136,7 @@ def test_repeated_matching_letter_glyphs_are_not_asterisk_markers(text):
     ],
 )
 def test_asterisk_image_candidate_must_follow_the_ocr_text_line(marker_bbox, text_bbox, expected):
-    from ai_core.processing.ocop.easy_viet_ocr import _marker_follows_ocr_text
+    from ocop_ocr.easy_viet_ocr import _marker_follows_ocr_text
 
     cell_bbox = [89.59, 380.0, 483.91, 570.0]
     blocks = [{"text": "line", "bbox": text_bbox}]
@@ -145,7 +145,7 @@ def test_asterisk_image_candidate_must_follow_the_ocr_text_line(marker_bbox, tex
 
 
 def test_table_row_split_keeps_boundary_near_the_region_edge():
-    from ai_core.processing.ocop.easy_viet_ocr import _split_at_table_rows
+    from ocop_ocr.easy_viet_ocr import _split_at_table_rows
 
     region = {"bbox_px": [50, 18, 60, 82],
               "polygon": [[50, 18], [60, 18], [60, 82], [50, 82]]}
@@ -164,7 +164,7 @@ def test_table_row_split_keeps_boundary_near_the_region_edge():
 
 
 def test_single_skewed_detection_keeps_polygon_for_recognition_crop():
-    from ai_core.processing.ocop.easy_viet_ocr import _merge_line_fragments
+    from ocop_ocr.easy_viet_ocr import _merge_line_fragments
 
     polygon = [[20, 34], [70, 20], [76, 40], [26, 54]]
     regions = [{"bbox_px": [20, 20, 76, 54], "polygon": polygon}]
@@ -175,7 +175,7 @@ def test_single_skewed_detection_keeps_polygon_for_recognition_crop():
 
 
 def test_skewed_detection_is_rectified_before_recognition():
-    from ai_core.processing.ocop.easy_viet_ocr import _recognition_crop
+    from ocop_ocr.easy_viet_ocr import _recognition_crop
 
     crop = _recognition_crop(Image.new("RGB", (100, 100), "white"), {
         "bbox_px": [20, 20, 76, 54],
@@ -187,7 +187,7 @@ def test_skewed_detection_is_rectified_before_recognition():
 
 
 def test_sparse_cell_retry_adds_only_unverified_numeric_candidates(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     class Recognizer:
         def __init__(self):
@@ -223,7 +223,7 @@ def test_sparse_cell_retry_adds_only_unverified_numeric_candidates(monkeypatch):
 
 
 def test_sparse_cell_retry_checks_taller_scoring_rows(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     class Recognizer:
         def __init__(self):
@@ -247,7 +247,7 @@ def test_sparse_cell_retry_checks_taller_scoring_rows(monkeypatch):
 
 
 def test_sparse_cell_retry_uses_tight_ink_crop_when_tall_cell_reading_is_noise(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
     from PIL import ImageDraw
 
     class Recognizer:
@@ -290,7 +290,7 @@ def test_sparse_cell_retry_uses_tight_ink_crop_when_tall_cell_reading_is_noise(m
 
 
 def test_sparse_cell_retry_keeps_one_candidate_for_majority_crop_reading(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     class Recognizer:
         def __init__(self):
@@ -332,7 +332,7 @@ def test_sparse_cell_retry_keeps_one_candidate_for_majority_crop_reading(monkeyp
 
 
 def test_sparse_cell_retry_tie_prefers_localized_craft_crop(monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     class Recognizer:
         def __init__(self):
@@ -363,7 +363,7 @@ def test_sparse_cell_retry_tie_prefers_localized_craft_crop(monkeypatch):
 
 
 def test_asset_signature_changes_with_local_model_bytes_without_loading_them(tmp_path, monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
 
     detector = tmp_path / "craft_mlt_25k.pth"
     weights = tmp_path / "vgg_transformer.pth"
@@ -384,7 +384,7 @@ def test_asset_signature_changes_with_local_model_bytes_without_loading_them(tmp
 
 
 def test_vietocr_architecture_config_is_loaded_locally_without_remote_loader(tmp_path, monkeypatch):
-    import ai_core.processing.ocop.easy_viet_ocr as adapter
+    import ocop_ocr.easy_viet_ocr as adapter
     from vietocr.tool.config import Cfg
 
     weights = tmp_path / "vgg_transformer.pth"
@@ -406,7 +406,7 @@ def test_vietocr_architecture_config_is_loaded_locally_without_remote_loader(tmp
 
 def test_scan_page_uses_one_ocr_result_for_text_and_table_candidates(monkeypatch):
     import fitz
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
+    import ocop_ocr.pdf_pipeline as pipeline
 
     result = OCRResult([{
         "block_id": "ocr:easyocr_vietocr:0", "text": "Tiêu chí 3", "bbox": [10, 10, 80, 40],
@@ -461,7 +461,7 @@ def test_quality_reports_blank_score_candidates_without_verifying_them():
 
 
 def test_new_parser_version_invalidates_old_ocr_caches(tmp_path):
-    from ai_core.domain.ocop_ids import code_fingerprint
+    from ocop_contracts.ids import code_fingerprint
 
     assert re.fullmatch(r"ocop-pdf-[0-9a-f]{12}", PARSER_VERSION)
     source = tmp_path / "stage.py"
@@ -474,7 +474,7 @@ def test_new_parser_version_invalidates_old_ocr_caches(tmp_path):
 
 
 def test_extracted_text_joins_same_row_fragments_but_keeps_separate_lines():
-    from ai_core.processing.ocop.layout import join_blocks_by_line as _join_blocks_by_line
+    from ocop_contracts.layout import join_blocks_by_line as _join_blocks_by_line
     blocks = [
         {"text": "Công tác đánh", "bbox": [118.0, 46.5, 431.4, 70.5]},
         {"text": "giá, phân hạng sản", "bbox": [431.4, 46.5, 540.3, 70.5]},
@@ -488,7 +488,7 @@ def test_extracted_text_joins_same_row_fragments_but_keeps_separate_lines():
 
 
 def test_speckle_regions_are_tiny_low_confidence_crops_only():
-    from ai_core.processing.ocop.easy_viet_ocr import _speckle_regions
+    from ocop_ocr.easy_viet_ocr import _speckle_regions
 
     readings = [(84, 0.95)] * 9 + [(17, 0.24), (13, 0.57), (17, 0.9), (40, 0.94), (20, 0.7)]
     assert _speckle_regions(readings) == {9, 10}
@@ -497,7 +497,7 @@ def test_speckle_regions_are_tiny_low_confidence_crops_only():
 
 def test_leading_checkbox_is_blanked_but_leading_letter_o_is_kept():
     import cv2
-    from ai_core.processing.ocop.easy_viet_ocr import _blank_leading_checkbox
+    from ocop_ocr.easy_viet_ocr import _blank_leading_checkbox
 
     def line(draw_first):
         canvas = np.full((40, 200, 3), 255, dtype=np.uint8)
@@ -514,7 +514,7 @@ def test_leading_checkbox_is_blanked_but_leading_letter_o_is_kept():
 
 
 def test_long_region_is_cut_mid_gap_and_crop_padding_at_the_cut_is_blank():
-    from ai_core.processing.ocop.easy_viet_ocr import _recognition_crop, _split_long_regions
+    from ocop_ocr.easy_viet_ocr import _recognition_crop, _split_long_regions
 
     canvas = np.full((60, 1400, 3), 255, dtype=np.uint8)
     for x in [*range(10, 690, 8), *range(710, 1390, 8)]:  # glyph-like vertical strokes, a gap at 690-710
@@ -529,7 +529,7 @@ def test_long_region_is_cut_mid_gap_and_crop_padding_at_the_cut_is_blank():
 
 
 def test_table_rule_through_a_long_line_does_not_hide_the_word_gap():
-    from ai_core.processing.ocop.easy_viet_ocr import _split_long_regions
+    from ocop_ocr.easy_viet_ocr import _split_long_regions
 
     canvas = np.full((60, 1400, 3), 255, dtype=np.uint8)
     for x in [*range(10, 690, 8), *range(710, 1390, 8)]:

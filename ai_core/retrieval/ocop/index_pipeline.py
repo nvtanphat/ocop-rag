@@ -20,8 +20,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Iterable
 
-from ai_core.domain.ocop_ids import code_fingerprint,stable_id,content_sha256
-from ai_core.domain.ocop_models import RetrievalChunk
+from ocop_contracts.ids import code_fingerprint,stable_id,content_sha256
+from ocop_contracts.models import RetrievalChunk
 from ai_core.retrieval.ocop.models_config import (
     DEFAULT_TARGET_CHUNK_TOKENS,
     DEFAULT_EMBEDDING_MODEL,

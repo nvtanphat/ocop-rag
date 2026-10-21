@@ -48,7 +48,7 @@ _MODULE_COMMANDS: dict[str, tuple[str, str]] = {
         "OCOP retrieval: query evidence by BM25, dense or RRF hybrid",
     ),
     "process-ocop-pdf": (
-        "ai_core.processing.ocop.pdf_pipeline",
+        "ocop_ocr.pdf_pipeline",
         "OCOP PDF: source-locked native text/OCR/layout/table extraction",
     ),
     "smoke-ocop": (

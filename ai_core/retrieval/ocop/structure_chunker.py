@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
-from ai_core.domain.ocop_models import cell_display_text
+from ocop_contracts.models import cell_display_text
 
 TokenCount = Callable[[str], int]
 LEGAL_HEADING = re.compile(r"^(?:Điều\s+\d+|Mẫu\s+(?:số\s+)?\d+|Phụ\s+lục\b|Chương\s+[IVX0-9]+|Mục\s+\d+)", re.I)

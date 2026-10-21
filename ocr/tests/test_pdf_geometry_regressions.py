@@ -4,10 +4,10 @@ from pathlib import Path
 import fitz
 import pytest
 
-from ai_core.processing.ocop.native_extractor import extract_native
-from ai_core.processing.ocop.pdf_pipeline import extract_page
-from ai_core.processing.ocop.profiler import profile_pdf
-from ai_core.processing.ocop.table_parser import native_tables
+from ocop_ocr.native_extractor import extract_native
+from ocop_ocr.pdf_pipeline import extract_page
+from ocop_ocr.profiler import profile_pdf
+from ocop_ocr.table_parser import native_tables
 
 
 def test_native_header_preserves_horizontal_merge():
@@ -51,8 +51,8 @@ def test_rotated_native_text_matches_rendered_page(tmp_path: Path, rotation: int
 
 
 def test_page_job_embeds_source_digest_and_rejects_cache_for_other_bytes(tmp_path):
-    import ai_core.processing.ocop.pdf_pipeline as pipeline
-    from ai_core.processing.ocop.registry import sha256_file
+    import ocop_ocr.pdf_pipeline as pipeline
+    from ocop_contracts.registry import sha256_file
 
     path = tmp_path / "source.pdf"
     with fitz.open() as document:

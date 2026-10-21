@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Iterator
 from ai_core.domain.ocop_citations import bbox_matches, cell_at, quote_bbox, row_quote_bbox
-from ai_core.domain.ocop_ids import code_fingerprint, stable_id, content_sha256
+from ocop_contracts.ids import code_fingerprint, stable_id, content_sha256
 from ai_core.graph.ocop.ontology import NODE_TYPES, validate_edge
 from ai_core.knowledge.ocop.contracts import AttributeClaim, contains_document_number
 from ai_core.retrieval.ocop.index_pipeline import _write_json, _write_jsonl

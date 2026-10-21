@@ -1,6 +1,6 @@
 """Layout regions group OCR blocks so a side panel (seal, signature) is not interleaved with body lines."""
-from ai_core.processing.ocop.layout import layout_page
-from ai_core.processing.ocop.layout_regions import assign_regions
+from ocop_contracts.layout import layout_page
+from ocop_ocr.layout_regions import assign_regions
 
 
 def _block(text, bbox):

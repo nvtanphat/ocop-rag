@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ai_core.processing.ocop.registry import compare_lock, load_registry, snapshot
+from ocop_contracts.registry import compare_lock, load_registry, snapshot
 SKIP_DIRS = {"__pycache__", ".git", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache", "node_modules", "_smoke", "_scan_smoke", "reports", "dist", ".tox", "coverage", "htmlcov", "archive"}
 SKIP_FILES = {".DS_Store", ".env", ".npmrc", ".pypirc"}
 SKIP_EXTENSIONS = {".pem", ".key", ".p12", ".sqlite", ".sqlite3", ".db"}
