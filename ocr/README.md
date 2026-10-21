@@ -49,6 +49,9 @@ Nếu import bị ngắt, reader từ chối dataset có `.pending-import.json`;
 `import` phục hồi giao dịch và không nhân đôi correction.
 Khóa dùng khóa hệ điều hành kèm PID; tiến trình chết tự nhả khóa, file khóa
 còn lại để chẩn đoán, không cần xóa thủ công.
+Lệnh `status` cũng đọc được `run-state.json` khi chưa có dataset công bố:
+trạng thái chạy bị bỏ dở được báo `interrupted`, lỗi worker báo `failed`.
+Chạy lại đúng lệnh `run` để dùng cache trang đã xong và thử lại trang còn thiếu.
 
 Đầu ra raw của parser chưa phải dataset được duyệt. Lớp chuyển tiếp tại
 `ai_core/processing/ocop` dành cho script cũ; mã nguồn OCR chỉ nằm ở đây.
@@ -65,3 +68,10 @@ từ dataset một phần. Không dùng lệnh full trước khi cổng thí đi
 
 Kiểm chứng việc tách: 22 trang chạy native (OCR tắt) giống hệt PageArtifact
 trước tách; đây không thay thế kiểm chứng chạy OCR thật trên bộ hồi quy 22 trang.
+
+Trên máy ít RAM, ba worker dùng chung khóa hệ điều hành cho hai bước có đỉnh
+bộ nhớ lớn: phát hiện chữ CRAFT và dự đoán layout Paddle. Nhận dạng và xử lý
+trang vẫn chạy trong ba worker; DPI, canvas và ngưỡng nhận dạng giữ nguyên.
+Khóa mặc định nằm ở thư mục tạm (`ocop-ocr-peak.lock`); tiến trình bị dừng
+cứng tự nhả khóa. Có thể đặt `OCOP_OCR_PEAK_LOCK` để các lệnh OCR trên cùng
+máy dùng chung một đường dẫn khóa. Không xóa file khóa khi còn worker chạy.
