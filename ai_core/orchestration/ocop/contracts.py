@@ -52,6 +52,7 @@ class AgentResponse(BaseModel):
     status: str
     citations: list[dict]=Field(default_factory=list)
     tools_used: list[str]=Field(default_factory=list)
+    tools_skipped: list[str]=Field(default_factory=list)
     tool_trace: list[dict]=Field(default_factory=list)
     evidence_coverage: dict[str,Any]=Field(default_factory=dict)
     evidence_grade: dict[str,Any]=Field(default_factory=dict)

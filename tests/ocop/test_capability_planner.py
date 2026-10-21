@@ -105,7 +105,7 @@ def test_tool_coverage_surfaces_missing_business_evidence(tmp_path):
     agent=OcopAgent(tmp_path)
     answer=agent.ask('Mật ong thuộc nhóm nào, cần minh chứng gì để đạt 4 sao?')
     assert 'lookup_product_subgroup' in answer.tools_used
-    assert 'lookup_evidence_requirements' in answer.tools_used
+    assert 'lookup_evidence_requirements' in answer.tools_used+answer.tools_skipped  # skipped steps are reported, not claimed as used
     assert answer.evidence_coverage['status'] in ('partial','complete','none')
     assert answer.tool_trace[0]['step']=='route'
     assert all('tenant_id' not in json.dumps(x) for x in answer.tool_trace)
@@ -144,3 +144,21 @@ def test_agent_clarifies_multicapability_followup_over_tool_budget(tmp_path):
     assert follow.route.intent==Intent.CLARIFY
     assert 'tool_budget_exceeded' in follow.route.reason_codes
     assert not follow.tools_used
+
+
+def test_secondary_tool_gap_never_blocks_the_primary_answer(tmp_path):
+    """PLN-01: an article question that also names a form is answered from the article."""
+    from ai_core.orchestration.ocop.contracts import Route
+    from ai_core.orchestration.ocop.planner import build_plan
+    route=Route(intent='EXACT_LOOKUP',strategy='exact',required_tools=['lookup_legal_unit'],
+                secondary_tools=['lookup_form'])
+    plan=build_plan(route)
+    assert plan.required_names==('lookup_legal_unit',) and plan.optional==frozenset({'lookup_form'})
+    agent=OcopAgent(tmp_path)
+    state={'query':'q','route':route.model_dump(mode='json'),'results':[
+        {'tool':'lookup_legal_unit','output':{'results':[{'source_id':'S','evidence_unit_id':'u','text':'Điều 6 nội dung',
+            'source_spans':[{'pdf_page':4,'bbox':[0,0,1,1],'source_sha256':'a'*64}],'review_status':'verified'}]}},
+        {'tool':'lookup_form','optional':True,'output':{'results':[],'status':'incomplete_form_ids','missing_form_ids':['1']}}]}
+    answer=agent.answer(state)['answer']
+    assert answer['status']!='insufficient_form_scope' and answer['citations']
+    assert answer['optional_gaps']==['lookup_form']

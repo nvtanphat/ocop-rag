@@ -58,6 +58,7 @@ def recovery_safe(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
 class Task:
     name: str
     depends_on: tuple[str, ...] = ()
+    optional: bool = False
 
 
 @dataclass(frozen=True)
@@ -69,9 +70,14 @@ class ToolPlan:
     tasks: tuple[Task, ...] = ()
     retrieval_path: RetrievalPath = RetrievalPath.NONE
     decision_reason: str = ''
+    optional: frozenset[str] = frozenset()
+
+    @property
+    def required_names(self) -> tuple[str, ...]:
+        return tuple(name for name in self.names if name not in self.optional)
 
 
-def _ordered_tasks(requested: tuple[str, ...]) -> tuple[Task, ...]:
+def _ordered_tasks(requested: tuple[str, ...], optional: frozenset[str] = frozenset()) -> tuple[Task, ...]:
     seen=set();visiting=set();order=[]
     requested_set=set(requested)
     def visit(name: str):
@@ -83,7 +89,7 @@ def _ordered_tasks(requested: tuple[str, ...]) -> tuple[Task, ...]:
             if prereq in requested_set:visit(prereq)
         visiting.remove(name)
         seen.add(name)
-        order.append(Task(name,tuple(prereq for prereq in TOOL_DEPENDENCIES.get(name, ()) if prereq in requested_set)))
+        order.append(Task(name,tuple(prereq for prereq in TOOL_DEPENDENCIES.get(name, ()) if prereq in requested_set),name in optional))
     for name in requested:visit(name)
     return tuple(order)
 
@@ -104,7 +110,8 @@ def build_plan(route: Route, *, graph_available: bool | None = None) -> ToolPlan
             # evidence units, then link only their verified graph node IDs.
             requested.insert(0,'search_regulations')
             reasons.append('graph_seed_bootstrap_from_text_evidence')
-    requested=tuple(requested)
+    optional=frozenset(name for name in route.secondary_tools if name not in requested)
+    requested=tuple(requested)+tuple(sorted(optional))
     if len(requested)>MAX_TOOLS:
         raise ValueError('OCOP task plan exceeds configured tool budget; clarify/split query')
     if not set(requested).issubset(TOOL_REGISTRY):
@@ -112,13 +119,13 @@ def build_plan(route: Route, *, graph_available: bool | None = None) -> ToolPlan
     priv=set(requested)&PRIVATE_TOOLS
     if priv and len(priv)!=len(requested):
         raise PermissionError('Private dossier results cannot be mixed with public retrieval')
-    tasks=_ordered_tasks(requested)
+    tasks=_ordered_tasks(requested,optional)
     # A bounded recall attempt is allowed if independent structured tools
     # yielded zero source evidence. Recovery never changes explicit source ID.
     recover=not priv and 'search_regulations' not in requested and route.strategy in (
         'exact','structured','graph_hybrid','hybrid')
     return ToolPlan(tuple(t.name for t in tasks), tasks=tasks, text_recovery=recover,
-                    retrieval_path=choose_retrieval_path(list(requested)),
+                    retrieval_path=choose_retrieval_path(list(requested)),optional=optional,
                     decision_reason=','.join(reasons) or 'intent_and_available_tools')
 
 

@@ -91,7 +91,8 @@ class OcopAgent:
                          and (graph_dir/'edges.jsonl').is_file())
         plan=build_plan(route,graph_available=graph_ready)
         route.retrieval_path=plan.retrieval_path
-        route.required_tools=list(plan.names)
+        route.required_tools=list(plan.required_names)
+        route.secondary_tools=sorted(plan.optional)
         trace=list(state.get('trace') or [])
         trace.append({'step':'retrieval_strategy','retrieval_path':plan.retrieval_path.value,
                       'tools':list(plan.names),'reason':plan.decision_reason,
@@ -194,9 +195,9 @@ class OcopAgent:
                     not (name == 'search_graph' and self._graph_seed_rows(finished.get(dep, {})))]
             if failed:
                 output={'results':[],'status':'dependency_unavailable'}
-                results.append({'tool':name,'output':output})
+                results.append({'tool':name,'output':output,'skipped':True,**({'optional':True} if task.optional else {})})
                 finished[name]=output
-                trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),
+                trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),'optional':task.optional,
                               'status':output['status'],'hits':0,'latency_ms':0.0})
                 continue
             # Only propagate verified source evidence from completed prerequisites.
@@ -219,9 +220,9 @@ class OcopAgent:
                     raise
                 output={'results':[],'status':'tool_unavailable','error_type':type(exc).__name__}
             output=self._validate_output(output)
-            results.append({'tool':name,'output':output})
+            results.append({'tool':name,'output':output,**({'optional':True} if task.optional else {})})
             finished[name]=output
-            trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),
+            trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),'optional':task.optional,
                           'status':output.get('status','ok'),
                           'hits':len(output.get('results',[])),'latency_ms':round((monotonic()-started)*1000,2)})
         return {'results':results,'trace':trace}
@@ -230,7 +231,7 @@ class OcopAgent:
         route=Route.model_validate(state['route']);plan=state.get('plan') or build_plan(route)
         results=list(state.get('results') or []);trace=list(state.get('trace') or [])
         grade=state.get('evidence_grade') or grade_evidence(state.get('effective_query',state['query']),results,
-                                        slots=route.slots,expected_tools=list(plan.names))
+                                        slots=route.slots,expected_tools=list(plan.required_names))
         if not self._should_recover(state,grade):return {'results':results,'trace':trace}
         context=self._trusted_context(state)
         started=monotonic()
@@ -255,7 +256,7 @@ class OcopAgent:
         plan=state.get('plan') or build_plan(route)
         result=grade_evidence(state.get('effective_query',state['query']),
                               state.get('results') or [],slots=route.slots,
-                              expected_tools=list(plan.names))
+                              expected_tools=list(plan.required_names))
         trace=list(state.get('trace') or [])
         trace.append({'step':'evidence_grade','status':result['status'],
                       'relevant_evidence':result['relevant_evidence_count'],
@@ -269,7 +270,7 @@ class OcopAgent:
         if not recovery_safe(route, outputs, plan):return False
         result=grade or state.get('evidence_grade') or grade_evidence(
             state.get('effective_query',state['query']),outputs,slots=route.slots,
-            expected_tools=list(plan.names))
+            expected_tools=list(plan.required_names))
         return result['status'] in ('none','partial')
 
     def verify(self,state:OcopState)->dict:
@@ -283,7 +284,7 @@ class OcopAgent:
         if route.needs_clarification or route.intent==Intent.OUT_OF_SCOPE:
             return {'evidence_coverage':{'status':'not_applicable','tools':[]}}
         checks=[]
-        for entry in outputs:
+        for entry in [x for x in outputs if not x.get('optional')]:
             output=entry.get('output') or {}
             rows=output.get('results',[])
             usable=bool(rows) and any(isinstance(row,dict) and row.get('source_id') and (
@@ -332,7 +333,9 @@ class OcopAgent:
         if route.intent==Intent.OUT_OF_SCOPE:
             return {'answer':{'answer':'Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.',
                               'status':'out_of_scope','citations':[]}}
-        outputs=state.get('results') or []
+        every=state.get('results') or []
+        # Optional (secondary) tools enrich an answer; their gaps are reported, never block it.
+        outputs=[item for item in every if not item.get('optional')]
         if any((item.get('output') or {}).get('status')=='requested_pdf_page_not_indexed' for item in outputs):
             return {'answer':{'answer':'Trang PDF được yêu cầu chưa có trong corpus đã lập chỉ mục; '
                               'không dùng trang khác để suy ra nội dung trang này.',
@@ -396,7 +399,14 @@ class OcopAgent:
                 'hoặc đúng phiên bản tài liệu để trả lời an toàn. '
                 'Năm ban hành quyết định không thể tự coi là năm công nhận hay năm đánh giá.',
                 'status':'insufficient_year_scope','citations':[]}}
+        outputs=every
         response=assemble(state.get('effective_query',state['query']),outputs,llm=self.llm)
+        gaps=[item['tool'] for item in outputs if item.get('optional') and (
+            item.get('skipped') or (item.get('output') or {}).get('status') in BAD_RESULT_STATUSES or
+            not (item.get('output') or {}).get('results'))]
+        if gaps and response['status'] not in ('insufficient_evidence',):
+            response['optional_gaps']=gaps
+            response['answer']='[Chưa có dữ liệu cho phần phụ: '+', '.join(gaps)+']\n'+response['answer']
         coverage=state.get('evidence_coverage') or {}
         if coverage.get('status')=='partial':
             missing=list(dict.fromkeys([x['name'] for x in coverage.get('tools',[]) if not x['has_source_evidence']]+coverage.get('missing_tools',[])))
@@ -504,7 +514,8 @@ class OcopAgent:
                      'claim_verification':{**payload.get('claim_verification',{}),
                          'answer_status':payload['status'], 'corpus_status':'partial_debug_corpus'}}
         return AgentResponse(answer=payload['answer'],intent=route.intent,status=payload['status'],
-            citations=payload['citations'],tools_used=[r['tool'] for r in final.get('results',[])],
+            citations=payload['citations'],tools_used=[r['tool'] for r in final.get('results',[]) if not r.get('skipped')],
+            tools_skipped=[r['tool'] for r in final.get('results',[]) if r.get('skipped')],
             workflow_engine=engine,route=route,corpus_version=self._corpus_version(),
             tool_trace=final.get('trace',[]),evidence_coverage=final.get('evidence_coverage',{}),
             evidence_grade=final.get('evidence_grade',{}),
