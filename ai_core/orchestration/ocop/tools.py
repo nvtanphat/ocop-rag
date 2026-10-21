@@ -15,6 +15,7 @@ from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
+from ai_core.orchestration.ocop.router import AUTHORITY_CUES
 from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 
@@ -240,6 +241,12 @@ class ToolRegistry:
             try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
             except (OSError,ValueError,KeyError):
                 return self._graph_failure()
+            if (not slots.get('article_id') and not slots.get('pdf_page') and
+                    any(cue in normalize(query) for cue in AUTHORITY_CUES)):
+                # "Who recognises N-star products?" is answered by the legal unit naming that
+                # authority, not by text that merely contains the word "thẩm quyền".
+                return {'results':graph.authority(star_rating=slots.get('star_rating'),source_id=source),
+                        'status':'checked_graph_authority_units'}
             rows=graph.legal(source_id=source,article=slots.get('article_id'),
                              pdf_page=slots.get('pdf_page'),query=query)
             if rows and slots.get('article_id') and not slots.get('pdf_page') and (self.index_dir/'chunks.jsonl').is_file():

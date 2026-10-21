@@ -53,6 +53,9 @@ MULTIHOP = ("liên quan đến", "mối quan hệ", "căn cứ vào những", "�
 TEMPORAL = ("so sánh", "chuyển tiếp", "trước và sau", "thay đổi theo năm", "khác nhau", "hiệu lực", "năm nào áp dụng")
 COMPLIANCE = ("an toàn thực phẩm", "giấy attt", "giấy chứng nhận cơ sở", "nhãn hàng hóa", "miễn giấy", "vệ sinh thực phẩm", "đủ điều kiện attt", "miễn chứng nhận", "attp", "an toàn vệ sinh thực phẩm")
 CLASSIFICATION = ("thuộc nhóm", "thuộc phân nhóm", "thuộc loại", "nhóm nào", "nhóm gì", "phân nhóm", "phân loại sản phẩm")
+# Asking which body holds authority (to recognise, decide) is a legal-unit lookup.
+AUTHORITY_CUES = ('tham quyen','co quan nao','ai cong nhan','ai co tham quyen',
+                  'ai quyet dinh','cap nao cong nhan','cap nao co tham quyen')
 # Asking who produces/owns a named product is a recognition-record lookup (OWNED_BY / DECLARED_BY).
 PRODUCER = ("chu the nao", "chu the cua", "ai san xuat", "do ai", "co so nao san xuat", "don vi nao san xuat",
             "san xuat boi", "cua doanh nghiep nao", "cua hop tac xa nao", "cua htx nao", "thuoc chu the nao")
@@ -207,8 +210,7 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
                      reason_codes=['historical_year_conflicts_with_pinned_document'])
     is_compare=temporal_question(lower,slots)
     has_multihop=_contains(lower,MULTIHOP)
-    is_authority=_contains(lower,('tham quyen','co quan nao','ai cong nhan','ai co tham quyen',
-                                  'ai quyet dinh','cap nao cong nhan','cap nao co tham quyen'))
+    is_authority=_contains(lower,AUTHORITY_CUES)
     # Asking *which criteria make a product eligible* is a criteria question,
     # not a lookup in an already-approved product recognition list.
     normative_star_question = bool(slots.get('star_rating')) and _contains(lower, (

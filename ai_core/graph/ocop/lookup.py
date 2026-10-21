@@ -10,6 +10,29 @@ from ai_core.graph.ocop.grounding import public_record, USABLE_CHECKS
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 
 
+_LEGAL_UNIT_TYPES = {'Article', 'Clause', 'Point'}
+
+
+def authority_nodes(nodes, *, star_rating=None):
+    """Legal units that state which authority recognises (công nhận) a star level.
+
+    A unit qualifies only when it names an authority, uses "công nhận", and - if a
+    star level was asked - lists that level; merely mentioning "thẩm quyền" is not enough."""
+    from ai_core.knowledge.ocop.authorities import find_authorities
+    selected = []
+    for node in nodes:
+        label = str(node.get('label') or '')
+        if node.get('node_type') not in _LEGAL_UNIT_TYPES or 'công nhận' not in label.casefold():
+            continue
+        if not any(True for _ in find_authorities(label)):
+            continue
+        stars = {int(n) for n in re.findall(r'(?<!\d)([1-5])\s*sao\b', label, re.I)}
+        if star_rating is not None and int(star_rating) not in stars:
+            continue
+        selected.append(node)
+    return selected
+
+
 class GraphEvidence:
     def __init__(self, graph_dir, index_dir=None, *, allow_partial_debug=False):
         self.manifest = validate_graph_snapshot(graph_dir, allow_partial=allow_partial_debug)
@@ -64,6 +87,12 @@ class GraphEvidence:
                 'unit_kind':props.get('unit_kind'), 'structured':props.get('structured',{}),
                 'graph_node_ids':list(node_ids), 'graph_edge_ids':list(edge_ids), 'check':check})
         return rows
+
+    def authority(self, *, star_rating=None, source_id=None):
+        """Checked legal units naming who recognises a star level (see authority_nodes)."""
+        return self.node_rows(authority_nodes(
+            [n for n in self.nodes.values() if not source_id or n['source_id'] == source_id],
+            star_rating=star_rating))
 
     def node_rows(self, nodes):
         rows=[]

@@ -184,3 +184,20 @@ def test_graph_seeds_use_a_product_name_the_user_wrote():
     assert graph_seeds(nodes, "Chủ thể của sản phẩm này là ai?", "HANA", None) == []
     # A substring inside another word is not a match.
     assert graph_seeds(nodes, "sản phẩm ANA là gì?", "ANA", None) == []
+
+
+def test_authority_lookup_picks_the_clause_that_recognises_the_requested_star_level():
+    from ai_core.graph.ocop.lookup import authority_nodes
+    def node(i, label, kind="Point"):
+        return {"node_id": f"n{i}", "node_type": kind, "label": label, "source_id": "D"}
+    nodes = [
+        node(1, "a) UBND cấp tỉnh tổ chức đánh giá, phân hạng và quyết định công nhận, cấp giấy chứng nhận "
+                "cho sản phẩm OCOP 3 sao, 4 sao."),
+        node(2, "b) Bộ Nông nghiệp và Môi trường chủ trì, phối hợp với các bộ, ngành liên quan tổ chức đánh giá, "
+                "phân hạng và quyết định công nhận, cấp giấy chứng nhận cho sản phẩm OCOP 5 sao."),
+        node(3, "Đơn đăng ký nhãn hiệu đã được cơ quan có thẩm quyền chấp nhận", "ScoreOption"),
+        node(4, "a) Hạng 5 sao (cấp quốc gia): Tổng điểm trung bình đạt từ 90 đến 100 điểm"),
+    ]
+    assert [n["node_id"] for n in authority_nodes(nodes, star_rating=5)] == ["n2"]
+    assert [n["node_id"] for n in authority_nodes(nodes, star_rating=4)] == ["n1"]
+    assert [n["node_id"] for n in authority_nodes(nodes, star_rating=None)] == ["n1", "n2"]
