@@ -6,21 +6,39 @@ Tài liệu cung cấp hướng dẫn thực thi các tác vụ vận hành thư
 
 ## 1. Xây dựng Dữ liệu Toàn diện (Full Corpus Build)
 
-Tác vụ đọc toàn bộ 12 văn bản PDF, thực hiện nhận dạng OCR các trang scan, trích xuất cấu trúc văn bản, sinh đồ thị tri thức và tạo chỉ mục tìm kiếm.
+Quy trình chuẩn hóa dữ liệu toàn bộ 12 văn bản PDF (583 trang: 104 trang native text và 479 trang scan/ảnh), thực hiện nhận dạng OCR 3 worker song song, trích xuất cấu trúc văn bản, sinh đồ thị tri thức và tạo chỉ mục tìm kiếm.
+
+### Quy trình 4 bước chuẩn
 
 ```powershell
-# 1. Kiểm tra trạng thái hiện tại của dữ liệu
-python tools/cli.py status
+# Bước 1: Chạy OCR toàn diện với 3 workers và tái sử dụng bộ nhớ đệm trang dùng chung
+python -m ocop_ocr run --dataset D:/AgentAI/OCOP-RAG/ocr-dataset-full --workers 3 --cache-dir D:/AgentAI/OCOP-RAG/ocr-cache
 
-# 2. Xây dựng toàn bộ các tầng dữ liệu (không khởi động server)
-python tools/cli.py run --build-only --dpi 300
+# Bước 2: Xuất bản duyệt Markdown đối soát (tạo ảnh 150 DPI và file Markdown theo trang)
+python -m ocop_ocr export --dataset D:/AgentAI/OCOP-RAG/ocr-dataset-full
 
-# 3. (Tùy chọn) Xây dựng kèm chỉ mục Dense Vector (yêu cầu Qdrant)
-python tools/cli.py run --build-only --dense --dpi 300
+# Bước 3: Nhập kết quả duyệt Markdown sau khi đối soát hoặc hiệu chỉnh
+python -m ocop_ocr import --dataset D:/AgentAI/OCOP-RAG/ocr-dataset-full
 
-# 4. (Tùy chọn) Tái tạo lại toàn bộ từ đầu (xóa cache trung gian cũ)
-python tools/cli.py run --build-only --refresh --dpi 300
+# Bước 4: Xây dựng toàn bộ các tầng dữ liệu RAG (đồ thị tri thức, chỉ mục BM25)
+python tools/cli.py run --ocr-dataset D:/AgentAI/OCOP-RAG/ocr-dataset-full --build-only
+
+# (Tùy chọn) Xây dựng thêm chỉ mục Dense Vector (yêu cầu Qdrant)
+python tools/cli.py run --ocr-dataset D:/AgentAI/OCOP-RAG/ocr-dataset-full --build-only --dense
 ```
+
+### Thông số Vận hành & Dự báo Full Run
+
+* **Quy mô corpus**: 12 văn bản pháp quy / 583 trang (104 trang native text trích xuất tức thì, 479 trang scan/ảnh cần nhận dạng OCR).
+* **Hiệu năng & Thời gian**: Tốc độ xử lý đo đạc thực tế đạt ~64,15 giây/trang scan với 3 workers. Tổng thời gian chạy full từ đầu (clean run) khoảng ~8,5 giờ; khi đã có cache (`--cache-dir D:/AgentAI/OCOP-RAG/ocr-cache`), toàn bộ quá trình hoàn tất trong dưới 5 phút.
+* **Dung lượng ổ đĩa cần thiết**:
+  * Bộ dataset OCR (`ocr-dataset-full`): ~350 MB (kèm ảnh 150 DPI xuất bản duyệt: ~1,5 GB).
+  * Bộ nhớ đệm trang (`ocr-cache`): ~1,2 GB.
+  * Đồ thị tri thức & chỉ mục tìm kiếm: ~2 GB (bao gồm Qdrant dense vectors).
+* **Số lượt gọi LLM ước tính**: ~4.200 EvidenceUnits trên toàn bộ corpus cần gửi qua mô hình trích xuất thực thể/quan hệ.
+* **Đặc tính kỹ thuật & Giới hạn đã biết**:
+  * **Bảng biểu QĐ148**: Khung raster bảng và các hàng không viền được phân tách bằng quy tắc kết nối ranh ngang/dọc (`table_parser.py`); các ô điểm in không có chữ hoặc nét mờ được đánh dấu rõ ràng qua chỉ số `potential_score_cells_blank`, không bị mất âm thầm.
+  * **Tính tất định 1 worker vs 3 workers**: Cấu hình cố định 2 luồng Torch (`torch.set_num_threads(2)`) cho cả chế độ tuần tự và đa tiến trình; hộp bao tọa độ, chữ và cấu trúc bảng khớp bit-for-bit 100%.
 
 ---
 

@@ -71,4 +71,4 @@ Truy cập giao diện: `http://localhost:5173`.
 | [Hướng dẫn phát triển](docs/DEVELOPMENT.md) | Quy chuẩn kiểm thử hermetic, quy ước commit và mở rộng tool/quan hệ. |
 | [Thuật ngữ miền](GLOSSARY.md) | Định nghĩa các thực thể và trạng thái kiểm chứng miền OCOP. |
 | [Quyết định kiến trúc (ADR)](docs/adr/README.md) | Các quyết định kỹ thuật nền tảng: đồ thị một đầu ra, cổng fail-closed, mô hình ghim. |
-| [Lưu trữ lịch sử](docs/history/README.md) | Các báo cáo nghiên cứu và gỡ lỗi qua các phiên bản trước. |
+| [Dự án con OCR](ocr/README.md) | Pipeline OCR độc lập, hợp đồng dataset, duyệt Markdown và xuất nhập kiểm soát. |

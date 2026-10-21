@@ -88,7 +88,7 @@ Tài liệu mô tả luồng dữ liệu từ PDF nguồn đến câu trả lờ
 
 | Tầng chức năng | Thư mục mã nguồn chính | Các tệp nòng cốt |
 | :--- | :--- | :--- |
-| **Tiền xử lý & OCR PDF** | `ai_core/processing/ocop/` | `pdf_pipeline.py`, `easy_viet_ocr.py`, `table_parser.py`, `registry.py` |
+| **Tiền xử lý & OCR PDF** | `ocr/ocop_ocr/`, `ocop_contracts/` | `pdf_pipeline.py`, `easy_viet_ocr.py`, `table_parser.py`, `artifact_cache.py`, `review.py` |
 | **Trích xuất Tri thức** | `ai_core/knowledge/ocop/` | `extractor.py`, `criterion_sheets.py`, `legal_structure.py`, `llm_proposals.py` |
 | **Đồ thị Tri thức** | `ai_core/graph/ocop/` | `builder.py`, `ontology.py`, `grounding.py`, `retriever.py`, `review.py` |
 | **Chỉ mục & Chunking** | `ai_core/retrieval/ocop/` | `index_pipeline.py`, `structure_chunker.py`, `lookup.py` |
@@ -96,5 +96,5 @@ Tài liệu mô tả luồng dữ liệu từ PDF nguồn đến câu trả lờ
 | **Điều phối & An toàn** | `ai_core/orchestration/ocop/` | `workflow.py`, `router.py`, `planner.py`, `tools.py`, `verification.py`, `llm.py` |
 | **Điều khiển Hệ thống** | `ai_core/system/` | `pipeline.py`, `smoke.py`, `runtime.py`, `checkpoints.py` |
 | **Dịch vụ API** | `backend/api/` | `ocop_main.py`, `ocop_routes.py`, `ocop_review_routes.py`, `ocop_debug.py` |
-| **Dòng lệnh & Tiện ích** | `tools/` | `cli.py`, `debug_cli.py`, `evaluate_manual_pdf.py`, `evaluate_ocop.py` |
+| **Dòng lệnh & Tiện ích** | `tools/` | `cli.py`, `debug_cli.py`, `evaluate_manual_pdf.py`, `evaluate_ocop.py`, `package_ocop.py` |
 | **Giao diện Web** | `frontend/src/` | `ocop/Chat.tsx`, `ocop/Review.tsx`, `ocop/api.ts`, `pages/Dashboard.tsx` |
