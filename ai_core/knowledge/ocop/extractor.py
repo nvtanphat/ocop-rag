@@ -13,7 +13,7 @@ from ai_core.domain.ocop_citations import quote_bbox
 from ocop_contracts.ids import stable_id
 from .contracts import (
     BusinessEntity, BusinessRelation, BusinessRule, EvidenceRef, EntityType,
-    validate_business_graph,
+    validate_business_graph, ambiguous_numbered_heading,
 )
 
 
@@ -239,6 +239,10 @@ def extract_semantics(units: list[dict], source_kinds: dict[str, str],
             score=row.get('score_candidate')
             if score is not None and (not isinstance(score,int) or not 0<=score<=100):
                 score=None
+            if ambiguous_numbered_heading(label):
+                parent_id=None
+                omitted['criterion_numbering_prefix_unresolved']+=1
+                continue
             part=part_re.match(label)
             letter=(re.match(r'^\s*([a-zđ])\)\s+\S',label,re.I)
                     if source_kinds.get(row['source_id'])=='ocop_historical' else None)

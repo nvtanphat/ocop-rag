@@ -12,6 +12,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+def ambiguous_numbered_heading(text: str) -> bool:
+    """Observed numbering behind stray OCR ink is a scope barrier, not a repair."""
+    return bool(re.match(r'^\s*[^\d\s]{1,3}\s+\d+(?:[.,]\d+){1,3}[.,)]?\s+\S',text))
+
+
 class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True, allow_inf_nan=False)
 

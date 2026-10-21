@@ -30,3 +30,11 @@ def test_letter_heading_stops_an_option_from_borrowing_an_older_parent():
     assert not _entails(edge,node(0),option,units)
     assert not _entails(edge,node(1,'a'),option,units)
     assert _entails(edge,node(3,'b'),option,units)
+
+
+def test_noisy_numbered_heading_is_a_barrier_without_becoming_a_verified_parent():
+    units,node=fixture()
+    units['u']['structured']['cells'][1]['text']='j 1.6. Bảo vệ môi trường'
+    option=node(2)
+    option['properties']['parent_identified']=True
+    assert not _entails({'relation_type':'HAS_OPTION'},node(0),option,units)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from ocop_contracts.ids import stable_id
-from .contracts import EntityType
+from .contracts import EntityType, ambiguous_numbered_heading
 from .star_requirements import SHEET
 
 
@@ -147,6 +147,9 @@ def extract_criterion_sheets(units,kinds,candidates,index,entities,relations,omi
             cid=identity(EntityType.CRITERION,sid,f'numbered:{row["candidate_id"]}')
             oid=identity(EntityType.SCORE_OPTION,sid,f'score-option:{row["candidate_id"]}')
             label=str(row.get('label_candidate') or '').split('|')[0].strip()
+            if ambiguous_numbered_heading(label):
+                state['parent']=None
+                continue
             if (cid not in entities and oid not in entities and state['parent'] and len(label)>=2 and any(c.isalpha() for c in label)
                 and not re.match(r'^(?:gh[iị]\s+ch[úủ]|chú\s+ý|yêu\s+cầu|lưu\s+ý|ch[iỉ]\s+áp\s+dụng|tổng\s+cộng|các\s+tiêu\s+chí|thang\s+điểm)\b|^\(',label,re.I)):
                 score=row.get('score_candidate')

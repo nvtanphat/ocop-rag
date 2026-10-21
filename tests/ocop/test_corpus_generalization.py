@@ -80,6 +80,23 @@ def test_historical_letter_criteria_are_scoped_to_their_numbered_group():
                for r in result['business_relations'])
 
 
+def test_noisy_numbered_heading_stops_cross_page_parent_inheritance():
+    from tests.ocop.test_criterion_sheets import table
+    header=unit('DOC.CURRENT',3,'2. Bộ sản phẩm: Thịt\n'
+                '(Sản phẩm: Thực phẩm. Nhóm: Thực phẩm tươi sống)','paragraph')
+    first=table(3,[('Phần A: SẢN PHẨM',40),('1. TỔ CHỨC SẢN XUẤT',18),
+        ('1.5. Liên kết chuỗi',3),('Có hợp đồng liên kết',3),
+        ('j 1.6. Bảo vệ môi trường trong quá trình sản xuất',3)])
+    second=table(4,[('Có hồ sơ môi trường',1)])
+    second['structured']['table_continuity']=[{'from_pdf_page':3,'to_pdf_page':4,
+        'from_table_id':'table:3','to_table_id':'table:4'}]
+    result=extract([header,first,second])
+    entities={e['entity_id']:e for e in result['business_entities']}
+    assert not any(r['relation_type']=='HAS_OPTION'
+        and entities[r['target_entity_id']]['label']=='Có hồ sơ môi trường'
+        for r in result['business_relations'])
+
+
 def test_next_annex_stops_the_last_criterion_sheet():
     from tests.ocop.test_criterion_sheets import table
     units = fixture()

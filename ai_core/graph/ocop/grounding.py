@@ -17,7 +17,7 @@ from ai_core.knowledge.ocop.authorities import find_authorities, resolve
 from ai_core.knowledge.ocop.procedures import _subjects, _scope_header, ACTION, collective_authorities
 from ai_core.processing.ocop.business_candidates import _row_text
 from ai_core.knowledge.ocop.shapes import PARENT_SHAPES
-from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_document_number
+from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_document_number, ambiguous_numbered_heading
 
 
 _LLM_PROVENANCE_KEYS = {"extraction_method", "llm_enriched_attributes"}
@@ -174,7 +174,8 @@ def _option_parent_supported(source, target, units, *, stop_at_letters=True):
         for cell in unit.get('structured', {}).get('cells', []):
             text = str(cell.get('text') or '')
             if start < int(cell.get('row', -1)) < end and (
-                    _number({'label': text}) or re.match(r'\s*phần\s+[abc]\b', text, re.I)
+                    _number({'label': text}) or ambiguous_numbered_heading(text)
+                    or re.match(r'\s*phần\s+[abc]\b', text, re.I)
                     or stop_at_letters and re.match(r'\s*[a-zđ]\)\s+\S',text,re.I)):
                 return False
     return True
@@ -460,6 +461,11 @@ def _entails(edge, source, target, units):
         ]
         for statement in statements:
             text = norm(statement)
+            # A semicolon inside a conditional parenthesis must not detach
+            # "thì phải có" from its condition. Recognize the observed OCR
+            # tone error "trưởng hợp" for abstention, without editing evidence.
+            if _UNCERTAIN.search(text) or re.search(r'\btrư[ờở]ng\s+hợp\b',text):
+                continue
             for sentence in re.split(r"[;.!?]", text):
                 label = norm(target["label"])
                 if label not in sentence:
