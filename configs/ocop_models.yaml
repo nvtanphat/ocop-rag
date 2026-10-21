@@ -16,6 +16,7 @@ embedding:
   encode_query: encode_query
   encode_document: encode_document
   model_max_tokens: 2048
+  min_transformers_version: "4.57.0"  # model card config uses use_bidirectional_attention (older versions ignore it silently)
   requires_license_acceptance: true
 reranker:
   provider: sentence_transformers

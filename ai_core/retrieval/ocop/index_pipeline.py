@@ -27,6 +27,7 @@ from ai_core.retrieval.ocop.models_config import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_EMBEDDING_REVISION,
     get_model_max_tokens,
+    load_models_config,
     resolve_local_model_path,
 )
 
@@ -242,12 +243,24 @@ class BM25Search:
         return sorted(scores.items(),key=lambda item:(-item[1],item[0]))[:top_k]
 
 
+def _require_min_transformers()->None:
+    """Refuse to embed with a library older than the model needs (silent attention fallback otherwise)."""
+    minimum=load_models_config().get("embedding",{}).get("min_transformers_version")
+    if not minimum:return
+    import transformers
+    from packaging.version import Version
+    if Version(transformers.__version__)<Version(str(minimum)):
+        raise RuntimeError(f"transformers>={minimum} is required by the embedding model "
+                           f"(installed {transformers.__version__}); upgrade and rebuild the dense index")
+
+
 @lru_cache(maxsize=2)
 def _load_embedding(model_id:str,revision:str|None=None):
     os.environ.setdefault("TRANSFORMERS_NO_TF","1")
     os.environ.setdefault("USE_TF","0")
     try:from sentence_transformers import SentenceTransformer
     except ImportError as exc:raise RuntimeError("Install sentence-transformers>=5 for actual dense vectors") from exc
+    _require_min_transformers()
     resolved, is_local = resolve_local_model_path(model_id)
     options={"device":"cpu","trust_remote_code":False,"local_files_only":True}
     if revision and not is_local:
