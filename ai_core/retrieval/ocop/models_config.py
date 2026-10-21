@@ -86,3 +86,22 @@ def get_reranker_revision(root: Path | None = None) -> str | None:
     if isinstance(val, str) and val.strip():
         return val.strip()
     return DEFAULT_RERANKER_REVISION
+
+
+def resolve_local_model_path(model_id: str, root: Path | None = None) -> tuple[str, bool]:
+    """Resolve model_id to local directory if downloaded locally, returning (path_or_id, is_local_dir)."""
+    p = Path(model_id)
+    if p.is_dir():
+        return str(p), True
+    short_name = model_id.split("/")[-1]
+    candidates = [
+        Path("D:/AgentAI/OCOP-RAG/models") / short_name,
+        Path("D:/AgentAI/OCOP-RAG/models") / model_id,
+        Path(os.environ.get("OCOP_MODELS_DIR", "")) / short_name,
+    ]
+    if root:
+        candidates.append(Path(root) / "models" / short_name)
+    for c in candidates:
+        if c.is_dir():
+            return str(c), True
+    return model_id, False

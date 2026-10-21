@@ -135,3 +135,18 @@ def test_reranker_forbids_silent_truncation_when_pair_budget_exceeded(monkeypatc
     candidates = [{'chunk_id': 'c1', 'text': 'đoạn văn bản OCOP dài'}]
     with pytest.raises(RuntimeError, match='pair_token_budget'):
         module._rerank('câu hỏi', candidates, 'BAAI/bge-reranker-v2-m3', pair_token_budget=1024)
+
+
+def test_resolve_local_model_path(tmp_path):
+    from ai_core.retrieval.ocop.models_config import resolve_local_model_path
+    dummy_dir = tmp_path / "models" / "my-fake-test-model"
+    dummy_dir.mkdir(parents=True)
+    res_path, is_local = resolve_local_model_path("org/my-fake-test-model", root=tmp_path)
+    assert is_local is True
+    assert res_path == str(dummy_dir)
+
+    res_path_none, is_local_none = resolve_local_model_path("nonexistent/model", root=tmp_path)
+    assert is_local_none is False
+    assert res_path_none == "nonexistent/model"
+
+

@@ -24,10 +24,10 @@ from ai_core.domain.ocop_ids import code_fingerprint,stable_id,content_sha256
 from ai_core.domain.ocop_models import RetrievalChunk
 from ai_core.retrieval.ocop.models_config import (
     DEFAULT_TARGET_CHUNK_TOKENS,
-    DEFAULT_MODEL_MAX_TOKENS,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_EMBEDDING_REVISION,
     get_model_max_tokens,
+    resolve_local_model_path,
 )
 
 ROOT=Path(__file__).resolve().parents[3]
@@ -248,10 +248,11 @@ def _load_embedding(model_id:str,revision:str|None=None):
     os.environ.setdefault("USE_TF","0")
     try:from sentence_transformers import SentenceTransformer
     except ImportError as exc:raise RuntimeError("Install sentence-transformers>=5 for actual dense vectors") from exc
+    resolved, is_local = resolve_local_model_path(model_id)
     options={"device":"cpu","trust_remote_code":False,"local_files_only":True}
-    if revision:
+    if revision and not is_local:
         options["revision"]=revision
-    return SentenceTransformer(model_id,**options)
+    return SentenceTransformer(resolved,**options)
 
 
 def _encode(model,texts:list[str],is_query:bool):

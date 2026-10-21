@@ -12,6 +12,7 @@ from ai_core.retrieval.ocop.models_config import (
     DEFAULT_RERANKER_MODEL,
     DEFAULT_RERANKER_REVISION,
     get_pair_token_budget,
+    resolve_local_model_path,
 )
 from ai_core.retrieval.ocop.index_pipeline import (
     ROOT, BM25Search, _load_embedding, _encode, _records_hash, terms,
@@ -64,14 +65,13 @@ def _load_reranker(model_id:str,revision:str|None=None):
     os.environ.setdefault("USE_TF","0")
     try:from sentence_transformers import CrossEncoder
     except ImportError as exc:raise RuntimeError("sentence-transformers required for --rerank") from exc
+    resolved, is_local = resolve_local_model_path(model_id)
     # Avoid executing arbitrary Python from a remote repository. A revision
     # alone is not an approval to execute reviewed custom code.
     kwargs={"device":"cpu","trust_remote_code":False,"local_files_only":True}
-    if revision:
+    if revision and not is_local:
         kwargs["revision"]=revision
-    # GTE multilingual reranker requires its custom modeling code. The model
-    # repository must be reviewed and revision pinned before deployment.
-    return CrossEncoder(model_id,**kwargs)
+    return CrossEncoder(resolved,**kwargs)
 
 
 def _check_index(index_dir:Path,manifest:dict,rows:list[dict],bm25:BM25Search)->None:

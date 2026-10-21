@@ -230,7 +230,6 @@ def test_long_parent_expansion_never_mix_another_parent(tmp_path):
 
 
 def test_graph_enriched_chunk_respects_model_max_tokens_not_target_chunk_budget(tmp_path, monkeypatch):
-    import types
     import ai_core.retrieval.ocop.index_pipeline as ip
     # Create knowledge base
     kb = tmp_path / 'kb'
@@ -261,6 +260,7 @@ def test_graph_enriched_chunk_respects_model_max_tokens_not_target_chunk_budget(
     
     idx = tmp_path / 'idx'
     manifest = ip.build_index(knowledge=kb, index_dir=idx, graph_dir=graph_dir, allow_partial=True)
+    assert manifest['chunking']['over_budget_chunks'] == 0
     
     # Read generated chunks
     chunks = [json.loads(line) for line in (idx / 'chunks.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
