@@ -15,6 +15,10 @@ from datetime import date
 
 
 def _jsonl(path,rows):
+    if path.name=='structured.jsonl':
+        from tests.ocop.lookup_graph_fixture import write_lookup_graph
+        write_lookup_graph(path.parent,rows)
+        return
     path.parent.mkdir(parents=True,exist_ok=True)
     path.write_text(''.join(json.dumps(x,ensure_ascii=False)+'\n' for x in rows),encoding='utf-8')
 

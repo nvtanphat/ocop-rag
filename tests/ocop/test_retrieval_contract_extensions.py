@@ -102,7 +102,8 @@ def test_exact_lookup_joins_candidates_to_evidence(tmp_path):
     evidence = exact_lookup(idx, identity=unit["unit_id"], include_candidates=False)
     assert len(evidence) == 1
     assert evidence[0]["spans"][0]["pdf_page"] == 8
-    facts = exact_lookup(idx, identity="test:form:1")
+    assert exact_lookup(idx, identity="test:form:1") == []
+    facts = exact_lookup(idx, identity="test:form:1", include_candidates=True)
     assert len(facts) == 1
     assert facts[0]["record_kind"] == "form_candidates"
     assert facts[0]["source_spans"][0]["pdf_page"] == 8

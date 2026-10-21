@@ -92,13 +92,12 @@ def test_form_without_explicit_id_never_returns_arbitrary_form(tmp_path):
     assert not result['results']
 
 
-def test_new_lookup_requirements_flags_text_fallback_unverified(tmp_path):
+def test_requirements_lookup_without_graph_fails_closed(tmp_path):
     _fixture(tmp_path)
     result=ToolRegistry(tmp_path).dispatch('lookup_evidence_requirements',
         query='mật ong cần minh chứng gì?',slots={'product_name':'mật ong'},context={})
-    assert result['status']=='text_evidence_fallback'
-    assert result['verified'] is False
-    assert all(x.get('source_id') for x in result['results'])
+    assert result['status']=='graph_not_built'
+    assert result['results']==[]
 
 
 def test_tool_coverage_surfaces_missing_business_evidence(tmp_path):

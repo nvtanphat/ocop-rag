@@ -298,7 +298,7 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
         add_node(row["entity_id"],kind,source_id=row["source_id"],
                  evidence_ids=row.get("evidence_unit_ids",[]),status=_status(row),label=str(row.get("name",kind)))
     # Guarantee every evidence is addressable, including page-root.
-    for row in all_evidence:
+    for ordinal,row in enumerate(all_evidence):
         evid = row["unit_id"]; source = row["source_id"]
         eid = evidence_node_ids.setdefault((source, evid), stable_id("evidence_node",source,[evid],revision=version))
         if eid not in nodes:
@@ -307,6 +307,10 @@ def build_graph(knowledge: Path, output: Path, *, include_candidates: bool = Tru
                      citations=_span_citations(row,evid,source) or [])
         # Evidence nodes carry page spans for source round trips.
         nodes[eid]["properties"].update({"source_spans": row.get("spans", []), "unit_kind": row.get("unit_kind")})
+        # One immutable source for runtime structure and its original evidence.
+        # This is a transcription, never a promotion of OCR to verified facts.
+        nodes[eid]['properties'].update({'evidence_text':row.get('text',''),
+            'structured':row.get('structured') or {}, 'source_order':ordinal})
         nodes[eid]['citations'] = _span_citations(row, evid, source) or []
         # The source document node is created even when the extractor didn't emit an entity.
         source_node = source_node_ids.setdefault(source, stable_id("document_node",source,[source],revision=version))

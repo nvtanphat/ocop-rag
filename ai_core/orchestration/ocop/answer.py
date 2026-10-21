@@ -5,10 +5,13 @@ import math
 import re
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
 from ai_core.orchestration.ocop.verification import check_source_markers,check_sensitive_claims,verify_claims
+from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
+from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
 
 # Tool outputs are untrusted data, even when a tool is allowlisted. A failed
 # lookup must never donate stale rows to the grounding context.
 BAD_RESULT_STATUSES = frozenset({
+    'graph_not_built', 'graph_integrity_failed','graph_index_version_mismatch','graph_requires_grounding_rebuild',
     'requested_pdf_page_not_indexed',
     'sheet_scope_unavailable',
     'tool_unavailable','dependency_unavailable','invalid_tool_output',
@@ -57,7 +60,7 @@ def _citation_spans(spans:list[dict], pdf_page:int)->list[dict]:
     return result
 
 
-def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
+def _evidence(records:list[dict], *, token_budget:int=3600)->tuple[list[dict],list[str],list[dict]]:
     """Select source-backed evidence visible to the LLM and the verifier.
 
     Duplicate source/page/unit identities with divergent text or approval status
@@ -81,7 +84,7 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
         chunk_id=row.get('chunk_id') if isinstance(row.get('chunk_id'),str) else None
         key=(row['source_id'],span['pdf_page'],row.get('evidence_unit_id') or row.get('unit_id'),chunk_id)
         grouped.setdefault(key,[]).append((row,span,body))
-    citations=[];contexts=[];selected=[]
+    citations=[];contexts=[];selected=[];spent=0
     for key,entries in grouped.items():
         # Equal identities are only safely deduplicated when the evidence and
         # provenance agree. Never promote a duplicate candidate to verified.
@@ -97,6 +100,11 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
                   'review_status':row.get('review_status','needs_review'),
                   'source_spans':_citation_spans(row.get('source_spans') or row.get('spans') or [span],key[1])}
         if key[3]:citation['chunk_id']=key[3]
+        context_metadata=row.get('context') if isinstance(row.get('context'),dict) else {}
+        if context_metadata.get('parent_source_spans'):
+            citation['context_source_spans']=context_metadata['parent_source_spans']
+        for name in ('graph_node_ids','graph_edge_ids','check'):
+            if row.get(name):citation[name]=row[name]
         source_sha256=span.get('source_sha256') or row.get('source_sha256')
         if source_sha256:
             citation['source_sha256']=source_sha256
@@ -107,6 +115,11 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
             isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox'))
             for item in spans))
         excerpt=body[:5000 if table_backed else 1250]
+        remaining=token_budget-spent-80
+        if remaining<40:break
+        while excerpt and estimated_tokens(excerpt)>remaining:
+            excerpt=excerpt[:max(0,len(excerpt)-80)]
+        if not excerpt:continue
         chosen=dict(row)
         # OCR fields/label candidates are displayed as *candidates*, but may
         # never silently become verified factual/legal claim support.
@@ -118,10 +131,20 @@ def _evidence(records:list[dict])->tuple[list[dict],list[str],list[dict]]:
         selected.append(chosen)
         contexts.append(f"[S{len(citations)}] {key[0]}, PDF p.{key[1]}, "
                         f"review={citation['review_status']}: {excerpt}")
-        if len(citations)>=8:break
+        spent+=estimated_tokens(contexts[-1])
     return citations,contexts,selected
 
 def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)->dict:
+    result=_assemble(question,tool_results,llm=llm)
+    missing=result.get('evidence_fusion',{}).get('missing_facets',[])
+    if missing:
+        result['evidence_fusion']['answer_status']=result['status']
+        result['status']='insufficient_facet_evidence'
+        result['answer']='Tầng fusion chưa đủ bằng chứng cho mục '+', '.join(missing)+'.\n'+result['answer']
+    return result
+
+
+def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)->dict:
     records=[]
     for result in tool_results:
         if not isinstance(result,dict):continue
@@ -134,16 +157,37 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
     # Eight earlier BM25 hits must not silently erase the relation proof.
     graph_rows=[row for row in records if row.get('graph_edge_id')]
     records=graph_rows[:4]+[row for row in records if not row.get('graph_edge_id')]+graph_rows[4:]
+    records=order_evidence(question,records)
     citations,contexts,selected=_evidence(records)
+    facets=query_facets(question)
+    fusion={'budget_tokens':3600,'token_count_method':'conservative_unicode_estimate',
+            'excerpt_count':len(contexts),'requested_facets':facets,
+            # Only explicit criterion/form codes are mandatory; natural-language parts may carry no
+            # evidence at all (instructions, chatter), so they only order evidence and are reported.
+            'missing_facets':[facet for facet in facets if not facet.startswith('terms:')
+                              and not any(covers(row,facet) for row in selected)],
+            'uncovered_question_parts':[facet[6:] for facet in facets if facet.startswith('terms:')
+                                        and not any(covers(row,facet) for row in selected)],
+            'retrieval_modes':sorted({r['retrieval_mode'] for r in selected if r.get('retrieval_mode')}),
+            'retrieval_fallback_reasons':sorted({r['retrieval_fallback_reason'] for r in selected if r.get('retrieval_fallback_reason')}),
+            'ranking_reasons':sorted({r['ranking_reason'] for r in selected if r.get('ranking_reason')})}
+    # Every return path carries coverage, including a model failure.
+    def response(payload):
+        return {**payload,'evidence_fusion':fusion}
     if not contexts:
-        return {"answer":"Chưa tìm thấy bằng chứng nguồn đủ để trả lời trong dữ liệu đã lập chỉ mục.",
-                "status":"insufficient_evidence","citations":[]}
+        failed=[r.get('output',{}) for r in tool_results if isinstance(r,dict) and
+                isinstance(r.get('output'),dict) and r['output'].get('status') in BAD_RESULT_STATUSES]
+        reason='; '.join(dict.fromkeys(str(out.get('layer') or 'retrieval')+': '+str(out.get('reason') or out['status'])
+                                      for out in failed))
+        return response({"answer":"Chưa tìm thấy bằng chứng nguồn đủ để trả lời trong dữ liệu đã lập chỉ mục."+
+                (' Tầng gây thiếu bằng chứng: '+reason+'.' if reason else ''),
+                "status":"insufficient_evidence","citations":[]})
     if llm is None:
         return {"answer":("Kết quả truy xuất (chưa tạo câu trả lời bằng LLM). "
                           "Các trích đoạn giữ nguyên trạng thái xác minh của nguồn; "
                           "điểm số OCR chưa xác minh không phải kết luận.\n"+
                           "\n".join(contexts)),
-                "status":"retrieval_only","citations":citations}
+                "status":"retrieval_only","citations":citations,"evidence_fusion":fusion}
     system=("Bạn là trợ lý tra cứu OCOP tiếng Việt. Chỉ dùng SOURCE được cung cấp; "
             "không bịa luật, thang điểm, điều kiện, ngày tháng hoặc trích dẫn. "
             "Nếu OCR chưa verified phải nêu chưa xác minh. "
@@ -157,7 +201,7 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
         if not isinstance(text,str) or not text.strip():
             return {'answer':'Model không trả về văn bản hợp lệ. Chỉ cung cấp bản trích xuất nguồn:\n'+
                     '\n'.join(contexts),'status':'citation_verification_failed',
-                    'citations':citations,'generation_diagnostics':{
+                    'citations':citations,'evidence_fusion':fusion,'generation_diagnostics':{
                         'layer':'generation','reasons':['invalid_model_text']}}
         # Server builds its own citations from tool evidence; never trust model IDs.
         verification=check_source_markers(text,citations)
@@ -174,17 +218,17 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
             # Never expose unsupported [S#] claims as valid references.
             return {"answer":"Tầng xác minh chưa chấp nhận câu trả lời LLM ("+', '.join(reasons)+
                     "). Chỉ cung cấp bản trích xuất chưa diễn giải:\n"+"\n".join(contexts),
-                    "status":"citation_verification_failed","citations":citations,"claim_verification":claims,
+                    "status":"citation_verification_failed","citations":citations,"evidence_fusion":fusion,"claim_verification":claims,
                     'generation_diagnostics':{'layer':'claim_verification','reasons':reasons,
                         'markers':verification,'sensitive_claims':sensitive}}
         if verification["unverified_source"]:
             text="[LƯU Ý: Nguồn OCR/trích xuất chưa được duyệt; thông tin cần kiểm tra lại PDF gốc.]\n"+text
         # This is identity checking, not a factual entailment proof.
         return {"answer":text,"status":"generated_unverified_claims" if verification["unverified_source"] else
-                "generated_claims_verified","citations":citations,"claim_verification":claims}
+                "generated_claims_verified","citations":citations,"evidence_fusion":fusion,"claim_verification":claims}
     except (RuntimeError,TimeoutError,ConnectionError,OSError) as exc:
         reason='model_output_truncated' if isinstance(exc,ModelOutputTruncated) else 'model_unavailable'
         message='Output LLM bị cắt; không công bố phần sinh chưa hoàn tất.' if isinstance(exc,ModelOutputTruncated) else 'LLM chưa sẵn sàng.'
         return {"answer":message+" Bằng chứng truy xuất:\n"+"\n".join(contexts),
-                "status":"model_unavailable_retrieval_only","citations":citations,
+                "status":"model_unavailable_retrieval_only","citations":citations,"evidence_fusion":fusion,
                 'generation_diagnostics':{'layer':'generation','reasons':[reason]}}

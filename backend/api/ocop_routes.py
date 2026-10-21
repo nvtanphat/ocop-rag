@@ -266,8 +266,6 @@ async def ask(request: AskRequest):
             "Corpus OCOP chưa đồng bộ/đúng phiên bản. "
             "Chạy python tools/cli.py run --build-only."
         ))
-    if request.retrieval_mode != "sparse" and not manifest.get("dense", {}).get("enabled"):
-        raise HTTPException(status_code=409, detail="Chưa có Dense index. Chọn BM25 hoặc build embedding trước.")
     # Public search only. No client-provided tenant_id or dossier privileges.
     agent = _agent(request.use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
     try:

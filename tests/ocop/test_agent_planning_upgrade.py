@@ -141,8 +141,9 @@ def test_private_rule_engine_requires_reference_verified_rules(tmp_path):
 
 def test_recovery_never_converts_sparse_into_claimed_hybrid(tmp_path):
     _index(tmp_path)
-    with pytest.raises(RuntimeError,match='Dense index not built'):
-        OcopAgent(tmp_path,retrieval_mode='hybrid').ask('OCOP là gì?')
+    answer=OcopAgent(tmp_path,retrieval_mode='hybrid').ask('OCOP là gì?')
+    assert answer.status=='retrieval_only'
+    assert answer.evidence_fusion['retrieval_fallback_reasons']==['dense_not_built']
 
 
 def test_followup_pinned_2026_document_with_2025_is_clarified():

@@ -36,7 +36,8 @@ def corpus(tmp_path):
         (k/(name+'.jsonl')).write_text(''.join(json.dumps(r)+'\n' for r in rows),encoding='utf-8')
     build_graph(k,base/'graph')
     index=base/'index';index.mkdir()
-    (index/'manifest.json').write_text(json.dumps({'corpus_version':'synthetic-review'}))
+    (index/'manifest.json').write_text(json.dumps({'corpus_version':'synthetic-review',
+        'source_knowledge_version':'synthetic-review'}))
     (index/'evidence_units.jsonl').write_text(json.dumps(unit)+'\n')
     return tmp_path
 

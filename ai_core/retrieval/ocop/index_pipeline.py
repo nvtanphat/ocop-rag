@@ -26,12 +26,24 @@ from ai_core.domain.ocop_models import RetrievalChunk
 ROOT=Path(__file__).resolve().parents[3]
 # The chunker and index builder code identify the index format.
 INDEX_VERSION=code_fingerprint("retrieval",[Path(__file__).resolve().parent/name
-                                            for name in ("index_pipeline.py","structure_chunker.py")])
+                                            for name in ("index_pipeline.py","structure_chunker.py","graph_context.py")])
 WORD_RE=re.compile(r"[^\W_]+(?:[_-][^\W_]+)*",flags=re.UNICODE)
 
 
 def terms(text:str)->list[str]:
-    return WORD_RE.findall(text.casefold())
+    return WORD_RE.findall(unicodedata.normalize('NFC',text).casefold())
+
+
+def _identifier_terms(text:str)->list[str]:
+    folded=_fold_vietnamese(unicodedata.normalize('NFC',text).casefold())
+    result=['__criterion__'+m for m in re.findall(r'(?<![\d.])(\d{1,2}\.\d{1,2})(?!\d)',folded)]
+    result+=['__criterion__'+a+'.'+b for a,b in re.findall(r'(?m)^\s*(\d{1,2}),(\d{1,2})(?!\d)',folded)]
+    result+=['__form__'+str(int(m)) for m in re.findall(r'\bmau\s*(?:so\s*)?(\d{1,2})\b',folded)]
+    result+=['__document__'+m for m in re.findall(r'\b(?:qd\s*|quyet dinh\s+(?:so\s+)?)(\d+)',folded)]
+    result+=['__document__'+number for number in re.findall(r'\b(\d+)/\d{4}/qd\b',folded)]
+    result+=['__document_version__'+number+'_'+year for number,year in re.findall(
+        r'\b(?:qd\s*)?(\d+)/(\d{4})(?:/qd\b)?',folded)]
+    return result
 
 
 def _fold_vietnamese(token:str)->str:
@@ -45,7 +57,7 @@ def _lexical_terms(text:str)->list[str]:
     original=terms(text)
     # A reserved prefix keeps the alternate field separate from legal IDs,
     # Vietnamese words and original exact tokens.
-    return original+['__vi_fold__'+_fold_vietnamese(t) for t in original]
+    return original+['__vi_fold__'+_fold_vietnamese(t) for t in original]+_identifier_terms(text)
 
 
 def _records_hash(chunks:list[dict])->str:
@@ -207,6 +219,7 @@ class BM25Search:
         if idx.get('tokenizer')=='unicode_casefold_vi_folded':
             query_terms={t:1.0 for t in terms(query)}
             query_terms.update({'__vi_fold__'+_fold_vietnamese(t):0.35 for t in terms(query)})
+            query_terms.update({t:2.0 for t in _identifier_terms(query)})
         else:
             query_terms={t:1.0 for t in set(terms(query))}
         for token,weight in query_terms.items():
@@ -226,7 +239,7 @@ class BM25Search:
 def _load_embedding(model_id:str,revision:str|None=None):
     try:from sentence_transformers import SentenceTransformer
     except ImportError as exc:raise RuntimeError("Install sentence-transformers>=5 for actual dense vectors") from exc
-    options={"device":"cpu","trust_remote_code":False}
+    options={"device":"cpu","trust_remote_code":False,"local_files_only":True}
     if revision:
         options["revision"]=revision
     return SentenceTransformer(model_id,**options)
@@ -298,7 +311,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
                 mongo_database:str="ocop_rag",
                 qdrant_host:str="localhost",qdrant_port:int=6333,
                 token_budget:int=512,tokenizer_path:str|None=None,
-                allow_partial:bool=False)->dict:
+                allow_partial:bool=False,graph_dir:Path|None=None)->dict:
     src=json.loads((knowledge/"manifest.json").read_text(encoding="utf-8"))
     source_complete=bool(src.get("complete"))
     if not source_complete and not allow_partial:
@@ -316,11 +329,25 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
     # Include source catalog fingerprint: a legal context change must rebuild the index.
     metadata_hash=content_sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True))
     tokenizer_fingerprint=tokenizer_path or "estimate"
+    graph_dir=graph_dir or index_dir.parent/'graph'
+    graph_header=json.loads((graph_dir/'manifest.json').read_text(encoding='utf8')) if (graph_dir/'manifest.json').is_file() else {}
     corpus_version=hashlib.sha256((INDEX_VERSION+"|"+src["corpus_version"]+
-        f"|{max_words}|{overlap}|{token_budget}|{tokenizer_fingerprint}|{metadata_hash}").encode()).hexdigest()[:20]
+        f"|{max_words}|{overlap}|{token_budget}|{tokenizer_fingerprint}|{metadata_hash}|{graph_header.get('graph_version','')}").encode()).hexdigest()[:20]
     counter=_local_token_counter(tokenizer_path) if tokenizer_path else None
     chunks=build_chunks(selected,corpus_version,max_words=max_words,overlap=overlap,
                         token_budget=token_budget,source_metadata=metadata,counter=counter)
+    graph_version=None
+    if (graph_dir/'manifest.json').is_file():
+        from ai_core.retrieval.ocop.graph_context import enrich_chunks
+        gm=json.loads((graph_dir/'manifest.json').read_text(encoding='utf8'))
+        if gm.get('source_knowledge_version')!=src['corpus_version']:
+            raise ValueError('graph/index knowledge version mismatch')
+        chunks=enrich_chunks(chunks,graph_dir,allow_partial_debug=allow_partial)
+        graph_version=gm['graph_version']
+        from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
+        for chunk in chunks:
+            chunk['estimated_tokens']=(counter or estimated_tokens)(chunk['text_for_embedding'])
+            chunk['over_budget']=chunk['estimated_tokens']>token_budget
     if not chunks:raise RuntimeError("No indexable OCOP chunks")
     index_dir.mkdir(parents=True,exist_ok=True)
     count=_write_jsonl(index_dir/"chunks.jsonl",chunks)
@@ -332,6 +359,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
     dense={"enabled":False,"reason":"model_not_loaded; pass --with-dense to build REAL vectors"}
     manifest={"status":"sparse_ready","index_version":INDEX_VERSION,
        "source_knowledge_version":src["corpus_version"],"corpus_version":corpus_version,
+       "structural_graph_version":graph_version,
        "source_complete":source_complete,
        "counts":{"chunks":count,"evidence_units":evidence_count,
                  "structured_records":structured_count,"source_pages":src["counts"]["pages"]},

@@ -130,8 +130,9 @@ def test_index_and_search_fixture_integration(tmp_path):
     assert result["status"]=="sparse_ready"
     rows=search(index_dir,"chất lượng sản phẩm",mode="sparse")
     assert rows and rows[0]["pdf_page"]==7
-    with pytest.raises(RuntimeError,match="Dense index not built"):
-        search(index_dir,"chất lượng sản phẩm",mode="hybrid")
+    fallback=search(index_dir,"chất lượng sản phẩm",mode="hybrid")
+    assert fallback and fallback[0]['retrieval_mode']=='sparse'
+    assert fallback[0]['retrieval_fallback_reason']=='dense_not_built'
     assert not search(index_dir,"chất lượng sản phẩm",source_id="VN.NO.SOURCE")
 
 

@@ -29,7 +29,7 @@ def exact_lookup(
     pdf_page: int | None = None,
     kind: str | None = None,
     contains: str | None = None,
-    include_candidates: bool = True,
+    include_candidates: bool = False,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
     """Filter exact evidence by ID, PDF page, document and evidence unit kind.
@@ -85,13 +85,14 @@ def main() -> None:
     parser.add_argument("--kind")
     parser.add_argument("--contains")
     parser.add_argument("--evidence-only", action="store_true")
+    parser.add_argument("--include-candidates", action="store_true",help="Explicit offline candidate inspection only")
     parser.add_argument("--limit", type=int, default=20)
     args = parser.parse_args()
     root = args.root.resolve()
     index = args.index if args.index.is_absolute() else root / args.index
     matches = exact_lookup(index, identity=args.identity, source_id=args.source_id,
                            pdf_page=args.pdf_page, kind=args.kind, contains=args.contains,
-                           include_candidates=not args.evidence_only, limit=args.limit)
+                           include_candidates=args.include_candidates and not args.evidence_only, limit=args.limit)
     print(json.dumps(matches, ensure_ascii=False, indent=2))
 
 

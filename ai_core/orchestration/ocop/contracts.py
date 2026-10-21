@@ -56,6 +56,7 @@ class AgentResponse(BaseModel):
     evidence_grade: dict[str,Any]=Field(default_factory=dict)
     claim_verification: dict[str,Any]=Field(default_factory=dict)
     generation_diagnostics: dict[str,Any]=Field(default_factory=dict)
+    evidence_fusion: dict[str,Any]=Field(default_factory=dict)
     workflow_engine: str
     corpus_version: str|None=None
     route: Route

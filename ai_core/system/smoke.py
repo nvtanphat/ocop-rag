@@ -197,15 +197,15 @@ def main()->None:
         knowledge_manifest=extract_artifacts(output_root,input_dir=pages_dir,
             output_dir=knowledge_dir,max_pages=len(pages))
 
+        from ai_core.graph.ocop.builder import build_graph
+        graph_manifest=build_graph(knowledge_dir,processed/"graph",allow_partial=True)
+
         from ai_core.retrieval.ocop.index_pipeline import build_index
         index_dir=processed/"index"
         index_manifest=build_index(knowledge=knowledge_dir,index_dir=index_dir,allow_partial=True)
 
-        from ai_core.graph.ocop.builder import build_graph
-        graph_manifest=build_graph(knowledge_dir,processed/"graph",allow_partial=True)
-
         from ai_core.orchestration.ocop.workflow import OcopAgent
-        agent=OcopAgent(output_root,llm=None)
+        agent=OcopAgent(output_root,llm=None,allow_partial_debug=True)
         answers=[agent.ask(question) for question in args.question]
         _report(output_root,page_manifest,knowledge_manifest,index_manifest,graph_manifest,
                 args.question,answers,rendered)

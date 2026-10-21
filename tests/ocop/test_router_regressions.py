@@ -10,6 +10,10 @@ from ai_core.orchestration.ocop.planner import build_plan, needs_recovery
 
 
 def jsonl(path: Path, rows: list[dict]):
+    if path.name=='structured.jsonl':
+        from tests.ocop.lookup_graph_fixture import write_lookup_graph
+        write_lookup_graph(path.parent,rows)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(''.join(json.dumps(row,ensure_ascii=False)+'\n' for row in rows), encoding='utf-8')
 
@@ -261,3 +265,31 @@ def test_form_comparison_returns_all_requested_ids_even_many_duplicates(fixture_
     result=ToolRegistry(fixture_index).dispatch('lookup_form',query='So sánh mẫu 02 và 03',
           slots={'form_ids':['2','3']})
     assert {int(row['form_number']) for row in result['results']}=={2,3}
+
+
+def test_producer_question_routes_to_recognition_with_clean_product_slot():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+    cases = {
+        "QĐ525: sản phẩm HANA do chủ thể nào sản xuất?": "HANA",
+        "Sản phẩm Gạo ruộng rươi ST25 của chủ thể nào?": "Gạo ruộng rươi ST25",
+        "Ai sản xuất sản phẩm Nước mắm cá thu?": "Nước mắm cá thu",
+        "Chủ thể của sản phẩm HANA là ai?": "HANA",
+    }
+    for question, product in cases.items():
+        # As in the Agent: the index confirms the named product exists in the corpus.
+        route = route_query(question, indexed_content_bigram_coverage=lambda q: 1.0)
+        assert route.intent == Intent.RECOGNITION_LOOKUP, question
+        assert route.slots["product_name"] == product, question
+
+
+def test_bare_category_name_is_still_canonical():
+    from ai_core.orchestration.ocop.router import route_query
+    assert route_query("Sản phẩm mật ong được công nhận mấy sao?").slots["product_name"] == "mật ong"
+
+
+def test_unknown_product_producer_question_without_index_support_is_not_forced_in_scope():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+    route = route_query("Sản phẩm HANA do ai sản xuất?", indexed_content_bigram_coverage=lambda q: 0.0)
+    assert route.intent == Intent.OUT_OF_SCOPE

@@ -10,6 +10,10 @@ from ai_core.orchestration.ocop.planner import build_plan
 
 
 def _write(path, records):
+    if path.name=='structured.jsonl':
+        from tests.ocop.lookup_graph_fixture import write_lookup_graph
+        write_lookup_graph(path.parent,records)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(''.join(json.dumps(x, ensure_ascii=False)+'\n' for x in records), encoding='utf-8')
 

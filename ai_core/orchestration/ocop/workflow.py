@@ -506,7 +506,8 @@ class OcopAgent:
             tool_trace=final.get('trace',[]),evidence_coverage=final.get('evidence_coverage',{}),
             evidence_grade=final.get('evidence_grade',{}),
             claim_verification=payload.get('claim_verification',{}),
-            generation_diagnostics=payload.get('generation_diagnostics',{}))
+            generation_diagnostics=payload.get('generation_diagnostics',{}),
+            evidence_fusion=payload.get('evidence_fusion',{}))
 
     def _corpus_version(self):
         path=self.tools.index_dir/'manifest.json'

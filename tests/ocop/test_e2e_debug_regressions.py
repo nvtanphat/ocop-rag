@@ -97,7 +97,7 @@ def test_graph_evidence_is_not_dropped_after_eight_text_hits():
 def test_exact_article_lookup_includes_continuation_but_not_next_article(tmp_path):
     from ai_core.retrieval.ocop.index_pipeline import build_chunks, create_bm25
     index = tmp_path/'data/processed/ocop/index'; index.mkdir(parents=True)
-    units = [{'unit_id':str(i), 'source_id':'SYN.QD26.2026', 'unit_kind':kind,
+    units = [{'unit_id':f'synthetic-unit-{i}', 'source_id':'SYN.QD26.2026', 'unit_kind':kind,
               'text':text, 'review_status':'needs_review',
               'spans':[{'pdf_page':i, 'bbox':[0,0,100,100], 'source_sha256':'a'*64}]}
              for i,kind,text in [(1,'article','Điều 7. Nộp hồ sơ.'),
@@ -108,6 +108,8 @@ def test_exact_article_lookup_includes_continuation_but_not_next_article(tmp_pat
         (index/f'{name}.jsonl').write_text(''.join(json.dumps(x,ensure_ascii=False)+'\n' for x in rows),encoding='utf8')
     bm25 = create_bm25(chunks,index/'bm25.json.gz')
     (index/'manifest.json').write_text(json.dumps({'corpus_version':'synthetic','bm25':bm25}),encoding='utf8')
+    from tests.ocop.lookup_graph_fixture import build_legal_graph
+    build_legal_graph(index,units)
     result = ToolRegistry(tmp_path).dispatch('lookup_legal_unit',
         query='Điều 7 QĐ26/2026 nâng hạng cần hồ sơ gì?', slots={'document_code':'26/2026','article_id':'7'})
     assert any('Nâng hạng' in row['text'] for row in result['results'])

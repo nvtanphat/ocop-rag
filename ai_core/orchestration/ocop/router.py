@@ -24,7 +24,7 @@ FORM = re.compile(r"\bmẫu\s*(?:số\s*)?0?([1-9]\d?)\b",re.I)
 YEARS = re.compile(r"\b20\d{2}\b")
 DATE_ISO = re.compile(r"\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b")
 DATE_VI = re.compile(r"\b(0?[1-9]|[12]\d|3[01])[/.-](0?[1-9]|1[0-2])[/.-](20\d{2})\b")
-PRODUCT = re.compile(r"(?:sản phẩm|có sản phẩm|với sản phẩm)\s+([\wÀ-ỹ][\wÀ-ỹ\s,-]{1,70}?)(?=\s+(?:thì|thuộc|là|theo|ở|được|có|cần|nên|trong|đạt|của|liên hệ)\b|[?.!,]|$)", re.I)
+PRODUCT = re.compile(r"(?:sản phẩm|có sản phẩm|với sản phẩm)\s+([\wÀ-ỹ][\wÀ-ỹ\s,-]{1,70}?)(?=\s+(?:thì|thuộc|là|theo|ở|được|có|cần|nên|trong|đạt|của|do|bởi|liên hệ)\b|[?.!,]|$)", re.I)
 PRODUCTS = ("rau củ quả tươi", "rau củ quả", "hạt sen", "mật ong", "cà phê", "nước mắm", "chè", "trà", "sầu riêng", "gạo", "cam", "bưởi", "tổ yến")
 REGIONS = ("Quảng Nam", "Huế", "Hải Phòng", "Hà Tĩnh", "Đà Nẵng", "Hồ Chí Minh", "Hà Nội", "Bình Định", "Gia Lai", "Cần Thơ", "Lâm Đồng", "Đồng Nai", "Nghệ An", "Khánh Hòa", "Quảng Ninh", "Thanh Hóa", "An Giang", "Đồng Tháp", "Bắc Ninh", "Ninh Bình", "Phú Thọ", "Quảng Trị", "Quảng Ngãi", "Tây Ninh", "Cao Bằng", "Sơn La", "Lạng Sơn", "Lào Cai", "Điện Biên", "Lai Châu", "Tuyên Quang", "Thái Nguyên", "Hưng Yên")
 TOOLS = frozenset(TOOL_REGISTRY)
@@ -53,6 +53,9 @@ MULTIHOP = ("liên quan đến", "mối quan hệ", "căn cứ vào những", "�
 TEMPORAL = ("so sánh", "chuyển tiếp", "trước và sau", "thay đổi theo năm", "khác nhau", "hiệu lực", "năm nào áp dụng")
 COMPLIANCE = ("an toàn thực phẩm", "giấy attt", "giấy chứng nhận cơ sở", "nhãn hàng hóa", "miễn giấy", "vệ sinh thực phẩm", "đủ điều kiện attt", "miễn chứng nhận", "attp", "an toàn vệ sinh thực phẩm")
 CLASSIFICATION = ("thuộc nhóm", "thuộc phân nhóm", "thuộc loại", "nhóm nào", "nhóm gì", "phân nhóm", "phân loại sản phẩm")
+# Asking who produces/owns a named product is a recognition-record lookup (OWNED_BY / DECLARED_BY).
+PRODUCER = ("chu the nao", "chu the cua", "ai san xuat", "do ai", "co so nao san xuat", "don vi nao san xuat",
+            "san xuat boi", "cua doanh nghiep nao", "cua hop tac xa nao", "cua htx nao", "thuoc chu the nao")
 RECOGNITION = ("công nhận", "đã đạt ocop", "được chứng nhận ocop", "sản phẩm đạt sao")
 PROCEDURE = ("mẫu", "biểu mẫu", "điền", "đăng ký", "thủ tục", "hồ sơ lần đầu", "hồ sơ ocop", "hồ sơ gồm", "cần nộp hồ sơ")
 CRITERIA = ("tiêu chí", "thang điểm", "mức điểm", "điểm tối đa", "điểm chấm")
@@ -125,7 +128,8 @@ def extract_slots(query: str) -> dict:
         candidate=" ".join(raw.split()[:len(head.split())])
         generic=("nao", "gi", "nay", "do", "kia", "ocop", "cua toi", "cong nhan", "dat sao", "duoc cong nhan", "duoc chung nhan", "duoc danh gia")
         if candidate and not re.match(r"^(?:20\d{2}|\d+|năm\b)",candidate,re.I) and _norm(candidate) not in generic and not _norm(candidate).startswith(("duoc ", "nao ", "gi ", "cong nhan ", "da ", "dat ", "nam ", "nay ", "do ", "ocop ", "tai ", "o ", "voi ", "tren ", "cac ", "nhung ", "can ", "phai ", "co the ")):
-            canonical=next((x for x in sorted(PRODUCTS,key=len,reverse=True) if _norm(candidate).startswith(_norm(x))),candidate)
+            # A specific product ("Gạo ruộng rươi ST25") must not collapse to its category ("gạo").
+            canonical=next((x for x in PRODUCTS if _norm(candidate)==_norm(x)),candidate)
             if len(canonical.split())<=9:slots["product_name"]=canonical
     if "product_name" not in slots:
         for item in sorted(PRODUCTS,key=len,reverse=True):
@@ -258,6 +262,8 @@ def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict
     if is_compliance:scores[Intent.SECTOR_COMPLIANCE]=60
     if is_recognition and not normative_star_question:
         scores[Intent.RECOGNITION_LOOKUP]=55
+    if slots.get("product_name") and _contains(lower,PRODUCER):
+        scores[Intent.RECOGNITION_LOOKUP]=max(75,scores.get(Intent.RECOGNITION_LOOKUP,0))
     if normative_star_question:
         scores[Intent.CRITERIA_LOOKUP]=max(85, scores.get(Intent.CRITERIA_LOOKUP,0))
     if is_form:scores[Intent.PROCEDURE_FORM]=50

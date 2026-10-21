@@ -11,6 +11,10 @@ from ai_core.orchestration.ocop.workflow import OcopAgent
 
 
 def _write(path, rows):
+    if path.name=='structured.jsonl':
+        from tests.ocop.lookup_graph_fixture import write_lookup_graph
+        write_lookup_graph(path.parent,rows)
+        return
     path.write_text(''.join(json.dumps(r,ensure_ascii=False)+'\n' for r in rows),encoding='utf-8')
 
 

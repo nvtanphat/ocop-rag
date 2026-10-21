@@ -7,6 +7,7 @@ import re
 from ai_core.retrieval.ocop.search import search
 from ai_core.retrieval.ocop.lookup import exact_lookup
 from ai_core.graph.ocop.retriever import traverse
+from ai_core.graph.ocop.lookup import GraphEvidence
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.temporal import resolve_event_applicability
 from ai_core.assessment.ocop.rules import checklist,estimate_score
@@ -14,6 +15,7 @@ from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
+from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 
 def _jurisdiction_key(value: str) -> str:
@@ -50,12 +52,38 @@ def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | N
             if stated!={stars}:return False
     return True
 
+def graph_seeds(checked_nodes: list[dict], query: str, product_name: str | None,
+                source_filter: str | None) -> list[str]:
+    """Grounded traversal seeds: a resolved document, Product/Organization labels quoted in the
+    question, and Product labels containing a product name the user literally wrote.
+
+    A product slot only counts when its text occurs in the question itself, so a model-proposed
+    slot can never become an alias."""
+    qnorm=' '+normalize(query).replace('?',' ').replace('.',' ')+' '
+    asked=normalize(product_name or '')
+    asked=asked if len(asked)>=3 and ' '+asked+' ' in qnorm else ''
+    seeds=[]
+    for n in checked_nodes:
+        if source_filter and n['source_id']!=source_filter:
+            continue
+        label=' '+normalize(n['label'])+' '
+        if ((source_filter and n['node_type']=='SourceDocument') or
+                (n['node_type'] in {'Product','Organization'} and len(label.strip())>=4 and label in qnorm) or
+                (asked and n['node_type']=='Product' and ' '+asked+' ' in label)):
+            seeds.append(n['node_id'])
+    return seeds
+
+
 class ToolRegistry:
     def __init__(self,root:Path):
         self.root=Path(root)
         self.index_dir=self.root/"data/processed/ocop/index"
         self.graph_dir=self.root/"data/processed/ocop/graph"
         self.dossiers=DossierStore(self.root/"data/private/ocop/dossiers")
+
+    def _graph_failure(self):
+        return {'results':[], 'layer':'graph', 'reason':'checked_graph_snapshot_unavailable',
+                'status':'graph_integrity_failed' if (self.graph_dir/'manifest.json').is_file() else 'graph_not_built'}
 
     def _resolve_source_id(self, code:str|None) -> str|None:
         """Resolve document code to a unique corpus source; ambiguous -> unfiltered.
@@ -111,8 +139,24 @@ class ToolRegistry:
                     # Apply checked sheet membership before top-K; filtering
                     # forty document-wide hits can lose the entire sheet.
                     scoped=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,
-                                  top_k=8,evidence_unit_ids=units)
-                    return {'results':scoped[:8], 'status':'checked_sheet_text' if scoped else 'sheet_scope_unavailable'}
+                                  top_k=32,evidence_unit_ids=units)
+                    graph=GraphEvidence(self.graph_dir,self.index_dir,
+                                        allow_partial_debug=context.get('allow_partial_debug') is True)
+                    for facet in criterion_facets(query):
+                        matches=[identity for identity in ids if re.match(
+                            r'^'+re.escape(facet)+r'(?!\d)',nodes[identity]['label'])]
+                        descendants,links=graph.descendants(matches,{'HAS_OPTION','HAS_CONDITION'})
+                        for row in graph.node_rows([nodes[i] for i in sorted(descendants)]):
+                            row.setdefault('context',{})['criterion_codes']=[facet]
+                            row['graph_edge_ids']=[edge['edge_id'] for edge in links]
+                            scoped.append(row)
+                    return {'results':order_evidence(query,scoped),
+                            'status':'checked_sheet_text' if scoped else 'sheet_scope_unavailable',
+                            'graph_trace':{'graph_version':gm['graph_version'],
+                                'seed_ids':[seeds[0]['node_id']],
+                                'node_checks':{identity:nodes[identity]['check'] for identity in sorted(ids)},
+                                'edge_checks':{edge['edge_id']:edge['check'] for edge in edges if
+                                    edge['source_entity_id'] in ids and edge['target_entity_id'] in ids}}}
                 except (ValueError,KeyError,OSError):
                     return {'results':[], 'status':'sheet_scope_unavailable'}
             region=slots.get('region')
@@ -190,56 +234,24 @@ class ToolRegistry:
             return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter,
                                       rerank=bool(context.get("rerank",False)))}
         if name=="lookup_legal_unit":
-            code=str(slots.get("document_code") or "")
-            article=slots.get("article_id")
-            if code and not self._resolve_source_id(code):
-                return {"results":[],"status":"document_not_found_or_ambiguous"}
-            if slots.get('pdf_page'):
-                source=self._resolve_source_id(code) if code else None
-                if not source:
-                    return {'results':[], 'status':'document_not_found_or_ambiguous'}
-                rows=exact_lookup(self.index_dir,source_id=source,pdf_page=int(slots['pdf_page']),
-                                  include_candidates=False,limit=20)
-                return {'results':rows, 'status':'exact_pdf_page' if rows else 'requested_pdf_page_not_indexed'}
-            if article:
-                candidates=exact_lookup(self.index_dir,contains="Điều "+article,limit=10000)
-            else:
-                candidates=exact_lookup(self.index_dir,contains=code or query,limit=10000)
-            if article:
-                # Only exact article units; never return article 10 or a mention of article 1.
-                rx=re.compile(r"^Điều\s*"+re.escape(str(article))+r"(?=\b|[.])",re.I)
-                candidates=[x for x in candidates if x.get("unit_kind")=="article" and
-                     rx.search(str(x.get("structured",{}).get("heading") or x.get("text") or "").lstrip())]
-            if code:
-                # QĐ26/2026 and source id VN.OCOP.QD26.2026 share digits, not punctuation.
-                required=re.findall(r"\d+",code)
-                candidates=[x for x in candidates if all(
-                    re.search(r"(?<!\d)"+re.escape(number)+r"(?!\d)",
-                        str(x.get("source_id", ""))) for number in required)]
-            if article and len(candidates)==1 and (self.index_dir/'evidence_units.jsonl').is_file():
-                anchor=candidates[0]
-                units=[{**u,'corpus_version':anchor.get('corpus_version')} for u in
-                       records(self.index_dir/'evidence_units.jsonl') if u['source_id']==anchor['source_id']]
-                active=False;scope=[];last_page=None
-                for unit in units:
-                    if unit.get('unit_kind')=='page':continue
-                    if unit.get('unit_id')==anchor.get('unit_id'):active=True
-                    elif active and unit.get('unit_kind')=='article':break
-                    if not active:continue
-                    page=unit.get('spans',[{}])[0].get('pdf_page')
-                    if last_page is not None and page is not None and page>last_page+1:break
-                    scope.append(unit);last_page=page
-                allowed={u['unit_id'] for u in scope}
-                # Reuse existing BM25 chunk order within the exact article's
-                # observed contiguous units, stopping at the next article.
-                # Keep each chunk's own page/span rather than merging pages.
-                if len(scope)>1:
-                    hits=search(self.index_dir,query,source_id=anchor['source_id'],top_k=40)
-                    scoped=[hit for hit in hits if hit.get('evidence_unit_id') in allowed]
-                    seen={hit.get('evidence_unit_id') for hit in scoped}
-                    return {'results':(scoped+[u for u in scope if u['unit_id'] not in seen])[:12],
-                            'status':'exact_article_with_continuations', 'scope_unit_ids':sorted(allowed)}
-            return {"results":candidates[:12]}
+            code=slots.get('document_code')
+            source=self._resolve_source_id(code) if code else None
+            if code and not source:return {'results':[], 'status':'document_not_found_or_ambiguous'}
+            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
+            except (OSError,ValueError,KeyError):
+                return self._graph_failure()
+            rows=graph.legal(source_id=source,article=slots.get('article_id'),
+                             pdf_page=slots.get('pdf_page'),query=query)
+            if rows and slots.get('article_id') and not slots.get('pdf_page') and (self.index_dir/'chunks.jsonl').is_file():
+                allowed={row['evidence_unit_id'] for row in rows}
+                hits=search(self.index_dir,query,source_id=source,evidence_unit_ids=allowed,
+                            mode=context.get('retrieval_mode','sparse'),top_k=32)
+                for hit in hits:
+                    unit=graph.units[hit['evidence_unit_id']]
+                    hit.update({'graph_node_ids':[unit['node_id']],'check':unit['check']})
+                rows=hits+rows
+            return {'results':rows,'status':('exact_pdf_page' if rows else 'requested_pdf_page_not_indexed')
+                    if slots.get('pdf_page') else 'checked_graph_legal_units'}
         if name=="lookup_evidence_requirements":
             if slots.get('years') and not slots.get('document_code'):
                 return {'results':[], 'status':'assessment_year_scope_unverified',
@@ -255,19 +267,27 @@ class ToolRegistry:
                 not context.get('sector_compliance',False):
                 source_filter=self._resolve_source_id('26/2026')
             linked_criterion=slots.get('criterion_id')
-            try:rows=exact_lookup(self.index_dir,kind='evidence_requirement_candidates',limit=10000)
-            except FileNotFoundError:rows=[]
-            if source_filter:rows=[x for x in rows if x.get('source_id')==source_filter]
+            try:
+                graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
+            except (OSError,ValueError,KeyError):
+                return self._graph_failure()
+            requirement_nodes=[n for n in graph.nodes.values() if n['node_type']=='EvidenceType']
             if linked_criterion:
-                rows=[x for x in rows if str(x.get('criterion_id') or '')==str(linked_criterion)]
+                parents={n['node_id'] for n in graph.nodes.values() if n['node_type']=='Criterion' and
+                         re.match(r'^'+re.escape(str(linked_criterion))+r'(?!\d)',n['label'])}
+                required={edge['target_entity_id'] for edge in graph.edges if
+                          edge['source_entity_id'] in parents and edge['relation_type']=='REQUIRES_EVIDENCE'}
+                requirement_nodes=[n for n in requirement_nodes if n['node_id'] in required]
+            rows=graph.node_rows(requirement_nodes)
+            if source_filter:rows=[x for x in rows if x.get('source_id')==source_filter]
             if rows:
-                return {'results':rows[:12], 'status':'structured_requirements_candidates',
+                return {'results':rows[:12], 'status':'checked_graph_requirements',
                         'verified':all(x.get('review_status')=='verified' for x in rows[:12])}
             # Source-backed text retrieval is an explicit fallback, never a
             # fabricated structured requirement and never a verified rule.
             keyword='minh chứng giấy tờ tiêu chí '+query
             return {'results':search(self.index_dir,keyword,source_id=source_filter,
-                mode=context.get('retrieval_mode','sparse'),top_k=8,
+                mode=context.get('retrieval_mode','sparse'),top_k=16,evidence_unit_ids=set(graph.units),
                 rerank=bool(context.get('rerank',False))),
                 'status':'text_evidence_fallback','verified':False}
         if name=='lookup_form' and slots.get('years') and not slots.get('document_code'):
@@ -277,11 +297,39 @@ class ToolRegistry:
             return {'results':[], 'status':'form_identifier_not_specified',
                     'reason':'use_regulation_search_for_unspecified_form'}
         if name in ("lookup_form","lookup_criterion","lookup_product_subgroup","lookup_recognition"):
-            mapping={"lookup_form":"form_candidates","lookup_criterion":"criterion_candidates",
-                     "lookup_product_subgroup":"taxonomy_candidates","lookup_recognition":"recognition_candidates"}
-            rows=exact_lookup(self.index_dir,kind=mapping[name],limit=10000)
+            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
+            except (OSError,ValueError,KeyError):
+                return self._graph_failure()
+            mapping={"lookup_form":{'FormTemplate'},"lookup_criterion":{'Criterion','Subcriterion'},
+                     "lookup_product_subgroup":{'ProductSubgroup','ProductGroup'},
+                     "lookup_recognition":{'RecognitionRecord'}}
+            nodes=[n for n in graph.nodes.values() if n['node_type'] in mapping[name]]
+            if name=='lookup_recognition' and slots.get('product_name'):
+                asked=normalize(str(slots['product_name']))
+                products={n['node_id'] for n in graph.nodes.values() if n['node_type']=='Product' and
+                          asked in normalize(n['label'])}
+                record_ids={edge['source_entity_id'] for edge in graph.edges if
+                            edge['relation_type']=='RECOGNIZES' and edge['target_entity_id'] in products}
+                nodes=[n for n in nodes if n['node_id'] in record_ids]
+            if name=='lookup_criterion' and slots.get('sheet_number'):
+                doc=slots.get('document_code')
+                source=self._resolve_source_id(doc) if doc else None
+                sheets=[n['node_id'] for n in graph.nodes.values() if n['node_type']=='CriterionSheet' and
+                        str(n.get('properties',{}).get('sheet_number'))==str(slots['sheet_number']) and
+                        (not doc or source and n['source_id']==source)]
+                if len(sheets)!=1:return {'results':[], 'status':'sheet_scope_unavailable'}
+                scope,_=graph.descendants(sheets,{'HAS_CRITERION','HAS_SUBCRITERION'})
+                nodes=[n for n in nodes if n['node_id'] in scope]
+            rows=graph.node_rows(nodes)
+            if name=='lookup_recognition' and slots.get('product_name'):
+                for row in rows:
+                    links=[edge for edge in graph.edges if edge['relation_type']=='RECOGNIZES' and
+                           edge['source_entity_id'] in row['graph_node_ids'] and edge['target_entity_id'] in products]
+                    row['graph_edge_ids']=[edge['edge_id'] for edge in links]
+                    row['graph_node_ids']+=list(dict.fromkeys(edge['target_entity_id'] for edge in links))
             # Candidate type lookup returns all matching candidates, marked needs_review.
             needle=(slots.get("form_id") or (slots.get('form_ids') or [None])[0]) if name=="lookup_form" else slots.get("product_name")
+            if name=='lookup_recognition':needle=None  # Keep all source cells of the matched record, including its owner.
             requested_criterion=slots.get("criterion_id") if name=="lookup_criterion" else None
             document_code=slots.get("document_code")
             if document_code:
@@ -334,7 +382,8 @@ class ToolRegistry:
                 else:
                     rows=[r for r in rows if str(needle).casefold() in (
                           str(r.get("title", ""))+" "+str(r.get("label_candidate", ""))+
-                          " "+str(r.get("heading", ""))+" "+str(r.get("row_text", ""))).casefold()]
+                          " "+str(r.get("heading", ""))+" "+str(r.get("row_text", ""))+
+                          " "+str(r.get('text',''))).casefold()]
             if requested_criterion:
                 import re as _re
                 # Only match an explicit criterion code at the beginning of a
@@ -364,7 +413,8 @@ class ToolRegistry:
                     not years or years==['2026']):
                     source_filter=self._resolve_source_id('26/2026')
                 return {"results":search(self.index_dir,query,source_id=source_filter,
-                                          mode=context.get("retrieval_mode","sparse"),top_k=8),
+                                          mode=context.get("retrieval_mode","sparse"),top_k=16,
+                                          evidence_unit_ids=set(graph.units)),
                         "verified":False,"status":"text_evidence_fallback",
                         "fallback":"source_filtered_text_search"}
             # A decision's issuance year is NOT its recognition-event year.
@@ -436,18 +486,16 @@ class ToolRegistry:
             graph_path = self.graph_dir/'snapshots'/graph_manifest['graph_version']
             if not graph_path.is_dir():
                 return {'results': [], 'status': 'graph_integrity_failed'}
+            try:
+                source_graph=GraphEvidence(self.graph_dir,self.index_dir,
+                                          allow_partial_debug=context.get('allow_partial_debug') is True)
+            except (OSError,ValueError,KeyError):
+                return {'results':[], 'status':'graph_integrity_failed'}
             checked_nodes=[n for n in records(graph_path/'nodes.jsonl')
                            if n.get('check') in {'passed','human_verified'}]
             if not seed:
-                source_filter=self._resolve_source_id(slots.get('document_code'))
-                qnorm=' '+normalize(query)+' '
-                # Literal checked labels and a uniquely resolved document are
-                # grounded seeds; a generic LLM product slot is not an alias.
-                seed=[n['node_id'] for n in checked_nodes if
-                      (not source_filter or n['source_id']==source_filter) and (
-                      (source_filter and n['node_type']=='SourceDocument') or
-                      (n['node_type'] in {'Product','Organization'} and len(normalize(n['label']))>=4
-                       and ' '+normalize(n['label'])+' ' in qnorm.replace('?', ' ').replace('.', ' ')))]
+                seed=graph_seeds(checked_nodes,query,slots.get('product_name'),
+                                 self._resolve_source_id(slots.get('document_code')))
             if not seed and context.get("retrieved_evidence_ids"):
                 source_ids=list(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
@@ -484,7 +532,12 @@ class ToolRegistry:
                     'validation':edge['validation'], 'graph_edge_id':edge['edge_id'],
                     'check':edge['check'], 'graph_node_ids':[source['node_id'],target['node_id']],
                     'corpus_version':graph_manifest['source_knowledge_version']})
-                if len(facts)>=8:break
+                for proof in source_graph.evidence(refs,node_ids=[source['node_id'],target['node_id']],
+                                                    edge_ids=[edge['edge_id']],check=edge['check'],
+                                                    review_status=edge['review_status']):
+                    proof['graph_edge_id']=edge['edge_id']
+                    facts.append(proof)
+                if len(facts)>=32:break
             graph['results']=facts
             graph['status']='checked_source_graph'
             return graph
@@ -572,5 +625,8 @@ class ToolRegistry:
         if name=="open_source_span":
             identity=slots.get("evidence_unit_id")
             if not identity:return {"results":[]}
-            return {"results":exact_lookup(self.index_dir,identity=identity,limit=1)}
+            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
+            except (OSError,ValueError,KeyError):return self._graph_failure()
+            node=graph.units.get(identity)
+            return {'results':graph.node_rows([node]) if node else []}
         raise ValueError("Unknown or unauthorized OCOP tool: "+name)

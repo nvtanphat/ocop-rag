@@ -98,10 +98,10 @@ def test_run_follows_one_dependency_chain_and_reuses_corpus(tmp_path, monkeypatc
     first = system.ensure()
     assert first["state"] == "ready"
     assert first["reused"] is False
-    assert calls == ["pdf", "evidence", "index", "graph"]
+    assert calls == ["pdf", "evidence", "graph", "index"]
     second = system.ensure()
     assert second["reused"] is True
-    assert calls == ["pdf", "evidence", "index", "graph"]
+    assert calls == ["pdf", "evidence", "graph", "index"]
     assert not list(system.data.glob("ocop-build-*"))
 
 
@@ -159,7 +159,7 @@ def test_dense_upgrade_does_not_rerun_pdf_or_extraction(tmp_path, monkeypatch):
     monkeypatch.setattr(index_mod, "build_index", dense_index)
     upgraded = system.ensure(PipelineOptions(dense=True))
     assert upgraded["dense_ready"] is True
-    assert calls == ["pdf", "evidence", "index", "graph", "index"]
+    assert calls == ["pdf", "evidence", "graph", "index", "index"]
     assert system.ensure(PipelineOptions(dense=True))["reused"] is True
 
 

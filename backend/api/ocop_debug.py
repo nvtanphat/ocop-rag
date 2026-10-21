@@ -14,10 +14,8 @@ def create_debug_app(root: Path, *, allow_partial_debug: bool = False) -> FastAP
 
     @app.post('/api/ocop/query')
     async def query(request: AskRequest):
-        if request.retrieval_mode != 'sparse':
-            raise HTTPException(409, 'Local debug corpus supports BM25 only')
         agent = OcopAgent(root, llm=OllamaClient() if request.use_llm else None,
-                          allow_partial_debug=True)
+                          allow_partial_debug=True,retrieval_mode=request.retrieval_mode)
         try:
             answer = await run_in_threadpool(agent.ask, request.query)
             return answer.model_dump(mode='json')

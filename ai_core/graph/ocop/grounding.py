@@ -665,6 +665,14 @@ def check_graph(nodes, edges, units, *, registry=None):
         _add_supported_attributes(view, node, nodes, exclude)
         if human:
             view["properties"] = deepcopy(node.get("properties", {}))
+        if kind == 'EvidenceUnit' and len(node.get('evidence_unit_ids',[])) == 1:
+            # Copy the backing transcription, never candidate business attributes.
+            # Runtime lookup no longer needs a parallel candidates/evidence store.
+            backing=units.get(node['evidence_unit_ids'][0],{})
+            view['properties'].update({'evidence_text':backing.get('text',''),
+                'source_spans':deepcopy(backing.get('spans',[])),
+                'structured':deepcopy(backing.get('structured') or {}),
+                'source_order':node.get('properties',{}).get('source_order',0)})
         view["validation"] = {
             "status": "source_grounded",
             "method": "literal_entity_or_registered_identity",

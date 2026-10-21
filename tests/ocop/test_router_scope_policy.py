@@ -11,6 +11,10 @@ from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath
 
 
 def store(path: Path, records: list[dict]):
+    if path.name=='structured.jsonl':
+        from tests.ocop.lookup_graph_fixture import write_lookup_graph
+        write_lookup_graph(path.parent,records)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(''.join(json.dumps(r,ensure_ascii=False)+'\n' for r in records), encoding='utf-8')
 

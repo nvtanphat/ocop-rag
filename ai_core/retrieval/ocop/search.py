@@ -58,7 +58,7 @@ def _load_reranker(model_id:str,revision:str|None=None):
     except ImportError as exc:raise RuntimeError("sentence-transformers required for --rerank") from exc
     # Avoid executing arbitrary Python from a remote repository. A revision
     # alone is not an approval to execute reviewed custom code.
-    kwargs={"device":"cpu","trust_remote_code":False}
+    kwargs={"device":"cpu","trust_remote_code":False,"local_files_only":True}
     if revision:
         kwargs["revision"]=revision
     # GTE multilingual reranker requires its custom modeling code. The model
@@ -186,6 +186,10 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
         raise ValueError('rerank_candidates must be between 1 and 200')
     if expand_parent and parent_max_chars<100:raise ValueError('parent_max_chars must be >=100')
     manifest,ordered,chunks,bm25=_read_checked_index(index_dir)
+    requested_mode=mode
+    fallback_reason=None
+    if mode!='sparse' and not manifest.get('dense',{}).get('enabled'):
+        mode='sparse';fallback_reason='dense_not_built'
     allowed=lambda cid: ((source_id is None or chunks[cid]["source_id"]==source_id)
                           and (evidence_unit_ids is None or chunks[cid]['evidence_unit_id'] in evidence_unit_ids)
                           and (include_needs_review or chunks[cid]["review_status"] == "verified"))
@@ -202,9 +206,15 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
     dense=[];dense_scores={}
     if mode in ("dense","hybrid"):
         scope={'evidence_unit_ids':evidence_unit_ids} if evidence_unit_ids is not None else {}
-        for cid,score in _dense_hits(query,manifest,max(40,pool_size*2),source_id=source_id,
-                                      include_needs_review=include_needs_review,**scope):
-            if cid in chunks and allowed(cid):dense.append(cid);dense_scores[cid]=score
+        try:
+            for cid,score in _dense_hits(query,manifest,max(40,pool_size*2),source_id=source_id,
+                                          include_needs_review=include_needs_review,**scope):
+                if cid in chunks and allowed(cid):dense.append(cid);dense_scores[cid]=score
+        except (OSError,RuntimeError,ImportError,ConnectionError):
+            mode='sparse';fallback_reason='local_dense_model_or_backend_unavailable'
+            if not sparse:
+                for pos,score in bm25.search(query,top_k=max(40,pool_size*2),allowed_docs=allowed_positions):
+                    cid=ordered[pos]['chunk_id'];sparse.append(cid);sparse_scores[cid]=score
     fused=rrf([lst for lst in (sparse,dense) if lst]) if mode=="hybrid" else (
           {cid:score for cid,score in sparse_scores.items()} if mode=="sparse" else dense_scores)
     items=sorted(fused.items(),key=lambda x:(-x[1],x[0]))[:pool_size]
@@ -221,8 +231,16 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
           "table_headers":ch.get('table_headers',[]),
           "char_start":ch.get('char_start'),"char_end":ch.get('char_end'),
           "over_budget":ch.get('over_budget',False)})
+        results[-1]['retrieval_mode']=mode
+        results[-1]['requested_retrieval_mode']=requested_mode
+        if fallback_reason:results[-1]['retrieval_fallback_reason']=fallback_reason
     if rerank and results:
-        results=_rerank(query,results,reranker_model,reranker_revision)
+        try:results=_rerank(query,results,reranker_model,reranker_revision)
+        except (OSError,RuntimeError,ImportError,ValueError,TypeError):
+            for row in results:row['ranking_reason']='local_reranker_unavailable; deterministic_'+mode+'_order'
+    for row in results:
+        row.setdefault('ranking_reason','local_reranker' if 'reranker_score' in row else
+                       'deterministic_'+mode+'_order; reranker_not_requested')
     results=results[:top_k]
     if expand_parent and results:
         wanted={r['evidence_unit_id'] for r in results}

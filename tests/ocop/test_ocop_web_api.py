@@ -86,7 +86,7 @@ def test_api_query_after_coherent_build_uses_agent(monkeypatch, tmp_path):
     assert calls[0][0] == 'Mẫu số 01'
     assert client.post('/api/ocop/query', json={
         'query':'Mẫu số 01', 'retrieval_mode':'hybrid', 'use_llm':False,
-    }).status_code == 409
+    }).status_code == 200  # Checked BM25 fallback is allowed; partial corpus is still blocked.
 
 
 def test_user_cannot_pass_private_auth_context():

@@ -276,14 +276,6 @@ class OcopSystemPipeline:
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
                     if not _semantic_complete(knowledge.get('semantic_proposals', {}), options):
                         raise RuntimeError('LLM extraction incomplete; rerun to resume cached chunks before publication')
-                    index = build_index(
-                        knowledge=stage / "knowledge", index_dir=stage / "index",
-                        with_dense=options.dense,
-                        with_mongo=options.mongo,
-                        mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
-                        embedding_model=options.embedding_model, embedding_revision=options.embedding_revision,
-                        qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
-                    )
                     old_graph = _load_json(self.data / "graph" / "manifest.json")
                     from ai_core.graph.ocop.review import ledger_path,ledger_digest
                     if (reuse_knowledge and old_graph.get("status") == "local_ready"
@@ -296,6 +288,14 @@ class OcopSystemPipeline:
                     else:
                         from ai_core.graph.ocop.review import ledger_path
                         graph = build_graph(stage / "knowledge", stage / "graph",review_decisions=ledger_path(self.root))
+                    index = build_index(
+                        knowledge=stage / "knowledge", index_dir=stage / "index",
+                        with_dense=options.dense,
+                        with_mongo=options.mongo,
+                        mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
+                        embedding_model=options.embedding_model, embedding_revision=options.embedding_revision,
+                        qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
+                    )
                     if index["source_knowledge_version"] != knowledge["corpus_version"] or graph["source_knowledge_version"] != knowledge["corpus_version"]:
                         raise RuntimeError("Cross-store corpus version mismatch")
                     if options.dense and not index.get("dense", {}).get("enabled"):

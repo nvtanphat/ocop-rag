@@ -285,9 +285,12 @@ def _plan_table(unit:dict, *,max_words:int,budget:int,count:TokenCount,
         buffer.clear()
 
     for row in rows:
-        row_id,_,row_cells=row
+        row_id,raw_label,row_cells=row
+        # Keep criterion headings, notes and options together until the next
+        # numbered criterion; do not mix several unrelated criteria to fill a budget.
+        criterion_start=bool(re.match(r'^\s*\d{1,2}\.\d{1,2}(?=[\s.,):]|$)',raw_label))
         starts_merged_group=any(int(cell.get('rowspan') or 1)>1 for cell in row_cells)
-        if buffer and starts_merged_group:
+        if buffer and (starts_merged_group or criterion_start):
             # Begin a fresh child when source geometry starts another merged
             # row group, such as the next producer in a recognition table.
             flush()
