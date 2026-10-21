@@ -1,0 +1,149 @@
+# Vietnamese query vocabulary for the OCOP router, planner and fusion.
+# Every list is matched accent-insensitively on whole words/phrases (see docs/CONFIGURATION.md).
+# Corpus entities (documents, products, organisations, localities, sheets, forms) do NOT belong
+# here: they come from the entity catalog generated at index build time.
+schema_version: 1
+
+# Question/function words: never part of an entity name, ignored when counting content words.
+stopwords: [ai, cái, các, có, của, để, gì, gồm, không, là, mà, mỗi, nào, như, những, phải, sao, thì, và, về, với, ở,
+  tại, trong, ngoài, cần, được, này, đó, hôm, nay, tuần, bên, thế, cùng, một, số, hãy, bao, nhiêu, mấy, ra, rồi, đã,
+  đang, cho, theo, khi, nếu, thì, hay, hoặc, bị, bằng, từ, đến, trên, dưới, nữa, lại, vậy, còn, nó, tôi, mình, bạn,
+  xin, vui, lòng, giúp, biết, nói, cho, hỏi, quy, định]
+
+# Words that open a document reference, e.g. "QĐ 26/2026", "Nghị định 15".
+document_types:
+  decision: [quyết định, qđ]
+  decree: [nghị định, nđ]
+  resolution: [nghị quyết, nq]
+  law: [luật]
+  circular: [thông tư, tt]
+
+# Nouns that introduce a numbered structural reference.
+structure_nouns:
+  article: [điều]
+  form: [mẫu số, mẫu]
+  sheet: [phiếu]
+  page: [trang pdf, trang]
+  criterion: [tiêu chí, mục]
+star_noun: [sao]
+
+# Jurisdiction labels that mean "whole country" (never a locality name).
+nationwide_labels: [Vietnam, Việt Nam, toàn quốc, nationwide]
+
+# A locality explicitly written by the user: marker + capitalised words (no gazetteer in code).
+locality_markers: [phường, xã, tỉnh, thành phố, thị xã, thị trấn, huyện, quận, đặc khu]
+# Provincial-level administrative names (current 34 units after the 2025 merger, plus common legacy names).
+# World knowledge, not corpus data: a locality is recognised even when no corpus document mentions it, so a
+# question about an uncovered province is answered "not in corpus" instead of with a national document.
+localities: [Hà Nội, Huế, Thừa Thiên Huế, Lai Châu, Điện Biên, Sơn La, Lạng Sơn, Quảng Ninh, Thanh Hóa, Nghệ An, Hà Tĩnh, Cao Bằng,
+  Tuyên Quang, Lào Cai, Thái Nguyên, Phú Thọ, Bắc Ninh, Hưng Yên, Hải Phòng, Ninh Bình, Quảng Trị, Đà Nẵng, Quảng Ngãi,
+  Gia Lai, Khánh Hòa, Lâm Đồng, Đắk Lắk, Hồ Chí Minh, Đồng Nai, Tây Ninh, Cần Thơ, Vĩnh Long, Đồng Tháp, Cà Mau, An Giang,
+  Quảng Nam, Bình Định, Bình Dương, Bà Rịa - Vũng Tàu, Long An, Tiền Giang, Bến Tre, Trà Vinh, Sóc Trăng, Bạc Liêu, Kiên Giang,
+  Hậu Giang, Phú Yên, Ninh Thuận, Bình Thuận, Kon Tum, Đắk Nông, Bình Phước, Hà Giang, Yên Bái, Bắc Kạn, Bắc Giang, Vĩnh Phúc,
+  Hòa Bình, Hà Nam, Nam Định, Thái Bình, Hải Dương, Quảng Bình]
+
+# A marker right after one of these is not a locality ("cấp xã", "hợp tác xã").
+locality_marker_blockers: [cấp, hợp tác, liên hiệp hợp tác, tổ hợp tác, ubnd, ủy ban nhân dân, uỷ ban nhân dân]
+
+# Phrases that end an entity name when it is extracted from "sản phẩm <name> ...".
+entity_terminators: [thì, thuộc, là, theo, ở, được, có, cần, nên, trong, đạt, của, do, bởi, liên hệ, không, nào, gì, bao
+  nhiêu, như thế nào, ra sao, ocop, liên quan, quy định, đăng ký, trên địa bàn, tại, và, hay, để, khi]
+# Words/phrases that cannot be a product name even after the marker.
+non_entity_phrases: [nào, gì, này, đó, kia, ocop, của tôi, công nhận, đạt sao, được công nhận, được chứng nhận, được
+  đánh giá, tôi, chúng tôi, mình]
+product_markers: [sản phẩm, có sản phẩm, với sản phẩm, mặt hàng]
+
+# Whole-question follow-up behaviour.
+followup:
+  openers: [thế, vậy, còn, nếu vậy, với năm đó, đổi sang, chuyển sang, thế còn, vậy còn, thế thì, vậy thì]
+  pronouns: [nó, cái đó, cái này, điều đó, điều này, đó, ý đó, mục đó, phần đó, văn bản đó, quyết định đó]
+
+# Cue lists by question facet.
+cues:
+  in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
+    nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
+    điểm, mẫu, đăng ký, nộp hồ sơ]
+  explicit_out_of_scope: [kết quả bóng đá, giá bitcoin, xem tarot, dự báo thời tiết, viết mã độc]
+  authority: [thẩm quyền, cơ quan nào, ai công nhận, ai có thẩm quyền, ai quyết định, cấp nào công nhận, cấp nào có thẩm quyền]
+  producer: [chủ thể nào, chủ thể của, ai sản xuất, do ai, cơ sở nào sản xuất, đơn vị nào sản xuất, sản xuất bởi,
+    của doanh nghiệp nào, của hợp tác xã nào, của htx nào, thuộc chủ thể nào]
+  recognition: [công nhận, đã đạt ocop, được chứng nhận ocop, sản phẩm đạt sao, danh sách sản phẩm ocop, liệt kê sản phẩm ocop]
+  rating_assertion: [chắc chắn, chấm, kết luận, khẳng định, xác nhận, cho biết chắc]
+  recognition_listing: [danh sách, liệt kê, các sản phẩm]
+  recognition_listing_negative: [danh sách, liệt kê, đã được công nhận, sản phẩm nào được công nhận, bao nhiêu sản phẩm]
+  procedure: [mẫu, biểu mẫu, điền, đăng ký, thủ tục, hồ sơ lần đầu, hồ sơ ocop, hồ sơ gồm, cần nộp hồ sơ]
+  procedure_own: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị]
+  criteria: [tiêu chí, thang điểm, mức điểm, điểm tối đa, điểm chấm]
+  multihop: [liên quan đến, mối quan hệ, căn cứ vào những, đối chiếu, liên hệ với, dựa trên những, liên hệ giữa, yêu cầu minh chứng,
+    minh chứng nào, đòi hỏi giấy tờ]
+  temporal: [so sánh, chuyển tiếp, trước và sau, thay đổi theo năm, khác nhau, hiệu lực, năm nào áp dụng]
+  temporal_strong: [hiệu lực, chuyển tiếp, thời điểm áp dụng, năm nào áp dụng, thay đổi theo năm, theo thời điểm,
+    quy định năm, trước và sau khi, có còn áp dụng, hết hiệu lực]
+  temporal_compare: [so sánh, khác nhau, khác biệt, đối chiếu, thay đổi]
+  temporal_compare_scope: [phiên bản, quy định, tiêu chí]
+  temporal_compare_old_new: [quy định cũ, quy định mới, văn bản cũ, văn bản mới]
+  temporal_legal_scope: [quy định, bộ tiêu chí, tiêu chí, mẫu, hồ sơ, ocop, chính sách, văn bản, luật, hiệu lực, công nhận, năm]
+  compliance: [an toàn thực phẩm, giấy attt, giấy chứng nhận cơ sở, nhãn hàng hóa, miễn giấy, vệ sinh thực phẩm,
+    đủ điều kiện attt, miễn chứng nhận, attp, an toàn vệ sinh thực phẩm, điều kiện vệ sinh]
+  classification: [thuộc nhóm, thuộc phân nhóm, thuộc loại, nhóm nào, nhóm gì, phân nhóm, phân loại sản phẩm]
+  evidence_requirements: [minh chứng, giấy tờ cần, hồ sơ cần có, cần chứng nhận gì, yêu cầu giấy tờ, loại giấy tờ, cần giấy tờ]
+  relation: [thay thế, sửa đổi văn bản, sửa đổi quyết định, bổ sung văn bản, căn cứ văn bản]
+  relation_open: [liên quan đến, mối quan hệ, đối chiếu, liên hệ với, kết hợp các, liên hệ giữa]
+  relation_predicates:
+    REPLACES: [thay thế]
+    AMENDS: [sửa đổi]
+    BASED_ON: [căn cứ văn bản]
+    SUSPENDS: [đình chỉ hiệu lực]
+  normative_star: [điều kiện, yêu cầu, cần đáp ứng, để được, để đạt, tiêu chí, cần những gì, quy định thế nào]
+  deadline: [hạn nộp, trước ngày, hạn cuối, thời hạn nộp, hạn đăng ký, thời hạn đăng ký]
+  local_document: [văn bản ở, văn bản của, tài liệu ở, tài liệu của, quyết định của, quyết định ở, văn bản địa phương]
+  event_year_scope: [công nhận, được công nhận, sản phẩm ocop đạt sao, sản phẩm đạt sao]
+  assessment_year_scope: [đánh giá, chấm điểm, xét hạng]
+  assessment_year_marker: [năm đánh giá, kỳ đánh giá, chấm điểm năm]
+  recognition_year_marker: [công nhận, sản phẩm ocop, sản phẩm đạt sao]
+  # Questions about a private dossier (needs a trusted AuthContext).
+  private_dossier: [rà soát hồ sơ của tôi, kiểm tra hồ sơ của tôi, hồ sơ của tôi còn thiếu, hồ sơ tôi còn thiếu, hồ sơ tôi thiếu gì,
+    hồ sơ tôi cần bổ sung minh chứng, hồ sơ của tôi đạt chưa, hồ sơ của tôi có đạt, rà soát hồ sơ, đánh giá hồ sơ của tôi,
+    hồ sơ riêng, dossier riêng, hồ sơ nội bộ]
+  private_dossier_negative: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị, hồ sơ tôi cần nộp, tôi cần chuẩn bị hồ sơ,
+    hồ sơ gồm những gì, hồ sơ cần có gì]
+  private_scope: [tenant, dossier, hồ sơ của doanh nghiệp khác, hồ sơ của công ty khác, hồ sơ doanh nghiệp khác, tôi là admin,
+    quyền quản trị, hồ sơ riêng]
+  private_open: [mở hồ sơ, xem hồ sơ, truy cập hồ sơ, lấy hồ sơ, tải hồ sơ]
+  private_scoring: [chấm điểm hồ sơ của tôi, tính điểm hồ sơ của tôi, ước tính điểm hồ sơ, dự tính điểm hồ sơ, tính điểm cho hồ sơ,
+    hồ sơ của tôi được bao nhiêu điểm, bao nhiêu sao nếu, hãy tính điểm, chấm điểm giúp tôi, đánh giá điểm cho tôi]
+  private_scoring_verbs: [tính điểm, ước tính điểm, dự tính điểm, chấm điểm]
+  private_scoring_object: [hồ sơ này, hồ sơ của tôi, cho sản phẩm của tôi]
+  scoring_method: [cách tính điểm, hướng dẫn tính điểm, công thức tính điểm, quy trình chấm điểm, tính điểm như thế nào,
+    tính điểm ra sao, tính điểm ocop như thế nào, thang điểm, phương pháp chấm điểm, điểm được tính thế nào]
+  scoring_negation: [không, đừng, chưa, không cần]
+  scoring_hypothetical: [nếu, giả sử]
+  criteria_signal: [tiêu chí, bộ tiêu chí, thang điểm, mức điểm, điểm tối đa, cách tính điểm, công thức tính điểm,
+    để đạt 3 sao, để đạt 4 sao, để đạt 5 sao, điểm ocop, phương pháp chấm điểm]
+  procedure_signal: [biểu mẫu, mẫu hồ sơ, mẫu nào, điền mẫu, mẫu số, đăng ký, thủ tục, hồ sơ ocop, hồ sơ lần đầu, cần nộp, nộp hồ sơ,
+    hồ sơ tôi cần chuẩn bị, hồ sơ gồm những gì]
+  recognition_signal: [công nhận, đã đạt ocop, đạt sao ocop, sản phẩm được công nhận, danh sách sản phẩm ocop, sản phẩm đạt sao]
+
+# Column labels that identify the role of a table cell in recognition tables.
+table_roles:
+  organization: [tổ chức/cá nhân, tổ chức, cá nhân, đơn vị]
+  owner: [chủ thể, tên chủ thể, chủ thể sản xuất]
+  representative: [người đại diện, đại diện pháp luật, đại diện]
+  product: [tên sản phẩm, sản phẩm]
+  rating: [phân hạng, hạng sao, xếp hạng]
+  address: [địa chỉ, địa bàn]
+
+# Messages shown for non-answer routes.
+messages:
+  out_of_scope: Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.
+  clarify_prefix: "Cần bổ sung thông tin để xử lý: "
+  clarify_slots:
+    question: câu hỏi
+    topic: chủ đề (văn bản, điều, phiếu hoặc sản phẩm cụ thể)
+    document_or_sheet: văn bản hoặc phiếu mà mã/chỉ mục này thuộc về
+    authentication: đăng nhập để mở hồ sơ riêng
+    tenant_id: đơn vị (tenant)
+    dossier_id: mã hồ sơ
+    document_or_sheet_for_code: phiếu hoặc văn bản chứa mã tiêu chí này
+    document_version_or_event_year: văn bản hoặc năm sự kiện cần áp dụng
+    split_question: tách thành từng câu hỏi riêng

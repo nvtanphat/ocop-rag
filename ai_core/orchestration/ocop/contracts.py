@@ -28,6 +28,7 @@ class Route(BaseModel):
     retrieval_path: RetrievalPath = RetrievalPath.NONE
     slots: dict[str,Any]=Field(default_factory=dict)
     required_tools: list[str]=Field(default_factory=list)
+    secondary_tools: list[str]=Field(default_factory=list)
     secondary_intents: list[Intent]=Field(default_factory=list)
     capabilities: list[str]=Field(default_factory=list)
     needs_clarification: bool=False

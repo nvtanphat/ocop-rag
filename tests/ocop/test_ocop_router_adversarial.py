@@ -68,9 +68,11 @@ def test_ocop_star_listing_is_recognition():
 
 
 def test_existing_known_classification_still_passes():
-    route=route_query('Mật ong thuộc nhóm nào?')
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+    catalog=EntityCatalog({'entities':{'product_group':[{'label':'Mật ong','source_ids':[]}]}})
+    route=route_query('Mật ong thuộc nhóm nào?',catalog=catalog)
     assert route.intent==Intent.PRODUCT_CLASSIFICATION
-    assert route.slots.get('product_name')=='mật ong'
+    assert route.slots.get('product_name')=='Mật ong'
 
 
 def test_existing_known_exact_document_still_passes():

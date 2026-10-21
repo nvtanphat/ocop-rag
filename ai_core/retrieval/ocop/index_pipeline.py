@@ -172,6 +172,20 @@ def build_chunks(units:Iterable[dict],version:str,*,max_words:int=200,overlap:in
     return result
 
 
+def _write_entity_catalog(index_dir:Path,graph_dir:Path)->dict:
+    """Router entity catalog from the source registry and the checked graph snapshot (never hand-written)."""
+    from ai_core.orchestration.ocop.catalog import build_catalog,save_catalog
+    from ai_core.graph.ocop.builder import records
+    registry=next((base/'configs/ocop_sources.json' for base in (index_dir.parents[3],ROOT)
+                   if (base/'configs/ocop_sources.json').is_file()),None)
+    nodes=[]
+    header=graph_dir/'manifest.json'
+    if header.is_file():
+        version=json.loads(header.read_text(encoding='utf8'))['graph_version']
+        nodes=list(records(graph_dir/'snapshots'/version/'nodes.jsonl'))
+    return save_catalog(index_dir,build_catalog(registry,nodes)) if registry else {}
+
+
 def _source_metadata(root:Path=ROOT)->dict[str,dict]:
     """Only source-catalog facts: no legal applicability claim is inferred."""
     path=root/'configs'/'ocop_sources.json'
@@ -396,6 +410,7 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
        "config":{"max_words":max_words,"overlap":overlap,
                  "token_budget":token_budget,"model_max_tokens":model_limit,
                  "tokenizer_path":tokenizer_path}}
+    manifest["entity_catalog"]=_write_entity_catalog(index_dir,graph_dir)
     _write_json(index_dir/"manifest.json",manifest)
     if with_dense:
         # Do not mark as dense_ready until indexing Qdrant succeeds.

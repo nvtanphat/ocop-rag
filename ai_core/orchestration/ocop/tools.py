@@ -15,7 +15,7 @@ from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
-from ai_core.orchestration.ocop.router import AUTHORITY_CUES
+from ai_core.orchestration.ocop.language import get_language
 from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 
@@ -242,7 +242,7 @@ class ToolRegistry:
             except (OSError,ValueError,KeyError):
                 return self._graph_failure()
             if (not slots.get('article_id') and not slots.get('pdf_page') and
-                    any(cue in normalize(query) for cue in AUTHORITY_CUES)):
+                    get_language().hit(normalize(query),'authority')):
                 # "Who recognises N-star products?" is answered by the legal unit naming that
                 # authority, not by text that merely contains the word "thẩm quyền".
                 return {'results':graph.authority(star_rating=slots.get('star_rating'),source_id=source),

@@ -21,6 +21,7 @@ from ai_core.system.checkpoints import SQLiteCheckpoint,thread_key,should_checkp
 from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite
 from ai_core.orchestration.ocop.llm import OllamaClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
+from ai_core.orchestration.ocop.catalog import load_catalog
 
 
 class OcopState(TypedDict,total=False):
@@ -49,6 +50,11 @@ class OcopAgent:
         self.allow_partial_debug=allow_partial_debug is True
         self._checkpoint=None
 
+    def _catalog(self):
+        try:return load_catalog(self.tools.index_dir)
+        except (OSError,ValueError,KeyError):
+            return load_catalog(self.root/'data/processed/ocop/none')
+
     def route(self,state:OcopState)->dict:
         query=state['query'];session=state.get('session') or {}
         # Identity originates only from a trusted AuthContext, never a session.
@@ -57,7 +63,7 @@ class OcopAgent:
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
         choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
             indexed_content_bigram_coverage=lambda text:query_content_bigram_coverage(
-                self.tools.index_dir,text))
+                self.tools.index_dir,text),catalog=self._catalog())
         if (choice.intent in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or
             set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
             choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
@@ -65,7 +71,7 @@ class OcopAgent:
         effective=query
         if choice.intent==Intent.FOLLOWUP:
             previous=str(session.get('last_query') or '')
-            updates=extract_slots(query)
+            updates=extract_slots(query,catalog=self._catalog())
             if 'years' in updates:
                 previous=re.sub(r'\b20\d{2}\b',updates['years'][-1],previous)
             # Text query is only for ranking. Structured tools use effective
@@ -467,7 +473,7 @@ class OcopAgent:
         # Private dossier state must not be recorded in plaintext LangGraph
         # snapshots. Public workflow checkpointing is explicit opt-in.
         private_requested=bool({'review_dossier','estimate_score'} & set(
-            route_query(query,session=session or {}).required_tools))
+            route_query(query,session=session or {},catalog=self._catalog()).required_tools))
         if should_checkpoint(env=os.environ,auth=auth_context,session=session or {},
                              private_tools={'private'} if private_requested else set()):
             if self._checkpoint is None:

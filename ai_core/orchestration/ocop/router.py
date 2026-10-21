@@ -1,421 +1,525 @@
-"""Deterministic-first, multi-signal OCOP business intent router.
+"""Structured OCOP query analysis: language signals + catalog entities -> Route.
 
-An intent is a business question, not a retrieval technology. A route may need
-several *allowlisted* tools. The shared small LLM is consulted only when no
-strong deterministic policy matches; its output cannot supply tools or auth.
+An intent is a business question, not a retrieval technology. Analysis runs in fixed stages:
+slot extraction (document, article, form, sheet, page, criterion, dates, entities from the catalog),
+facet detection (vocabulary from configs/ocop_language.yaml), policy (private / follow-up /
+clarify / out-of-scope) and tool selection. The shared LLM may only suggest an intent from the
+enum when nothing deterministic matched; it can never supply tools or authorization.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections.abc import Callable
 from datetime import date
-import re
+
+from ai_core.orchestration.ocop.capabilities import CAPABILITY_TO_TOOLS, MAX_TOOL_CALLS, TOOL_REGISTRY, Capability
+from ai_core.orchestration.ocop.catalog import EntityCatalog, Match
 from ai_core.orchestration.ocop.contracts import Intent, Route
-from ai_core.orchestration.ocop.capabilities import (
-    Capability, TOOL_REGISTRY, CAPABILITY_TO_TOOLS, MAX_TOOL_CALLS,
-)
+from ai_core.orchestration.ocop.language import Language, fold, get_language
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
-from ai_core.orchestration.ocop.semantic import (
-    detect_capabilities, normalize, temporal_question, private_dossier_action,
-    private_scoring_action, public_scoring_method, has_any)
 
-DOC_ID = re.compile(r"(?:quyết định|nghị định|nghị quyết|qđ|nđ|nq)\s*(?:số\s*)?([0-9]{1,4}(?:[/.-][0-9]{2,4})?(?:[/.-][a-zA-ZĐđ-]+)?)",re.I)
-ARTICLE = re.compile(r"\bđiều\s*(\d{1,3})\b",re.I)
-FORM = re.compile(r"\bmẫu\s*(?:số\s*)?0?([1-9]\d?)\b",re.I)
-YEARS = re.compile(r"\b20\d{2}\b")
-DATE_ISO = re.compile(r"\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b")
-DATE_VI = re.compile(r"\b(0?[1-9]|[12]\d|3[01])[/.-](0?[1-9]|1[0-2])[/.-](20\d{2})\b")
-PRODUCT = re.compile(r"(?:sản phẩm|có sản phẩm|với sản phẩm)\s+([\wÀ-ỹ][\wÀ-ỹ\s,-]{1,70}?)(?=\s+(?:thì|thuộc|là|theo|ở|được|có|cần|nên|trong|đạt|của|do|bởi|liên hệ)\b|[?.!,]|$)", re.I)
-PRODUCTS = ("rau củ quả tươi", "rau củ quả", "hạt sen", "mật ong", "cà phê", "nước mắm", "chè", "trà", "sầu riêng", "gạo", "cam", "bưởi", "tổ yến")
-REGIONS = ("Quảng Nam", "Huế", "Hải Phòng", "Hà Tĩnh", "Đà Nẵng", "Hồ Chí Minh", "Hà Nội", "Bình Định", "Gia Lai", "Cần Thơ", "Lâm Đồng", "Đồng Nai", "Nghệ An", "Khánh Hòa", "Quảng Ninh", "Thanh Hóa", "An Giang", "Đồng Tháp", "Bắc Ninh", "Ninh Bình", "Phú Thọ", "Quảng Trị", "Quảng Ngãi", "Tây Ninh", "Cao Bằng", "Sơn La", "Lạng Sơn", "Lào Cai", "Điện Biên", "Lai Châu", "Tuyên Quang", "Thái Nguyên", "Hưng Yên")
 TOOLS = frozenset(TOOL_REGISTRY)
-# Calibration on the temporary 893-chunk native-text corpus: 13 OCOP-relevant
-# prompts included 8 keyword-gate false rejects; 7 of those scored >=0.60.
-# Six out-of-scope probes scored at most 0.50, with none reaching this cutoff.
-# Re-measure when the corpus/chunker or the scope probe set materially changes.
+# Reasoned in docs/CONFIGURATION.md: min share of the query's content bigrams found in one indexed chunk
+# for an otherwise unrecognised question to be reopened as in scope.
 MIN_INDEXED_CONTENT_BIGRAM_COVERAGE = 0.60
+
 ROUTES = {
- Intent.OCOP_OVERVIEW:("hybrid",["search_regulations"]),
- Intent.EXACT_LOOKUP:("exact",["lookup_legal_unit"]),
- Intent.PRODUCT_CLASSIFICATION:("structured",["lookup_product_subgroup"]),
- Intent.CRITERIA_LOOKUP:("structured",["lookup_criterion"]),
- Intent.PROCEDURE_FORM:("structured",["lookup_form"]),
- Intent.TEMPORAL_COMPARE:("graph_hybrid",["resolve_temporal_applicability","search_regulations"]),
- Intent.RECOGNITION_LOOKUP:("structured",["lookup_recognition"]),
- Intent.SECTOR_COMPLIANCE:("hybrid",["search_regulations"]),
- Intent.DOSSIER_REVIEW:("agentic",["review_dossier"]),
- Intent.SCORE_ESTIMATE:("agentic",["estimate_score"]),
- Intent.MULTIHOP_REASONING:("graph_hybrid",["search_regulations","search_graph"]),
- Intent.FOLLOWUP:("hybrid",["search_regulations"]),
- Intent.CLARIFY:("clarify",[]),
- Intent.OUT_OF_SCOPE:("clarify",[]),
+    Intent.OCOP_OVERVIEW: ('hybrid', ['search_regulations']),
+    Intent.EXACT_LOOKUP: ('exact', ['lookup_legal_unit']),
+    Intent.PRODUCT_CLASSIFICATION: ('structured', ['lookup_product_subgroup']),
+    Intent.CRITERIA_LOOKUP: ('structured', ['lookup_criterion']),
+    Intent.PROCEDURE_FORM: ('structured', ['lookup_form']),
+    Intent.TEMPORAL_COMPARE: ('graph_hybrid', ['resolve_temporal_applicability', 'search_regulations']),
+    Intent.RECOGNITION_LOOKUP: ('structured', ['lookup_recognition']),
+    Intent.SECTOR_COMPLIANCE: ('hybrid', ['search_regulations']),
+    Intent.DOSSIER_REVIEW: ('agentic', ['review_dossier']),
+    Intent.SCORE_ESTIMATE: ('agentic', ['estimate_score']),
+    Intent.MULTIHOP_REASONING: ('graph_hybrid', ['search_regulations', 'search_graph']),
+    Intent.FOLLOWUP: ('hybrid', ['search_regulations']),
+    Intent.CLARIFY: ('clarify', []),
+    Intent.OUT_OF_SCOPE: ('clarify', []),
 }
-MULTIHOP = ("liên quan đến", "mối quan hệ", "căn cứ vào những", "đối chiếu", "liên hệ với", "dựa trên những", "liên hệ giữa", "yêu cầu minh chứng", "minh chứng nào", "đòi hỏi giấy tờ")
-TEMPORAL = ("so sánh", "chuyển tiếp", "trước và sau", "thay đổi theo năm", "khác nhau", "hiệu lực", "năm nào áp dụng")
-COMPLIANCE = ("an toàn thực phẩm", "giấy attt", "giấy chứng nhận cơ sở", "nhãn hàng hóa", "miễn giấy", "vệ sinh thực phẩm", "đủ điều kiện attt", "miễn chứng nhận", "attp", "an toàn vệ sinh thực phẩm")
-CLASSIFICATION = ("thuộc nhóm", "thuộc phân nhóm", "thuộc loại", "nhóm nào", "nhóm gì", "phân nhóm", "phân loại sản phẩm")
-# Asking which body holds authority (to recognise, decide) is a legal-unit lookup.
-AUTHORITY_CUES = ('tham quyen','co quan nao','ai cong nhan','ai co tham quyen',
-                  'ai quyet dinh','cap nao cong nhan','cap nao co tham quyen')
-# Asking who produces/owns a named product is a recognition-record lookup (OWNED_BY / DECLARED_BY).
-PRODUCER = ("chu the nao", "chu the cua", "ai san xuat", "do ai", "co so nao san xuat", "don vi nao san xuat",
-            "san xuat boi", "cua doanh nghiep nao", "cua hop tac xa nao", "cua htx nao", "thuoc chu the nao")
-RECOGNITION = ("công nhận", "đã đạt ocop", "được chứng nhận ocop", "sản phẩm đạt sao")
-PROCEDURE = ("mẫu", "biểu mẫu", "điền", "đăng ký", "thủ tục", "hồ sơ lần đầu", "hồ sơ ocop", "hồ sơ gồm", "cần nộp hồ sơ")
-CRITERIA = ("tiêu chí", "thang điểm", "mức điểm", "điểm tối đa", "điểm chấm")
-
-
-def _norm(text: str) -> str:
-    return normalize(text)
-
-
-def _contains(text: str, terms: tuple[str,...]) -> bool:
-    return has_any(text,terms)
-
-
-def extract_slots(query: str) -> dict:
-    """Extract only explicit slots; never assume a date, group, or document."""
-    slots:dict = {}
-    ascii_query=_norm(query)
-    # Accent-free user input is legitimate, without changing the original legal ID.
-    for pattern,key,ascii_pattern in ((DOC_ID,"document_code",r"(?:quyet dinh|nghi dinh|nghi quyet|qd|nd|nq)\s*(?:so\s*)?([0-9]{1,4}(?:[/.-][0-9]{2,4})?(?:[/.-][a-zA-Z-]+)?)"),
-        (ARTICLE,"article_id",r"\bdieu\s*(\d{1,3})\b"),
-        (FORM,"form_id",r"\bmau\s*(?:so\s*)?0?([1-9]\d?)\b")):
-        match=pattern.search(query)
-        if not match:match=re.search(ascii_pattern,ascii_query,re.I)
-        if match:slots[key]=match.group(1)
-    form_ids=list(dict.fromkeys(m.group(1).lstrip("0") for m in FORM.finditer(query)))
-    if not form_ids:
-        form_ids=list(dict.fromkeys(m.group(1).lstrip("0") for m in re.finditer(
-            r"\bmau\s*(?:so\s*)?0?([1-9]\d?)\b",ascii_query)))
-    # Forms can share one "mẫu" prefix: "mẫu 02 và 03", "mẫu 02, 03, 04".
-    # Restrict to an immediately coordinated numeric list to avoid capturing dates/scores.
-    for match in re.finditer(r"\bmau\s*(?:so\s*)?0?([1-9]\d?)\b((?:\s*(?:,|va|&|/)\s*0?[1-9]\d?\b){1,6})", ascii_query):
-        numbers=[match.group(1)]+re.findall(r"(?:,|va|&|/)\s*0?([1-9]\d?)\b",match.group(2))
-        form_ids.extend(str(int(n)) for n in numbers)
-    form_ids=list(dict.fromkeys(form_ids))
-    if len(form_ids)>1:slots["form_ids"]=form_ids
-    if form_ids:slots["form_id"]=form_ids[0]
-    star=re.search(r"(?<!\d)([3-5])\s*sao\b", ascii_query)
-    if star:slots["star_rating"]=int(star.group(1))
-    last_date = None
-    for match in DATE_ISO.finditer(query):
-        try:last_date=(match.start(),date(*map(int,match.groups())).isoformat())
-        except ValueError:pass
-    for match in DATE_VI.finditer(query):
-        try:
-            day,month,year=map(int,match.groups())
-            candidate=(match.start(),date(year,month,day).isoformat())
-            if last_date is None or candidate[0]>last_date[0]:last_date=candidate
-        except ValueError:pass
-    if last_date: slots["as_of_date"]=last_date[1]
-    years=list(dict.fromkeys(YEARS.findall(query)))
-    if years:slots["years"]=years
-    lower=_norm(query)
-    page=re.search(r'\btrang\s*(?:pdf\s*)?(\d{1,4})\b', lower)
-    if page and int(page[1])>0:slots['pdf_page']=int(page[1])
-    sheet=re.search(r'\bphieu\s*(?:so\s*)?(\d{1,3})\b',lower)
-    if sheet and int(sheet[1])>0:slots['sheet_number']=int(sheet[1])
-    if re.search(r'\b(?:phuong\s+)?thanh sen\b',lower):
-        slots['region']='Thành Sen'
-    for name in sorted(REGIONS,key=len,reverse=True):
-        if re.search(r"(?<!\w)"+re.escape(_norm(name))+r"(?!\w)",lower):
-            if 'region' not in slots:slots["region"]=name
-            break
-    matched=PRODUCT.search(query)
-    if matched:
-        raw=matched.group(1).strip()
-        # Trim the same number of words in the source spelling to preserve accents.
-        folded=_norm(raw)
-        head=re.split(r"\s+(?:ocop|lien he|lien quan|theo quy|dang ky|tren dia ban|tai|o)\b",
-                      folded,maxsplit=1,flags=re.I)[0].strip()
-        candidate=" ".join(raw.split()[:len(head.split())])
-        generic=("nao", "gi", "nay", "do", "kia", "ocop", "cua toi", "cong nhan", "dat sao", "duoc cong nhan", "duoc chung nhan", "duoc danh gia")
-        if candidate and not re.match(r"^(?:20\d{2}|\d+|năm\b)",candidate,re.I) and _norm(candidate) not in generic and not _norm(candidate).startswith(("duoc ", "nao ", "gi ", "cong nhan ", "da ", "dat ", "nam ", "nay ", "do ", "ocop ", "tai ", "o ", "voi ", "tren ", "cac ", "nhung ", "can ", "phai ", "co the ")):
-            # A specific product ("Gạo ruộng rươi ST25") must not collapse to its category ("gạo").
-            canonical=next((x for x in PRODUCTS if _norm(candidate)==_norm(x)),candidate)
-            if len(canonical.split())<=9:slots["product_name"]=canonical
-    if "product_name" not in slots:
-        for item in sorted(PRODUCTS,key=len,reverse=True):
-            for token in re.finditer(r"(?<!\w)"+re.escape(_norm(item))+r"(?!\w)",lower):
-                # The imperative "tra cứu" is not a tea product called "trà".
-                if _norm(item)=="tra" and re.match(r"\s+cuu\b",lower[token.end():]):
-                    continue
-                slots["product_name"]=item
-                break
-            if "product_name" in slots:break
-    criterion=re.search(r"\btieu chi\s+(?:so\s+)?([A-Z]?\d+(?:\.\d+){0,3})(?!\d)",lower,re.I)
-    if criterion and not re.fullmatch(r"20\d{2}",criterion.group(1)):
-        slots["criterion_id"]=criterion.group(1)
-    # Explicit event years can coexist with an issuance year inside a QD code.
-    # Avoid using the latter as a recognition or assessment event year.
-    event=re.search(r"\b(?:cong nhan|duoc cong nhan|san pham (?:ocop )?dat sao)\b.{0,90}?\bnam\s+(20\d{2})\b", lower)
-    assessment=re.search(r"\b(?:danh gia|cham diem|xet hang)\b.{0,90}?\bnam\s+(20\d{2})\b", lower)
-    if event:slots['recognition_year']=int(event.group(1))
-    if assessment:slots['assessment_year']=int(assessment.group(1))
-    # Role-qualified years are different from the issuance year embedded in a QD ID.
-    if len(years)==1 and not slots.get("document_code"):
-        if _contains(lower,("nam danh gia", "ky danh gia", "cham diem nam")):
-            slots["assessment_year"]=int(years[0])
-        if _contains(lower,("cong nhan", "san pham ocop", "san pham dat sao")):
-            slots["recognition_year"]=int(years[0])
-    return slots
-
-
-# Conversation state is an input, not a server-authorized tool or source claim.
-# Only ordinary question-extracted scope is carried across a follow-up; graph
-# node IDs, evidence identities, authentication and verified flags never are.
-FOLLOWUP_SCOPE_KEYS=frozenset({
-    'document_code','article_id','form_id','form_ids','star_rating','as_of_date',
-    'years','region','product_name','product_group','criterion_id',
-    'recognition_year','assessment_year',
-    'pdf_page','sheet_number',
+INTENT_CAPABILITY = {
+    Intent.PRODUCT_CLASSIFICATION: Capability.CLASSIFY_PRODUCT, Intent.CRITERIA_LOOKUP: Capability.CRITERIA,
+    Intent.RECOGNITION_LOOKUP: Capability.RECOGNITION, Intent.PROCEDURE_FORM: Capability.PROCEDURE_FORM,
+    Intent.SECTOR_COMPLIANCE: Capability.SECTOR_COMPLIANCE, Intent.TEMPORAL_COMPARE: Capability.TEMPORAL,
+    Intent.MULTIHOP_REASONING: Capability.RELATION_REASONING,
+}
+PRIVATE_CAPABILITIES = frozenset({Capability.REVIEW_DOSSIER, Capability.ESTIMATE_SCORE})
+YEAR = re.compile(r'\b20\d{2}\b')
+DATE_ISO = re.compile(r'\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b')
+DATE_VI = re.compile(r'\b(0?[1-9]|[12]\d|3[01])[/.-](0?[1-9]|1[0-2])[/.-](20\d{2})\b')
+BARE_CRITERION = re.compile(r'^\s*[A-Za-z]?\d{1,2}(?:\.\d{1,2}){1,3}\s*[?.!]*\s*$')
+FOLLOWUP_SCOPE_KEYS = frozenset({
+    'document_code', 'article_id', 'form_id', 'form_ids', 'star_rating', 'as_of_date', 'years', 'region',
+    'product_name', 'product_group', 'criterion_id', 'recognition_year', 'assessment_year', 'pdf_page',
+    'sheet_number', 'organization_name',
 })
+# Pattern for an identifier that looks like a private record handle (config-free: structural, not corpus data).
+PRIVATE_HANDLE = re.compile(r'\b[A-Z]{3,}[-_]\d{2,}\b')
 
 
-def _merge_followup(prior:dict,updates:dict)->dict:
-    raw=prior.get('slots') or {}
-    if not isinstance(raw,dict):raw={}
-    slots={key:value for key,value in raw.items() if key in FOLLOWUP_SCOPE_KEYS and (
-        isinstance(value,str) and len(value)<=128 or
-        type(value) is int and 0<=value<=2100 or
-        key in ('years','form_ids') and isinstance(value,list) and len(value)<=8 and
-        all(isinstance(x,str) and len(x)<=12 for x in value))}
-    # Overwrite only explicitly mentioned dimensions; never concatenate years.
-    slots.update(updates)
-    if "years" in updates:
-        if "as_of_date" not in updates:slots.pop("as_of_date",None)
-        for key in ("assessment_year","recognition_year"):
-            if key not in updates:slots.pop(key,None)
+def _nfc(text: str) -> str:
+    return unicodedata.normalize('NFC', text)
+
+
+def _alt(words: list[str]) -> str:
+    return '|'.join(r'\s+'.join(re.escape(w) for w in fold(x).split()) for x in sorted(words, key=len, reverse=True))
+
+
+class _Patterns:
+    """Regexes assembled from the vocabulary file (folded, whole word)."""
+
+    def __init__(self, lang: Language):
+        doc = _alt([w for words in lang.document_types.values() for w in words])
+        n = lang.structure_nouns
+        number = r'(\d{1,4}(?:[/.-]\d{2,4})?(?:[/.-][a-z]+)*)'
+        self.document = re.compile(r'(?<![a-z0-9])(?:' + doc + r')\s*(?:so\s*)?' + number)
+        self.article = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['article']) + r')\s*(\d{1,3})(?!\d)')
+        self.form = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['form']) + r')\s*(?:so\s*)?0?([1-9]\d?)(?!\d)')
+        self.form_list = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['form']) + r')\s*(?:so\s*)?0?([1-9]\d?)\b'
+                                    r'((?:\s*(?:,|va|&|/)\s*0?[1-9]\d?\b){1,6})')
+        self.sheet = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['sheet']) + r')\s*(?:so\s*)?(\d{1,3})(?!\d)')
+        self.page = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['page']) + r')\s*(\d{1,4})(?!\d)')
+        self.criterion = re.compile(r'(?<![a-z0-9])(?:' + _alt(n['criterion']) + r')\s+(?:so\s+)?([a-z]?\d+(?:\.\d+){0,3})(?!\d)')
+        self.star = re.compile(r'(?<![\d.])([3-5])\s*(?:' + _alt(lang.star_noun) + r')\b')
+        markers = _alt(lang.locality_markers)
+        self.locality_marker = re.compile(r'(?<![a-z0-9])(?:' + markers + r')\s+(?=\S)')
+        self.capitalised_run = re.compile(r'(?:[A-ZÀ-Ỹ][\wÀ-ỹ]*)(?:\s+[A-ZÀ-Ỹ][\wÀ-ỹ]*){0,3}')
+        self.locality_blocker = re.compile(r'(?:' + _alt(lang.locality_marker_blockers) + r')\s*$')
+        self.product_marker = re.compile(r'(?<![a-z0-9])(?:' + _alt(lang.product_markers) + r')\s+(.+)')
+        self.terminator = re.compile(r'(?<![a-z0-9])(?:' + _alt(lang.entity_terminators) + r')(?![a-z0-9])|[?.!,;:]')
+        self.non_entity = re.compile(r'^(?:' + _alt(lang.non_entity_phrases) + r')$')
+
+
+_PATTERN_CACHE: dict[int, _Patterns] = {}
+
+
+def _patterns(lang: Language) -> _Patterns:
+    if id(lang) not in _PATTERN_CACHE:
+        _PATTERN_CACHE[id(lang)] = _Patterns(lang)
+    return _PATTERN_CACHE[id(lang)]
+
+
+def _product_from_marker(query: str, folded: str, p: _Patterns) -> str | None:
+    """Name following a product marker, ended by an interrogative/connective; spelling is preserved."""
+    marker = p.product_marker.search(folded)
+    if not marker:
+        return None
+    start = marker.start(1)
+    tail = folded[start:]
+    end = p.terminator.search(tail)
+    raw = query[start:start + (end.start() if end else len(tail))].strip(' ,-')
+    key = fold(raw)
+    if not raw or p.non_entity.match(key) or re.match(r'^(?:20\d{2}|\d+)\b', key) or len(raw.split()) > 9:
+        return None
+    return raw
+
+
+def _gazetteer(lang: Language, text: str) -> list[Match]:
+    """Provincial names from the vocabulary file, matched under the same accent policy as the catalog."""
+    return EntityCatalog({'entities': {'region': [{'label': name, 'source_ids': []} for name in lang.localities]}}).find(
+        'region', text)
+
+
+def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language: Language | None = None) -> dict:
+    """Explicit slots only; never assume a date, product group or document."""
+    lang = language or get_language()
+    p = _patterns(lang)
+    text = _nfc(query)
+    folded = fold(text)
+    slots: dict = {}
+    if m := p.document.search(folded):
+        slots['document_code'] = text[m.start(1):m.end(1)]
+    if m := p.article.search(folded):
+        slots['article_id'] = m.group(1)
+    form_ids = [x.lstrip('0') for x in dict.fromkeys(m.group(1) for m in p.form.finditer(folded))]
+    for m in p.form_list.finditer(folded):
+        form_ids.extend(str(int(n)) for n in [m.group(1), *re.findall(r'(?:,|va|&|/)\s*0?([1-9]\d?)\b', m.group(2))])
+    form_ids = list(dict.fromkeys(form_ids))
+    if len(form_ids) > 1:
+        slots['form_ids'] = form_ids
+    if form_ids:
+        slots['form_id'] = form_ids[0]
+    if m := p.star.search(folded):
+        slots['star_rating'] = int(m.group(1))
+    last_date = None
+    for m in DATE_ISO.finditer(text):
+        try:
+            last_date = (m.start(), date(*map(int, m.groups())).isoformat())
+        except ValueError:
+            pass
+    for m in DATE_VI.finditer(text):
+        try:
+            day, month, year = map(int, m.groups())
+            candidate = (m.start(), date(year, month, day).isoformat())
+            if last_date is None or candidate[0] > last_date[0]:
+                last_date = candidate
+        except ValueError:
+            pass
+    if last_date:
+        slots['as_of_date'] = last_date[1]
+    years = list(dict.fromkeys(YEAR.findall(text)))
+    if years:
+        slots['years'] = years
+    if (m := p.page.search(folded)) and int(m.group(1)) > 0:
+        slots['pdf_page'] = int(m.group(1))
+    if (m := p.sheet.search(folded)) and int(m.group(1)) > 0:
+        slots['sheet_number'] = int(m.group(1))
+    if m := p.criterion.search(folded):
+        if not re.fullmatch(r'20\d{2}', m.group(1)):
+            slots['criterion_id'] = m.group(1)
+    catalog = catalog or EntityCatalog()
+    # Locality: catalog entry, else a marker + capitalised words the user literally wrote.
+    regions = catalog.find('region', text) or _gazetteer(lang, text)
+    if regions:
+        slots['region'] = regions[0].label
+    else:
+        for m in p.locality_marker.finditer(folded):
+            name = p.capitalised_run.match(text, m.end())
+            if name and not p.locality_blocker.search(folded[:m.start()]):
+                slots['region'] = name.group(0)
+                break
+    products = catalog.find('product', text) or catalog.find('product_group', text)
+    if products:
+        slots['product_name'] = max(products, key=lambda x: x.end - x.start).label
+    elif name := _product_from_marker(text, folded, p):
+        slots['product_name'] = name
+    if orgs := catalog.find('organization', text):
+        slots['organization_name'] = max(orgs, key=lambda x: x.end - x.start).label
+    only_year_in_code = len(years) == 1 and not slots.get('document_code')
+    event = re.search(r'(?:' + _alt(lang.cues['event_year_scope']) + r').{0,90}?\bnam\s+(20\d{2})\b', folded)
+    assessment = re.search(r'(?:' + _alt(lang.cues['assessment_year_scope']) + r').{0,90}?\bnam\s+(20\d{2})\b', folded)
+    if event:
+        slots['recognition_year'] = int(event.group(1))
+    if assessment:
+        slots['assessment_year'] = int(assessment.group(1))
+    if only_year_in_code:
+        if lang.hit(text, 'assessment_year_marker'):
+            slots['assessment_year'] = int(years[0])
+        if lang.hit(text, 'recognition_year_marker'):
+            slots['recognition_year'] = int(years[0])
     return slots
 
 
-def route_query(query:str,*,session:dict|None=None,llm_route:Callable[[str],dict]|None=None,
-                indexed_content_bigram_coverage:Callable[[str],float|None]|None=None)->Route:
-    q=query.strip()
-    if not q:return Route(intent=Intent.CLARIFY,strategy="clarify",needs_clarification=True,
-                          missing_slots=["question"],reason_codes=["empty_query"])
-    lower=_norm(q);prior=session or {}
-    updates=extract_slots(q)
-    followup=bool(re.match(r"^(the|vay|con|neu vay|voi nam do|20\d{2}\b|doi sang|chuyen sang|nam 20\d{2})\b",lower)) and bool(prior.get("last_query"))
-    slots=_merge_followup(prior,updates) if followup else updates
-    # A historical follow-up can contradict a pinned decision/version. Asking
-    # whether the user wants that *document* or the *rules in that year* is
-    # safer than silently applying a 2026 criteria sheet to a 2025 case.
-    old_code=(prior.get('slots') or {}).get('document_code') if followup else None
-    old_doc_year=YEARS.findall(str(old_code or ''))
-    changed_year=updates.get('years',[])
-    if old_doc_year and changed_year and changed_year[-1]!=old_doc_year[-1] and not updates.get('document_code'):
-        return Route(intent=Intent.CLARIFY,strategy='clarify',slots=slots,
-                     needs_clarification=True,missing_slots=['document_version_or_event_year'],
+def _merge_followup(prior: dict, updates: dict) -> dict:
+    """Carry only ordinary question-extracted scope; never ids, auth or verified flags."""
+    raw = prior.get('slots') or {}
+    if not isinstance(raw, dict):
+        raw = {}
+    slots = {key: value for key, value in raw.items() if key in FOLLOWUP_SCOPE_KEYS and (
+        isinstance(value, str) and len(value) <= 128 or
+        type(value) is int and 0 <= value <= 2100 or
+        key in ('years', 'form_ids') and isinstance(value, list) and len(value) <= 8 and
+        all(isinstance(x, str) and len(x) <= 12 for x in value))}
+    slots.update(updates)
+    if 'years' in updates:
+        if 'as_of_date' not in updates:
+            slots.pop('as_of_date', None)
+        for key in ('assessment_year', 'recognition_year'):
+            if key not in updates:
+                slots.pop(key, None)
+    return slots
+
+
+class Facets:
+    """Question facets derived from vocabulary cues and slots (one place, no scattered keyword lists)."""
+
+    def __init__(self, lang: Language, text: str, slots: dict):
+        folded = fold(text)
+        h = lambda name: lang.hit(text, name)  # noqa: E731
+        self.authority = h('authority')
+        self.multihop = h('multihop')
+        self.compliance = h('compliance')
+        self.classification = h('classification')
+        self.procedure = h('procedure')
+        self.scoring_method = h('scoring_method')
+        years = slots.get('years') or []
+        legal = h('temporal_legal_scope')
+        compare_scope = h('temporal_compare_scope') or h('temporal_compare_old_new')
+        self.temporal = bool((len(years) >= 2 and legal) or h('temporal_strong') or (
+            h('temporal_compare') and (len(years) >= 2 or (years and compare_scope) or h('temporal_compare_old_new'))))
+        stars = bool(slots.get('star_rating'))
+        self.normative_star = stars and h('normative_star') and not h('recognition_listing_negative')
+        self.rating_assertion = stars and h('rating_assertion')
+        self.recognition = not self.authority and h('recognition')
+        self.criteria = h('criteria') or self.normative_star or bool(slots.get('criterion_id') or slots.get('sheet_number'))
+        self.evidence_requirements = h('evidence_requirements')
+        self.relation = bool(slots.get('document_code') and h('relation')) or h('relation_open')
+        negated = bool(re.search(r'(?<![a-z0-9])(?:' + _alt(lang.cues['scoring_negation']) + r')\s+(?:can\s+)?(?:tinh|cham|uoc tinh)\s+diem\b', folded))
+        verbs = h('private_scoring_verbs')
+        self.private_scoring = (not self.scoring_method and not negated and (
+            h('private_scoring') or bool(re.fullmatch(r'(?:hay\s+)?(?:tinh|cham|uoc tinh)\s+diem(?:\s+ocop)?[?.!]*', folded)) or
+            (bool(re.search(r'\btinh diem\b.{0,30}(?<![a-z0-9])(?:' + _alt(lang.cues['scoring_hypothetical']) + r')\b', folded))) or
+            (verbs and h('private_scoring_object'))))
+        self.private_dossier = h('private_dossier') and not h('private_dossier_negative')
+        self.private_scope = h('private_scope') or bool(h('private_open') and PRIVATE_HANDLE.search(folded.upper()))
+        self.recognition_listing = h('recognition_listing')
+
+
+def _capabilities(facets: Facets, slots: dict) -> tuple[list[Capability], list[str]]:
+    found: list[Capability] = []
+    reasons: list[str] = []
+
+    def add(cap: Capability, reason: str):
+        if cap not in found:
+            found.append(cap)
+            reasons.append(reason)
+    if slots.get('document_code') and (slots.get('article_id') or slots.get('pdf_page')):
+        add(Capability.EXACT_ARTICLE, 'document_and_locator')
+    if facets.authority:
+        add(Capability.EXACT_ARTICLE, 'authority_signal')
+    if facets.classification:
+        add(Capability.CLASSIFY_PRODUCT, 'product_classification_signal')
+    if facets.criteria or facets.scoring_method:
+        add(Capability.CRITERIA, 'criterion_signal')
+    if facets.evidence_requirements:
+        add(Capability.EVIDENCE_REQUIREMENTS, 'evidence_requirements_signal')
+    if slots.get('form_id') or facets.procedure:
+        add(Capability.PROCEDURE_FORM, 'procedure_form_signal')
+    if facets.temporal:
+        add(Capability.TEMPORAL, 'legal_temporal_signal')
+    if facets.recognition or facets.rating_assertion or (slots.get('product_name') and slots.get('_producer')):
+        add(Capability.RECOGNITION, 'recognition_signal')
+    if facets.compliance:
+        add(Capability.SECTOR_COMPLIANCE, 'compliance_signal')
+    if facets.private_dossier:
+        add(Capability.REVIEW_DOSSIER, 'private_dossier_action')
+    if facets.private_scoring:
+        add(Capability.ESTIMATE_SCORE, 'private_scoring_action')
+    if facets.relation or (Capability.EVIDENCE_REQUIREMENTS in found and Capability.CRITERIA in found):
+        add(Capability.RELATION_REASONING, 'relational_signal')
+    if not found:
+        add(Capability.OVERVIEW, 'general_ocop_question')
+    return found, reasons
+
+
+def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[list[str], list[str]]:
+    """Primary tools answer the question; secondary tools only enrich it and never block the answer."""
+    explicit = set(caps)
+    if explicit & PRIVATE_CAPABILITIES:
+        return list(dict.fromkeys(t for c in caps if c in PRIVATE_CAPABILITIES for t in CAPABILITY_TO_TOOLS[c])), []
+    primary: list[str] = []
+    secondary: list[str] = []
+    located = Capability.EXACT_ARTICLE in explicit
+    criterion_scope = any(slots.get(k) for k in ('criterion_id', 'product_name', 'product_group', 'document_code', 'sheet_number'))
+    for cap in caps:
+        tools = list(CAPABILITY_TO_TOOLS[cap])
+        target = primary
+        if located and cap != Capability.EXACT_ARTICLE:
+            # A located article is answered from that article; other capabilities are optional extras
+            # and only when the question carries what they need (a form number; a criterion/product scope).
+            if cap == Capability.PROCEDURE_FORM and slots.get('form_id'):
+                target = secondary
+            elif cap == Capability.CRITERIA and (slots.get('criterion_id') or slots.get('sheet_number')):
+                target = secondary
+            elif cap in (Capability.TEMPORAL, Capability.RELATION_REASONING, Capability.RECOGNITION):
+                target = primary
+            else:
+                continue
+        if cap == Capability.PROCEDURE_FORM and not slots.get('form_id'):
+            tools = ['search_regulations']
+        if cap == Capability.CRITERIA and not criterion_scope and not explicit & {
+                Capability.CLASSIFY_PRODUCT, Capability.EVIDENCE_REQUIREMENTS}:
+            tools = ['search_regulations']
+        target.extend(tools)
+    if len(caps) > 1 and 'search_regulations' not in primary + secondary and explicit & {
+            Capability.TEMPORAL, Capability.SECTOR_COMPLIANCE, Capability.RELATION_REASONING}:
+        primary.append('search_regulations')
+    if explicit == {Capability.EXACT_ARTICLE} and not facets.authority:
+        primary = ['lookup_legal_unit']
+    if facets.authority:
+        primary = list(dict.fromkeys(['lookup_legal_unit', 'search_regulations', *primary]))
+    if Capability.TEMPORAL in explicit and Capability.RECOGNITION in explicit:
+        primary = ['lookup_recognition'] + [t for t in primary if t != 'lookup_recognition']
+    primary = list(dict.fromkeys(t for t in primary if t in TOOLS))
+    secondary = [t for t in dict.fromkeys(secondary) if t in TOOLS and t not in primary]
+    return primary, secondary
+
+
+def route_query(query: str, *, session: dict | None = None, llm_route: Callable[[str], dict] | None = None,
+                indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
+                catalog: EntityCatalog | None = None, language: Language | None = None) -> Route:
+    lang = language or get_language()
+    catalog = catalog or EntityCatalog()
+    q = _nfc(query).strip()
+    if not q:
+        return Route(intent=Intent.CLARIFY, strategy='clarify', needs_clarification=True,
+                     missing_slots=['question'], reason_codes=['empty_query'])
+    folded = fold(q)
+    prior = session or {}
+    has_prior = bool(prior.get('last_query'))
+    updates = extract_slots(q, catalog=catalog, language=lang)
+    own_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page',
+                                     'criterion_id', 'product_name', 'organization_name', 'region'})
+    structural_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page', 'criterion_id'})
+    content = lang.content_words(q)
+    opener = bool(re.match(r'^(?:' + _alt(lang.followup.openers) + r'|20\d{2}\b|nam\s+20\d{2}\b)', folded))
+    pronoun = bool(lang.words('pronouns', lang.followup.pronouns).search(folded))
+    followup = has_prior and (opener or (pronoun and len(content) <= 2 and not own_scope))
+    slots = _merge_followup(prior, updates) if followup else updates
+    old_code = (prior.get('slots') or {}).get('document_code') if followup else None
+    old_year = YEAR.findall(str(old_code or ''))
+    changed_year = updates.get('years', [])
+    if old_year and changed_year and changed_year[-1] != old_year[-1] and not updates.get('document_code'):
+        return Route(intent=Intent.CLARIFY, strategy='clarify', slots=slots, needs_clarification=True,
+                     missing_slots=['document_version_or_event_year'],
                      reason_codes=['historical_year_conflicts_with_pinned_document'])
-    is_compare=temporal_question(lower,slots)
-    has_multihop=_contains(lower,MULTIHOP)
-    is_authority=_contains(lower,AUTHORITY_CUES)
-    # Asking *which criteria make a product eligible* is a criteria question,
-    # not a lookup in an already-approved product recognition list.
-    normative_star_question = bool(slots.get('star_rating')) and _contains(lower, (
-        'dieu kien', 'yeu cau', 'can dap ung', 'de duoc', 'de dat', 'tieu chi',
-        'can nhung gi', 'quy dinh the nao',
-    )) and not _contains(lower, ('danh sach', 'liet ke', 'da duoc cong nhan',
-                                  'san pham nao duoc cong nhan', 'bao nhieu san pham'))
-    is_recognition=not is_authority and _contains(lower,RECOGNITION+("danh sach san pham ocop", "san pham ocop 3 sao",
-        "san pham ocop 4 sao", "san pham ocop 5 sao", "liet ke san pham ocop"))
-    is_criteria=_contains(lower,CRITERIA) or normative_star_question or bool(slots.get('star_rating') and
-        _contains(lower,('dieu kien','yeu cau','can dat','de dat','can dap ung')))
-    is_form=_contains(lower,PROCEDURE)
-    is_compliance=_contains(lower,COMPLIANCE)
-    ocop_domain=_contains(lower,("ocop", "tieu chi", "phieu danh gia", "thang diem",
-        "ho so", "thu tuc", "cong nhan", "chung nhan", "attt", "an toan thuc pham",
-        "quy dinh", "nghi dinh", "quyet dinh", "qd", "bieu mau", "phan nhom",
-        "minh chung", "truy xuat", "nhan hang hoa", "luat", "nong san", "nhom nao"))
-    # A conversation-local continuation may omit the domain words.
-    out_of_scope=not ocop_domain and not followup and not any(_norm(p) in lower for p in PRODUCTS)
-    if updates.get("form_id") or updates.get("document_code") or (updates.get('star_rating') and
-            _contains(lower,('san pham','ocop','dieu kien'))) or _contains(lower,("diem", "mau", "dang ky", "nop ho so", "so sanh nam")):
-        out_of_scope=False
-    explicit_out_of_scope=_contains(lower,("ket qua bong da", "gia bitcoin", "xem tarot", "du bao thoi tiet", "viet ma doc"))
-    if explicit_out_of_scope:
-        out_of_scope=True
-    reopened_by_indexed_coverage=False
-    # The index is consulted only after the deterministic keyword gate would
-    # reject the query. Explicitly off-topic requests still remain blocked.
-    if out_of_scope and not explicit_out_of_scope and indexed_content_bigram_coverage is not None:
-        try:
-            coverage=indexed_content_bigram_coverage(q)
-        except (OSError,RuntimeError,ValueError,TypeError,KeyError):
-            coverage=None
-        if isinstance(coverage,(int,float)) and not isinstance(coverage,bool) and \
-                MIN_INDEXED_CONTENT_BIGRAM_COVERAGE<=coverage<=1.0:
-            out_of_scope=False
-            reopened_by_indexed_coverage=True
-    scores={}
-    if out_of_scope:scores[Intent.OUT_OF_SCOPE]=100
-    requests_scoring=private_scoring_action(lower)
-    asks_method=public_scoring_method(lower)
-    if requests_scoring and not asks_method:
-        scores[Intent.SCORE_ESTIMATE]=90
-    if asks_method:
-        scores[Intent.CRITERIA_LOOKUP]=70
-    if private_dossier_action(lower):
-        scores[Intent.DOSSIER_REVIEW]=85
-    if has_multihop and (is_criteria or is_form or is_compliance or is_recognition):
-        scores[Intent.MULTIHOP_REASONING]=80
-    if is_compare:scores[Intent.TEMPORAL_COMPARE]=75
-    if is_authority:scores[Intent.EXACT_LOOKUP]=88
-    elif updates.get("article_id") and updates.get("document_code"):scores[Intent.EXACT_LOOKUP]=70
-    if _contains(lower,CLASSIFICATION):scores[Intent.PRODUCT_CLASSIFICATION]=65
-    if is_compliance:scores[Intent.SECTOR_COMPLIANCE]=60
-    if is_recognition and not normative_star_question:
-        scores[Intent.RECOGNITION_LOOKUP]=55
-    if slots.get("product_name") and _contains(lower,PRODUCER):
-        scores[Intent.RECOGNITION_LOOKUP]=max(75,scores.get(Intent.RECOGNITION_LOOKUP,0))
-    if normative_star_question:
-        scores[Intent.CRITERIA_LOOKUP]=max(85, scores.get(Intent.CRITERIA_LOOKUP,0))
-    if is_form:scores[Intent.PROCEDURE_FORM]=50
-    if is_criteria:scores.setdefault(Intent.CRITERIA_LOOKUP,45)
-    if _contains(lower,("ho so toi can chuan bi", "ho so cua toi can chuan bi")):
-        scores[Intent.PROCEDURE_FORM]=72
-    if has_multihop:scores.setdefault(Intent.MULTIHOP_REASONING,35)
-    # A generic listing of OCOP-star products is recognition, not an overview.
-    if is_recognition and _contains(lower,("danh sach", "liet ke", "cac san pham")):
-        scores[Intent.RECOGNITION_LOOKUP]=80
-    if followup and not scores:
-        parent=prior.get("intent")
-        try:parent=Intent(parent)
-        except (ValueError,TypeError):parent=Intent.OCOP_OVERVIEW
-        if parent==Intent.FOLLOWUP:parent=Intent.OCOP_OVERVIEW
-        scores[parent]=30
-    if scores:
-        intent=max(scores,key=scores.get)
+    facets = Facets(lang, q, slots)
+    producer = lang.hit(q, 'producer')
+    if producer:
+        slots_for_caps = {**slots, '_producer': True}
     else:
-        intent=Intent.OCOP_OVERVIEW
+        slots_for_caps = slots
+
+    # Private requests never reach public search; AuthContext is checked in the workflow.
+    if facets.private_scope and not facets.private_dossier and not facets.private_scoring:
+        return Route(intent=Intent.DOSSIER_REVIEW, strategy='agentic', slots={}, required_tools=['review_dossier'],
+                     capabilities=[Capability.REVIEW_DOSSIER.value], reason_codes=['private_scope_request'])
+
+    in_domain = (lang.hit(q, 'in_domain') or structural_scope or facets.temporal or facets.classification or
+                 facets.compliance or facets.authority or facets.criteria or facets.recognition or facets.scoring_method or
+                 facets.private_dossier or facets.private_scoring or any(catalog.mentions(q).values()) or
+                 bool(slots.get('star_rating') or slots.get('years') and followup))
+    explicit_oos = lang.hit(q, 'explicit_out_of_scope')
+    bare_code = bool(BARE_CRITERION.match(q)) and not followup
+    reopened = False
+    if not in_domain and not followup and not explicit_oos and indexed_content_bigram_coverage is not None:
+        try:
+            coverage = indexed_content_bigram_coverage(q)
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError):
+            coverage = None
+        if isinstance(coverage, (int, float)) and not isinstance(coverage, bool) and \
+                MIN_INDEXED_CONTENT_BIGRAM_COVERAGE <= coverage <= 1.0:
+            in_domain = reopened = True
+    if explicit_oos:
+        return Route(intent=Intent.OUT_OF_SCOPE, strategy='clarify', slots=slots, reason_codes=['explicit_out_of_scope'])
+    if bare_code or (not in_domain and not followup and len(content) <= 3) or (
+            pronoun and not has_prior and not own_scope and len(content) <= 2):
+        missing = ['document_or_sheet_for_code'] if bare_code else ['topic']
+        return Route(intent=Intent.CLARIFY, strategy='clarify', slots=slots, needs_clarification=True,
+                     missing_slots=missing, reason_codes=['fragment_needs_scope'])
+    if not in_domain and not followup:
+        return Route(intent=Intent.OUT_OF_SCOPE, strategy='clarify', slots=slots, reason_codes=['no_domain_signal'])
+
+    caps, cap_reasons = _capabilities(Facets(lang, q, slots_for_caps) if producer else facets, slots_for_caps)
+    scores: dict[Intent, int] = {}
+    if facets.private_scoring and not facets.scoring_method:
+        scores[Intent.SCORE_ESTIMATE] = 90
+    if facets.scoring_method:
+        scores[Intent.CRITERIA_LOOKUP] = 70
+    if facets.private_dossier:
+        scores[Intent.DOSSIER_REVIEW] = 85
+    if facets.multihop and (facets.criteria or facets.procedure or facets.compliance or facets.recognition):
+        scores[Intent.MULTIHOP_REASONING] = 80
+    if facets.temporal:
+        scores[Intent.TEMPORAL_COMPARE] = 75
+    if facets.authority:
+        scores[Intent.EXACT_LOOKUP] = 88
+    elif updates.get('article_id') and updates.get('document_code'):
+        scores[Intent.EXACT_LOOKUP] = 70
+    if facets.classification:
+        scores[Intent.PRODUCT_CLASSIFICATION] = 65
+    if facets.compliance:
+        scores[Intent.SECTOR_COMPLIANCE] = 60
+    if facets.recognition and not facets.normative_star:
+        scores[Intent.RECOGNITION_LOOKUP] = 55
+    if (slots.get('product_name') or slots.get('organization_name')) and producer:
+        scores[Intent.RECOGNITION_LOOKUP] = max(75, scores.get(Intent.RECOGNITION_LOOKUP, 0))
+    if facets.rating_assertion and slots.get('star_rating') and not facets.scoring_method:
+        scores[Intent.RECOGNITION_LOOKUP] = max(78, scores.get(Intent.RECOGNITION_LOOKUP, 0))
+    if facets.normative_star:
+        scores[Intent.CRITERIA_LOOKUP] = max(85, scores.get(Intent.CRITERIA_LOOKUP, 0))
+    if facets.procedure:
+        scores[Intent.PROCEDURE_FORM] = 50
+    if facets.criteria:
+        scores.setdefault(Intent.CRITERIA_LOOKUP, 45)
+    if lang.hit(q, 'procedure_own'):
+        scores[Intent.PROCEDURE_FORM] = 72
+    if facets.multihop:
+        scores.setdefault(Intent.MULTIHOP_REASONING, 35)
+    if facets.recognition and facets.recognition_listing:
+        scores[Intent.RECOGNITION_LOOKUP] = 80
+    if followup and not scores:
+        try:
+            parent = Intent(prior.get('intent'))
+        except (ValueError, TypeError):
+            parent = Intent.OCOP_OVERVIEW
+        scores[Intent.OCOP_OVERVIEW if parent == Intent.FOLLOWUP else parent] = 30
+    if scores:
+        intent = max(scores, key=scores.get)
+    else:
+        intent = Intent.OCOP_OVERVIEW
         if llm_route is not None:
             try:
-                result=llm_route(q)
-                candidate=Intent(result["intent"])
-                if candidate not in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or prior.get("dossier_id"):
-                    intent=candidate
-                safe={"product_name","product_group","region","as_of_date","document_code","form_id","criterion_id"}
-                slots.update({k:v for k,v in (result.get("slots") or {}).items()
-                              if k in safe and isinstance(v,(str,int)) and len(str(v))<=128})
-            except (ValueError,KeyError,TypeError,AttributeError):pass
-    # Keep FOLLOWUP as a public label for compatibility, while inheriting the
-    # actual previous business toolset; never downgrade every follow-up to search.
-    effective=intent
-    if followup and not out_of_scope and Intent.SCORE_ESTIMATE not in scores and Intent.DOSSIER_REVIEW not in scores:
-        if not scores or max(scores.values())<75:
-            intent=Intent.FOLLOWUP
-            parent=prior.get("intent")
-            try:effective=Intent(parent)
-            except (ValueError,TypeError):effective=Intent.OCOP_OVERVIEW
-            if effective in (Intent.FOLLOWUP,Intent.CLARIFY):effective=Intent.OCOP_OVERVIEW
-    strategy,base=ROUTES[effective]
-    required=list(base)
-    # Add supplementary tools only when they contribute *distinct* evidence.
-    if is_recognition and effective==Intent.TEMPORAL_COMPARE:required.insert(0,"lookup_recognition")
-    if effective==Intent.MULTIHOP_REASONING:
-        if is_criteria:required.insert(0,"lookup_criterion")
-        if is_form:required.insert(0,"lookup_form")
-        if is_recognition:required.insert(0,"lookup_recognition")
-    if effective==Intent.TEMPORAL_COMPARE and is_criteria:required.insert(0,"lookup_criterion")
-    if effective==Intent.EXACT_LOOKUP:
-        if is_authority and "search_regulations" not in required:required.append("search_regulations")
-        if is_criteria:required.append("lookup_criterion")
-    if effective==Intent.PROCEDURE_FORM and is_criteria:required.append("lookup_criterion")
-    # When a question asks about procedural requirements instead of an
-    # identified FormTemplate, search the procedure text. Returning the first
-    # arbitrary form candidate would be misleading.
-    if effective==Intent.PROCEDURE_FORM and not slots.get('form_id') and 'mẫu' not in lower:
-        required=['search_regulations']
-    # A generic question about criteria must not return the first unrelated
-    # criterion sheet simply because OCR produced many candidates.
-    if effective==Intent.CRITERIA_LOOKUP and not any(slots.get(k) for k in
-        ('criterion_id','product_name','product_group','document_code')):
-        required=['search_regulations']
-    # Business capabilities are multi-label; primary intent is retained for old
-    # API callers and regression comparability, but no longer dictates the only
-    # tool. A user may ask for taxonomy + criteria + evidence + temporal scope.
-    capabilities,cap_reasons=detect_capabilities(q,slots)
-    if normative_star_question:
-        capabilities=[c for c in capabilities if c != Capability.RECOGNITION]
-        if Capability.CRITERIA not in capabilities:
-            capabilities.insert(0,Capability.CRITERIA)
+                result = llm_route(q)
+                candidate = Intent(result['intent'])
+                if candidate not in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE) or prior.get('dossier_id'):
+                    intent = candidate
+                safe = {'product_name', 'product_group', 'region', 'as_of_date', 'document_code', 'form_id', 'criterion_id'}
+                slots.update({k: v for k, v in (result.get('slots') or {}).items()
+                              if k in safe and isinstance(v, (str, int)) and len(str(v)) <= 128})
+            except (ValueError, KeyError, TypeError, AttributeError):
+                pass
+    effective = intent
+    if followup and Intent.SCORE_ESTIMATE not in scores and Intent.DOSSIER_REVIEW not in scores:
+        if not scores or max(scores.values()) < 75:
+            intent = Intent.FOLLOWUP
+            try:
+                effective = Intent(prior.get('intent'))
+            except (ValueError, TypeError):
+                effective = Intent.OCOP_OVERVIEW
+            if effective in (Intent.FOLLOWUP, Intent.CLARIFY, Intent.OUT_OF_SCOPE):
+                effective = Intent.OCOP_OVERVIEW
+    strategy, _ = ROUTES[effective]
+
+    if facets.normative_star:
+        caps = [c for c in caps if c != Capability.RECOGNITION]
+        if Capability.CRITERIA not in caps:
+            caps.insert(0, Capability.CRITERIA)
         cap_reasons.append('normative_star_requires_criteria_not_recognition_records')
-    if followup and len(capabilities)==1 and capabilities[0]==Capability.OVERVIEW:
-        previous=prior.get('capabilities') or []
-        capabilities=[Capability(x) for x in previous if x in Capability._value2member_map_] or capabilities
-        if capabilities==[Capability.OVERVIEW]:
-            inherit={Intent.CRITERIA_LOOKUP:Capability.CRITERIA,
-                Intent.PRODUCT_CLASSIFICATION:Capability.CLASSIFY_PRODUCT,
-                Intent.PROCEDURE_FORM:Capability.PROCEDURE_FORM,
-                Intent.RECOGNITION_LOOKUP:Capability.RECOGNITION,
-                Intent.SECTOR_COMPLIANCE:Capability.SECTOR_COMPLIANCE}
-            try:old_intent=Intent(prior.get('intent'))
-            except (TypeError,ValueError):old_intent=Intent.OCOP_OVERVIEW
-            capabilities=[inherit[old_intent]] if old_intent in inherit else capabilities
-    if intent==Intent.OUT_OF_SCOPE:
-        capabilities=[]
-    elif capabilities==[Capability.OVERVIEW] and intent!=Intent.OCOP_OVERVIEW:
-        fallback_map={Intent.PRODUCT_CLASSIFICATION:Capability.CLASSIFY_PRODUCT,
-            Intent.CRITERIA_LOOKUP:Capability.CRITERIA,Intent.RECOGNITION_LOOKUP:Capability.RECOGNITION,
-            Intent.PROCEDURE_FORM:Capability.PROCEDURE_FORM,Intent.SECTOR_COMPLIANCE:Capability.SECTOR_COMPLIANCE,
-            Intent.TEMPORAL_COMPARE:Capability.TEMPORAL,Intent.MULTIHOP_REASONING:Capability.RELATION_REASONING}
-        if intent in fallback_map:capabilities=[fallback_map[intent]]
-    explicit=set(capabilities)
-    # Explicit private capabilities never get public tools in the same plan.
-    private_caps={Capability.REVIEW_DOSSIER,Capability.ESTIMATE_SCORE}
-    if explicit & private_caps:
-        capabilities=[c for c in capabilities if c in private_caps]
-    else:
-        composed=[]
-        for capability in capabilities:
-            composed.extend(CAPABILITY_TO_TOOLS[capability])
-        # Historical exact lookups are primary; broad text only supplements
-        # business-specific capabilities, never overrides a document ID.
-        if len(capabilities)>1 and 'search_regulations' not in composed and (
-            Capability.TEMPORAL in capabilities or Capability.SECTOR_COMPLIANCE in capabilities
-            or Capability.RELATION_REASONING in capabilities):
-            composed.append('search_regulations')
-        # For a generic question without form number, *do not* return an
-        # arbitrary form template; search grounded policy text instead.
-        if Capability.PROCEDURE_FORM in explicit and not slots.get('form_id'):
-            composed=[x for x in composed if x!='lookup_form']+['search_regulations']
-        # Same rule for generic scoring-method questions.
-        if Capability.CRITERIA in explicit and not any(slots.get(k) for k in (
-            'criterion_id','product_name','product_group','document_code')) and not (
-            explicit & {Capability.CLASSIFY_PRODUCT,Capability.EVIDENCE_REQUIREMENTS}):
-            composed=[x for x in composed if x!='lookup_criterion']+['search_regulations']
-        # An exact query with no extra business dimension needs only lookup.
-        if explicit=={Capability.EXACT_ARTICLE}:composed=['lookup_legal_unit']
-        required=list(dict.fromkeys(x for x in composed if x in TOOLS))
-        if is_authority:
-            required=list(dict.fromkeys(['lookup_legal_unit', 'search_regulations', *required]))
-        if Capability.TEMPORAL in explicit and Capability.RECOGNITION in explicit:
-            required=['lookup_recognition']+[x for x in required if x!='lookup_recognition']
-    if explicit & private_caps:
-        required=list(dict.fromkeys(x for c in capabilities for x in CAPABILITY_TO_TOOLS[c]))
+    if followup and caps == [Capability.OVERVIEW]:
+        previous = [Capability(x) for x in prior.get('capabilities') or [] if x in Capability._value2member_map_]
+        if previous:
+            caps = previous
+        else:
+            try:
+                old = Intent(prior.get('intent'))
+            except (TypeError, ValueError):
+                old = Intent.OCOP_OVERVIEW
+            caps = [INTENT_CAPABILITY[old]] if old in INTENT_CAPABILITY else caps
+    if intent == Intent.OUT_OF_SCOPE:
+        caps = []
+    elif caps == [Capability.OVERVIEW] and effective in INTENT_CAPABILITY:
+        caps = [INTENT_CAPABILITY[effective]]
+    if set(caps) & PRIVATE_CAPABILITIES:
+        caps = [c for c in caps if c in PRIVATE_CAPABILITIES]
+    required, secondary = _select_tools(caps, slots, facets)
+    if not required and effective in ROUTES:
+        required = list(ROUTES[effective][1])
     if (slots.get('years') and not slots.get('document_code') and
-        effective in (Intent.PROCEDURE_FORM,Intent.CRITERIA_LOOKUP,Intent.SECTOR_COMPLIANCE,Intent.OCOP_OVERVIEW)
-        and 'search_regulations' in required and not (explicit & private_caps)
-        and not (slots.get('region') and has_any(lower, ('hạn nộp', 'hạn đăng ký', 'thời hạn nộp')))):
-        required=list(dict.fromkeys(['resolve_temporal_applicability',*required]))
-    if slots.get('pdf_page') and slots.get('document_code') and not (explicit & private_caps):
-        required=['lookup_legal_unit']
-    missing=[]
-    if effective in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE):
-        for key in ("tenant_id","dossier_id"):
-            if not prior.get(key):missing.append(key)
+            effective in (Intent.PROCEDURE_FORM, Intent.CRITERIA_LOOKUP, Intent.SECTOR_COMPLIANCE, Intent.OCOP_OVERVIEW)
+            and 'search_regulations' in required and not set(caps) & PRIVATE_CAPABILITIES
+            and not (slots.get('region') and lang.hit(q, 'deadline'))):
+        required = list(dict.fromkeys(['resolve_temporal_applicability', *required]))
+    if slots.get('pdf_page') and slots.get('document_code') and not set(caps) & PRIVATE_CAPABILITIES:
+        required, secondary = ['lookup_legal_unit'], []
+    missing = []
+    if effective in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE):
+        missing = [key for key in ('tenant_id', 'dossier_id') if not prior.get(key)]
     if missing:
-        return Route(intent=Intent.CLARIFY,strategy="clarify",slots=slots,needs_clarification=True,
-                     missing_slots=missing,reason_codes=["required_dossier_context_missing"])
-    if len(required)>MAX_TOOL_CALLS:
-        return Route(intent=Intent.CLARIFY,strategy="clarify",slots=slots,needs_clarification=True,
-                     missing_slots=["split_question"],
-                     reason_codes=["tool_budget_exceeded"]+cap_reasons)
-    secondary=[x for x in scores if x!=effective and scores[x]>=40]
-    return Route(intent=intent,strategy=strategy,retrieval_path=choose_retrieval_path(required),
-                 slots=slots,required_tools=required,
-                  secondary_intents=secondary[:3],capabilities=[x.value for x in capabilities],
-                  reason_codes=(["followup_slot_override" if followup else "deterministic_multi_signal"]+
-                                cap_reasons+(["indexed_content_bigram_scope_recovery"] if reopened_by_indexed_coverage else [])),
+        return Route(intent=Intent.CLARIFY, strategy='clarify', slots=slots, needs_clarification=True,
+                     missing_slots=missing, reason_codes=['required_dossier_context_missing'])
+    if len(required) + len(secondary) > MAX_TOOL_CALLS:
+        secondary = secondary[:max(0, MAX_TOOL_CALLS - len(required))]
+    if len(required) > MAX_TOOL_CALLS:
+        return Route(intent=Intent.CLARIFY, strategy='clarify', slots=slots, needs_clarification=True,
+                     missing_slots=['split_question'], reason_codes=['tool_budget_exceeded'] + cap_reasons)
+    others = [x for x in scores if x != effective and scores[x] >= 40]
+    return Route(intent=intent, strategy=strategy, retrieval_path=choose_retrieval_path(required + secondary),
+                 slots=slots, required_tools=required, secondary_tools=secondary, secondary_intents=others[:3],
+                 capabilities=[c.value for c in caps],
+                 reason_codes=(['followup_slot_override' if followup else 'deterministic_multi_signal'] + cap_reasons +
+                               (['indexed_content_bigram_scope_recovery'] if reopened else [])),
                  confidence=None)
