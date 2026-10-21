@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
@@ -54,6 +55,8 @@ def rrf(ranks:list[list[str]],k:int=60)->dict[str,float]:
 
 @lru_cache(maxsize=1)
 def _load_reranker(model_id:str,revision:str|None=None):
+    os.environ.setdefault("TRANSFORMERS_NO_TF","1")
+    os.environ.setdefault("USE_TF","0")
     try:from sentence_transformers import CrossEncoder
     except ImportError as exc:raise RuntimeError("sentence-transformers required for --rerank") from exc
     # Avoid executing arbitrary Python from a remote repository. A revision

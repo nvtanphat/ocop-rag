@@ -237,6 +237,8 @@ class BM25Search:
 
 @lru_cache(maxsize=2)
 def _load_embedding(model_id:str,revision:str|None=None):
+    os.environ.setdefault("TRANSFORMERS_NO_TF","1")
+    os.environ.setdefault("USE_TF","0")
     try:from sentence_transformers import SentenceTransformer
     except ImportError as exc:raise RuntimeError("Install sentence-transformers>=5 for actual dense vectors") from exc
     options={"device":"cpu","trust_remote_code":False,"local_files_only":True}
