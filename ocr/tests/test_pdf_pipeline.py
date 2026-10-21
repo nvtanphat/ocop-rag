@@ -228,3 +228,10 @@ def test_real_processed_corpus_complete_if_artifacts_available():
         count+=len(records)
     assert count==data['counts']['pages']==583
     assert data['counts']['ocr_executed']==315
+
+
+def test_worker_init_sets_identical_two_threads_for_serial_and_parallel():
+    import torch
+    from ocop_ocr.pdf_pipeline import _worker_init
+    _worker_init(True)
+    assert torch.get_num_threads() == 2

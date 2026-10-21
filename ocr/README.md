@@ -32,7 +32,7 @@ python -m ocop_ocr status --dataset D:/AgentAI/OCOP-RAG/ocr-dataset-pilot
 
 `--page` tạo dataset một phần (`complete=false`), không được đưa vào RAG
 production. `run` dùng 3 tiến trình mặc định; hàm Python cũ giữ mặc định tuần tự.
-Mỗi worker nạp model cục bộ qua cache trong tiến trình và dùng 2 luồng Torch.
+Mỗi worker nạp model cục bộ qua cache trong tiến trình và dùng cố định 2 luồng Torch (cả chế độ tuần tự 1 worker và song song 3 worker đều gọi _worker_init để bảo đảm tính tất định; cấu trúc bảng, chữ, bbox và xác suất alternative khớp tuyệt đối).
 CLI dataset không áp tự sửa dấu tiếng Việt; chỉ Markdown import thay đổi chữ.
 
 Sửa cột Chữ hoặc ô bảng trong `review/<source_id>/p###.md`, giữ nguyên ID khối,

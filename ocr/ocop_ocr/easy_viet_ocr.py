@@ -48,6 +48,8 @@ def _detector_path() -> Path:
 
 @lru_cache(maxsize=2)
 def _load_detector(directory: str, digest: str):
+    import torch
+    torch.set_num_threads(2)
     import easyocr
 
     return easyocr.Reader(
@@ -79,6 +81,8 @@ def _vietocr_config() -> dict:
 
 @lru_cache(maxsize=2)
 def _load_predictor(config_json: str, weights_digest: str):
+    import torch
+    torch.set_num_threads(2)
     from vietocr.tool.predictor import Predictor
 
     config = json.loads(config_json)

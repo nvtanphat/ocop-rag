@@ -331,6 +331,7 @@ def run_pipeline(root:Path, *, registry:Path, lock:Path, output:Path, cache_dir:
     if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
         raise ValueError("workers must be a positive integer")
     if workers == 1:
+        _worker_init(options.get('ocr', True))
         return _run_pipeline(root, registry=registry, lock=lock, output=output,
                              cache_dir=cache_dir, **options)
     with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context("spawn"),
