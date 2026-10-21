@@ -66,9 +66,9 @@ Truy cập giao diện: `http://localhost:5173`.
 | [Kiến trúc hệ thống](docs/ARCHITECTURE.md) | Luồng xử lý chi tiết từ PDF đến đồ thị và API; vị trí mã nguồn các tầng. |
 | [Cấu hình & Biến môi trường](docs/CONFIGURATION.md) | Danh mục biến `.env`, các tệp cấu hình `configs/` và mô hình ghim. |
 | [Vận hành & Runbook](docs/RUNBOOK.md) | Hướng dẫn build corpus, debug mẫu, chạy E2E và xử lý lỗi vận hành. |
-| [Đánh giá chất lượng](docs/EVALUATION.md) | Bộ benchmark 126 câu hỏi đối soát PDF và cổng kiểm thử an toàn. |
+| [Đánh giá chất lượng](docs/EVALUATION.md) | Bộ phát triển, bộ giữ riêng, benchmark 126 câu và cách đo trên prompt thật. |
 | [Thẩm định người dùng](docs/HUMAN_REVIEW.md) | Quy trình phê duyệt bằng chứng, nhật ký review ledger và xác minh tri thức. |
-| [Hướng dẫn phát triển](docs/DEVELOPMENT.md) | Quy chuẩn kiểm thử hermetic, quy ước commit và mở rộng tool/quan hệ. |
+| [Hướng dẫn phát triển](docs/DEVELOPMENT.md) | Kiểm thử hermetic, quy tắc chống hardcode và test chặn, thêm văn bản không sửa mã, mở rộng tool/quan hệ. |
 | [Thuật ngữ miền](GLOSSARY.md) | Định nghĩa các thực thể và trạng thái kiểm chứng miền OCOP. |
-| [Quyết định kiến trúc (ADR)](docs/adr/README.md) | Các quyết định kỹ thuật nền tảng: đồ thị một đầu ra, cổng fail-closed, mô hình ghim. |
+| [Quyết định kiến trúc (ADR)](docs/adr/README.md) | Quyết định nền tảng (đồ thị một đầu ra, cổng fail-closed, mô hình ghim) và thiết kế context, từ vựng/danh mục, truy xuất, claim/phiên. |
 | [Dự án con OCR](ocr/README.md) | Pipeline OCR độc lập, hợp đồng dataset, duyệt Markdown và xuất nhập kiểm soát. |

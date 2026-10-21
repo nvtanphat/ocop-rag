@@ -128,3 +128,32 @@ npm --prefix frontend run build
 
 3. **Kiểm thử Kiểm định Đồ thị**:
    Chạy `python -m pytest tests/ocop/test_single_graph_output.py tests/ocop/test_graph_integrity.py` để kiểm tra việc tuân thủ ontology và schema revision.
+
+---
+
+## 4. Quy tắc chống hardcode
+
+Mã runtime (`ai_core/`, `backend/`, `ocr/ocop_ocr/`, `ocop_contracts/`) không chứa giá trị riêng của corpus: mã nguồn `source_id`, số hiệu văn bản, tên địa phương, tên sản phẩm/chủ thể/cơ quan, số trang, số điều/khoản/phiếu/mẫu, số hạng sao, số nhóm sản phẩm.
+
+| Loại giá trị | Nơi đúng |
+| :--- | :--- |
+| Văn bản, địa danh trong corpus, sản phẩm, chủ thể, cơ quan, phiếu, mẫu | Danh mục thực thể (`entity_catalog.json`, sinh từ registry và graph lúc dựng chỉ mục) |
+| Từ khóa ý định, từ nối hội thoại, đại từ, nhãn cột, thang hạng sao, tên tỉnh | `configs/ocop_language.yaml` |
+| Ngưỡng, ngân sách token, số ứng viên, trọng số RRF, số luồng | `configs/ocop_retrieval.yaml` / `configs/ocop_models.yaml` |
+| Mẫu che định danh | `configs/ocop_privacy.yaml` |
+| Văn bản "hiện hành" cho truy vấn không ghim | Registry (`source_kind: ocop_framework`, năm mới nhất), không phải một `source_id` |
+
+Cấu trúc pháp lý chung (mẫu regex `Điều` + chữ số bất kỳ, `Mẫu` + chữ số bất kỳ) vẫn được phép vì là hình thức văn bản, không phải giá trị cụ thể.
+
+**Test chặn**: `tests/ocop/test_no_corpus_literals.py` quét hằng chuỗi trong mã runtime bằng `ast`, so với số hiệu/`source_id`/địa danh trong registry, nhãn sản phẩm/chủ thể/cơ quan của graph mẫu (`tests/ocop/fixtures/corpus_graph_literals.json`) và các mẫu cấu trúc (số điều/mẫu/phiếu cụ thể, lớp hạng sao viết tay). Ngoại lệ phải khai báo trong `tests/ocop/corpus_literal_allowlist.yaml` kèm lý do (hiện rỗng); một mục dư thừa cũng làm test hỏng. Test được dùng fixture cụ thể, nhưng hành vi runtime không được phụ thuộc vào đúng các giá trị đó.
+
+## 5. Thêm một văn bản mới mà không sửa mã
+
+1. Đặt PDF vào `data/raw/ocop/<nhóm>/` và khai báo trong `configs/ocop_sources.json` (`source_id`, `path`, `source_kind`, `document_number`, `jurisdiction`); khóa băm bằng `python tools/cli.py debug lock-ocop`.
+2. Chạy lại pipeline (`python tools/cli.py run --build-only`): OCR, trích xuất, graph, chỉ mục và **danh mục thực thể** được dựng lại.
+3. Router nhận ngay số hiệu, loại và năm của văn bản mới ("Luật ... 2023"), địa danh, sản phẩm và chủ thể của nó; không phải sửa router, planner hay tools.
+4. Nếu văn bản dùng từ ngữ mới cho một ý định, thêm cue vào `configs/ocop_language.yaml` và một câu hỏi vào bộ đo.
+
+## 6. Bộ đo khi phát triển
+
+Xem `docs/EVALUATION.md`. Quy tắc làm việc: sửa theo bộ phát triển; bộ giữ riêng chỉ xem số tổng sau mỗi vòng; dựng lại graph và chỉ mục sau khi đổi mã trong `ai_core/graph`, `ai_core/retrieval` hay mô-đun trích xuất.

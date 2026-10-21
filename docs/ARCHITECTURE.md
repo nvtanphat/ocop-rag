@@ -70,12 +70,12 @@ Tài liệu mô tả luồng dữ liệu từ PDF nguồn đến câu trả lờ
 * **Xếp hạng lại (Reranking)**: Sử dụng `BAAI/bge-reranker-v2-m3` với ngân sách cặp token `DEFAULT_PAIR_TOKEN_BUDGET = 1024`. Tuyệt đối không bật `trust_remote_code`.
 
 ### Tầng 5: Điều phối, Lập kế hoạch & Cổng An toàn (Orchestration & Safety)
-* **Phân luồng (Router)**: `router.py` phân tích ý định truy vấn (`Intent`: `EXACT_LOOKUP`, `CRITERION_SCORING`, `PROCEDURE_FORM`, `RECOGNITION_LOOKUP`, `OCOP_OVERVIEW`, `MULTIHOP_REASONING`, `OUT_OF_SCOPE`) và trích xuất tham số (`slots`).
-* **Bộ công cụ (Tools)**: `planner.py` lập kế hoạch thực thi công cụ trong `TOOL_REGISTRY` (tối đa 5 lệnh gọi trên mỗi truy vấn).
-* **Cổng trích dẫn Fail-Closed**: `verification.py` phân tích từng câu khẳng định trong câu trả lời sinh bởi LLM:
-  * Câu khẳng định bắt buộc phải kèm marker trích dẫn `[S#]`.
-  * Từng marker `[S#]` phải đối soát chính xác với `EvidenceUnit` có thật trong ngữ cảnh tìm kiếm.
-  * Nếu không thỏa mãn, câu trả lời bị hủy và tự động chuyển về chế độ trả trích dẫn thuần túy (`retrieval_only`).
+* **Phân tích câu hỏi (Router)** (`router.py`, `language.py`, `catalog.py`): trích slot (văn bản, điều, mẫu, phiếu, trang, tiêu chí, ngày, năm, địa danh, sản phẩm, chủ thể) từ từ vựng `configs/ocop_language.yaml` và danh mục thực thể sinh lúc dựng chỉ mục; chính sách riêng tư / nối tiếp / làm rõ / ngoài phạm vi rõ ràng (ADR-007). LLM chỉ gợi ý ý định thuộc enum.
+* **Công cụ & Kế hoạch** (`planner.py`, `capabilities.py`, `tools.py`): năng lực chính và phụ; công cụ phụ không chặn câu trả lời; chỉ chạy công cụ trong `TOOL_REGISTRY`, tối đa 5 lượt. `tools_used` và `tools_skipped` phân biệt bước đã chạy và bước bị bỏ.
+* **Truy xuất** (`search.py`, `settings.py`): BM25, vector (Qdrant) hợp nhất RRF có trọng số, rerank cross-encoder có ngân sách và cache; lỗi dense rơi về sparse kèm lý do (ADR-008).
+* **Dựng context** (`context.py`, `graph_context.py`): chuỗi cha ngắn từ graph trong văn bản đánh chỉ mục; cửa sổ trích đoạn theo câu hỏi từ đoạn gốc; ngân sách trên toàn prompt; kiểm độ phủ thuật ngữ trên đúng khối SOURCE (ADR-006).
+* **Câu trả lời theo claim** (`answer.py`, `verification.py`): LLM trả JSON claim kèm `[S#]`; mỗi claim qua cổng marker, cổng điểm/sao và cổng entailment; công bố phần qua cổng, nêu phần bị loại và phần nguồn chưa trả lời. Nguồn chưa duyệt không bao giờ được công bố là đã kiểm (ADR-002, ADR-005, ADR-009).
+* **Phiên & riêng tư** (`sessions.py`, `privacy.py`): một `SessionStore` chung; định danh bị che trước khi lưu phiên/checkpoint; lỗi cấu hình trả 503 có schema.
 
 ### Tầng 6: Dịch vụ API & Giao diện (Web & UI)
 * **API**: FastAPI phục vụ tại prefix `/api/ocop/*` (`backend/api/ocop_routes.py`), cung cấp các endpoint tra cứu tài liệu, xem PDF theo trang, kiểm tra sức khỏe và truy vấn trả lời.
@@ -92,8 +92,8 @@ Tài liệu mô tả luồng dữ liệu từ PDF nguồn đến câu trả lờ
 | **Trích xuất Tri thức** | `ai_core/knowledge/ocop/` | `extractor.py`, `criterion_sheets.py`, `legal_structure.py`, `llm_proposals.py` |
 | **Đồ thị Tri thức** | `ai_core/graph/ocop/` | `builder.py`, `ontology.py`, `grounding.py`, `retriever.py`, `review.py` |
 | **Chỉ mục & Chunking** | `ai_core/retrieval/ocop/` | `index_pipeline.py`, `structure_chunker.py`, `lookup.py` |
-| **Tìm kiếm & Rerank** | `ai_core/retrieval/ocop/` | `search.py`, `fusion.py`, `models_config.py` |
-| **Điều phối & An toàn** | `ai_core/orchestration/ocop/` | `workflow.py`, `router.py`, `planner.py`, `tools.py`, `verification.py`, `llm.py` |
+| **Tìm kiếm & Rerank** | `ai_core/retrieval/ocop/` | `search.py`, `fusion.py`, `settings.py`, `graph_context.py`, `models_config.py` |
+| **Điều phối & An toàn** | `ai_core/orchestration/ocop/` | `workflow.py`, `router.py`, `language.py`, `catalog.py`, `planner.py`, `tools.py`, `context.py`, `answer.py`, `verification.py`, `sessions.py`, `privacy.py`, `llm.py` |
 | **Điều khiển Hệ thống** | `ai_core/system/` | `pipeline.py`, `smoke.py`, `runtime.py`, `checkpoints.py` |
 | **Dịch vụ API** | `backend/api/` | `ocop_main.py`, `ocop_routes.py`, `ocop_review_routes.py`, `ocop_debug.py` |
 | **Dòng lệnh & Tiện ích** | `tools/` | `cli.py`, `debug_cli.py`, `evaluate_manual_pdf.py`, `evaluate_ocop.py`, `package_ocop.py` |

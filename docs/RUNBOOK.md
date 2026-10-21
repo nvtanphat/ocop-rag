@@ -94,6 +94,13 @@ python run_e2e.py
 * **Chế độ kiểm tra nhanh (không dùng LLM)**: Đánh giá phân luồng và trích xuất bằng chứng thuần túy chỉ trong khoảng 5 giây.
 * **Tiêu chuẩn đạt**: 100% 12 câu hỏi đều vượt qua các điều kiện kiểm tra (`checks: passed`).
 
+### Đo trên bộ câu hỏi đóng băng
+```powershell
+python tools/evaluate_question_sets.py --root D:/AgentAI/OCOP-RAG/ocop-work-sample `
+    --questions data/evaluations/ocop/dev_questions.json --lock data/evaluations/ocop/dev_questions.lock.json --mode hybrid
+```
+Chi tiết chỉ số và quy tắc bộ giữ riêng: `docs/EVALUATION.md`. Sau khi đổi mã trong `ai_core/graph`, `ai_core/retrieval` hoặc trích xuất, chạy lại `python build_sample.py --reindex` (dựng graph, chỉ mục và danh mục thực thể) trước khi đo.
+
 ---
 
 ## 4. Quản lý Thẩm định Người dùng (Human Review CLI)
@@ -139,6 +146,14 @@ python tools/cli.py review decide --target-id "ocop:evidence:..." --content-hash
     $env:PYTHONIOENCODING="utf-8"
     ```
 
-### Sự cố 4: Lỗi khóa ghi tiến trình (`RuntimeError: Another OCOP build may be active`)
+### Sự cố 4: Dịch vụ trả HTTP 503 `{code, layer, error_type, message}`
+* **Ý nghĩa**: lỗi cấu hình hoặc hạ tầng (`layer: configuration` hoặc `retrieval`), ví dụ thiếu khóa LLM (`llm_unavailable`) hay Qdrant ngừng chạy. Nội dung ngoại lệ không được trả về để tránh lộ khóa.
+* **Khắc phục**: kiểm tra `.env` (khóa, URL), trạng thái container Qdrant (`docker ps`), rồi xem nhật ký phía máy chủ. Khi Qdrant ngừng, truy vấn công khai vẫn chạy ở chế độ sparse với `retrieval_fallback_reason: dense_unavailable:*`.
+
+### Sự cố 5: Cảnh báo `graph check policy changed; rebuild corpus`
+* **Nguyên nhân**: mã kiểm tra graph đã đổi sau lần dựng cuối; phiên bản chính sách kiểm gắn với mã nguồn.
+* **Khắc phục**: dựng lại graph và chỉ mục (`python tools/cli.py run --build-only` hoặc `build_sample.py --reindex` cho mẫu).
+
+### Sự cố 6: Lỗi khóa ghi tiến trình (`RuntimeError: Another OCOP build may be active`)
 * **Nguyên nhân**: Một tiến trình build trước đó bị ngắt đột ngột khiến tệp khóa độc quyền chưa được giải phóng.
 * **Khắc phục**: Kiểm tra xem còn tiến trình python nào đang build dở dang hay không. Nếu không, xóa tệp khóa tại `data/processed/ocop/.build.lock`.

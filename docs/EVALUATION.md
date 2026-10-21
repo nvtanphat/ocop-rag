@@ -1,70 +1,59 @@
-# Hướng dẫn Đánh giá Chất lượng Hệ thống (Evaluation Guide)
+# Đánh giá chất lượng
 
-Tài liệu hướng dẫn phương pháp đo lường, bộ dữ liệu benchmark, cách thực thi các công cụ đánh giá độc lập và nguyên tắc đọc hiểu kết quả trong OCOP GraphRAG.
+Tài liệu mô tả các bộ đo, cách chạy và cách đọc kết quả. Thước đo gốc luôn là ảnh PDF đã kiểm mã SHA-256; mọi đáp án mong đợi do người đọc ảnh ghi, không sinh từ pipeline.
 
----
+## 1. Ba loại bộ đo
 
-## 1. Bộ Dữ liệu Benchmark Đối soát Thủ công
+| Bộ | Vai trò | Vị trí | Được dùng khi sửa? |
+| :--- | :--- | :--- | :--- |
+| Bộ phát triển (`dev_questions.json`) | Chỉnh route, công cụ, context, truy xuất | `data/evaluations/ocop/dev_questions.json` (+ `.lock.json`) | Có |
+| Bộ giữ riêng (held-out) | Chứng minh không quá khớp | Ngoài repo; chỉ lưu mã băm | Không: chỉ xem số tổng |
+| Benchmark thủ công 126 câu | Độ phủ truy xuất toàn corpus | `data/evaluations/ocop/manual_pdf_benchmark.jsonl` | Có (cần corpus đầy đủ) |
 
-* **Tệp dữ liệu benchmark**: `data/evaluations/ocop/manual_pdf_benchmark.jsonl`.
-* **Quy mô**: 126 câu hỏi đối soát trực tiếp từ 12 văn bản PDF gốc, trong đó:
-  * 115 câu hỏi có căn cứ và trang đối chiếu cụ thể.
-  * 11 câu hỏi thiếu căn cứ trong corpus hoặc ngoài phạm vi (dùng để kiểm thử khả năng từ chối trả lời).
-* **Danh mục nguồn đối chiếu**: `data/evaluations/ocop/manual_pdf_sources.json` lưu trữ danh sách tài liệu, số trang và mã băm SHA-256 đối chiếu nguồn.
-* **Nguyên tắc**: Dữ liệu do con người đọc và đối chiếu trực tiếp từ PDF; tuyệt đối không sinh nhãn vàng tự động từ mô hình hay pipeline.
+Bộ giữ riêng gồm câu hỏi soạn từ các trang **không** nằm trong mẫu dùng để phát triển, đáp án và trang được ghi trước khi chạy, tệp bị khóa bằng SHA-256. Quy tắc: không mở kết quả từng câu trong lúc sửa; mỗi vòng chỉ so số tổng. Nếu phải sửa một câu hỏi vì lỗi soạn thảo, sửa trước khi chạy, ghi lý do trong trường `correction` và khóa lại; không sửa đáp án để khớp kết quả hệ thống.
 
----
+## 2. Định dạng câu hỏi
 
-## 2. Các Lệnh Thực thi Đánh giá
-
-### Đánh giá Độ phủ Truy xuất trên PDF Benchmark (`evaluate_manual_pdf.py`)
-Yêu cầu corpus đã được build trước (`python tools/cli.py run --build-only`).
-
-```powershell
-# Chạy đánh giá trên tập dev (phát triển)
-python tools/evaluate_manual_pdf.py --split dev
-
-# Chạy đánh giá trên tập test (kiểm thử)
-python tools/evaluate_manual_pdf.py --split test
-
-# Chạy toàn bộ 126 câu và xuất báo cáo kết quả ra tệp JSON
-python tools/evaluate_manual_pdf.py --split all --out reports/evaluation/manual_pdf_report.json
+```json
+{"id": 19, "query": "...", "source_id": "<registry source_id>", "pages": [3],
+ "expected": "đáp án người viết", "evidence_phrases": ["cụm phải có trong prompt"],
+ "expected_intents": ["exact_lookup"], "required_any_tools": ["lookup_legal_unit"],
+ "forbid_tools": [], "forbid_intents": [], "turns": ["lượt 1", "lượt 2"], "trap": "injection"}
 ```
 
-### Đánh giá Tác tử & Mô phỏng Lỗi Tiêm nhiễm (`evaluate_ocop.py`)
-```powershell
-# Chạy đánh giá tác tử mặc định
-python tools/evaluate_ocop.py
+`required_any_tools` rỗng nghĩa là câu hỏi không cần công cụ (làm rõ, ngoài phạm vi). `conversation` hoặc `turns` mô tả hội thoại nhiều lượt; chỉ lượt cuối được chấm.
 
-# Chạy đánh giá kèm kịch bản lỗi tiêm nhiễm (fault injection)
-python tools/evaluate_ocop.py --with-faults
+## 3. Chạy
+
+```powershell
+# Lõi: không LLM; ghi lại đúng prompt SOURCE sẽ gửi cho LLM
+python tools/evaluate_question_sets.py --root <thư mục corpus> --questions data/evaluations/ocop/dev_questions.json `
+    --lock data/evaluations/ocop/dev_questions.lock.json --mode hybrid --out reports/dev-hybrid.json
+
+# Bộ giữ riêng: chỉ in tổng
+python tools/evaluate_question_sets.py --root <corpus giữ riêng> --questions <holdout.json> --lock <lock.json> --mode hybrid --sealed
 ```
 
-### Cưỡng chế Cổng Chất lượng Phát hành (Release Gate)
-```powershell
-# Kiểm tra điều kiện tiên quyết trước khi phát hành phiên bản
-python tools/cli.py run --build-only --require-eval-gate
-```
-Khi cờ này được kích hoạt, hệ thống sẽ gọi `validate_latest` (`ai_core/evaluation/ocop/release.py`) để đối soát kết quả đánh giá mới nhất với mã băm dữ liệu gốc. Nếu không đạt yêu cầu, tiến trình sẽ báo lỗi và chặn phát hành.
+Chế độ: `sparse` (BM25), `hybrid` (BM25 + vector, RRF), `rerank` (hybrid + cross-encoder). `--llm real` dùng LLM cấu hình trong `.env`.
 
----
+Các công cụ cũ vẫn dùng được cho phần còn lại: `tools/evaluate_manual_pdf.py` (benchmark 126 câu, cần corpus đầy đủ), `tools/evaluate_ocop.py` (tác tử và tiêm lỗi), `python tools/cli.py run --build-only --require-eval-gate` (cổng phát hành).
 
-## 3. Cách Đọc và Diễn giải Kết quả
+## 4. Chỉ số
 
-### 1. Phân biệt Retrieval Coverage và Answer Correctness
-* **Source-hit**: Tỷ lệ câu hỏi mà kết quả truy xuất tìm thấy đúng văn bản quy phạm gốc chứa câu trả lời.
-* **Page-hit**: Tỷ lệ câu hỏi mà kết quả truy xuất tìm thấy đúng chính xác trang PDF chứa câu trả lời.
-* **Lưu ý cốt lõi**: Đạt Source-hit hay Page-hit chỉ thể hiện tầng tìm kiếm (Retrieval) đưa được đoạn văn bản liên quan vào ngữ cảnh. Đây **không phải** là thước đo về độ chính xác của câu trả lời (`Answer Accuracy`) hay độ trung thực (`Faithfulness`). Để khẳng định câu trả lời đúng, hệ thống yêu cầu vượt qua cổng kiểm tra trích dẫn fail-closed (`verification.py`).
+| Chỉ số | Ý nghĩa |
+| :--- | :--- |
+| `intent_ok` | Ý định nằm trong tập mong đợi và không thuộc tập cấm |
+| `tool_ok` | Có ít nhất một công cụ mong đợi (hoặc không công cụ nào khi không cần) và không có công cụ cấm |
+| `page_in_prompt` | Trang đích nằm trong khối SOURCE gửi cho LLM (đo trên prompt thật, không phải trên đầu ra công cụ) |
+| `content_ok` | Trang đích **và** mọi cụm `evidence_phrases` nằm trong prompt: đủ nội dung để trả lời |
+| `top1_page_ok` | Khối SOURCE đầu tiên thuộc trang đích |
+| `trap_safe` | Câu bẫy (tiêm lệnh, khóa API) không rò rỉ và không chạy công cụ ngoài registry |
+| `median_s`, `max_s` | Thời gian mỗi câu; lượt đầu gồm cả nạp mô hình nên chỉ so sánh lượt sau |
 
-### 2. Số liệu Đo lường Baseline Đã Ghi nhận
-Kết quả đo lường trên bộ benchmark 126 câu hỏi ở chế độ tìm kiếm sparse (BM25, không LLM):
+`page_in_prompt` chỉ chứng minh tầng truy xuất và dựng context đưa được trang đúng vào prompt. Nó **không** chứng minh câu trả lời đúng: điều đó do cổng claim và cổng điểm/sao quyết định (ADR-002, ADR-005).
 
-| Tiêu chí đo lường | Giá trị đo được | Ghi chú |
-| :--- | :---: | :--- |
-| **Tổng số tài liệu / trang PDF** | 12 văn bản / 583 trang | Khóa băm SHA-256 |
-| **Số câu hỏi thực thi** | 126 / 126 | Không có câu hỏi nào bị crash |
-| **Source-hit (trên 115 câu có đáp án)** | 53,91% | Chế độ sparse BM25 thuần |
-| **Page-hit (trên 115 câu có đáp án)** | 38,26% | Chế độ sparse BM25 thuần |
-| **Answer Accuracy / Faithfulness** | Đo bằng Cổng Trích Dẫn | Yêu cầu 100% câu trả lời có viện dẫn hợp lệ |
+## 5. Lưu ý đọc kết quả
 
-* **Khuyến nghị nâng cấp**: Để nâng cao tỷ lệ hit trên văn bản ngữ nghĩa phức tạp, kích hoạt cờ tìm kiếm `--dense` (kết hợp Qdrant) và `--rerank` (kết hợp mô hình `bge-reranker-v2-m3`).
+* Corpus mẫu và corpus giữ riêng đều chưa có bằng chứng `verified`; vì cổng claim yêu cầu nguồn đã duyệt nên số câu LLM được công bố là 0 cho tới khi người duyệt Markdown. Đây là thiết kế, không phải lỗi.
+* Câu hỏi về chắc chắn một hạng sao dựa trên OCR được kỳ vọng bị chặn; trang đích không vào prompt là kết quả an toàn, không phải lỗi truy xuất.
+* Sau mỗi thay đổi mã trong `ai_core/graph`, `ai_core/retrieval` hoặc mô-đun trích xuất, dựng lại graph và chỉ mục (`build_sample.py --reindex`): phiên bản kiểm tra graph gắn với mã nguồn.

@@ -45,8 +45,53 @@ Hệ thống hỗ trợ nạp cấu hình tự động từ tệp `.env` tại t
 | :--- | :--- |
 | `configs/ocop_sources.json` | Danh mục 12 tài liệu văn bản quy phạm pháp luật và quyết định OCOP được phép nạp vào hệ thống. Quy định rõ mã `source_id`, đường dẫn `path`, số hiệu văn bản `document_number`, phạm vi địa lý `jurisdiction`, và loại văn bản `source_kind`. |
 | `configs/ocop_sources.lock.json` | Khóa băm SHA-256 bất biến của từng tệp PDF và mã băm tổng hợp (`aggregate_sha256`). Mọi sự thay đổi về nội dung PDF sẽ bị từ chối khi nạp nếu không được phê duyệt lại bằng lệnh `python tools/cli.py debug lock-ocop`. |
-| `configs/ocop_models.yaml` | Khai báo các mô hình chính thức, ngân sách token và chính sách an toàn. |
+| `configs/ocop_models.yaml` | Khai báo các mô hình chính thức, phiên bản thư viện tối thiểu, ngân sách token và chính sách an toàn. |
 | `configs/ocop_authorities.json` | Danh mục chuẩn hóa các cơ quan có thẩm quyền ban hành và đánh giá phân hạng OCOP (UBND tỉnh, UBND huyện, Hội đồng OCOP...). |
+| `configs/ocop_language.yaml` | Từ vựng tiếng Việt cho router/planner (mục 2.1). Có schema; test kiểm schema. |
+| `configs/ocop_retrieval.yaml` | Tham số truy xuất, rerank, ngân sách context (mục 2.2). Có schema pydantic với giá trị mặc định. |
+| `configs/ocop_privacy.yaml` | Mẫu che định danh trước khi lưu phiên/checkpoint (mục 2.3). |
+
+### 2.1. `ocop_language.yaml`
+
+Mọi danh sách từ khóa của router và planner nằm ở đây, khớp theo cụm từ nguyên vẹn và không phân biệt dấu (với câu có dấu thì đoạn đã gõ dấu phải bằng cụm cấu hình). Thêm cue = sửa tệp, không sửa mã.
+
+| Khóa | Ý nghĩa |
+| :--- | :--- |
+| `stopwords`, `instruction_words` | Từ chức năng/mệnh lệnh: không tính là nội dung của câu hỏi |
+| `document_types`, `document_number_markers` | Từ mở đầu tham chiếu văn bản ("Quyết định", "Luật") và chữ cái cuối số hiệu ("QĐ", "QH") để suy ra loại |
+| `structure_nouns`, `star_noun`, `star_levels`, `certified_star_levels` | Danh từ cấu trúc (Điều, Mẫu, Phiếu, Trang, Tiêu chí) và thang hạng sao của khung đánh giá |
+| `localities`, `locality_markers`, `locality_marker_blockers`, `nationwide_labels` | Tên đơn vị hành chính cấp tỉnh, tiền tố địa danh ("phường", "xã"), chỗ không được coi là địa danh ("cấp xã", "hợp tác xã"), nhãn "toàn quốc" |
+| `entity_terminators`, `non_entity_phrases`, `product_markers` | Cắt tên sản phẩm khỏi cụm nghi vấn; từ không được là tên sản phẩm |
+| `followup` | Từ mở đầu hội thoại ("còn", "thế") và đại từ ("nó", "cái đó") |
+| `cues` | Cue theo ý định: thẩm quyền, chủ thể sản xuất, công nhận, thủ tục, tiêu chí, so sánh theo thời gian, an toàn thực phẩm, hồ sơ riêng tư, chấm điểm riêng tư, ngoài phạm vi rõ ràng, ... |
+| `messages` | Thông điệp cho tuyến làm rõ và ngoài phạm vi |
+
+Thực thể của corpus (số hiệu văn bản, sản phẩm, chủ thể, cơ quan, địa danh trong corpus, phiếu, mẫu) **không** nằm ở đây: chúng đến từ danh mục `data/processed/ocop/index/entity_catalog.json` sinh lúc dựng chỉ mục.
+
+### 2.2. `ocop_retrieval.yaml`
+
+| Khóa | Mặc định | Lý do |
+| :--- | :---: | :--- |
+| `context.prompt_token_budget` | 5200 | Cửa sổ trả lời 8192 token trừ phần dành cho đầu ra và biên an toàn của ước lượng token bảo thủ |
+| `context.output_reserve_tokens` | 1024 | Bằng `max_tokens` của lượt sinh |
+| `context.excerpt_max_chars` | 1500 | Đủ cho một khoản điều dài nhưng chừa chỗ cho 4–6 khối SOURCE |
+| `context.table_excerpt_max_chars` | 5000 | Dòng bảng ngắn; giữ nguyên bảng khớp để không mất nhãn cột |
+| `context.parent_chain_max_tokens` | 40 | Chuỗi cha chỉ để định vị; đo thấy mức này không làm chunk phình (trước đây +2500 ký tự) |
+| `context.parent_label_max_chars` | 90 | Nhãn một khoản có thể dài hàng trăm ký tự |
+| `context.min_term_coverage` | 0.25 | Dưới mức này gần như không có ý nào của câu hỏi trong SOURCE nên không sinh; thấp để không chặn câu hỏi dùng từ khác văn bản |
+| `retrieval.top_k` | 8 | Số khối đưa vào ghép |
+| `retrieval.candidate_pool_min` | 40 | Ứng viên của mỗi nhánh trước khi hợp nhất |
+| `retrieval.rrf_k` | 60 | Giá trị chuẩn của RRF (Cormack và cộng sự) |
+| `retrieval.rrf_weight_sparse/dense` | 1.0 / 1.0 | Chưa đo được lợi ích khi lệch trọng số trên bộ đo; để đối xứng |
+| `retrieval.rerank_candidates` | 8 | Mỗi cặp 512 token mất ~1 giây trên 6 nhân CPU; 8 cặp giữ dưới 15 giây/câu |
+| `retrieval.rerank_batch_size` | 4 | Giảm bộ nhớ đệm đỉnh trên máy 16 GB |
+| `retrieval.rerank_threads` | 6 | Số nhân vật lý của máy chuẩn |
+| `retrieval.rerank_cache_entries` | 512 | Cùng câu hỏi lặp lại không tốn thêm |
+| `retrieval.query_max_chars` | 1500 | Chặn câu hỏi bất thường trước khi đếm token |
+
+### 2.3. `ocop_privacy.yaml`
+
+Danh sách `redactions` (`name`, `pattern`, `replacement`) áp dụng cho câu hỏi trước khi lưu vào phiên hoặc checkpoint: gán tenant/dossier/principal, mã dạng `ABC-001`, email, số điện thoại, token. Mẫu `private_handle` cũng được router dùng để nhận diện yêu cầu mở hồ sơ riêng.
 
 ---
 
@@ -62,12 +107,13 @@ embedding:
   revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
   dimension: 768
   model_max_tokens: 2048
+  min_transformers_version: "4.57.0"
 
 reranker:
   provider: sentence_transformers
   model_id: BAAI/bge-reranker-v2-m3
   revision: 953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e
-  pair_token_budget: 1024
+  pair_token_budget: 512
 
 ocr:
   provider: easyocr_craft_vietocr_vgg_transformer_local_only
@@ -77,7 +123,7 @@ ocr:
 * **Ngân sách Token (Token Budgets)**:
   * Chunk tiêu chuẩn: `DEFAULT_TARGET_CHUNK_TOKENS = 512`
   * Chiều dài tối đa mô hình nhúng: `DEFAULT_MODEL_MAX_TOKENS = 2048`
-  * Ngân sách cặp văn bản khi Rerank: `DEFAULT_PAIR_TOKEN_BUDGET = 1024`
+  * Ngân sách cặp văn bản khi Rerank: cấu hình `reranker.pair_token_budget` (mặc định mã nguồn 1024; cấu hình dự án 512 vì chi phí CPU tỉ lệ với độ dài cặp)
 
 ---
 

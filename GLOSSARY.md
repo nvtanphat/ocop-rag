@@ -36,3 +36,13 @@ Tài liệu định nghĩa các khái niệm cốt lõi trong hệ thống OCOP 
 
 * **`Review Ledger`**: Nhật ký bất biến lưu trữ quyết định duyệt của con người tại `data/review/ocop_review_decisions.jsonl`. Mọi thay đổi đều được ghi nối tiếp kèm dấu thời gian và người duyệt; không sửa đè lịch sử.
 * **`Fail-Closed Citation Gate`**: Cổng chặn an toàn trong tầng sinh câu trả lời: câu trả lời bắt buộc phải có trích dẫn marker `[S#]` trỏ tới `EvidenceUnit` hợp lệ với đúng mã băm `source_sha256` và tọa độ hình học. Mọi câu trả lời thiếu trích dẫn hoặc viện dẫn sai đều bị từ chối công bố.
+
+---
+
+### 4. Truy xuất và trả lời
+
+* **Danh mục thực thể (`entity_catalog.json`)**: Danh sách văn bản, địa danh, sản phẩm, nhóm sản phẩm, chủ thể, cơ quan, phiếu và mẫu do bước dựng chỉ mục sinh từ registry và graph đã kiểm; router chỉ nhận diện thực thể có trong danh mục (ADR-007).
+* **Chuỗi cha (`parent_chain`)**: Nhãn tổ tiên trực tiếp của đoạn (ví dụ Điều → khoản) đặt trước chunk khi đánh chỉ mục, ngắn và đã khử trùng; tách khỏi `raw_text` dùng để hiển thị (ADR-006).
+* **Năng lực chính / phụ**: Công cụ chính trả lời câu hỏi; công cụ phụ chỉ làm giàu và nếu thiếu dữ liệu thì chỉ được ghi chú, không chặn câu trả lời.
+* **Claim**: Một ý trả lời ngắn kèm mã nguồn `[S#]`; đơn vị được kiểm tra và công bố độc lập (ADR-009).
+* **Bộ giữ riêng (held-out)**: Bộ câu hỏi soạn từ trang ngoài mẫu phát triển, khóa bằng mã băm, chỉ xem số tổng (docs/EVALUATION.md).
