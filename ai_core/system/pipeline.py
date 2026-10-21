@@ -223,6 +223,7 @@ class OcopSystemPipeline:
                     semantic_match = _semantic_complete(knowledge_semantics, options)
                     from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
                     reuse_knowledge = (reuse_pages and knowledge_config.get("complete")
+                        and knowledge_config.get("ocr_dataset_digest") == dataset_manifest["dataset_digest"]
                         and knowledge_config.get("pipeline_version") == KNOWLEDGE_VERSION
                         and all((self.data / "knowledge" / name).is_file() for name in
                                 ("business_entities.jsonl", "business_relations.jsonl", "business_rules.jsonl"))

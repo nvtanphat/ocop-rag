@@ -132,6 +132,17 @@ def test_changed_dataset_digest_forces_extraction_again(tmp_path, monkeypatch):
     assert calls.count("evidence") == 2
 
 
+def test_knowledge_cannot_reuse_a_different_review_digest_even_if_pages_match(tmp_path, monkeypatch):
+    system,calls=fixture_pipeline(tmp_path,monkeypatch)
+    system.ensure()
+    file=system.data/'knowledge/manifest.json'
+    manifest=json.loads(file.read_text())
+    manifest['ocr_dataset_digest']='stale-digest'
+    write_json(file,manifest)
+    system.ensure()
+    assert calls.count('evidence')==2
+
+
 def test_failed_rebuild_preserves_previous_corpus(tmp_path, monkeypatch):
     system, _ = fixture_pipeline(tmp_path, monkeypatch)
     system.ensure()
