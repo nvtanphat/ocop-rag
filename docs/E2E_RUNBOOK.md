@@ -60,3 +60,26 @@ Tập có 126 câu hỏi và đáp án được đối chiếu trực tiếp t�
 ## 6. Trạng thái kiểm chứng
 
 Các số liệu retrieval baseline được ghi nhận trong [đánh giá](EVALUATION.md). Kết quả OCR mới cần được đo bằng benchmark có nhãn ở [hướng dẫn OCR](PDF_EXTRACTION.md); pytest hoặc số lượng text trích xuất không chứng minh OCR chính xác.
+
+## 7. Vận hành trên tập mẫu (Sample Corpus) & Chế độ Debug API
+
+Theo thiết kế an toàn sản xuất (AGENTS.md, SYSTEM.md), API công khai từ chối phục vụ tập dữ liệu có trạng thái `partial_debug_not_production` (HTTP 409) nhằm đảm bảo không rò rỉ dữ liệu chưa hoàn chỉnh lên môi trường chính thức.
+
+Khi làm việc hoặc kiểm thử trên tập mẫu rút gọn (như `D:/AgentAI/OCOP-RAG/ocop-work-sample`), sử dụng ứng dụng debug chuyên dụng `create_debug_app` với tham số tường minh `allow_partial_debug=True`:
+
+```python
+# Khởi tạo debug server từ Python/script
+from pathlib import Path
+from backend.api.ocop_debug import create_debug_app
+import uvicorn
+
+app = create_debug_app(Path("D:/AgentAI/OCOP-RAG/ocop-work-sample"), allow_partial_debug=True)
+uvicorn.run(app, host="127.0.0.1", port=8000)
+```
+
+Ví dụ truy vấn API debug qua `curl`:
+```bash
+curl -X POST http://127.0.0.1:8000/api/ocop/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "sản phẩm HANA do chủ thể nào sản xuất?", "retrieval_mode": "hybrid", "use_llm": false}'
+```
