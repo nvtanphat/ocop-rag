@@ -41,16 +41,20 @@ Tài liệu ghi nhận toàn bộ các hạng mục đã được xử lý theo 
 
 ### 2.3. BUG-ANS-01: Định tuyến câu hỏi thẩm quyền pháp lý
 - **Triệu chứng**: Các câu hỏi hỏi về thẩm quyền công nhận OCOP (ví dụ: *"Cơ quan nào có thẩm quyền công nhận sản phẩm OCOP 5 sao?"*, *"ai công nhận..."*, *"thẩm quyền..."*) bị phân loại sai vào `OCOP_OVERVIEW`, dẫn đến câu trả lời tổng quan thiếu trích dẫn điều khoản cụ thể.
-- **Đối chiếu văn bản gốc (PDF QĐ26/2026/QĐ-TTg, kiểm SHA-256)**:
-  - **Trang 3, Điều 3 (Thẩm quyền đánh giá, phân hạng và công nhận)**:
-    - *Sản phẩm 5 sao*: Do **Bộ Nông nghiệp và Phát triển nông thôn** tổ chức đánh giá và đề nghị **Thủ tướng Chính phủ** công nhận (hoặc Bộ NN&PTNT công nhận theo phân cấp).
-    - *Sản phẩm 3 và 4 sao*: Do **Ủy ban nhân dân cấp tỉnh / cấp huyện** tổ chức đánh giá, công nhận.
-  - **Trang 7–8, Điều 9–10**: Quy định cụ thể về trình tự, thủ tục đánh giá, hoàn thiện hồ sơ gửi về Hội đồng OCOP cấp Trung ương.
+- **Đối chiếu văn bản gốc (PDF QĐ26/2026/QĐ-TTg, kiểm SHA-256, xem ảnh trang)**:
+  - **Trang 3, Điều 4 khoản 1** (công tác đánh giá, phân hạng và công nhận gồm 2 cấp):
+    - *Điểm a*: **UBND cấp tỉnh** tổ chức đánh giá, phân hạng và quyết định công nhận, cấp giấy chứng nhận cho sản phẩm **3 sao, 4 sao**; sản phẩm 1–2 sao không ban hành quyết định công nhận.
+    - *Điểm b*: **Bộ Nông nghiệp và Môi trường** chủ trì, phối hợp với các bộ, ngành tổ chức đánh giá, phân hạng và **quyết định công nhận**, cấp giấy chứng nhận cho sản phẩm **5 sao**.
+  - **Trang 7–8, Điều 7** (trình tự đánh giá, phân hạng): Chủ tịch UBND cấp tỉnh quyết định công nhận 3–4 sao; Bộ trưởng Bộ Nông nghiệp và Môi trường quyết định công nhận 5 sao.
+  - *Đính chính*: bản trước của mục này ghi "Điều 3", "Bộ NN&PTNT", "đề nghị Thủ tướng công nhận", "UBND cấp huyện" và "Điều 9–10"; các chi tiết đó không có trong PDF.
 - **Khắc phục**:
-  - Bổ sung pattern nhận diện thẩm quyền (`thẩm quyền`, `ai công nhận`, `cơ quan nào công nhận`) vào router (`ai_core/orchestration/ocop/workflow.py`).
-  - Định tuyến câu hỏi thẩm quyền về ý định `Intent.EXACT_LOOKUP`.
-  - Phân bổ công cụ gồm `lookup_legal_unit` (tra cứu điều khoản pháp lý) và `search_regulations` (tìm kiếm quy chế).
-- **Kiểm chứng**: Bổ sung 4 test case biến thể thẩm quyền vào `tests/ocop/test_router_regressions.py`, toàn bộ 29 tests của file đều passed.
+  - Router (`ai_core/orchestration/ocop/router.py`, hằng `AUTHORITY_CUES`): câu hỏi thẩm quyền → `Intent.EXACT_LOOKUP`, gọi `lookup_legal_unit` và `search_regulations`.
+  - `lookup_legal_unit` (`tools.py`) với câu hỏi thẩm quyền không có số điều: tra graph bằng `authority_nodes`
+    (`ai_core/graph/ocop/lookup.py`), chỉ chọn Điều/Khoản/Điểm `passed` có tên cơ quan, có "công nhận" và đúng hạng sao
+    được hỏi. Trước đó BM25 xếp các đoạn chỉ chứa chữ "thẩm quyền" (QĐ26 p30, Thành Sen p4) lên đầu và bỏ sót điểm b.
+- **Kiểm chứng**: 4 biến thể câu hỏi trong `tests/ocop/test_router_regressions.py`; test `authority_nodes` trong
+  `tests/ocop/test_retrieval_graph_source.py`. Trên mẫu 22 trang, câu "Cơ quan nào có thẩm quyền công nhận sản phẩm
+  OCOP 5 sao?" có [S1] là QĐ26 p3 điểm b; 12 câu E2E không đổi.
 
 ### 2.4. BUG-IDX-01: Tách target chunk size và model max tokens cho Dense Indexing
 - **Triệu chứng**: Giá trị `512` bị viết cứng (hardcoded) ở pipeline index. Khi enrich ngữ cảnh đồ thị tri thức (`enrich_chunks`), kích thước văn bản chunk mở rộng lên ~650–850 tokens, khiến toàn bộ chunk bị gắn cờ `over_budget=True` dù mô hình `embeddinggemma-300m` hỗ trợ tới 2048 tokens.
