@@ -1,0 +1,19 @@
+# Masks applied to question text before it is stored in a session or a workflow checkpoint.
+# The question itself is still answered from the original text in memory; only persisted copies are masked.
+schema_version: 1
+redactions:
+  - name: identity_assignment      # tenant_id=..., dossier_id: ..., principal id = ...
+    pattern: '(?i)\b(?:tenant|dossier|principal|user)[ _-]?(?:id)?\s*[:=]\s*\S+'
+    replacement: '[đã che định danh]'
+  - name: private_handle           # record handles such as ABC-001
+    pattern: '\b[A-Z]{3,}[-_]\d{2,}\b'
+    replacement: '[mã riêng]'
+  - name: email
+    pattern: '[\w.+-]+@[\w-]+(?:\.[\w-]+)+'
+    replacement: '[email]'
+  - name: phone
+    pattern: '(?<![\w])(?:\+?84|0)(?:[\s.-]?\d){8,10}(?!\d)'
+    replacement: '[điện thoại]'
+  - name: api_token
+    pattern: '\b(?:sk|hf|ghp|xox[a-z])[-_][A-Za-z0-9_-]{16,}\b'
+    replacement: '[khóa]'

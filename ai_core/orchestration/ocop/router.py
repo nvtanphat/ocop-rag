@@ -17,6 +17,7 @@ from ai_core.orchestration.ocop.capabilities import CAPABILITY_TO_TOOLS, MAX_TOO
 from ai_core.orchestration.ocop.catalog import EntityCatalog, Match
 from ai_core.orchestration.ocop.contracts import Intent, Route
 from ai_core.orchestration.ocop.language import Language, fold, get_language, has_diacritics
+from ai_core.orchestration.ocop.privacy import get_privacy
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
 
 TOOLS = frozenset(TOOL_REGISTRY)
@@ -57,7 +58,7 @@ FOLLOWUP_SCOPE_KEYS = frozenset({
     'sheet_number', 'organization_name',
 })
 # Pattern for an identifier that looks like a private record handle (config-free: structural, not corpus data).
-PRIVATE_HANDLE = re.compile(r'\b[A-Z]{3,}[-_]\d{2,}\b')
+PRIVATE_HANDLE = get_privacy().regex('private_handle')
 
 
 def _nfc(text: str) -> str:

@@ -22,6 +22,7 @@ from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_re
 from ai_core.orchestration.ocop.llm import OllamaClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
 from ai_core.orchestration.ocop.catalog import load_catalog
+from ai_core.orchestration.ocop.privacy import redact
 
 
 class OcopState(TypedDict,total=False):
@@ -444,8 +445,8 @@ class OcopAgent:
     def _checkpoint_public_input(initial:OcopState)->OcopState:
         """Minimize plaintext checkpoint state; no credentials/auth payloads.
 
-        Query text itself is still saved by opt-in LangGraph checkpointing.
-        Deployment owners must choose a private protected checkpoint volume.
+        The question and the previous question are masked (configs/ocop_privacy.yaml) before they are persisted;
+        deployment owners must still choose a private protected checkpoint volume.
         """
         original=initial.get('session') or {}
         safe_session={k:original[k] for k in ('session_id','last_query','intent','capabilities')
@@ -462,7 +463,8 @@ class OcopAgent:
         if isinstance(provided.get('as_of_date'),str) and re.fullmatch(
             r'20\d{2}-\d{2}-\d{2}',provided['as_of_date']):
             safe_context['as_of_date']=provided['as_of_date']
-        return {**initial,'session':safe_session,'context':safe_context,'auth':None}
+        if isinstance(safe_session.get('last_query'),str):safe_session['last_query']=redact(safe_session['last_query'])
+        return {**initial,'query':redact(initial['query']),'session':safe_session,'context':safe_context,'auth':None}
 
     @traced("ocop.agent.ask")
     def ask(self,query:str,*,session:dict|None=None,context:dict|None=None,

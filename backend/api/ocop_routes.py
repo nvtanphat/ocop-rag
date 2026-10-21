@@ -8,9 +8,6 @@ from __future__ import annotations
 import json
 import os
 from functools import lru_cache
-from collections import OrderedDict
-from time import monotonic
-from threading import Lock
 from pathlib import Path
 from typing import Any, Literal
 
@@ -21,6 +18,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.orchestration.ocop.llm import make_answer_client
+from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
 
 ROOT = Path(os.environ.get('OCOP_ROOT',Path(__file__).resolve().parents[2])).resolve()
@@ -34,6 +32,13 @@ class AskRequest(BaseModel):
     session_id: str | None = Field(default=None, max_length=128)
     retrieval_mode: Literal["sparse", "dense", "hybrid"] = "sparse"
     use_llm: bool = False
+
+
+def service_unavailable(code: str, layer: str, exc: Exception) -> HTTPException:
+    """503 with a fixed schema {code, layer, error_type, message}; never echoes the exception text (may hold secrets)."""
+    return HTTPException(status_code=503, detail={
+        'code': code, 'layer': layer, 'error_type': type(exc).__name__,
+        'message': 'Dịch vụ OCOP tạm thời chưa sẵn sàng; kiểm tra cấu hình hoặc hạ tầng rồi thử lại.'})
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -221,37 +226,6 @@ def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = ""):
     return OcopAgent(ROOT, llm=make_answer_client() if with_llm else None, retrieval_mode=retrieval_mode)
 
 
-# Previous conversational topic/slots only; never stores authority or dossier content.
-_SESSION_TTL = 3600.0
-_SESSION_LIMIT = 512
-_sessions: OrderedDict[str, tuple[float, dict[str, Any]]] = OrderedDict()
-_sessions_lock = Lock()
-
-def _get_session(session_id: str | None) -> dict[str, Any]:
-    if not session_id:
-        return {}
-    with _sessions_lock:
-        item = _sessions.get(session_id)
-        if item is None or monotonic() - item[0] > _SESSION_TTL:
-            _sessions.pop(session_id, None)
-            return {}
-        _sessions.move_to_end(session_id)
-        return dict(item[1])
-
-def _save_session(session_id: str | None, query: str, response: Any) -> None:
-    if not session_id:
-        return
-    with _sessions_lock:
-        _sessions[session_id] = (monotonic(), {
-            "last_query": query,
-            "slots": dict(response.route.slots),
-            "intent": response.intent.value,
-            "capabilities": list(response.route.capabilities),
-        })
-        _sessions.move_to_end(session_id)
-        while len(_sessions) > _SESSION_LIMIT:
-            _sessions.popitem(last=False)
-
 @router.post("/query")
 async def ask(request: AskRequest):
     manifest = _json(DATA / "index" / "manifest.json")
@@ -267,10 +241,13 @@ async def ask(request: AskRequest):
             "Chạy python tools/cli.py run --build-only."
         ))
     # Public search only. No client-provided tenant_id or dossier privileges.
-    agent = _agent(request.use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
     try:
-        answer = await run_in_threadpool(agent.ask, request.query, session=_get_session(request.session_id))
-        _save_session(request.session_id, request.query, answer)
+        agent = _agent(request.use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
+    except (RuntimeError, ValueError, OSError) as exc:
+        raise service_unavailable('llm_unavailable' if request.use_llm else 'agent_unavailable', 'configuration', exc) from exc
+    try:
+        answer = await run_in_threadpool(agent.ask, request.query, session=default_store.get(request.session_id))
+        default_store.save(request.session_id, request.query, answer)
         return answer.model_dump(mode="json")
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
-        raise HTTPException(status_code=503, detail=f"Không thể truy vấn OCOP: {type(exc).__name__}") from exc
+        raise service_unavailable('query_failed', 'retrieval', exc) from exc
