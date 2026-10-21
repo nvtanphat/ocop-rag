@@ -8,6 +8,11 @@ from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
 from ai_core.domain.ocop_ids import content_sha256
+from ai_core.retrieval.ocop.models_config import (
+    DEFAULT_RERANKER_MODEL,
+    DEFAULT_RERANKER_REVISION,
+    get_pair_token_budget,
+)
 from ai_core.retrieval.ocop.index_pipeline import (
     ROOT, BM25Search, _load_embedding, _encode, _records_hash, terms,
     _fold_vietnamese,
@@ -166,11 +171,22 @@ def _scope_bigrams_from_tokens(tokens:tuple[str,...])->frozenset[tuple[str,str]]
                      if left not in _SCOPE_STOPWORDS and right not in _SCOPE_STOPWORDS)
 
 
-def _rerank(query:str,candidates:list[dict],model_id:str,revision:str|None=None):
+def _rerank(query:str,candidates:list[dict],model_id:str,revision:str|None=None,
+            pair_token_budget:int|None=None):
+    budget = pair_token_budget or get_pair_token_budget()
     reranker=_load_reranker(model_id,revision)
     pairs=[(query,item["text"]) for item in candidates]
+    tokenizer=getattr(reranker,'tokenizer',None)
+    if tokenizer is not None and callable(tokenizer):
+        for q,doc in pairs:
+            encoded=tokenizer(q,doc,add_special_tokens=True,truncation=False)
+            tokens=len(encoded['input_ids'])
+            if tokens>budget:
+                raise RuntimeError(f"Reranker pair input exceeds pair_token_budget ({tokens} > {budget}); silent truncation is forbidden")
     scores=reranker.predict(pairs,show_progress_bar=False)
-    for row,score in zip(candidates,scores,strict=True):row["reranker_score"]=float(score)
+    for row,score in zip(candidates,scores,strict=True):
+        row["reranker_score"]=float(score)
+        row["ranking_reason"]="local_reranker"
     candidates.sort(key=lambda r:-r["reranker_score"])
     return candidates
 
@@ -178,9 +194,10 @@ def _rerank(query:str,candidates:list[dict],model_id:str,revision:str|None=None)
 @traced("ocop.retrieval.search")
 def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
            source_id:str|None=None,include_needs_review:bool=True,rerank:bool=False,
-           reranker_model:str="BAAI/bge-reranker-v2-m3",
-           reranker_revision:str|None=None,expand_parent:bool=False,
+           reranker_model:str=DEFAULT_RERANKER_MODEL,
+           reranker_revision:str|None=DEFAULT_RERANKER_REVISION,expand_parent:bool=False,
            parent_max_chars:int=2400,rerank_candidates:int=40,
+           pair_token_budget:int|None=None,
            evidence_unit_ids:set[str]|None=None)->list[dict]:
     if mode not in ("sparse","hybrid","dense"):
         raise ValueError("mode must be sparse, dense or hybrid")
@@ -238,9 +255,21 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
         results[-1]['requested_retrieval_mode']=requested_mode
         if fallback_reason:results[-1]['retrieval_fallback_reason']=fallback_reason
     if rerank and results:
-        try:results=_rerank(query,results,reranker_model,reranker_revision)
-        except (OSError,RuntimeError,ImportError,ValueError,TypeError):
-            for row in results:row['ranking_reason']='local_reranker_unavailable; deterministic_'+mode+'_order'
+        try:
+            results=_rerank(query,results,reranker_model,reranker_revision,pair_token_budget=pair_token_budget)
+        except TypeError:
+            try:
+                results=_rerank(query,results,reranker_model,reranker_revision)
+            except Exception as exc:
+                err_msg=f"{type(exc).__name__}: {str(exc)}" if str(exc) else type(exc).__name__
+                for row in results:
+                    row['rerank_unavailable']=True
+                    row['ranking_reason']=f"rerank_unavailable: {err_msg}; deterministic_{mode}_order"
+        except Exception as exc:
+            err_msg=f"{type(exc).__name__}: {str(exc)}" if str(exc) else type(exc).__name__
+            for row in results:
+                row['rerank_unavailable']=True
+                row['ranking_reason']=f"rerank_unavailable: {err_msg}; deterministic_{mode}_order"
     for row in results:
         row.setdefault('ranking_reason','local_reranker' if 'reranker_score' in row else
                        'deterministic_'+mode+'_order; reranker_not_requested')
@@ -291,15 +320,17 @@ def main():
     ap.add_argument("--source-id")
     ap.add_argument("--verified-only",action="store_true")
     ap.add_argument("--rerank",action="store_true")
-    ap.add_argument("--reranker-model",default="BAAI/bge-reranker-v2-m3")
-    ap.add_argument("--reranker-revision",default=None)
+    ap.add_argument("--reranker-model",default=DEFAULT_RERANKER_MODEL)
+    ap.add_argument("--reranker-revision",default=DEFAULT_RERANKER_REVISION)
     ap.add_argument("--rerank-candidates",type=int,default=40)
+    ap.add_argument("--pair-token-budget",type=int,default=None)
     args=ap.parse_args();root=args.root.resolve()
     out=search(args.index if args.index.is_absolute() else root/args.index,args.query,
           mode=args.mode,top_k=args.top_k,source_id=args.source_id,
           include_needs_review=not args.verified_only,rerank=args.rerank,
           reranker_model=args.reranker_model,reranker_revision=args.reranker_revision,
           rerank_candidates=args.rerank_candidates,
+          pair_token_budget=args.pair_token_budget,
           expand_parent=args.expand_parent,parent_max_chars=args.parent_max_chars)
     print(json.dumps(out,ensure_ascii=False,indent=2))
 

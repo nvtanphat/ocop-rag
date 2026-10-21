@@ -104,3 +104,34 @@ def test_unpinned_reranker_does_not_enable_remote_code(tmp_path,monkeypatch):
     module._load_reranker.cache_clear()
     module._load_reranker('example/some-reranker',None)
     assert options.get('trust_remote_code') is False
+
+
+def test_reranker_reports_explicit_rerank_unavailable_when_model_load_fails(tmp_path, monkeypatch):
+    idx = _index(tmp_path / 'idx', [_row('alpha', 'tiêu chí đánh giá OCOP')])
+    module._load_reranker.cache_clear()
+    def fail_load(*args, **kwargs):
+        raise ValueError("Model unavailable offline")
+    monkeypatch.setattr(module, '_load_reranker', fail_load)
+    
+    hits = module.search(idx, 'tiêu chí', rerank=True)
+    assert len(hits) == 1
+    assert hits[0].get('rerank_unavailable') is True
+    assert 'rerank_unavailable' in hits[0]['ranking_reason']
+    assert 'Model unavailable offline' in hits[0]['ranking_reason']
+
+
+def test_reranker_forbids_silent_truncation_when_pair_budget_exceeded(monkeypatch):
+    class MockTokenizer:
+        def __call__(self, q, doc, **kwargs):
+            return {'input_ids': list(range(1500))}  # 1500 tokens > 1024 budget
+    class MockModel:
+        tokenizer = MockTokenizer()
+        def predict(self, pairs, **kwargs):
+            return [0.9] * len(pairs)
+            
+    module._load_reranker.cache_clear()
+    monkeypatch.setattr(module, '_load_reranker', lambda *a, **kw: MockModel())
+    
+    candidates = [{'chunk_id': 'c1', 'text': 'đoạn văn bản OCOP dài'}]
+    with pytest.raises(RuntimeError, match='pair_token_budget'):
+        module._rerank('câu hỏi', candidates, 'BAAI/bge-reranker-v2-m3', pair_token_budget=1024)

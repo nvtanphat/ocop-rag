@@ -13,7 +13,7 @@
 ## Nguyên tắc
 
 - Mặc định local: BM25, graph JSONL, agent xác định và chế độ no-LLM. Đây là đường được kiểm tra trên 12 PDF / 583 trang.
-- Ollama `qwen3.5:2b`, Qdrant `google/embeddinggemma-300m`, CrossEncoder `Alibaba-NLP/gte-multilingual-reranker-base`, MongoDB, Neo4j và LangGraph là tích hợp tùy chọn. Cấu hình có sẵn không đồng nghĩa dịch vụ/model đã được kiểm chứng hoạt động.
+- Ollama `qwen3.5:2b`, Qdrant `google/embeddinggemma-300m`, CrossEncoder `BAAI/bge-reranker-v2-m3` (revision `953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e`), MongoDB, Neo4j và LangGraph là tích hợp tùy chọn. Cấu hình có sẵn không đồng nghĩa dịch vụ/model đã được kiểm chứng hoạt động.
 - Router phân loại intent nghiệp vụ và lập kế hoạch tool. Các nhãn `PINPOINT`, `TEXT`, `GRAPH`, `HYBRID_GRAPH`, `AGENTIC` mô tả đường thực thi, không chứng minh tất cả backend chạy song song.
 - Không dùng OCR candidate để khẳng định số sao/hiệu lực; áp dụng quy tắc xác minh bằng chứng, source scope, source checksum và ranh giới hồ sơ riêng.
 - Cache, index và graph dùng fingerprint/phiên bản **nội bộ kỹ thuật** để xác minh tương thích. Không đặt nhãn phiên bản phát hành vào tên tài liệu, benchmark hoặc ZIP.
