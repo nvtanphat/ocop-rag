@@ -33,7 +33,10 @@ def question_terms(question: str) -> list[str]:
     """Distinct content words (folded) of the question, ignoring vocabulary stopwords."""
     # Document codes (qd148) and bare numbers are scope slots handled by the tools, not words to find in a passage.
     words = [w for w in get_language().content_words(question) if not re.fullmatch(r'[a-z]{0,3}\d+', w)]
-    return list(dict.fromkeys(words))
+    # "phiếu 1", "mẫu 02", "điều 5": a noun directly followed by its number is a reference the slots resolve; the
+    # passage that answers it need not repeat the noun (a criterion sheet's text rarely says "phiếu").
+    referenced = set(re.findall(r'([a-z]+)\s+\d{1,4}\b', fold(question)))
+    return list(dict.fromkeys(w for w in words if w not in referenced))
 
 
 def _segments(text: str, limit: int = 420) -> list[str]:

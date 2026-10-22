@@ -327,8 +327,12 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
                 # A claim may combine what several cited passages say: it is checked against their union.
                 cited = [next((r for r in selected if _cites(r, citations[n - 1])), None) for n in numbers if 0 < n <= len(citations)]
                 # The header the model was shown names the document (source id), so numbers in that id are grounded too.
+                # Its page number is grounded only for a claim that is about the page ("ở trang 4"), never for other numbers.
+                about_page = bool(re.search(r'\btrang\b', fold(text)))
                 union = chr(10).join([str((r or {}).get('text') or '') for r in cited] +
-                                     [str(citations[n - 1].get('source_id') or '') for n in numbers if 0 < n <= len(citations)])
+                                     [str(citations[n - 1].get('source_id') or '') +
+                                      (f" trang {citations[n - 1].get('pdf_page')}" if about_page and citations[n - 1].get('pdf_page') else '')
+                                      for n in numbers if 0 < n <= len(citations)])
                 ok, why = grounded_in_excerpt(text, union, min_term_coverage=get_settings().context.grounding_min_term_coverage,
                                               critical=bool(CRITICAL.search(text)), asked=question)
                 if not ok:
@@ -358,6 +362,13 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
     accepted.sort(key=lambda r: r['order'])
     diagnostics = {'layer': 'claim_verification', 'accepted': len(accepted), 'rejected': [
         {'claim': r['text'], 'reasons': r['reasons']} for r in rejected], 'missing_from_source': missing}
+    if not accepted and missing:
+        # Nothing the model said survived, but it named what the SOURCE does not answer: say that, do not dump excerpts.
+        return {"answer": "[Nguồn chưa trả lời: " + '; '.join(missing) + "]" +
+                          (f"\n[Đã loại {len(rejected)} ý chưa qua kiểm tra bằng chứng.]" if rejected else ''),
+                "status": "insufficient_evidence", "citations": citations, "evidence_fusion": fusion,
+                "claim_verification": {'status': 'not_verified', 'claims': [], 'supported': 0, 'unsupported': len(rejected)},
+                'generation_diagnostics': {**diagnostics, 'reasons': [x for r in rejected for x in r['reasons']] or ['only_missing_reported']}}
     if not accepted:
         reasons = list(dict.fromkeys(x for r in rejected for x in r['reasons'])) or ['no_claims']
         return {"answer": "Tầng xác minh chưa chấp nhận câu trả lời LLM (" + ', '.join(reasons) +

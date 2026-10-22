@@ -173,3 +173,31 @@ def test_empty_claims_without_missing_are_asked_once_more(tmp_path):
     out = assemble('Hạn nộp hồ sơ là khi nào?', [{'tool': 'search_regulations', 'output': {'results': [row]}}], llm=Flaky())
     assert len(calls) == 2 and 'LƯU Ý' in calls[1]
     assert out['status'] != 'citation_verification_failed'
+
+
+def _unreviewed(text, page=4):
+    return {'source_id': 'VN.X.2026', 'evidence_unit_id': 'u1', 'review_status': 'needs_review', 'table_backed': False,
+            'text': text, 'source_spans': [{'pdf_page': page}], 'chunk_id': 'c1', 'pdf_page': page}
+
+
+class _Fixed:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def chat_structured(self, system, user, **kw):
+        return self.payload
+
+
+def test_page_number_from_the_source_header_is_grounded():
+    out = assemble('Mẫu số 02 nằm ở trang nào?', [{'tool': 'search_regulations', 'output': {'results': [
+        _unreviewed('Báo cáo tự đánh giá về sản phẩm Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định.')]}}],
+        llm=_Fixed('{"claims":[{"text":"Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định ở trang 4.","sources":["S1"]}],"missing":[]}'))
+    assert out['status'] == 'generated_unverified_claims', out['generation_diagnostics']
+
+
+def test_missing_only_answer_names_the_gap_instead_of_dumping_excerpts():
+    out = assemble('Mẫu số 02 nằm ở trang nào?', [{'tool': 'search_regulations', 'output': {'results': [
+        _unreviewed('Báo cáo tự đánh giá về sản phẩm Mẫu số 02 Phụ lục III.')]}}],
+        llm=_Fixed('{"claims":[{"text":"Mẫu 02 nằm ở trang 99 của phụ lục.","sources":["S1"]}],"missing":["trang đặt mẫu số 02"]}'))
+    assert out['status'] == 'insufficient_evidence'
+    assert 'trang đặt mẫu số 02' in out['answer'] and '[S1]' not in out['answer'] and 'VN.X.2026' not in out['answer']
