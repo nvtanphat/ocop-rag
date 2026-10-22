@@ -49,6 +49,26 @@ class PromptCapture:
         raise ValueError('no llm route in capture mode')
 
 
+class RecordingClient:
+    """Wraps the real answer client and keeps every prompt it is sent, so ``--llm real`` is scored on the
+    SOURCE the model actually saw (same fields as PromptCapture) and not on the text it wrote back."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.prompts: list[str] = []
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def chat(self, system, user, **kwargs):
+        self.prompts.append(user)
+        return self._inner.chat(system, user, **kwargs)
+
+    def chat_structured(self, system, user, **kwargs):
+        self.prompts.append(user)
+        return self._inner.chat_structured(system, user, **kwargs)
+
+
 def prompt_pages(prompts: list[str]) -> set[int]:
     return {int(m.group(1)) for prompt in prompts for m in PAGE_LINE.finditer(prompt)}
 
@@ -96,7 +116,7 @@ def evaluate(root: Path, questions: list[dict], *, mode: str, llm: str) -> list[
 
 def _real_client():
     from ai_core.orchestration.ocop.llm import make_answer_client
-    return make_answer_client()
+    return RecordingClient(make_answer_client())
 
 
 def _score(q: dict, resp: dict, prompts: list[str]) -> dict:
