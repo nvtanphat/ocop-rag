@@ -79,7 +79,8 @@ CASES = [
          expect=dict(generated=True, slots={'document_code': '525'}, absent=['form_id', 'form_ids', 'article_id'],
                      sources_only=[QD525], cited_pages_any=[1, 3])),
     dict(id='Q12', group='C', scenario='follow-up after the switch', session=MEM, q='Còn điều khoản về hồ sơ thì sao?',
-         expect=dict(generated=True, slots={'document_code': '525'}, standalone_has=['525'], sources_only=[QD525])),
+         # QĐ525 has no clause about hồ sơ anywhere in its indexed text (checked on chunks.jsonl): the right answer is the gap
+         expect=dict(insufficient=True, slots={'document_code': '525'}, standalone_has=['525'], sources_only=[QD525])),
     dict(id='Q13', group='C', scenario='independent session: dangling reference', session=ISO, q='Hai mẫu này khác nhau ở đâu?',
          expect=dict(clarify=True, no_citations=True)),
     dict(id='Q14', group='D', scenario='missing evidence (locality not in sample)', session='demo-q14',

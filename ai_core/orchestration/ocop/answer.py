@@ -269,7 +269,7 @@ SYSTEM_PROMPT = (
     "Nếu OCR chưa verified phải nêu chưa xác minh. Tránh chỉ dẫn mang tính quyết định cấp sao chính thức. "
     "Với dòng bảng dạng 'Nhãn cột: giá trị', chỉ dùng đúng nhãn cột, không suy ra vai trò khác. "
     "Không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể; chỉ nêu điều nguồn ghi (ngày hiệu lực ghi trong văn bản là được). "
-    "Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
+    "Mỗi claim được hiển thị riêng nên phải tự đứng được: gọi tên đối tượng (số hiệu văn bản, điều, mẫu, sản phẩm) thay vì “hai quyết định này”, “văn bản đó”. Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
     "(hệ thống tự gắn nhãn chưa duyệt) và không dùng dấu ba chấm của đoạn bị cắt làm nội dung. "
     "Trả lời bằng JSON {\"claims\":[{\"text\":...,\"sources\":[\"S1\"]}],\"missing\":[...]}: mỗi claim là một ý ngắn "
     "liên quan trực tiếp câu hỏi, ưu tiên trích nguyên văn, kèm mã nguồn S# chứa ý đó; \"missing\" liệt kê phần câu hỏi "
