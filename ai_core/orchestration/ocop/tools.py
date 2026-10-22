@@ -134,6 +134,26 @@ class ToolRegistry:
                 matches.add(sid)
         return next(iter(matches)) if len(matches)==1 else None
 
+    def _search_with_parts(self,query:str,slots:dict,context:dict,auth)->dict:
+        """The whole question first, then each part of a compound question; part hits only add candidates."""
+        from ai_core.retrieval.ocop.decompose import sub_queries
+        whole=self.dispatch('search_regulations',query=query,slots=slots,context={**context,'_part':True},auth=auth)
+        seen={self._hit_key(row) for row in whole.get('results',[])}
+        extra=[]
+        for part in sub_queries(query):
+            found=self.dispatch('search_regulations',query=part,slots=slots,context={**context,'_part':True},auth=auth)
+            for row in found.get('results',[])[:4]:
+                if self._hit_key(row) not in seen:
+                    seen.add(self._hit_key(row));extra.append({**row,'query_part':part})
+        if not extra:return whole
+        merged={**whole,'results':[*whole.get('results',[]),*extra]}
+        if not whole.get('results'):merged.pop('status',None)  # part hits are real evidence even if the whole found none
+        return merged
+
+    @staticmethod
+    def _hit_key(row:dict):
+        return row.get('chunk_id') or (row.get('source_id'),row.get('evidence_unit_id'),str(row.get('text'))[:80])
+
     @traced("ocop.agent.tool_dispatch")
     def dispatch(self,name:str,*,query:str,slots:dict,context:dict|None=None,auth:AuthContext|None=None)->dict:
         context=context or {}
@@ -141,6 +161,8 @@ class ToolRegistry:
         if name not in TOOL_REGISTRY:raise ValueError('Unknown or unauthorized OCOP tool: '+name)
         if TOOL_REGISTRY[name].requires_auth and not isinstance(auth,AuthContext):
             raise PermissionError('This private OCOP tool requires trusted server authentication')
+        if name=="search_regulations" and not context.get('_part'):
+            return self._search_with_parts(query,slots,context,auth)
         if name=="search_regulations":
             mode=context.get("retrieval_mode","sparse")
             doc=slots.get("document_code")

@@ -75,6 +75,8 @@ followup:
 
 # Cue lists by question facet.
 cues:
+  # Words that join or contrast the parts of one question; each part is searched on its own as well.
+  part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc]
   in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
     nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
     điểm, mẫu, đăng ký, nộp hồ sơ]
