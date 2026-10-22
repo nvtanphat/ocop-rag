@@ -291,11 +291,18 @@ def _prose_rule_only(numbers, citations, selected, claim, catalog) -> bool:
     return not any(mentions.get(kind) for kind in ('product', 'organization', 'product_group'))
 
 
-def _judge_claims(claims, citations, selected, catalog=None):
+def _sentences(text):
+    from ai_core.orchestration.ocop.verification import _split_claims
+    return [s for s in _split_claims(text) if s.strip(' .')]
+
+
+def _judge_claims(claims, citations, selected, catalog=None, question=''):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers in claims:
-        marked = text.rstrip('. ') + ' ' + ''.join(f'[S{n}]' for n in numbers) + '.'
+        tags = ''.join(f'[S{n}]' for n in numbers)
+        # A claim may hold several sentences ("Có. Sản phẩm ..."); each one carries the claim's markers.
+        marked = ' '.join(s.rstrip('. ') + ' ' + tags + '.' for s in _sentences(text)) or text + ' ' + tags
         reasons = []
         markers = check_source_markers(marked, citations)
         if not numbers or markers['invalid_markers'] or markers['missing_citations']:
@@ -318,7 +325,7 @@ def _judge_claims(claims, citations, selected, catalog=None):
                 union = chr(10).join([str((r or {}).get('text') or '') for r in cited] +
                                      [str(citations[n - 1].get('source_id') or '') for n in numbers if 0 < n <= len(citations)])
                 ok, why = grounded_in_excerpt(text, union, min_term_coverage=get_settings().context.grounding_min_term_coverage,
-                                              critical=bool(CRITICAL.search(text)))
+                                              critical=bool(CRITICAL.search(text)), asked=question)
                 if not ok:
                     reasons.append(why)
             else:
@@ -329,10 +336,10 @@ def _judge_claims(claims, citations, selected, catalog=None):
     return accepted, rejected
 
 
-def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None):
+def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question=''):
     """Publish only claims that pass every gate; name what was dropped and what the SOURCE does not answer."""
     claims, missing = parsed
-    accepted, rejected = _judge_claims(claims, citations, selected, catalog)
+    accepted, rejected = _judge_claims(claims, citations, selected, catalog, question)
     diagnostics = {'layer': 'claim_verification', 'accepted': len(accepted), 'rejected': [
         {'claim': r['text'], 'reasons': r['reasons']} for r in rejected], 'missing_from_source': missing}
     if not accepted:
@@ -430,7 +437,7 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,
              else llm.chat(system,prompt,max_tokens=1024))
         parsed=_parse_claims(raw) if isinstance(raw,str) else None
         if parsed is not None:
-            return _publish_claims(parsed,citations,selected,contexts,fusion,catalog)
+            return _publish_claims(parsed,citations,selected,contexts,fusion,catalog,question)
         text=raw
         if not isinstance(text,str) or not text.strip():
             return {'answer':'Model không trả về văn bản hợp lệ. Chỉ cung cấp bản trích xuất nguồn:\n'+

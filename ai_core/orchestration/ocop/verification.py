@@ -141,16 +141,33 @@ def _numbers(text: str) -> set[str]:
     return {run.lstrip('0') or '0' for run in re.findall(r'\d+', text)}
 
 
-def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, critical: bool = False) -> tuple[bool, str]:
+_RANGE = re.compile(r'(?:từ|tu)\s+(\d+)\s*(?:[a-zà-ỹ]+\s+){0,2}?(?:đến|den|tới|toi|-)\s*(\d+)', re.I)
+
+
+def _range_numbers(text: str) -> set[str]:
+    """Integers lying inside a stated "từ A đến B" range (short ranges only): "từ 3 sao đến 5 sao" covers 4."""
+    covered: set[str] = set()
+    for m in _RANGE.finditer(text):
+        low, high = int(m.group(1)), int(m.group(2))
+        if low < high and high - low <= 20:
+            covered.update(str(n) for n in range(low, high + 1))
+    return covered
+
+
+def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, critical: bool = False,
+                        asked: str = '') -> tuple[bool, str]:
     """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
 
     Used only for sources that no human has reviewed: such a claim may be shown, labelled as unreviewed, when
-    (1) every number in it occurs in the excerpt, (2) negation/exemption wording agrees with the excerpt,
+    (1) every number in it occurs in the excerpt (or in the question, or inside a range the excerpt states),
+    (2) negation/exemption wording agrees with the excerpt,
     (3) enough of its content words occur in the excerpt (stricter for critical claims) and (4) its words are not
     merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
     """
     from ai_core.orchestration.ocop.language import get_language
-    if _numbers(prose) - _numbers(source):
+    # A number the user wrote in the question is a premise being restated, not a figure the model introduced; a number
+    # inside a range the source states is covered by it. Anything else must occur in the excerpt.
+    if _numbers(prose) - _numbers(source) - _numbers(asked) - _range_numbers(source):
         return False, 'grounding_numbers_missing'
     negation = lambda s: bool(re.search(r'\b(?:không|chưa|miễn)\b', s, re.I))  # noqa: E731
     if negation(prose) != negation(source) and re.search(r'\b(?:không|miễn)\b', prose, re.I):

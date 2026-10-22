@@ -130,3 +130,18 @@ def test_numbers_in_the_cited_document_identity_are_grounded():
     model = Model({'claims': [{'text': 'Quyết định 26/2026 có hiệu lực từ ngày 22 tháng 5 năm 2026', 'sources': ['S1']}], 'missing': []})
     out = assemble('QĐ26/2026 có hiệu lực từ ngày nào?', results(unit), llm=model)
     assert out['status'] == 'generated_unverified_claims'
+
+
+def test_grounding_accepts_restated_question_number_and_range_member_but_not_new_figures():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = 'Sản phẩm OCOP đạt từ 3 sao đến 5 sao trước ngày Quyết định có hiệu lực tiếp tục có giá trị đến hết thời hạn.'
+    claim = 'Sản phẩm OCOP đạt 4 sao trước ngày Quyết định có hiệu lực tiếp tục có giá trị đến hết thời hạn.'
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8)[0]  # 4 lies in the stated 3..5
+    assert grounded_in_excerpt(claim.replace('4 sao', '7 sao'), source, min_term_coverage=0.8)[1] == 'grounding_numbers_missing'
+    assert grounded_in_excerpt(claim.replace('4 sao', '7 sao'), source, min_term_coverage=0.8, asked='đạt 7 sao')[0]
+    assert grounded_in_excerpt(claim.replace('4 sao', '9 sao'), source, min_term_coverage=0.8, asked='đạt 7 sao')[1] == 'grounding_numbers_missing'
+
+
+def test_every_sentence_of_a_multi_sentence_claim_is_marked():
+    from ai_core.orchestration.ocop.answer import _sentences
+    assert _sentences('Có. Sản phẩm tiếp tục có giá trị.') == ['Có.', 'Sản phẩm tiếp tục có giá trị.']
