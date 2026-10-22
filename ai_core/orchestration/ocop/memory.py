@@ -98,6 +98,23 @@ def _noun_pattern(lang: Language, kind: str) -> str:
     return '|'.join(r'\s+'.join(re.escape(w) for w in fold(n).split()) for n in sorted(names, key=len, reverse=True))
 
 
+def _points_back(folded: str, noun: str) -> bool:
+    return bool(re.search(rf'\b{PLURAL}\s+(?:{noun})\s+{DEMONSTRATIVE}\b|\b(?:{noun})\s+{DEMONSTRATIVE}\s+khac', folded))
+
+
+def dangling_reference(question: str, memory: Any, updates: dict, lang: Language | None = None) -> str | None:
+    """Kind of thing (form, sheet, article, document) that a plural reference points back to when the conversation holds
+    fewer than two such things and the question names none itself ("Hai mẫu này khác nhau ở đâu?" in a new session)."""
+    lang = lang or get_language()
+    referents = sanitize(memory)['referents']
+    folded = fold(question)
+    for kind in ('form', 'sheet', 'article', 'document'):
+        noun = _noun_pattern(lang, kind)
+        if noun and not _values(updates, kind) and len(referents.get(kind, [])) < 2 and _points_back(folded, noun):
+            return kind
+    return None
+
+
 def plural_referents(question: str, memory: Any, updates: dict, lang: Language | None = None) -> dict:
     """Slots for "hai mẫu này" / "so sánh với mẫu số 01": the recently discussed things the question points at.
 
@@ -113,7 +130,7 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
             continue
         new = _values(updates, kind)
         # "Hai mẫu này khác nhau ở đâu?": a plural demonstrative over a kind with at least two discussed items
-        if not new and len(pool) >= 2 and re.search(rf'\b{PLURAL}\s+(?:{noun})\s+{DEMONSTRATIVE}\b|\b(?:{noun})\s+{DEMONSTRATIVE}\s+khac', folded):
+        if not new and len(pool) >= 2 and _points_back(folded, noun):
             return _as_slots(kind, pool[:2][::-1])
         # "So sánh với mẫu số 01": the new item against the most recent different one
         if new and len(new) == 1 and any(c in folded for c in COMPARE_CUES):

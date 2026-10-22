@@ -96,7 +96,7 @@ def _merge_continuations(entries):
 _SIBLING_SLOTS=3
 
 
-def _most_relevant(entries,terms,limit,fill_min=None):
+def _most_relevant(entries,terms,limit,fill_min=None,facets=()):
     """Keep `limit` blocks by greedy, rarity-weighted coverage of the question's terms (ties keep tool order).
 
     Tool order alone lets one structured tool fill the prompt with rows of the wrong page, and counting distinct
@@ -116,6 +116,14 @@ def _most_relevant(entries,terms,limit,fill_min=None):
     weight={t:math.log(1+len(entries)/df) for t in wanted if (df:=sum(t in f for f in found))}
     covered:set[str]=set()
     chosen:list[int]=[]
+    # An explicitly requested part (criterion code "1.6", "Mẫu số 02") is a requirement, not a hint: question terms drop such
+    # codes, so term coverage alone would let generic prose outvote the one row that holds the part. The best-ranked block
+    # of each such facet is kept first.
+    for facet in facets:
+        if facet.startswith('terms:'):continue
+        first=next((i for i,e in enumerate(entries) if covers(e[1],facet)),None)
+        if first is not None and first not in chosen and len(chosen)<limit:
+            chosen.append(first);covered|=found[first]
     while len(chosen)<limit:
         gain=lambda i:sum(weight[t] for t in found[i]-covered)  # noqa: E731
         best=max((i for i in range(len(entries)) if i not in chosen),key=lambda i:(gain(i),-i),default=None)
@@ -205,7 +213,7 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
     _stage('context.merged',entries)
     entries=_drop_repeats(entries)
     _stage('context.deduped',entries)
-    entries=_most_relevant(entries,terms,cfg.max_source_blocks,cfg.fill_min_blocks)
+    entries=_most_relevant(entries,terms,cfg.max_source_blocks,cfg.fill_min_blocks,query_facets(question))
     _stage('context.packed',entries)
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")

@@ -404,6 +404,10 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     updates = extract_slots(q, catalog=catalog, language=lang)
     # "Hai mẫu này khác nhau ở đâu?": things the conversation discussed, named by a plural reference or a comparison.
     carried = memory.plural_referents(q, prior.get('memory'), updates, lang) if has_prior else {}
+    if not carried and (dangling := memory.dangling_reference(q, prior.get('memory'), updates, lang)):
+        # "these two forms" with nothing earlier to point at: ask which, never guess from whatever the search returns
+        return Route(intent=Intent.CLARIFY, strategy='clarify', needs_clarification=True,
+                     missing_slots=['referent_' + dangling], reason_codes=['plural_reference_unresolved'])
     own_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page',
                                      'criterion_id', 'product_name', 'organization_name', 'region'})
     structural_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page', 'criterion_id'})

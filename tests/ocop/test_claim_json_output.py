@@ -224,3 +224,14 @@ def test_a_claim_joining_a_quote_with_a_statement_of_absence_keeps_its_grounded_
                                        'nguồn không hiển thị mục ghi chú riêng về bao bì xuất khẩu.', 'sources': ['S1']}], 'missing': []}))
     assert out['status'] in ('generated_unverified_claims', 'partial_claims_verified') and 'Yêu cầu: 100%' in out['answer']
     assert out['status'] != 'citation_verification_failed'
+
+
+def test_a_requested_criterion_code_keeps_its_row_when_question_terms_would_pick_other_prose():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+    prose = [((f'S{i}', 6, f'u{i}', f'c{i}'), {'raw_text': 'đánh giá lại hồ sơ yêu cầu đánh giá tiêu chí', 'text': 'đánh giá lại hồ sơ yêu cầu'},
+              {}, False) for i in range(8)]
+    row = ((('S9', 28, 'u9', 'c9')), {'raw_text': '1.6. Bảo vệ môi trường | 3', 'text': '1.6. Bảo vệ môi trường | 3',
+                                      'context': {'criterion_codes': ['1.6']}}, {}, True)
+    kept = _most_relevant(prose + [row], ['danh', 'gia', 'tieu', 'yeu', 'cau'], 3, None, ['1.6'])
+    assert row in kept
+    assert row not in _most_relevant(prose + [row], ['danh', 'gia', 'tieu', 'yeu', 'cau'], 3, None, [])  # without the facet it lost
