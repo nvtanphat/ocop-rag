@@ -54,14 +54,20 @@ Theo thiết kế an toàn sản xuất (AGENTS.md, ADR-001), dịch vụ API ch
 Để chạy thử nghiệm trên tập dữ liệu mẫu, người vận hành có hai phương thức:
 
 1. **Khởi tạo ứng dụng Debug riêng biệt (`backend/api/ocop_debug.py`)**:
-   Sử dụng hàm `create_debug_app(root, allow_partial_debug=True)` để khởi tạo FastAPI app chuyên biệt cho debug.
+   Cách nhanh (đặt `OCOP_ROOT`, nạp `.env`, mở app debug; `/api/ocop/query` dùng LLM thật theo `OCOP_ANSWER_LLM_PROVIDER`):
+   ```powershell
+   python tools/serve_sample.py --root D:/AgentAI/OCOP-RAG/ocop-work-sample --port 8001
+   ```
+   App phục vụ `/api/ocop/query` (phiên theo `session_id`, memory hội thoại), cùng các route chỉ-đọc `/health`, `/sources`, `/sources/{id}/pdf`, `/sources/{id}/pages/{n}/evidence.png` để mở citation; thân thiện với giao diện Vite (CORS cho `localhost:5173`, proxy `/api` sang cổng 8001). Khi khởi động nó nạp sẵn mô hình embedding ở nền nên request đầu không phải chờ ~40 giây. Qdrant (`localhost:6333`) cần chạy cho chế độ `hybrid`; tắt Qdrant thì truy vấn tự hạ xuống BM25 (chậm hơn).
+
+   Hoặc dùng hàm trực tiếp:
    ```python
    from pathlib import Path
    import uvicorn
    from backend.api.ocop_debug import create_debug_app
 
    app = create_debug_app(Path("D:/AgentAI/OCOP-RAG/ocop-work-sample"), allow_partial_debug=True)
-   uvicorn.run(app, host="127.0.0.1", port=8001)
+   uvicorn.run(app, host="127.0.0.1", port=8001)  # chỉ có /query nếu OCOP_ROOT không trỏ tới cùng thư mục
    ```
 
 2. **Khởi tạo Agent trực tiếp qua Python**:
