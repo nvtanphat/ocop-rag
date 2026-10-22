@@ -235,3 +235,20 @@ def test_a_requested_criterion_code_keeps_its_row_when_question_terms_would_pick
     kept = _most_relevant(prose + [row], ['danh', 'gia', 'tieu', 'yeu', 'cau'], 3, None, ['1.6'])
     assert row in kept
     assert row not in _most_relevant(prose + [row], ['danh', 'gia', 'tieu', 'yeu', 'cau'], 3, None, [])  # without the facet it lost
+
+
+def test_a_model_that_finds_nothing_and_names_no_gap_gets_a_plain_answer_not_a_raw_dump():
+    out = assemble('Điều khoản về hồ sơ?', results(row('Điều 1. Công nhận kết quả đánh giá.', status='needs_review')),
+                   llm=Model({'claims': [], 'missing': []}))
+    assert out['status'] == 'insufficient_evidence' and out['citations']
+    assert 'Điều 1. Công nhận' not in out['answer']  # no excerpt is presented as if it answered
+
+
+def test_model_failure_names_its_type_and_http_status_but_not_the_provider_message():
+    class Down:
+        def chat_structured(self, *a, **k):
+            raise RuntimeError('Configured OpenAI-compatible model unavailable (HTTP 524: account 123 quota)')
+    out = assemble('Hạt sen hạng nào?', results(row('Hạt sen được công nhận hạng ba sao.', status='needs_review')), llm=Down())
+    diag = out['generation_diagnostics']
+    assert diag['reasons'] == ['model_unavailable'] and diag['http_status'] == '524' and diag['error_type'] == 'RuntimeError'
+    assert 'quota' not in json.dumps(diag)

@@ -220,8 +220,10 @@ def judge(case: dict, status: int, d: dict, http: Http, units: dict[str, str], r
             continue
         cited_units = [cites[n - 1].get('evidence_unit_id') for n in claim.get('cited') or [] if 0 < n <= len(cites)]
         corpus = ' '.join(units.get(u, '') for u in cited_units)
+        header = ' '.join(c['source_id'].replace('.', ' ') for c in cites if c.get('evidence_unit_id') in cited_units)  # the model sees it in [S#]
+        corpus_words = words(corpus) | words(header) | {'tài', 'liệu', 'mang', 'mã', 'trang'}
         content = words(claim['claim'])
-        coverage = len(content & words(corpus)) / len(content) if content else 1.0
+        coverage = len(content & corpus_words) / len(content) if content else 1.0
         if corpus and coverage < 0.5:
             weak.append((round(coverage, 2), claim['claim'][:90]))
     if cv.get('claims') and units:

@@ -39,3 +39,13 @@ def test_per_document_lookup_reports_absent_document_instead_of_substituting(tmp
     out = Stub(tmp_path).dispatch('search_regulations', query='q', slots={'document_codes': ['148/2023', '26/2026']})
     assert [r['source_id'] for r in out['results']] == ['S26']
     assert out['unresolved_documents'] == ['148/2023'] and out.get('status') != 'document_not_found_or_ambiguous'
+
+
+def test_a_part_that_says_that_document_inherits_the_source_of_the_parts_before_it():
+    from ai_core.orchestration.ocop.tools import ToolRegistry
+    earlier = [{'source_id': 'VN.HAIPHONG.QD525.2026'}] * 3 + [{'source_id': 'VN.OCOP.QD26.2026'}]
+    assert ToolRegistry._anaphoric_source('văn bản đó do cơ quan nào ban hành', earlier) == 'VN.HAIPHONG.QD525.2026'
+    assert ToolRegistry._anaphoric_source('cơ quan nào ban hành quyết định', earlier) is None  # no pointer back
+    assert ToolRegistry._anaphoric_source('văn bản đó do cơ quan nào ban hành', []) is None
+    # no dominant source: do not guess one
+    assert ToolRegistry._anaphoric_source('quyết định này do ai ký', [{'source_id': 'A'}, {'source_id': 'B'}]) is None

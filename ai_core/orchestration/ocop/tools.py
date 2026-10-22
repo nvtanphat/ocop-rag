@@ -160,8 +160,11 @@ class ToolRegistry:
         whole=self.dispatch('search_regulations',query=query,slots=slots,context={**context,'_part':True},auth=auth)
         seen={self._hit_key(row) for row in whole.get('results',[])}
         extra=[]
+        earlier=[]  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
         for part in sub_queries(query):
-            found=self.search_part(part,slots,context,auth)
+            scope=self._anaphoric_source(part,earlier) if not slots.get('document_code') else None
+            found=self.search_part(part,slots,{**context,**({'_scope_source':scope} if scope else {})},auth)
+            earlier.extend(found.get('results',[])[:4])
             for row in found.get('results',[])[:4]:
                 if self._hit_key(row) not in seen:
                     seen.add(self._hit_key(row));extra.append({**row,'query_part':part})
@@ -191,6 +194,18 @@ class ToolRegistry:
                     "char_start":ch.get('char_start'),"char_end":ch.get('char_end'),
                     "ranking_reason":"memory_evidence","from_memory":True})
         return out
+
+    @staticmethod
+    def _anaphoric_source(part:str,earlier:list[dict])->str|None:
+        """Source a part like "văn bản đó do cơ quan nào ban hành" points back to: the one document that dominates the
+        rows of the parts before it. Without a clear single source the part is searched unscoped."""
+        from collections import Counter
+        from ai_core.orchestration.ocop import memory
+        from ai_core.orchestration.ocop.language import fold,get_language
+        noun=memory._noun_pattern(get_language(),'document')
+        if not earlier or not re.search(r'(?:'+noun+r')\s+'+memory.DEMONSTRATIVE+r'\b',fold(part)):return None
+        top=Counter(r['source_id'] for r in earlier if r.get('source_id')).most_common(1)
+        return top[0][0] if top and top[0][1]/len(earlier)>=0.6 else None
 
     def search_part(self,part:str,slots:dict,context:dict,auth)->dict:
         """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
@@ -340,7 +355,7 @@ class ToolRegistry:
             # may constrain the source set.
             if doc and not source_filter:
                 return {"results":[],"status":"document_not_found_or_ambiguous"}
-            return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter,
+            return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter or context.get('_scope_source'),
                                       rerank=bool(context.get("rerank",False)),with_continuations=True)}
         if name=="lookup_legal_unit":
             code=slots.get('document_code')

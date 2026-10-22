@@ -423,6 +423,13 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
                 "status": "insufficient_evidence", "citations": citations, "evidence_fusion": fusion,
                 "claim_verification": {'status': 'not_verified', 'claims': [], 'supported': 0, 'unsupported': len(rejected)},
                 'generation_diagnostics': {**diagnostics, 'reasons': [x for r in rejected for x in r['reasons']] or ['only_missing_reported']}}
+    if not accepted and not rejected:
+        # The model, asked twice, found nothing in the SOURCE that answers the question and named no gap: say so; raw excerpts
+        # would present text that no claim stands behind. The cited sources stay available to open.
+        return {"answer": "Các đoạn nguồn đã tìm không có nội dung trả lời trực tiếp câu hỏi này. Xem danh sách bằng chứng để đối chiếu.",
+                "status": "insufficient_evidence", "citations": citations, "evidence_fusion": fusion,
+                "claim_verification": {'status': 'not_verified', 'claims': [], 'supported': 0, 'unsupported': 0},
+                'generation_diagnostics': {**diagnostics, 'reasons': ['no_claims']}}
     if not accepted:
         reasons = list(dict.fromkeys(x for r in rejected for x in r['reasons'])) or ['no_claims']
         return {"answer": "Tầng xác minh chưa chấp nhận câu trả lời LLM (" + ', '.join(reasons) +
@@ -558,4 +565,4 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,
         message='Output LLM bị cắt; không công bố phần sinh chưa hoàn tất.' if isinstance(exc,ModelOutputTruncated) else 'LLM chưa sẵn sàng.'
         return {"answer":message+" Bằng chứng truy xuất:\n"+"\n".join(contexts),
                 "status":"model_unavailable_retrieval_only","citations":citations,"evidence_fusion":fusion,
-                'generation_diagnostics':{'layer':'generation','reasons':[reason]}}
+                'generation_diagnostics':{'layer':'generation','reasons':[reason],'error_type':type(exc).__name__,'http_status':(re.search(r'HTTP (\d{3})',str(exc)) or [None,None])[1]}}
