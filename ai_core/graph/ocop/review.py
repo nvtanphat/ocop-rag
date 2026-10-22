@@ -340,5 +340,7 @@ def _render_crop(root,item,index,sources,source_bytes):
 def rebuild_reviewed_graph(root):
     from ai_core.graph.ocop.builder import build_graph
     root=Path(root);base=root/'data/processed/ocop'
-    with _write_lock(root/'data/review/ocop_graph_projection'):
+    from ocop_contracts.locking import process_lock
+    # Same OS lock as a full corpus build and an index refresh: a review rebuild never interleaves with either.
+    with process_lock(base/'.system.lock',wait_timeout=900),_write_lock(root/'data/review/ocop_graph_projection'):
         return build_graph(base/'knowledge',base/'graph',review_decisions=ledger_path(root))

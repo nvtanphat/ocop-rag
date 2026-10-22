@@ -14,11 +14,21 @@ from pathlib import Path
 from ai_core.graph.ocop.integrity import graph_index_mismatch
 
 
+LOCK_WAIT_SECONDS = 900
+
+
 def _read(path: Path) -> dict:
     return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
 
 
 def refresh_index_after_graph_change(root: Path) -> dict:
+    """Serialised with corpus builds and review rebuilds; a waiting refresh finds the index already current."""
+    from ocop_contracts.locking import process_lock
+    with process_lock(Path(root) / 'data/processed/ocop/.system.lock', wait_timeout=LOCK_WAIT_SECONDS):
+        return _refresh(Path(root))
+
+
+def _refresh(root: Path) -> dict:
     from ai_core.retrieval.ocop.index_pipeline import build_index
     from ai_core.retrieval.ocop import search as search_module
     base = Path(root) / 'data/processed/ocop'

@@ -272,6 +272,26 @@ def test_review_changes_graph_then_index_is_refreshed_before_queries(corpus):
     assert refresh_index_after_graph_change(corpus)['status']=='current'
 
 
+def test_concurrent_refreshes_are_serialised_and_leave_one_coherent_index(corpus):
+    import threading
+    from ai_core.retrieval.ocop.index_pipeline import build_index
+    from ai_core.system.index_refresh import refresh_index_after_graph_change
+    base=corpus/'data/processed/ocop'
+    shutil.rmtree(base/'index')
+    build_index(knowledge=base/'knowledge',index_dir=base/'index',graph_dir=base/'graph',allow_partial=True)
+    decide(corpus,next(i['target_id'] for i in load_queue(corpus) if i['type']=='EvidenceUnit'))
+    outcomes,errors=[],[]
+    def run():
+        try:outcomes.append(refresh_index_after_graph_change(corpus)['status'])
+        except Exception as exc:errors.append(exc)
+    threads=[threading.Thread(target=run) for _ in range(3)]
+    [t.start() for t in threads];[t.join() for t in threads]
+    assert not errors and sorted(outcomes)==['current','current','refreshed']
+    graph=json.loads((base/'graph/manifest.json').read_text());index=json.loads((base/'index/manifest.json').read_text())
+    assert index['structural_graph_version']==graph['graph_version']
+    assert not (base/'index.previous').exists() and not (base/'index.refresh').exists() and not (base/'.promoting').exists()
+
+
 def test_failed_refresh_keeps_the_previous_index(corpus,monkeypatch):
     from ai_core.retrieval.ocop import index_pipeline
     from ai_core.retrieval.ocop.index_pipeline import build_index
