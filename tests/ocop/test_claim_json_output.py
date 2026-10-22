@@ -294,3 +294,19 @@ def test_consecutive_run_check_finds_a_run_at_a_later_occurrence_of_a_repeated_w
     source = 'Nguồn gốc sản phẩm Yêu cầu 100% sản phẩm trồng địa bàn tỉnh Hà Tĩnh đạt'
     claim = 'sản phẩm trồng địa bàn tỉnh Hà Tĩnh'  # the run "sản phẩm trồng địa bàn tỉnh" sits at the second "sản phẩm"
     assert grounded_in_excerpt(claim, source, min_term_coverage=0.8)[0]
+
+
+def test_a_gap_sharing_a_sentence_with_the_review_remark_is_kept():
+    from ai_core.orchestration.ocop.answer import _parse_claims
+    claims, missing = _parse_claims(json.dumps({'claims': [], 'missing': [
+        'SOURCE không nêu điều khoản về hồ sơ trong Quyết định 525; nội dung OCR chưa được xác minh.',
+        'Các đoạn OCR chưa được xác minh.', 'Không có mẫu số 02.']}))
+    assert missing == ['SOURCE không nêu điều khoản về hồ sơ trong Quyết định 525', 'Không có mẫu số 02']
+
+
+def test_all_claims_rejected_but_a_gap_named_gives_the_gap_not_a_raw_dump():
+    out = assemble('Điều khoản về hồ sơ?', results(row('Điều 1. Công nhận kết quả đánh giá.', status='needs_review')),
+                   llm=Model({'claims': [{'text': 'Quyết định ghi nhận đề nghị của Hội đồng thẩm định tại Tờ trình riêng.', 'sources': ['S1']}],
+                              'missing': ['SOURCE không nêu điều khoản về hồ sơ; nội dung OCR chưa được xác minh.']}))
+    assert out['status'] == 'insufficient_evidence' and 'không nêu điều khoản về hồ sơ' in out['answer']
+    assert 'Điều 1. Công nhận' not in out['answer']

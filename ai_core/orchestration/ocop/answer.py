@@ -309,8 +309,14 @@ def _parse_claims(raw):
         # A marker written inside the text counts too; ids outside the SOURCE list are kept so the checker rejects them.
         numbers += [int(m) for m in re.findall(r'\[S(\d+)\]', item['text'])]
         claims.append((re.sub(r'\s*\[S\d+\]', '', item['text']).strip(), list(dict.fromkeys(numbers))))
-    missing = [str(x) for x in data.get('missing') or [] if isinstance(x, str) and x.strip()
-               and not re.search(r'chưa\s+(?:được\s+)?(?:xác\s+minh|duyệt)', x, re.I)]  # review status is labelled by the system
+    # A gap may share one sentence with the review-status remark ("SOURCE không nêu điều khoản …; OCR chưa được xác minh"): only the
+    # remark is dropped (the system labels unreviewed sources itself), the gap is kept.
+    missing = []
+    for item in data.get('missing') or []:
+        if isinstance(item, str):
+            kept = [c.strip() for c in re.split(r';\s*|\.\s+', item) if c.strip() and not REVIEW_DISCLAIMER.search(c)]
+            if kept:
+                missing.append('; '.join(kept).rstrip('. '))
     return claims, missing
 
 
