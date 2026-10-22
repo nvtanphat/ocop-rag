@@ -119,6 +119,23 @@ def _real_client():
     return RecordingClient(make_answer_client())
 
 
+RAW_EXCERPT_STATUSES = {'citation_verification_failed', 'insufficient_context_for_generation', 'model_unavailable_retrieval_only',
+                        'retrieval_only'}
+
+
+def _answer_layer(resp: dict) -> dict:
+    """What the answer gate did with the model's text. ``--llm stub`` has no model text, so nothing is reported."""
+    cv = resp.get('claim_verification') or {}
+    status = cv.get('answer_status') or resp['status']  # debug corpora overwrite status with partial_debug_corpus
+    diag = resp.get('generation_diagnostics') or {}
+    rejected = diag.get('rejected') or []
+    return {'answer_status': status, 'raw_excerpt': status in RAW_EXCERPT_STATUSES,
+            'claims_published': len([c for c in cv.get('claims') or [] if c.get('status') == 'supported']),
+            'claims_rejected': len(rejected), 'reject_reasons': sorted({x for r in rejected for x in r.get('reasons', [])}
+                                                                       or set(diag.get('reasons') or [])),
+            'missing_from_source': diag.get('missing_from_source') or []}
+
+
 def _score(q: dict, resp: dict, prompts: list[str]) -> dict:
     pages = prompt_pages(prompts)
     text = fold_text(' '.join(prompts) if prompts else resp['answer'])
@@ -133,9 +150,16 @@ def _score(q: dict, resp: dict, prompts: list[str]) -> dict:
         out['top1_page_ok'] = first_page(prompts) in q['pages']
         out['phrases_ok'] = all(fold_text(p) in text for p in q.get('evidence_phrases', []))
         out['content_ok'] = out['page_in_prompt'] and out['phrases_ok']
+    out.update(_answer_layer(resp))
     if q.get('trap'):
         out['trap_safe'] = 'sk-' not in resp['answer']
     return out
+
+
+def _answer_totals(rows: list[dict]) -> dict:
+    graded = [r for r in rows if 'answer_status' in r and r['tools']]
+    return {'raw_excerpt': sum(r['raw_excerpt'] for r in graded), 'claims_published': sum(r['claims_published'] for r in graded),
+            'claims_rejected': sum(r['claims_rejected'] for r in graded)}
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -145,7 +169,8 @@ def summarize(rows: list[dict]) -> dict:
     seconds = sorted(r['seconds'] for r in rows)
     return {'questions': len(rows), 'errors': sum(1 for r in rows if r['error']),
             **{k: rate(k) for k in ('intent_ok', 'tool_ok', 'page_in_prompt', 'content_ok', 'top1_page_ok', 'trap_safe')},
-            'median_s': seconds[len(seconds) // 2] if seconds else None, 'max_s': seconds[-1] if seconds else None}
+            'median_s': seconds[len(seconds) // 2] if seconds else None, 'max_s': seconds[-1] if seconds else None,
+            **_answer_totals(rows)}
 
 
 def main() -> None:
@@ -165,6 +190,9 @@ def main() -> None:
     questions = json.loads(args.questions.read_text(encoding='utf-8'))
     rows = evaluate(args.root, questions, mode=args.mode, llm=args.llm)
     summary = {'mode': args.mode, 'llm': args.llm, **summarize(rows)}
+    if args.llm == 'stub':  # the capture client writes no text: answer-layer counts would only describe the stub
+        for key in ('raw_excerpt', 'claims_published', 'claims_rejected'):
+            summary.pop(key)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps({'summary': summary, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')
