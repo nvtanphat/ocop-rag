@@ -32,7 +32,7 @@ Hệ thống hỗ trợ nạp cấu hình tự động từ tệp `.env` tại t
 
 ### Cấu hình Vận hành & Bảo mật
 * `OCOP_ROOT`: Thư mục gốc của dự án. Mặc định tự động nhận diện từ vị trí mã nguồn.
-* `OCOP_REVIEW_TOKEN`: Mã bảo mật Bearer token dùng để xác thực quyền ghi quyết định thẩm định qua API `/api/ocop/review/decisions`.
+* `OCOP_REVIEWERS_FILE`: Đường dẫn tệp JSON danh sách người duyệt (id, `token_sha256`, `can_decide`), đặt ngoài repo; thiếu thì API ghi quyết định từ chối (xem HUMAN_REVIEW.md).
 * `OCOP_ENFORCE_RELEASE_GATE`: Cờ cưỡng chế kiểm tra cổng chất lượng trước khi phát hành (`1` là bật, `0` là tắt).
 * `OCOP_LANGGRAPH_CHECKPOINT_ENABLED`: Bật tính năng lưu checkpoint phiên làm việc vào SQLite (`1` là bật, `0` là tắt).
 * `OCOP_LANGGRAPH_CHECKPOINT_PATH`: Đường dẫn tệp SQLite lưu checkpoint (ví dụ: `checkpoints.sqlite`).

@@ -1,13 +1,12 @@
 """Local human review of public OCOP candidates; no dossier paths are accepted."""
 from __future__ import annotations
-import hmac
-import os
 from urllib.parse import quote
 from typing import Literal
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from backend.api import ocop_routes
+from backend.api.review_auth import authenticate
 from ai_core.graph.ocop.review import load_queue,statistics,record_decision,render_crop,rebuild_reviewed_graph
 
 router=APIRouter(prefix='/api/ocop/review',tags=['OCOP human review'])
@@ -18,7 +17,6 @@ class DecisionRequest(BaseModel):
     target_id:str=Field(min_length=1,max_length=300)
     content_hash:str=Field(pattern=r'^[a-f0-9]{64}$')
     decision:Literal['approve','reject','correct']
-    reviewer:str=Field(min_length=1,max_length=160)
     correction:dict|None=None
     notes:str=Field(default='',max_length=8000)
 
@@ -67,12 +65,10 @@ def crop(target_id:str,index:int):
 
 @router.post('/decisions')
 def decide(body:DecisionRequest,authorization:str|None=Header(default=None)):
-    token=os.environ.get('OCOP_REVIEW_TOKEN')
-    if token and not hmac.compare_digest(authorization or '',f'Bearer {token}'):
-        raise HTTPException(403,'Cần mã truy cập của người duyệt')
+    reviewer=authenticate(authorization)      # identity comes from the token, never from the request body
     try:
         row=record_decision(ocop_routes.ROOT,body.target_id,body.content_hash,body.decision,
-                            body.reviewer,correction=body.correction,notes=body.notes)
+                            reviewer.id,correction=body.correction,notes=body.notes)
     except (ValueError,RuntimeError) as exc:
         raise HTTPException(409,str(exc)) from exc
     try:

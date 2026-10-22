@@ -8,7 +8,6 @@ export default function Review() {
   const [items, setItems] = useState<ReviewItem[]>([])
   const [total, setTotal] = useState(0)
   const [item, setItem] = useState<ReviewItem | null>(null)
-  const [reviewer, setReviewer] = useState('')
   const [token, setToken] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
@@ -45,7 +44,7 @@ export default function Review() {
     catch (e) {setError(e instanceof Error ? e.message : 'Giá trị sửa không hợp lệ')}
   }
   const decide = async (decision: 'approve' | 'reject' | 'correct') => {
-    if (!item || !reviewer.trim() || !checked) return
+    if (!item || !token.trim() || !checked) return
     setBusy(true); setError('')
     try {
       const correction: {label?: string; properties?: Record<string, unknown>} = {}
@@ -55,7 +54,7 @@ export default function Review() {
         if (Object.keys(values).length) correction.properties = values
         if (!Object.keys(correction).length) throw new Error('Hãy nhập giá trị sửa trước khi gửi')
       }
-      await api.reviewDecide({target_id: item.target_id, content_hash: item.content_hash, decision, reviewer,
+      await api.reviewDecide({target_id: item.target_id, content_hash: item.content_hash, decision,
         notes, ...(decision === 'correct' ? {correction} : {})}, token)
       setItem(null); setChecked(false); setMessage('Đã ghi quyết định. Mục chỉ được xác minh khi bằng chứng và các mục liên quan đã được duyệt.'); await reload()
     } catch (e) {setError(e instanceof Error ? e.message : 'Không ghi được quyết định')}
@@ -67,9 +66,8 @@ export default function Review() {
       <label>Ưu tiên <select value={priority} onChange={e => {setPriority(e.target.value); setOffset(0)}}>
         <option value="P1">P1 · Điểm, sao, hiệu lực</option><option value="P2">P2 · Hồ sơ, trách nhiệm, cần kiểm tra</option><option value="P3">P3 · Cấu trúc và danh mục</option>
       </select></label>
-      <label>Người duyệt <input value={reviewer} onChange={e => setReviewer(e.target.value)} autoComplete="name"/></label>
       <label><input type="checkbox" checked={includeDecided} onChange={e => {setIncludeDecided(e.target.checked); setOffset(0)}}/> Hiện cả mục đã duyệt</label>
-      <label>Mã truy cập (nếu được cấp) <input type="password" value={token} onChange={e => setToken(e.target.value)} autoComplete="off"/></label>
+      <label>Mã truy cập người duyệt (danh tính do máy chủ xác định) <input type="password" value={token} onChange={e => setToken(e.target.value)} autoComplete="off"/></label>
     </div>
     {error && <p role="alert" className="ocop-notice">{error}</p>}{message && <p role="status">{message}</p>}
     <div className="ocop-review-columns"><aside>
@@ -105,9 +103,9 @@ export default function Review() {
             <ul>{Object.entries(edits).map(([key,val]) => <li key={key}>{key}: {String(val)} <button onClick={() => setEdits(Object.fromEntries(Object.entries(edits).filter(([k]) => k !== key)))}>Bỏ</button></li>)}</ul></>}
           <label>Ghi chú <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}/></label>
           <label className="ocop-review-confirm"><input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}/>Tôi đã đọc toàn bộ bằng chứng và điều kiện của mục này.</label>
-          <div className="ocop-review-actions"><button disabled={busy || !checked || !reviewer.trim()} onClick={() => decide('approve')}>Xác nhận giá trị máy trích</button>
-            <button disabled={busy || !checked || !reviewer.trim() || item.type === 'EvidenceUnit'} onClick={() => decide('correct')}>Ghi giá trị sửa</button>
-            <button disabled={busy || !checked || !reviewer.trim()} onClick={() => decide('reject')}>Loại ứng viên</button></div>
+          <div className="ocop-review-actions"><button disabled={busy || !checked || !token.trim()} onClick={() => decide('approve')}>Xác nhận giá trị máy trích</button>
+            <button disabled={busy || !checked || !token.trim() || item.type === 'EvidenceUnit'} onClick={() => decide('correct')}>Ghi giá trị sửa</button>
+            <button disabled={busy || !checked || !token.trim()} onClick={() => decide('reject')}>Loại ứng viên</button></div>
         </div>
       </>}
     </section></div>

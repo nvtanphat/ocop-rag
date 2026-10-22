@@ -116,16 +116,26 @@ def test_crop_source_sha_and_api_decision_cycle(corpus,monkeypatch):
     from backend.api.ocop_main import app
     from fastapi.testclient import TestClient
     monkeypatch.setattr(ocop_routes,'ROOT',corpus)
-    monkeypatch.delenv('OCOP_REVIEW_TOKEN',raising=False)
+    from backend.api.review_auth import hash_token
+    reviewers=corpus/'reviewers.json'
+    reviewers.write_text(json.dumps({'reviewers':[{'id':'expert_01','token_sha256':hash_token('secret-1'),'can_decide':True},
+        {'id':'reader_02','token_sha256':hash_token('secret-2'),'can_decide':False}]}))
+    monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(reviewers))
     client=TestClient(app)
     assert client.get('/api/ocop/review/stats').json()['total']==statistics(load_queue(corpus))['total']
     assert client.get('/api/ocop/review/queue?priority=P3').status_code==200
     item=client.get('/api/ocop/review/items/product:synthetic').json()
     image=client.get(item['citations'][0]['crop_url'])
     assert image.status_code==200 and image.content.startswith(b'\x89PNG')
-    response=client.post('/api/ocop/review/decisions',json={'target_id':item['target_id'],
-        'content_hash':item['content_hash'],'decision':'approve','reviewer':'Synthetic human tester'})
+    body={'target_id':item['target_id'],'content_hash':item['content_hash'],'decision':'approve'}
+    assert client.post('/api/ocop/review/decisions',json=body).status_code==401
+    assert client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer wrong'}).status_code==403
+    assert client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer secret-2'}).status_code==403
+    assert client.post('/api/ocop/review/decisions',json={**body,'reviewer':'someone else'},
+                       headers={'Authorization':'Bearer secret-1'}).status_code==422   # a client may not name itself
+    response=client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer secret-1'})
     assert response.status_code==200 and response.json()['review']['verified_nodes']==0
+    assert response.json()['decision']['reviewer']=='expert_01'
     broken=dict(item);broken['citations']=[dict(item['citations'][0],source_sha256='a'*64)]
     with pytest.raises(ValueError,match='SHA'): render_crop(corpus,broken,0)
 
@@ -202,3 +212,29 @@ def test_reextraction_changed_target_id_flags_rereview_without_reusing_approval(
     item=next(i for i in load_queue(corpus) if i['target_id']=='product:reextracted')
     assert item['state']=='stale_content_needs_review' and item['review_status']!='verified'
     assert item['latest_decision']['target_id']=='product:synthetic'
+
+
+@pytest.mark.parametrize('setup',['unset','empty','missing_file','bad_json','bad_hash','duplicate'])
+def test_decision_write_fails_closed_without_valid_reviewer_configuration(corpus,monkeypatch,tmp_path,setup):
+    from backend.api import ocop_routes
+    from backend.api.ocop_main import app
+    from backend.api.review_auth import hash_token
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(ocop_routes,'ROOT',corpus)
+    bad=tmp_path/'r.json'
+    good={'id':'a','token_sha256':hash_token('t'),'can_decide':True}
+    if setup=='unset':monkeypatch.delenv('OCOP_REVIEWERS_FILE',raising=False)
+    elif setup=='empty':monkeypatch.setenv('OCOP_REVIEWERS_FILE','')
+    elif setup=='missing_file':monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(tmp_path/'none.json'))
+    else:
+        bad.write_text({'bad_json':'{not json','bad_hash':json.dumps({'reviewers':[{**good,'token_sha256':'x'}]}),
+                        'duplicate':json.dumps({'reviewers':[good,good]})}[setup])
+        monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(bad))
+    client=TestClient(app)
+    item=client.get('/api/ocop/review/items/product:synthetic').json()
+    ledger=corpus/'data/review/ocop_review_decisions.jsonl'
+    before=ledger.read_text() if ledger.exists() else ''
+    response=client.post('/api/ocop/review/decisions',headers={'Authorization':'Bearer t'},
+        json={'target_id':item['target_id'],'content_hash':item['content_hash'],'decision':'approve'})
+    assert response.status_code==503 and response.json()['detail']['layer']=='configuration'
+    assert (ledger.read_text() if ledger.exists() else '')==before
