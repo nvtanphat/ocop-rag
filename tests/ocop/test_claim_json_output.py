@@ -264,3 +264,17 @@ def test_the_best_block_of_each_searched_part_keeps_its_place_even_without_a_sha
     assert heading in _most_relevant(prose + [heading], terms, 3)
     plain = (heading[0], {k: v for k, v in heading[1].items() if k != 'query_part'}, {}, False)
     assert plain not in _most_relevant(prose + [plain], terms, 3)
+
+
+def test_claim_may_name_the_parent_heading_shown_above_the_excerpt():
+    parent = row('1.1. Nguồn gốc sản phẩm: Yêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh', status='needs_review')
+    parent['context'] = {'parent_chain': ['Bộ sản phẩm: gạo, ngũ cốc, hạt sơ chế khác', '1.1. Nguồn gốc sản phẩm']}
+    claim = 'Tiêu chí 1.1 của bộ sản phẩm gạo, ngũ cốc, hạt sơ chế khác có dòng Yêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh.'
+    out = assemble('Tiêu chí 1.1 có yêu cầu trồng trong tỉnh không?', results(parent),
+                   llm=Model({'claims': [{'text': claim, 'sources': ['S1']}], 'missing': []}))
+    assert out['status'] == 'generated_unverified_claims', out['generation_diagnostics']
+    # a word that is neither in the excerpt nor in its headings is still ungrounded
+    invented = claim.replace('gạo, ngũ cốc, hạt sơ chế khác', 'cà phê, ca cao, hồ tiêu')
+    bad = assemble('Tiêu chí 1.1 có yêu cầu trồng trong tỉnh không?', results(parent),
+                   llm=Model({'claims': [{'text': invented, 'sources': ['S1']}], 'missing': []}))
+    assert bad['status'] == 'citation_verification_failed'

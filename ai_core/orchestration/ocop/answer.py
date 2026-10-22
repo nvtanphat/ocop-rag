@@ -394,7 +394,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
                 # The header the model was shown names the document (source id), so numbers in that id are grounded too.
                 # Its page number is grounded only for a claim that is about the page ("ở trang 4"), never for other numbers.
                 about_page = bool(re.search(r'\btrang\b', fold(text)))
-                union = chr(10).join([str((r or {}).get('text') or '') for r in cited] +
+                # The "Ngữ cảnh:" line shown above an excerpt (its parent headings, e.g. the product set a criterion sheet belongs to)
+                # is source structure the model saw and may name in a claim; the quote itself is still checked in the body.
+                union = chr(10).join([str((r or {}).get('text') or '') + chr(10) + ' > '.join(((r or {}).get('context') or {}).get('parent_chain') or [])
+                                      for r in cited] +
                                      [str(citations[n - 1].get('source_id') or '') +
                                       (f" trang {citations[n - 1].get('pdf_page')}" if about_page and citations[n - 1].get('pdf_page') else '')
                                       for n in numbers if 0 < n <= len(citations)])

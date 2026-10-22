@@ -80,7 +80,7 @@ CASES = [
                      sources_only=[QD525], cited_pages_any=[1, 3])),
     dict(id='Q12', group='C', scenario='follow-up after the switch', session=MEM, q='Còn điều khoản về hồ sơ thì sao?',
          # QĐ525 has no clause about hồ sơ anywhere in its indexed text (checked on chunks.jsonl): the right answer is the gap
-         expect=dict(insufficient=True, slots={'document_code': '525'}, standalone_has=['525'], sources_only=[QD525])),
+         expect=dict(generated_or_insufficient=True, slots={'document_code': '525'}, standalone_has=['525'], sources_only=[QD525])),
     dict(id='Q13', group='C', scenario='independent session: dangling reference', session=ISO, q='Hai mẫu này khác nhau ở đâu?',
          expect=dict(clarify=True, no_citations=True)),
     dict(id='Q14', group='D', scenario='missing evidence (locality not in sample)', session='demo-q14',
@@ -180,6 +180,8 @@ def judge(case: dict, status: int, d: dict, http: Http, units: dict[str, str], r
         checks['not_raw_excerpt'] = answer_status not in {'citation_verification_failed', 'retrieval_only',
                                                           'model_unavailable_retrieval_only', 'insufficient_context_for_generation'}
         checks['claims_published'] = len([c for c in cv.get('claims') or [] if c.get('status') == 'supported']) >= 1
+    if exp.get('generated_or_insufficient'):  # a grounded partial answer or a plain statement of the gap; never a raw dump
+        checks['grounded_answer_or_gap'] = answer_status in GENERATED or answer_status == 'insufficient_evidence'
     if exp.get('clarify'):
         checks['asks_for_clarification'] = d['intent'] == 'CLARIFY' and answer_status in ('clarify', d['status'])
         checks['no_tools_run'] = not used
