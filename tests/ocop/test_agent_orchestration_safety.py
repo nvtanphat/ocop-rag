@@ -238,3 +238,28 @@ def test_recover_at_most_once_even_when_no_evidence(tmp_path,monkeypatch):
     assert not agent._should_recover({**state,**updated})
     agent.recover({**state,**updated})
     assert calls==['search_regulations']
+
+
+def test_targeted_recovery_searches_only_the_parts_no_evidence_speaks_to(tmp_path, monkeypatch):
+    """Isolated fixture for the recovery branch: the structured tool answered the first part; only the second is searched."""
+    question = 'Sản phẩm HANA do đơn vị nào sản xuất, và cơ quan nào ban hành quyết định công nhận?'
+    route = Route(intent=Intent.RECOGNITION_LOOKUP, strategy='structured', required_tools=['lookup_recognition'], slots={})
+    agent = OcopAgent(tmp_path)
+    row = {'source_id': 'S1', 'evidence_unit_id': 'u1', 'review_status': 'needs_review', 'source_spans': [{'pdf_page': 3}],
+           'text': 'Gạo ruộng rươi giống HANA do Hợp tác xã Thụy Hương sản xuất'}
+    found_for = {}
+
+    def search_part(part, slots, context, auth):
+        found_for[part] = True
+        return {'results': [{**row, 'evidence_unit_id': 'u2', 'text': 'Ủy ban nhân dân thành phố Hải Phòng ban hành quyết định công nhận'}]}
+    monkeypatch.setattr(agent.tools, 'search_part', search_part)
+    monkeypatch.setattr(agent.tools, 'dispatch', lambda *a, **k: pytest.fail('recovery must not re-run the whole question'))
+    state = {'query': question, 'effective_query': question, 'route': route.model_dump(mode='json'), 'plan': build_plan(route),
+             'results': [{'tool': 'lookup_recognition', 'output': {'results': [row], 'status': 'ok'}}]}
+    grade = grade_evidence(question, state['results'], expected_tools=['lookup_recognition'])
+    assert grade['uncovered_parts'] and len(grade['uncovered_parts']) == 1 and 'ban hành' in grade['uncovered_parts'][0]
+    updated = agent.recover({**state, 'evidence_grade': grade})
+    assert list(found_for) == grade['uncovered_parts']  # the covered part was not searched again
+    assert updated['results'][0] == state['results'][0]  # evidence already found is kept as it was
+    assert updated['results'][-1]['recovery'] is True and updated['results'][-1]['output']['results'][0]['query_part'] == grade['uncovered_parts'][0]
+    assert updated['trace'][-1]['reason'] == 'uncovered_question_parts'

@@ -260,6 +260,9 @@ def _merge_followup(prior: dict, updates: dict) -> dict:
         type(value) is int and 0 <= value <= 2100 or
         key in ('years', 'form_ids') and isinstance(value, list) and len(value) <= 8 and
         all(isinstance(x, str) and len(x) <= 12 for x in value))}
+    new_doc = updates.get('document_code')
+    if new_doc and slots.get('document_code') and fold(str(new_doc)) != fold(str(slots['document_code'])):
+        slots = {key: value for key, value in slots.items() if key not in TARGET_KEYS}  # another document: its Điều/Mẫu/Phiếu are not the old one's
     if set(updates) & TARGET_KEYS:  # a new thing asked about replaces the old one ("Còn mẫu số 02?" is no longer Điều 6)
         slots = {key: value for key, value in slots.items() if key not in TARGET_KEYS}
     slots.update(updates)

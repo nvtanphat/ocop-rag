@@ -299,7 +299,7 @@ class OcopAgent:
         parts=list(grade.get('uncovered_parts') or [])
         rewritten=bounded_rewrite(state.get('effective_query',state['query']),grade.get('missing_tools',[]),route.slots)
         try:
-            if parts and not grade.get('missing_tools'):
+            if parts:
                 found=[self.tools.search_part(part,route.slots,context,state.get('auth')) for part in parts]
                 rows=[{**row,'query_part':part} for part,one in zip(parts,found) for row in one.get('results',[])[:4]]
                 payload={'results':rows,'status':'ok' if rows else 'no_results'}
@@ -313,7 +313,7 @@ class OcopAgent:
             payload={'results':[],'status':'tool_unavailable','error_type':type(exc).__name__}
         payload=self._validate_output(payload)
         results.append({'tool':'search_regulations','output':payload,'recovery':True})
-        trace.append({'step':'recovery','name':'search_regulations','reason':'uncovered_question_parts' if parts and not grade.get('missing_tools') else 'insufficient_or_irrelevant_evidence','parts':parts,
+        trace.append({'step':'recovery','name':'search_regulations','reason':'uncovered_question_parts' if parts else 'insufficient_or_irrelevant_evidence','parts':parts,
                       'status':payload.get('status','ok'),
                       'hits':len(payload.get('results',[])),'latency_ms':round((monotonic()-started)*1000,2)})
         return {'results':results,'trace':trace}

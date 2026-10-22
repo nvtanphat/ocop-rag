@@ -22,7 +22,7 @@ MAX_TURNS = 3
 # slot keys holding the things a question can be about, per referent kind
 REFERENT_SLOTS = {'form': ('form_ids', 'form_id'), 'sheet': ('sheet_number',), 'article': ('article_id',),
                   'document': ('document_codes', 'document_code')}
-COMPARE_CUES = ('so sanh voi', 'so voi', 'khac voi', 'cung voi')
+COMPARE_CUE = re.compile(r'\bso sanh\b|\bso voi\b|\bkhac voi\b|\bcung voi\b')
 PLURAL = r'(?:hai|2|ba|3|ca\s+hai|cac|nhung|ca\s+ba)'
 DEMONSTRATIVE = r'(?:nay|do|ay|tren|vua\s+(?:noi|nhac|hoi|roi)|kia|nhac\s+den)'
 
@@ -133,7 +133,7 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
         if not new and len(pool) >= 2 and _points_back(folded, noun):
             return _as_slots(kind, pool[:2][::-1])
         # "So sánh với mẫu số 01": the new item against the most recent different one
-        if new and len(new) == 1 and any(c in folded for c in COMPARE_CUES):
+        if new and len(new) == 1 and COMPARE_CUE.search(folded):
             before = [v for v in pool if v != new[0]]
             if before:
                 return _as_slots(kind, [before[0], new[0]])
@@ -186,6 +186,12 @@ def rewrite(question: str, memory: Any, slots: dict, updates: dict, *, carried: 
         return question, 'no_memory'
     stripped = _OPENER.sub('', question).strip()
     resolved = {**updates, **(carried or {})}
+    # Another document than the one under discussion: what was asked about (Điều/Mẫu/Phiếu of the old one) does not travel.
+    switched = [d for d in _values(updates, 'document') if d not in state['referents'].get('document', [])[:1]] and state['referents'].get('document')
+    carries_target = any(_SUBSTITUTIONS[kind].search(base) for kind in ('article', 'form', 'sheet'))
+    if switched and carries_target and not any(_values(resolved, kind) for kind in ('article', 'form', 'sheet')):
+        shown = ' và '.join(_surface(lang, 'document', v) for v in _values(updates, 'document'))
+        return lang.followup.generic_question.format(target=shown, scope=''), 'document_switch'
     nouns = {w for kind in ('form', 'sheet', 'article') for n in lang.structure_nouns.get(kind, []) for w in lang.content_words(n)}
     own_words = [w for w in lang.content_words(stripped) if w not in nouns and not re.fullmatch(r'[a-z]{0,3}\d+|hai|ba|nay|do|ay', w)]  # codes (qd148) are scope, not words
     if not own_words:

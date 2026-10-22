@@ -143,22 +143,31 @@ def test_debug_app_survives_a_request_and_keeps_serving_after_a_failed_one(tmp_p
         assert client.post('/api/ocop/query', json={'query': ''}).status_code == 422  # and the app is still up
 
 
-def test_switching_document_replaces_the_number_in_the_previous_question():
+def test_switching_document_keeps_the_topic_but_not_the_old_documents_form_article_or_sheet():
     from ai_core.orchestration.ocop import memory
-    state = memory.update(None, slots={'document_code': '26/2026', 'form_id': '2'},
-                          standalone='Mẫu số 02 của Quyết định 26/2026 nói gì?', citations=[], corpus_version='v1')
-    text, method = memory.rewrite('Còn QĐ148/2023?', state, {'document_code': '148/2023', 'form_id': '2'}, {'document_code': '148/2023'})
-    assert method == 'substitute:document' and text == 'Mẫu số 02 của Quyết định 148/2023 nói gì?'
+    topic = memory.update(None, slots={'document_code': '26/2026'}, standalone='Quyết định 26/2026 quy định gì về hồ sơ?',
+                          citations=[], corpus_version='v1')
+    assert memory.rewrite('Còn QĐ148/2023?', topic, {'document_code': '148/2023'}, {'document_code': '148/2023'}) == (
+        'Quyết định 148/2023 quy định gì về hồ sơ?', 'substitute:document')
+    target = memory.update(None, slots={'document_code': '26/2026', 'form_id': '2'},
+                           standalone='Mẫu số 02 của Quyết định 26/2026 nói gì?', citations=[], corpus_version='v1')
+    assert memory.rewrite('Còn QĐ148/2023?', target, {'document_code': '148/2023'}, {'document_code': '148/2023'}) == (
+        'Quyết định 148/2023 nói gì?', 'document_switch')
+    # restating the target keeps it
+    assert memory.rewrite('Còn Mẫu số 02 của QĐ148/2023?', target, {'document_code': '148/2023', 'form_id': '2'},
+                          {'document_code': '148/2023', 'form_id': '2'})[1] != 'document_switch'
 
 
-def test_plural_reference_with_nothing_to_point_at_asks_which_one():
-    new_session = route_query('Hai mẫu này khác nhau ở đâu?')
-    assert new_session.needs_clarification and new_session.missing_slots == ['referent_form']
-    assert route_query('Cả hai điều này quy định gì?').missing_slots == ['referent_article']
-    # one remembered form is not "two forms"
-    one = {'last_query': 'x', 'slots': {'form_id': '1'}, 'memory': {'referents': {'form': ['1']}, 'standalone': 'Mẫu số 01 nói gì?'}}
-    assert route_query('Hai mẫu này khác nhau ở đâu?', session=one).needs_clarification
-    # named explicitly, or resolvable from the conversation: no question back
-    assert not route_query('Hai mẫu số 01 và 02 này khác nhau ở đâu?').needs_clarification
-    two = {'last_query': 'x', 'slots': {'form_id': '1'}, 'memory': {'referents': {'form': ['2', '1']}, 'standalone': 'Mẫu số 02 nói gì?'}}
-    assert not route_query('Hai mẫu này khác nhau ở đâu?', session=two).needs_clarification
+def test_document_switch_drops_the_old_documents_target_slots_but_a_restated_target_stays():
+    prior = {'last_query': 'Mẫu số 02 của QĐ26/2026?', 'intent': 'PROCEDURE_FORM',
+             'slots': {'document_code': '26/2026', 'form_id': '2', 'years': ['2026']}, 'capabilities': []}
+    switched = route_query('Còn Quyết định 525 thì sao?', session=prior)
+    assert switched.slots['document_code'] == '525' and 'form_id' not in switched.slots
+    assert route_query('Còn Mẫu số 02 của Quyết định 525?', session=prior).slots['form_id'] == '2'
+
+
+def test_a_comparison_with_a_pronoun_between_so_sanh_and_voi_resolves_the_two_forms():
+    from ai_core.orchestration.ocop import memory
+    state = memory.update(None, slots={'document_code': '26/2026', 'form_id': '2'}, standalone='Mẫu số 02 nói gì?', citations=[],
+                          corpus_version='v1')
+    assert memory.plural_referents('So sánh nó với mẫu số 01.', state, {'form_id': '1'}) == {'form_ids': ['2', '1'], 'form_id': '2'}
