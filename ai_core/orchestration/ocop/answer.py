@@ -91,21 +91,45 @@ def _merge_continuations(entries):
     return out
 
 
-def _most_relevant(entries,terms,limit):
-    """Keep the `limit` blocks that mention the most distinct question terms (ties keep tool order).
+_SIBLING_SLOTS=3
 
-    Tool order alone lets one structured tool fill the prompt with rows of the wrong page; relevance to the
-    question decides which blocks stay, and the kept blocks keep their original order.
+
+def _most_relevant(entries,terms,limit):
+    """Keep `limit` blocks by greedy, rarity-weighted coverage of the question's terms (ties keep tool order).
+
+    Tool order alone lets one structured tool fill the prompt with rows of the wrong page, and counting distinct
+    terms lets generic words ("quyết định", "cơ quan") outvote the one rare term that names the thing asked about
+    (a product, a form). Each term weighs log(1+N/df) over the candidate blocks, and blocks are picked by how much
+    still-uncovered weight they add, so every part of a multi-part question keeps at least its best block.
+    The kept blocks keep their original order.
     """
     if len(entries)<=limit or not terms:return entries[:limit]
     wanted=set(terms)
-    def score(entry):
+    def words(entry):
         row=entry[1]
         text=str(row.get('raw_text') or row.get('text') or '')+' '+' '.join(
             str(c.get('quote','')) for c in (row.get('context') or {}).get('parent_source_spans',[]) if isinstance(c,dict))
-        return len(wanted & set(re.findall(r'[a-z0-9]+',fold(text))))
-    ranked=sorted(range(len(entries)),key=lambda i:(-score(entries[i]),i))[:limit]
-    return [entries[i] for i in sorted(ranked)]
+        return wanted & set(re.findall(r'[a-z0-9]+',fold(text)))
+    found=[words(entry) for entry in entries]
+    weight={t:math.log(1+len(entries)/df) for t in wanted if (df:=sum(t in f for f in found))}
+    covered:set[str]=set()
+    chosen:list[int]=[]
+    while len(chosen)<limit:
+        gain=lambda i:sum(weight[t] for t in found[i]-covered)  # noqa: E731
+        best=max((i for i in range(len(entries)) if i not in chosen),key=lambda i:(gain(i),-i),default=None)
+        if best is None:break
+        if gain(best)<=0:  # everything coverable is covered: fill by plain weighted relevance
+            rest=sorted((i for i in range(len(entries)) if i not in chosen),
+                        key=lambda i:(-sum(weight[t] for t in found[i]),i))
+            chosen.extend(rest[:limit-len(chosen)]);break
+        chosen.append(best);covered|=found[best]
+    # Cells of one table that tools returned together describe one row (product / owner / representative): a chosen
+    # table block brings its returned siblings, at most `_SIBLING_SLOTS` extra.
+    def table(i):
+        span=entries[i][2];return (entries[i][0][0],entries[i][0][1],span.get('table_id')) if span.get('table_id') else None
+    tables={table(i) for i in chosen if entries[i][3]}-{None}
+    extra=[i for i in range(len(entries)) if i not in chosen and table(i) in tables][:_SIBLING_SLOTS]
+    return [entries[i] for i in sorted(chosen+extra)]
 
 
 def _drop_repeats(entries):

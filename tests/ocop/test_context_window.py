@@ -56,3 +56,25 @@ def test_repeated_text_on_the_same_page_is_shown_once_and_blocks_are_capped():
     assert sum('Điều 7. Trình tự đánh giá' in c for c in [out['answer']]) == 1
     from ai_core.retrieval.ocop.settings import get_settings
     assert len(out['citations']) <= get_settings().context.max_source_blocks
+
+
+def _entry(text, page, table_id=None):
+    span = {'pdf_page': page, **({'table_id': table_id} if table_id else {})}
+    return ((f'doc{page}', page, f'u{page}', None), {'raw_text': text}, span, bool(table_id))
+
+
+def test_rare_entity_term_outweighs_generic_question_words():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+    generic = [_entry('quyết định cơ quan ban hành hội đồng', p) for p in range(1, 7)]
+    product = _entry('Gạo giống HANA', 9)
+    kept = _most_relevant([*generic, product], ['hana', 'quyet', 'dinh', 'co', 'quan', 'ban', 'hanh'], 3)
+    assert product in kept
+
+
+def test_returned_table_siblings_travel_with_the_chosen_row():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+    generic = [_entry('quyết định cơ quan ban hành', p) for p in range(1, 6)]
+    row = _entry('Gạo giống HANA', 9, 't1')
+    owner = _entry('Hợp tác xã Thụy Hương', 9, 't1')
+    kept = _most_relevant([*generic, row, owner], ['hana', 'quyet', 'dinh', 'co', 'quan'], 2)
+    assert row in kept and owner in kept
