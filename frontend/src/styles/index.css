@@ -36,3 +36,21 @@
 .ocop-review-actions button,.ocop-review-paging button {padding:10px 14px;border:1px solid #b3ccbd;border-radius:8px;background:#edf7f1;color:#173a31}
 .ocop-review button:disabled {opacity:.45;cursor:not-allowed}
 @media(max-width:850px) {.ocop-review-columns {grid-template-columns:1fr}.ocop-review-columns>aside {max-height:320px}.ocop-review {padding:12px}}
+
+/* Evidence viewer: cited PDF region with highlighted boxes */
+.ocop-evidence-overlay{position:fixed;inset:0;background:rgba(15,23,20,.55);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
+.ocop-evidence-panel{background:var(--ocop-surface,#fff);color:inherit;border-radius:14px;max-width:min(900px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.ocop-evidence-panel header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(127,127,127,.25)}
+.ocop-evidence-panel header small{display:block;opacity:.7}
+.ocop-evidence-panel header button,.ocop-evidence-panel footer button{cursor:pointer}
+.ocop-evidence-status{display:flex;gap:8px;align-items:center;padding:8px 16px;font-size:.88rem}
+.ocop-evidence-status.ok{background:rgba(34,139,84,.14)}
+.ocop-evidence-status.warn{background:rgba(245,166,35,.18)}
+.ocop-evidence-legend{display:flex;gap:10px;align-items:center;padding:6px 16px;font-size:.8rem;opacity:.85}
+.ocop-evidence-legend span{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.25)}
+.ocop-evidence-legend .amber{background:rgba(245,166,35,.55)}
+.ocop-evidence-legend .blue{background:rgba(47,111,214,.4);margin-left:12px}
+.ocop-evidence-image{overflow:auto;padding:8px 16px;flex:1;text-align:center}
+.ocop-evidence-image img{max-width:100%;height:auto;border:1px solid rgba(127,127,127,.3)}
+.ocop-evidence-panel footer{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-top:1px solid rgba(127,127,127,.25)}
+.ocop-evidence-panel footer code{margin-left:auto;font-size:.75rem;opacity:.7}

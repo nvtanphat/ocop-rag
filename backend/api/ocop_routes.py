@@ -134,6 +134,24 @@ def source_pdf(source_id: str):
     return FileResponse(file, media_type="application/pdf", content_disposition_type="inline", filename=file.name)
 
 
+@router.get("/sources/{source_id}/pages/{page}/evidence.png")
+def source_page_evidence(source_id: str, page: int, box: list[str] = Query(default=[]),
+                         context: list[str] = Query(default=[]), sha: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$"),
+                         dpi: int = Query(default=110), crop: bool = False):
+    """PDF page (or the evidence region) with cited boxes highlighted; see backend/api/evidence_image.py."""
+    from fastapi.responses import Response
+    from backend.api.evidence_image import EvidenceImageError, parse_boxes, render_evidence_png
+    file = _file_for(_source_entry(source_id))
+    try:
+        png = render_evidence_png(ROOT, file, source_id, page, evidence=parse_boxes(box), context=parse_boxes(context),
+                                  expected_sha=sha, dpi=dpi, crop=crop)
+    except EvidenceImageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except (OSError, RuntimeError) as exc:
+        raise service_unavailable('render_failed', 'pdf', exc) from exc
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
+
+
 @router.get("/criteria")
 def criteria(q: str = Query(default="", max_length=160), source_id: str = "", offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100)):
     filtered = []

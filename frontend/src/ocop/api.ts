@@ -25,6 +25,7 @@ export interface Citation {
   bbox?: [number, number, number, number] | null
   table_bbox?: [number, number, number, number] | null
   source_sha256?: string | null
+  context_source_spans?: Array<{ pdf_page: number; bbox?: [number, number, number, number] | null }>
   source_spans?: Array<{
     pdf_page: number
     bbox?: [number, number, number, number] | null

@@ -4,6 +4,20 @@ import { AlertTriangle, ArrowRight, BookOpen, CheckCircle2, Copy, ExternalLink, 
 import { api } from './api'
 import type { AskResult, Source } from './api'
 import { samplePrompts, sourceTitle } from './catalog'
+import EvidenceViewer from './EvidenceViewer'
+import type { Citation } from './api'
+
+const statusLabel = (status: string) => ({
+  generated_claims_verified: 'Đã xác minh',
+  partial_claims_verified: 'Xác minh một phần',
+  generated_unverified_claims: 'Nguồn chưa duyệt',
+  partial_debug_corpus: 'Corpus mẫu (chưa duyệt)',
+  retrieval_only: 'Chỉ trích xuất',
+  citation_verification_failed: 'Chưa qua kiểm chứng — chỉ hiện trích xuất',
+  insufficient_evidence: 'Chưa đủ bằng chứng',
+  clarify: 'Cần làm rõ',
+  out_of_scope: 'Ngoài phạm vi',
+} as Record<string, string>)[status] || status.replace(/_/g, ' ')
 
 type Message = { id: number; role: 'user' | 'assistant'; content: string; result?: AskResult }
 export default function Chat({ sources, denseReady, messages, setMessages, openPdf, prefill, clearPrefill }: {
@@ -16,6 +30,7 @@ export default function Chat({ sources, denseReady, messages, setMessages, openP
   const [llm, setLlm] = useState(false)
   const [advanced, setAdvanced] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [viewing, setViewing] = useState<{ citation: Citation; index: number } | null>(null)
   const [error, setError] = useState('')
   const abort = useRef<AbortController | null>(null)
   const conversationId = useRef(crypto.randomUUID())
@@ -51,13 +66,13 @@ export default function Chat({ sources, denseReady, messages, setMessages, openP
         <div className="ocop-message-main"><div className="ocop-message-author">{message.role === 'assistant' ? 'Trợ lý OCOP' : 'Bạn'}</div>
           <div className="ocop-markdown"><ReactMarkdown>{message.content}</ReactMarkdown></div>
           {message.result && <>
-            <div className="ocop-response-meta"><span className="ocop-subtle-chip">{message.result.intent.replace(/_/g,' ')}</span><span>{message.result.tools_used.length} công cụ truy xuất</span><span>{message.result.workflow_engine}</span>
+            <div className="ocop-response-meta"><span className="ocop-subtle-chip">{message.result.intent.replace(/_/g,' ')}</span><span className="ocop-subtle-chip" title="Trạng thái kiểm chứng của câu trả lời">{statusLabel(message.result.status)}</span><span>{message.result.tools_used.length} công cụ truy xuất</span><span>{message.result.workflow_engine}</span>
               <button title="Sao chép câu trả lời" onClick={() => void navigator.clipboard?.writeText(message.content)}><Copy size={14}/></button>
             </div>
             {message.result.citations.length > 0 && <div className="ocop-citations"><div className="ocop-citations-title"><BookOpen size={15}/> Bằng chứng nguồn · {message.result.citations.length}</div>
               <div className="ocop-citation-list">{message.result.citations.map((citation, i) => {
                 const source = sources.find(s => s.source_id === citation.source_id)
-                return <button key={`${citation.evidence_unit_id || citation.source_id}:${i}`} disabled={!source} className="ocop-citation" onClick={() => source && openPdf(source, citation.pdf_page)}>
+                return <button key={`${citation.evidence_unit_id || citation.source_id}:${i}`} className="ocop-citation" onClick={() => setViewing({ citation, index: i })}>
                   <span className="ocop-source-index">S{i + 1}</span><span className="ocop-citation-name"><strong>{source ? sourceTitle(source) : citation.source_id}</strong><small>PDF trang {citation.pdf_page} · {citation.review_status === 'verified' ? 'Đã xác minh' : 'Trích xuất tự động — chưa duyệt'}</small></span><ExternalLink size={15}/>
                 </button>
               })}</div>
@@ -80,6 +95,9 @@ export default function Chat({ sources, denseReady, messages, setMessages, openP
       </form>
       <div className="ocop-chat-disclaimer"><CheckCircle2 size={13}/> Công cụ hỗ trợ tra cứu, không phải kết quả công nhận OCOP chính thức.</div>
     </div>
+    {viewing && <EvidenceViewer citation={viewing.citation} index={viewing.index} onClose={() => setViewing(null)} openPdf={openPdf}
+      source={sources.find(s => s.source_id === viewing.citation.source_id)}
+      title={(() => { const s = sources.find(x => x.source_id === viewing.citation.source_id); return s ? sourceTitle(s) : viewing.citation.source_id })()}/>}
   </section>
 }
 export type { Message }
