@@ -145,3 +145,13 @@ def test_grounding_accepts_restated_question_number_and_range_member_but_not_new
 def test_every_sentence_of_a_multi_sentence_claim_is_marked():
     from ai_core.orchestration.ocop.answer import _sentences
     assert _sentences('Có. Sản phẩm tiếp tục có giá trị.') == ['Có.', 'Sản phẩm tiếp tục có giá trị.']
+
+
+def test_grounding_allows_rejecting_the_alternative_the_user_offered():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = 'Điều 1. Sửa đổi, bổ sung một số nội dung Quyết định số 148/QĐ-TTg ngày 24 tháng 02 năm 2023 của Thủ tướng Chính phủ'
+    claim = 'Quyết định sửa đổi, bổ sung Quyết định 148/QĐ-TTg, không phải Quyết định 26.'
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Sửa đổi QĐ148 hay Quyết định 26?')[0]
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='QĐ1489 sửa đổi QĐ148 hay QĐ26?')[0]
+    # an alternative the user never mentioned is a new negative assertion and stays blocked
+    assert not grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Sửa đổi QĐ148?')[0]

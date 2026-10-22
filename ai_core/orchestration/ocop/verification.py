@@ -154,6 +154,34 @@ def _range_numbers(text: str) -> set[str]:
     return covered
 
 
+_REJECTED_ALTERNATIVE = re.compile(r'[,;]?\s*(?:chứ\s+)?không\s+phải(?:\s+là)?\s+([^.,;]+)', re.I)
+
+
+def _spelled_out(text: str) -> str:
+    """"QĐ26" -> "quyết định 26": a document-type abbreviation glued to its number is expanded to the type's full name."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+    folded = fold(text)
+    for names in get_language().document_types.values():
+        for short in names[1:]:
+            folded = re.sub(r'(?<![a-z0-9])' + re.escape(fold(short)) + r'(?=\s*\d)', fold(names[0]) + ' ', folded)
+    return folded
+
+
+def _without_rejected_alternative(prose: str, asked: str) -> str:
+    """Drop ", không phải X" when X is something the user offered ("A hay X?"): it answers the question's
+    alternative instead of asserting a new fact, and the positive part that remains is still checked."""
+    from ai_core.orchestration.ocop.language import get_language
+    if not asked:
+        return prose
+    lang = get_language()
+    words = set(lang.content_words(_spelled_out(asked)))
+
+    def keep(match: re.Match) -> str:
+        named = lang.content_words(_spelled_out(match.group(1)))
+        return '' if named and set(named) <= words else match.group(0)
+    return _REJECTED_ALTERNATIVE.sub(keep, prose)
+
+
 def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, critical: bool = False,
                         asked: str = '') -> tuple[bool, str]:
     """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
@@ -165,6 +193,7 @@ def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, cr
     merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
     """
     from ai_core.orchestration.ocop.language import get_language
+    prose = _without_rejected_alternative(prose, asked)
     # A number the user wrote in the question is a premise being restated, not a figure the model introduced; a number
     # inside a range the source states is covered by it. Anything else must occur in the excerpt.
     if _numbers(prose) - _numbers(source) - _numbers(asked) - _range_numbers(source):
