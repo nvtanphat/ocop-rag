@@ -170,7 +170,7 @@ def rewrite(question: str, memory: Any, slots: dict, updates: dict, *, carried: 
     stripped = _OPENER.sub('', question).strip()
     resolved = {**updates, **(carried or {})}
     nouns = {w for kind in ('form', 'sheet', 'article') for n in lang.structure_nouns.get(kind, []) for w in lang.content_words(n)}
-    own_words = [w for w in lang.content_words(stripped) if w not in nouns and not re.fullmatch(r'\d+|hai|ba|nay|do|ay', w)]
+    own_words = [w for w in lang.content_words(stripped) if w not in nouns and not re.fullmatch(r'[a-z]{0,3}\d+|hai|ba|nay|do|ay', w)]  # codes (qd148) are scope, not words
     if not own_words:
         # nothing but a reference: the previous standalone question, with whatever explicit thing the user swapped in
         text, replaced = base, []

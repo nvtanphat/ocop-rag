@@ -115,8 +115,9 @@ class OpenAICompatClient(_RouteMixin):
                     return json.load(response)
             except urllib.error.HTTPError as exc:
                 if exc.code not in (429,500,502,503,504) or attempt==self.retries:raise
-            except (urllib.error.URLError,TimeoutError):
-                if attempt==self.retries:raise
+            except (urllib.error.URLError,TimeoutError) as exc:
+                # A refused connection means nothing is listening: backing off for 15 s cannot change that.
+                if attempt==self.retries or isinstance(getattr(exc,'reason',None),ConnectionRefusedError):raise
             time.sleep(2**attempt)
         raise RuntimeError("unreachable")
 

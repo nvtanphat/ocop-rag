@@ -324,9 +324,31 @@ def _sentences(text):
     return [s for s in _split_claims(text) if s.strip(' .')]
 
 
+_CLAUSE_BREAK = re.compile(r';\s+|,\s+(?=(?:không(?!\s+phải)|nhưng|tuy\s+nhiên)\b)', re.I)
+
+
+def _split_clauses(text: str) -> list[str]:
+    """Independent clauses of one model claim ("... đúng; nguồn không ghi ..."), cut outside quotation marks.
+
+    A claim that joins a verifiable quote with a statement about what the excerpt does *not* say fails as a whole when
+    the second half cannot be grounded; judged apart, the grounded half is still shown. ", không phải X" stays attached
+    (it rejects the alternative the user offered, see _without_rejected_alternative).
+    """
+    parts, last, inside = [], 0, False
+    for m in re.finditer(r'[“”"]|' + _CLAUSE_BREAK.pattern, text, re.I):
+        if m.group(0) in '“”"':
+            inside = m.group(0) == '“' or (m.group(0) == '"' and not inside)
+        elif not inside:
+            parts.append(text[last:m.start()])
+            last = m.end()
+    parts.append(text[last:])
+    return [x.strip(' ,;') for x in parts if len(x.strip(' ,;').split()) >= 2] or [text]
+
+
 def _judge_claims(claims, citations, selected, catalog=None, question=''):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
+    claims = [(clause, numbers) for text, numbers in claims for clause in _split_clauses(text)]
     for text, numbers in claims:
         soft_excerpt = ''
         tags = ''.join(f'[S{n}]' for n in numbers)

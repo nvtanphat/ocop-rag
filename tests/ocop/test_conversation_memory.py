@@ -141,3 +141,11 @@ def test_debug_app_survives_a_request_and_keeps_serving_after_a_failed_one(tmp_p
         broken = client.post('/api/ocop/query', json={'query': 'OCOP là gì?', 'use_llm': False})
         assert broken.status_code in (200, 503)  # an empty corpus root is reported, never an unhandled 500
         assert client.post('/api/ocop/query', json={'query': ''}).status_code == 422  # and the app is still up
+
+
+def test_switching_document_replaces_the_number_in_the_previous_question():
+    from ai_core.orchestration.ocop import memory
+    state = memory.update(None, slots={'document_code': '26/2026', 'form_id': '2'},
+                          standalone='Mẫu số 02 của Quyết định 26/2026 nói gì?', citations=[], corpus_version='v1')
+    text, method = memory.rewrite('Còn QĐ148/2023?', state, {'document_code': '148/2023', 'form_id': '2'}, {'document_code': '148/2023'})
+    assert method == 'substitute:document' and text == 'Mẫu số 02 của Quyết định 148/2023 nói gì?'

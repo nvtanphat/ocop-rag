@@ -209,3 +209,18 @@ def test_rejected_alternative_may_be_labelled_as_a_table_column():
     claim = 'Nguyễn Thị Hà là chủ thể, không phải cột “người đại diện”.'
     assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là người đại diện hay chủ thể?')[0]
     assert not grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là chủ thể?')[0]
+
+
+def test_a_claim_joining_a_quote_with_a_statement_of_absence_keeps_its_grounded_half():
+    from ai_core.orchestration.ocop.answer import _split_clauses
+    claim = 'Tiêu chí 1.1 ghi yêu cầu: “100% sản phẩm được trồng trên địa bàn cấp tỉnh”; nguồn không hiển thị mục ghi chú riêng.'
+    assert _split_clauses(claim) == ['Tiêu chí 1.1 ghi yêu cầu: “100% sản phẩm được trồng trên địa bàn cấp tỉnh”',
+                                     'nguồn không hiển thị mục ghi chú riêng.']
+    assert len(_split_clauses('Điều kiện “a; b” áp dụng cho mọi sản phẩm.')) == 1  # a semicolon inside a quotation stays
+    assert len(_split_clauses('Quyết định sửa đổi QĐ148, không phải Quyết định 26.')) == 1  # rejecting the offered alternative
+    out = assemble('Tiêu chí 1.1 có ghi chú trồng trong tỉnh không?', results(
+        row('Tiêu chí 1.1 Nguồn gốc sản phẩm Yêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh', status='needs_review')),
+        llm=Model({'claims': [{'text': 'Tiêu chí 1.1 Nguồn gốc sản phẩm Yêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh; '
+                                       'nguồn không hiển thị mục ghi chú riêng về bao bì xuất khẩu.', 'sources': ['S1']}], 'missing': []}))
+    assert out['status'] in ('generated_unverified_claims', 'partial_claims_verified') and 'Yêu cầu: 100%' in out['answer']
+    assert out['status'] != 'citation_verification_failed'

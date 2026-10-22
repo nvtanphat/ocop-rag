@@ -343,3 +343,22 @@ def test_openai_length_finish_is_reported_as_truncation(monkeypatch):
     client = OpenAICompatClient(model="m", base_url="https://example.invalid/v1", api_key="k", retries=0)
     with pytest.raises(ModelOutputTruncated):
         client.chat("s", "u")
+
+
+def test_refused_connection_fails_fast_without_backoff(monkeypatch):
+    import urllib.error
+
+    from ai_core.orchestration.ocop import llm
+    calls = []
+
+    def refuse(*args, **kwargs):
+        calls.append(1)
+        raise urllib.error.URLError(ConnectionRefusedError(10061, 'refused'))
+    monkeypatch.setattr(llm.urllib.request, 'urlopen', refuse)
+    monkeypatch.setattr(llm.time, 'sleep', lambda s: calls.append(('sleep', s)))
+    client = llm.OpenAICompatClient(model='m', base_url='http://127.0.0.1:9/v1', api_key='k')
+    try:
+        client.chat('s', 'u')
+    except RuntimeError as exc:
+        assert 'unavailable' in str(exc)
+    assert calls == [1]  # one attempt, no sleep
