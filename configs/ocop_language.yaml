@@ -20,6 +20,22 @@ claim_filler: [ghi, nêu, nói, đề, cập, cho, biết, trình, bày, quy, đ
 # Words naming a table part ("không phải cột người đại diện"): they label the rejected alternative, they are not part of it.
 table_words: [cột, dòng, hàng, ô, bảng]
 
+# A graph relation is shown to the model as "<A> [REPLACES] <B>"; a faithful claim says it in Vietnamese. The gloss is the
+# wording the claim checker may match for that label (the edge itself was already checked against its source quote at build time).
+relation_glosses:
+  REPLACES: thay thế; hết hiệu lực
+  AMENDS: sửa đổi; bổ sung
+  BASED_ON: căn cứ
+  SUSPENDS: tạm ngưng hiệu lực
+  RECOGNIZES: công nhận
+  REQUIRES_EVIDENCE: yêu cầu minh chứng
+  RESPONSIBLE_FOR: chịu trách nhiệm; phụ trách
+  OWNED_BY: thuộc sở hữu của
+  DECLARED_BY: do khai báo
+  LOCATED_IN: nằm tại; địa chỉ
+  APPLIES_IN: áp dụng tại
+  REFERENCES: tham chiếu; viện dẫn
+
 # Words that open a document reference, e.g. "QĐ 26/2026", "Nghị định 15".
 document_types:
   decision: [quyết định, qđ]

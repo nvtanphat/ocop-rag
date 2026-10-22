@@ -310,3 +310,14 @@ def test_all_claims_rejected_but_a_gap_named_gives_the_gap_not_a_raw_dump():
                               'missing': ['SOURCE không nêu điều khoản về hồ sơ; nội dung OCR chưa được xác minh.']}))
     assert out['status'] == 'insufficient_evidence' and 'không nêu điều khoản về hồ sơ' in out['answer']
     assert 'Điều 1. Công nhận' not in out['answer']
+
+
+def test_a_claim_may_say_a_graph_relation_in_vietnamese_but_only_its_own():
+    from ai_core.orchestration.ocop.answer import _relation_gloss
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    edge = '26/2026/QĐ-TTg [REPLACES] 148/QĐ-TTg'
+    shown = edge + '\n' + _relation_gloss(edge)
+    assert 'thay thế' in _relation_gloss(edge) and 'sửa đổi' not in _relation_gloss(edge)
+    assert grounded_in_excerpt('Quyết định 26/2026/QĐ-TTg thay thế Quyết định 148/QĐ-TTg.', shown, min_term_coverage=0.8)[0]
+    assert not grounded_in_excerpt('Quyết định 26/2026/QĐ-TTg sửa đổi Quyết định 148/QĐ-TTg.', shown, min_term_coverage=0.8)[0]
+    assert _relation_gloss('một dòng không có nhãn quan hệ') == ''

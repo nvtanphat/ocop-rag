@@ -234,9 +234,10 @@ def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, cr
     from ai_core.orchestration.ocop.language import fold
     # Reporting verbs, and the nouns naming a part of a document ("phiếu 3", "Điều 7", "Mẫu số 02", "trang 4"): the slots already
     # resolved which one, and the numbers are checked below, so the noun itself is no content a source must repeat.
-    filler = {fold(w) for w in lang.claim_filler} | {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)} | {fold(w) for w in lang.table_words}
+    filler = {fold(w) for w in lang.claim_filler} | {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)} | {fold(w) for w in lang.table_words} | {w for names in lang.document_types.values() for n in names for w in lang.content_words(n)}
     # bare numbers were compared above (restated, in range, in the identity); as words they would be counted twice
-    claim_terms = [t for t in lang.content_words(prose) if t not in filler and not t.isdigit()]
+    run_terms = [t for t in lang.content_words(prose) if t not in filler]  # digits stay: they hold a run together ("ngày 22 tháng 5")
+    claim_terms = [t for t in run_terms if not t.isdigit()]
     if not claim_terms:
         return False, 'grounding_no_content'
     # same filter on both sides, so a run of claim words is not broken by a filler word the claim leaves out
@@ -247,9 +248,9 @@ def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, cr
         return False, 'grounding_terms_missing'
     # longest run of consecutive claim words that is also consecutive in the source (not tied to a word's first occurrence)
     best, widths = 0, [0] * (len(source_terms) + 1)
-    for term in claim_terms:
+    for term in run_terms:
         widths = [0] + [widths[j] + 1 if source_terms[j] == term else 0 for j in range(len(source_terms))]
         best = max(best, *widths)
-    if best < min(3, len(claim_terms)):
+    if best < min(3, len(run_terms)):
         return False, 'grounding_terms_scattered'
     return True, 'grounded_in_unreviewed_excerpt'

@@ -8,7 +8,7 @@ from ai_core.orchestration.ocop.entailment import SOFT_REASONS, review
 from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_markers,check_sensitive_claims,
     grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
-from ai_core.orchestration.ocop.language import fold
+from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.system import stage_trace as trace
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
@@ -344,6 +344,12 @@ def _prose_rule_only(numbers, citations, selected, claim, catalog) -> bool:
     return not any(mentions.get(kind) for kind in ('product', 'organization', 'product_group'))
 
 
+def _relation_gloss(text: str) -> str:
+    """Vietnamese wording for the graph relation labels in a "<A> [REPLACES] <B>" row (configs/ocop_language.yaml)."""
+    glosses = get_language().relation_glosses
+    return '; '.join(glosses[label] for label in re.findall(r'\[([A-Z_]+)\]', text) if label in glosses)
+
+
 def _sentences(text):
     from ai_core.orchestration.ocop.verification import _split_claims
     return [s for s in _split_claims(text) if s.strip(' .')]
@@ -402,7 +408,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
                 about_page = bool(re.search(r'\btrang\b', fold(text)))
                 # The "Ngữ cảnh:" line shown above an excerpt (its parent headings, e.g. the product set a criterion sheet belongs to)
                 # is source structure the model saw and may name in a claim; the quote itself is still checked in the body.
-                union = chr(10).join([str((r or {}).get('text') or '') + chr(10) + ' > '.join(((r or {}).get('context') or {}).get('parent_chain') or [])
+                union = chr(10).join([str((r or {}).get('text') or '') + chr(10) + _relation_gloss(str((r or {}).get('text') or '')) + chr(10) + ' > '.join(((r or {}).get('context') or {}).get('parent_chain') or [])
                                       for r in cited] +
                                      [str(citations[n - 1].get('source_id') or '') +
                                       (f" trang {citations[n - 1].get('pdf_page')}" if about_page and citations[n - 1].get('pdf_page') else '')
