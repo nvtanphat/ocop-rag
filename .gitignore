@@ -27,3 +27,5 @@ htmlcov/
 *.pid
 *.tmp
 *.bak
+build/
+dist/
