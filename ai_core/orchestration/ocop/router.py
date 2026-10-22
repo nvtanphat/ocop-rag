@@ -51,7 +51,7 @@ DATE_ISO = re.compile(r'\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01]
 DATE_VI = re.compile(r'\b(0?[1-9]|[12]\d|3[01])[/.-](0?[1-9]|1[0-2])[/.-](20\d{2})\b')
 BARE_CRITERION = re.compile(r'^\s*[A-Za-z]?\d{1,2}(?:\.\d{1,2}){1,3}\s*[?.!]*\s*$')
 FOLLOWUP_SCOPE_KEYS = frozenset({
-    'document_code', 'article_id', 'form_id', 'form_ids', 'star_rating', 'as_of_date', 'years', 'region',
+    'document_code', 'document_codes', 'article_id', 'form_id', 'form_ids', 'star_rating', 'as_of_date', 'years', 'region',
     'product_name', 'product_group', 'criterion_id', 'recognition_year', 'assessment_year', 'pdf_page',
     'sheet_number', 'organization_name',
 })
@@ -166,6 +166,11 @@ def extract_slots(query: str, *, catalog: EntityCatalog | None = None, language:
         slots['document_code'] = text[m.start():m.end()]
     elif catalog is not None and (code := _document_by_title_year(lang, p, catalog, folded, years_found=YEAR.findall(text))):
         slots['document_code'] = code
+    # Several documents named in one question (a comparison): every one is searched, none is dropped.
+    codes = list(dict.fromkeys(text[m.start(1):m.end(1)] for m in p.document.finditer(folded)
+                               if not re.fullmatch(r'(?:19|20)\d{2}', m.group(1))))
+    if len(codes) > 1:
+        slots['document_codes'] = codes
     if m := p.article.search(folded):
         slots['article_id'] = m.group(1)
     form_ids = [x.lstrip('0') for x in dict.fromkeys(m.group(1) for m in p.form.finditer(folded))]

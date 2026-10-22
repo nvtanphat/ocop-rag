@@ -351,6 +351,10 @@ class OcopAgent:
                               'không dùng trang khác để suy ra nội dung trang này.',
                               'status':'insufficient_page_scope','citations':[]}}
         notices=[]
+        unresolved=sorted({str(code) for item in outputs for code in (item.get('output') or {}).get('unresolved_documents',[])})
+        absent=('Không có trong dữ liệu đã lập chỉ mục: văn bản '+', '.join(unresolved)+'; không dùng văn bản khác thay thế.'
+                if unresolved else '')
+        if absent:notices.append(absent)
         if any((item.get('output') or {}).get('status')=='sheet_scope_unavailable' for item in outputs):
             # Another sheet's options are never substituted. If other tools found grounded evidence the answer is
             # built from that and says which part could not be resolved; otherwise nothing is answered.
@@ -388,7 +392,7 @@ class OcopAgent:
                 return {'answer':{'answer':'Chưa đủ quy tắc hiệu lực/chuyển tiếp đã xác minh để '
                     'đối chiếu chính xác các thời điểm hoặc năm được hỏi. '
                     'Cần nguồn quy định và phạm vi thời gian được xác minh; '
-                    'không suy diễn từ năm ban hành văn bản.',
+                    'không suy diễn từ năm ban hành văn bản.'+(' '+absent if absent else ''),
                     'status':'insufficient_temporal_verification','citations':[]}}
             notices.append('Chưa có quy tắc hiệu lực/chuyển tiếp đã xác minh: nội dung dưới đây chỉ nêu những gì từng văn bản '
                            'ghi, không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể.')

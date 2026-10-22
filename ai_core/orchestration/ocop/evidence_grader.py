@@ -56,9 +56,10 @@ def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_
             relevance=len(relevant_query & tt)/len(relevant_query) if relevant_query else 0.0
             if slots.get('document_code'):
                 # Wrong document must not be counted as applicable. Some tools
-                # already resolve the code into source_id; preserve source.
-                from_code=re.findall(r'\d+',str(slots['document_code']))
-                if from_code and not all(re.search(r'(?<!\d)'+re.escape(part)+r'(?!\d)',str(row.get('source_id',''))) for part in from_code):
+                # already resolve the code into source_id; preserve source. A comparison names several documents.
+                wanted=slots.get('document_codes') or [slots['document_code']]
+                if not any(all(re.search(r'(?<!\d)'+re.escape(part)+r'(?!\d)',str(row.get('source_id','')))
+                               for part in re.findall(r'\d+',str(code))) for code in wanted if re.findall(r'\d+',str(code))):
                     relevance=0.0
             region=slots.get('region')
             jurisdiction=str(row.get('jurisdiction') or '')

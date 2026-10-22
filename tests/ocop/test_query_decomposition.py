@@ -17,3 +17,25 @@ def test_parts_without_enough_content_are_dropped():
 def test_unaccented_question_keeps_original_spelling_in_parts():
     parts = sub_queries('ho so danh gia lai khac gi ho so lan dau')
     assert parts == ['ho so danh gia lai', 'ho so lan dau']
+
+
+def test_every_document_named_in_a_comparison_becomes_a_slot():
+    from ai_core.orchestration.ocop.router import extract_slots
+    slots = extract_slots('So sánh QĐ148/2023 và QĐ26/2026 về cơ quan công nhận')
+    assert slots['document_codes'] == ['148/2023', '26/2026']
+    assert 'document_codes' not in extract_slots('QĐ26/2026 quy định gì?')
+
+
+def test_per_document_lookup_reports_absent_document_instead_of_substituting(tmp_path):
+    from ai_core.orchestration.ocop.tools import ToolRegistry
+
+    class Stub(ToolRegistry):
+        def dispatch(self, name, *, query, slots, context=None, auth=None):
+            if slots.get('document_codes'):
+                return self._per_document(name, query, slots, context or {}, auth, slots['document_codes'])
+            if slots['document_code'] == '26/2026':
+                return {'results': [{'source_id': 'S26', 'text': 'x'}]}
+            return {'results': [], 'status': 'document_not_found_or_ambiguous'}
+    out = Stub(tmp_path).dispatch('search_regulations', query='q', slots={'document_codes': ['148/2023', '26/2026']})
+    assert [r['source_id'] for r in out['results']] == ['S26']
+    assert out['unresolved_documents'] == ['148/2023'] and out.get('status') != 'document_not_found_or_ambiguous'

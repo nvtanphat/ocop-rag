@@ -77,6 +77,9 @@ def graph_seeds(checked_nodes: list[dict], query: str, product_name: str | None,
     return seeds
 
 
+BAD_DOCUMENT_STATUSES=frozenset({'document_not_found_or_ambiguous','no_results','unknown'})
+
+
 class ToolRegistry:
     def __init__(self,root:Path):
         self.root=Path(root)
@@ -134,6 +137,22 @@ class ToolRegistry:
                 matches.add(sid)
         return next(iter(matches)) if len(matches)==1 else None
 
+    def _per_document(self,name:str,query:str,slots:dict,context:dict,auth,codes:list)->dict:
+        """A comparison names several documents: look each one up on its own and keep the rows of every one.
+
+        A document that is not in the index is reported (`unresolved_documents`), never replaced by another."""
+        results,unresolved,statuses=[],[],[]
+        for code in codes[:5]:
+            one=self.dispatch(name,query=query,slots={**slots,'document_code':code,'document_codes':None},context=context,auth=auth)
+            rows=one.get('results',[]) if isinstance(one,dict) else []
+            statuses.append(one.get('status') if isinstance(one,dict) else None)
+            if rows:results.extend({**row,'document_code':code} for row in rows)
+            else:unresolved.append(code)
+        merged={'results':results,'unresolved_documents':unresolved}
+        if results:merged['status']=next((x for x in statuses if x and x not in BAD_DOCUMENT_STATUSES),'ok')
+        else:merged['status']=next((x for x in statuses if x),'no_results')
+        return merged
+
     def _search_with_parts(self,query:str,slots:dict,context:dict,auth)->dict:
         """The whole question first, then each part of a compound question; part hits only add candidates."""
         from ai_core.retrieval.ocop.decompose import sub_queries
@@ -161,6 +180,9 @@ class ToolRegistry:
         if name not in TOOL_REGISTRY:raise ValueError('Unknown or unauthorized OCOP tool: '+name)
         if TOOL_REGISTRY[name].requires_auth and not isinstance(auth,AuthContext):
             raise PermissionError('This private OCOP tool requires trusted server authentication')
+        codes=slots.get('document_codes')
+        if name in ('search_regulations','lookup_legal_unit') and isinstance(codes,list) and len(codes)>1:
+            return self._per_document(name,query,slots,context,auth,codes)
         if name=="search_regulations" and not context.get('_part'):
             return self._search_with_parts(query,slots,context,auth)
         if name=="search_regulations":
