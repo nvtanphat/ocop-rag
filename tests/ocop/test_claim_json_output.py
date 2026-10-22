@@ -278,3 +278,19 @@ def test_claim_may_name_the_parent_heading_shown_above_the_excerpt():
     bad = assemble('Tiêu chí 1.1 có yêu cầu trồng trong tỉnh không?', results(parent),
                    llm=Model({'claims': [{'text': invented, 'sources': ['S1']}], 'missing': []}))
     assert bad['status'] == 'citation_verification_failed'
+
+
+def test_a_claim_naming_the_sheet_it_was_asked_about_is_not_dropped_for_the_word_phieu():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = '1.1. Nguồn gốc sản phẩm | 3\nYêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh\nVN.OCOP.QD26.2026'
+    claim = 'Ở tiêu chí 1.1 của Phiếu 3 QĐ26/2026, nội dung “100% sản phẩm được trồng trên địa bàn cấp tỉnh” nằm ở dòng “Yêu cầu”.'
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Theo phiếu 3 QĐ26/2026, tiêu chí 1.1 có ghi chú trồng trong tỉnh không?')[0]
+    # content that is not in the source still fails, whatever structure nouns surround it
+    assert not grounded_in_excerpt('Phiếu 3 có yêu cầu 100% sản phẩm xuất khẩu sang thị trường châu Âu.', source, min_term_coverage=0.8)[0]
+
+
+def test_consecutive_run_check_finds_a_run_at_a_later_occurrence_of_a_repeated_word():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = 'Nguồn gốc sản phẩm Yêu cầu 100% sản phẩm trồng địa bàn tỉnh Hà Tĩnh đạt'
+    claim = 'sản phẩm trồng địa bàn tỉnh Hà Tĩnh'  # the run "sản phẩm trồng địa bàn tỉnh" sits at the second "sản phẩm"
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8)[0]
