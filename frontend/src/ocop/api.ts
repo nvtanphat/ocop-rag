@@ -47,6 +47,11 @@ export interface AskResult {
   workflow_engine: string
   corpus_version?: string | null
   route?: { strategy?: string; slots?: Record<string, unknown>; reason_codes?: string[] }
+  tool_trace?: Array<Record<string, unknown>>
+  evidence_coverage?: { status?: string; missing_tools?: string[] }
+  evidence_grade?: { uncovered_parts?: string[]; missing_tools?: string[] }
+  claim_verification?: { supported?: number; unsupported?: number; claims?: Array<{ claim: string; tier?: string }> }
+  generation_diagnostics?: { missing_from_source?: string[]; rejected?: Array<{ claim: string; reasons: string[] }> }
 }
 export interface Criterion extends GraphNode { linked_labels: string[] }
 export interface Recognition extends GraphNode { linked_labels: string[] }

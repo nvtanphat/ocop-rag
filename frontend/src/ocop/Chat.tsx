@@ -5,6 +5,7 @@ import { api } from './api'
 import type { AskResult, Source } from './api'
 import { samplePrompts, sourceTitle } from './catalog'
 import EvidenceViewer from './EvidenceViewer'
+import Process from './Process'
 import type { Citation } from './api'
 
 const statusLabel = (status: string) => ({
@@ -69,6 +70,7 @@ export default function Chat({ sources, denseReady, messages, setMessages, openP
             <div className="ocop-response-meta"><span className="ocop-subtle-chip">{message.result.intent.replace(/_/g,' ')}</span><span className="ocop-subtle-chip" title="Trạng thái kiểm chứng của câu trả lời">{statusLabel(message.result.status)}</span><span>{message.result.tools_used.length} công cụ truy xuất</span><span>{message.result.workflow_engine}</span>
               <button title="Sao chép câu trả lời" onClick={() => void navigator.clipboard?.writeText(message.content)}><Copy size={14}/></button>
             </div>
+            <Process result={message.result}/>
             {message.result.citations.length > 0 && <div className="ocop-citations"><div className="ocop-citations-title"><BookOpen size={15}/> Bằng chứng nguồn · {message.result.citations.length}</div>
               <div className="ocop-citation-list">{message.result.citations.map((citation, i) => {
                 const source = sources.find(s => s.source_id === citation.source_id)
