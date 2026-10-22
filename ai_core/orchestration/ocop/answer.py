@@ -290,7 +290,9 @@ def _judge_claims(claims, citations, selected, catalog=None):
                 tier = 'unreviewed'
                 # A claim may combine what several cited passages say: it is checked against their union.
                 cited = [next((r for r in selected if _cites(r, citations[n - 1])), None) for n in numbers if 0 < n <= len(citations)]
-                union = chr(10).join(str((r or {}).get('text') or '') for r in cited)
+                # The header the model was shown names the document (source id), so numbers in that id are grounded too.
+                union = chr(10).join([str((r or {}).get('text') or '') for r in cited] +
+                                     [str(citations[n - 1].get('source_id') or '') for n in numbers if 0 < n <= len(citations)])
                 ok, why = grounded_in_excerpt(text, union, min_term_coverage=get_settings().context.grounding_min_term_coverage,
                                               critical=bool(CRITICAL.search(text)))
                 if not ok:

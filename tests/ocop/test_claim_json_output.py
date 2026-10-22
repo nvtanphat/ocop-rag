@@ -122,3 +122,11 @@ def test_grounding_compares_dates_by_value_not_format():
     assert ok
     bad, reason = grounded_in_excerpt('Quyết định có hiệu lực từ ngày 23 tháng 5 năm 2026.', source, min_term_coverage=0.8)
     assert not bad and reason == 'grounding_numbers_missing'
+
+
+def test_numbers_in_the_cited_document_identity_are_grounded():
+    unit = row('Quyết định này có hiệu lực thi hành từ ngày 22 tháng 5 năm 2026.', status='needs_review')
+    unit['source_id'] = 'VN.OCOP.QD26.2026'
+    model = Model({'claims': [{'text': 'Quyết định 26/2026 có hiệu lực từ ngày 22 tháng 5 năm 2026', 'sources': ['S1']}], 'missing': []})
+    out = assemble('QĐ26/2026 có hiệu lực từ ngày nào?', results(unit), llm=model)
+    assert out['status'] == 'generated_unverified_claims'
