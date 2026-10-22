@@ -33,6 +33,7 @@ class Followup(BaseModel):
     model_config = ConfigDict(extra='forbid')
     openers: list[str]
     pronouns: list[str]
+    tail_cues: list[str] = []
 
 
 class Messages(BaseModel):

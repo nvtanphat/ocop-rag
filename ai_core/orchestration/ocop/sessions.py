@@ -14,6 +14,7 @@ from ai_core.orchestration.ocop.privacy import redact
 
 TTL_SECONDS = 3600.0
 MAX_SESSIONS = 512
+UNANSWERED_INTENTS = frozenset({'CLARIFY', 'OUT_OF_SCOPE'})
 
 
 class SessionStore:
@@ -37,12 +38,17 @@ class SessionStore:
         if not session_id:
             return
         with self._lock:
-            self._items[session_id] = (self._clock(), {
-                'last_query': redact(query),
-                'slots': dict(response.route.slots),
-                'intent': response.intent.value,
-                'capabilities': list(response.route.capabilities),
-            })
+            prior = self._items.get(session_id, (0.0, {}))[1]
+            answered = not (getattr(response.route, 'needs_clarification', False) or response.intent.value in UNANSWERED_INTENTS)
+            if answered or not prior:
+                state = {'last_query': redact(query), 'slots': dict(response.route.slots), 'intent': response.intent.value,
+                         'capabilities': list(response.route.capabilities)}
+            else:
+                # A turn that only asked for clarification (or was out of scope) did not establish a topic: keep the scope the
+                # conversation had, remember what is still unresolved.
+                state = {k: v for k, v in prior.items() if k != 'unresolved'}
+                state['unresolved'] = {'question': redact(query), 'missing_slots': list(getattr(response.route, 'missing_slots', []))}
+            self._items[session_id] = (self._clock(), state)
             self._items.move_to_end(session_id)
             while len(self._items) > self._limit:
                 self._items.popitem(last=False)

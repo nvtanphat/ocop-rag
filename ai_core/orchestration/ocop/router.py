@@ -55,6 +55,9 @@ FOLLOWUP_SCOPE_KEYS = frozenset({
     'product_name', 'product_group', 'criterion_id', 'recognition_year', 'assessment_year', 'pdf_page',
     'sheet_number', 'organization_name',
 })
+# What the question is about, as opposed to where it applies (document, locality, year): a new target replaces the old one.
+TARGET_KEYS = frozenset({'article_id', 'form_id', 'form_ids', 'sheet_number', 'criterion_id', 'pdf_page', 'product_name',
+                         'organization_name'})
 # Pattern for an identifier that looks like a private record handle (config-free: structural, not corpus data).
 PRIVATE_HANDLE = get_privacy().regex('private_handle')
 
@@ -256,6 +259,8 @@ def _merge_followup(prior: dict, updates: dict) -> dict:
         type(value) is int and 0 <= value <= 2100 or
         key in ('years', 'form_ids') and isinstance(value, list) and len(value) <= 8 and
         all(isinstance(x, str) and len(x) <= 12 for x in value))}
+    if set(updates) & TARGET_KEYS:  # a new thing asked about replaces the old one ("Còn mẫu số 02?" is no longer Điều 6)
+        slots = {key: value for key, value in slots.items() if key not in TARGET_KEYS}
     slots.update(updates)
     if 'years' in updates:
         if 'as_of_date' not in updates:
@@ -402,7 +407,9 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     content = lang.content_words(q)
     opener = bool(re.match(r'^(?:' + _alt(lang.followup.openers) + r'|20\d{2}\b|nam\s+20\d{2}\b)', folded))
     pronoun = bool(lang.words('pronouns', lang.followup.pronouns).search(folded))
-    followup = has_prior and (opener or (pronoun and len(content) <= 2 and not own_scope))
+    tail = bool(lang.words('tail_cues', lang.followup.tail_cues).search(folded)) if lang.followup.tail_cues else False
+    # A reference ("sản phẩm đó", "... thì sao?") with no scope of its own continues the conversation, whatever its length.
+    followup = has_prior and (opener or (not own_scope and (pronoun or tail)))
     slots = _merge_followup(prior, updates) if followup else updates
     old_code = (prior.get('slots') or {}).get('document_code') if followup else None
     old_year = YEAR.findall(str(old_code or ''))

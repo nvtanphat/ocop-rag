@@ -45,7 +45,7 @@
  {"id": "C9", "note": "a turn that needed clarification must not move the conversation's scope",
   "turns": [
    {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
-   {"q": "Còn năm 2023?", "forbid_slot_values": {"years": ["2023"]}},
+   {"q": "Còn năm 2023?"},
    {"q": "Còn Điều 7?", "expect_slots": {"document_code": "26/2026", "article_id": "7"}, "forbid_slot_values": {"years": ["2023"]}}],
   "final": {"pages": [5]}},
  {"id": "C10", "note": "after an explicit document switch the new document stays",

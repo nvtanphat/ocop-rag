@@ -79,6 +79,8 @@ product_markers: [sản phẩm, có sản phẩm, với sản phẩm, mặt hàn
 followup:
   openers: [thế, vậy, còn, nếu vậy, với năm đó, đổi sang, chuyển sang, thế còn, vậy còn, thế thì, vậy thì]
   pronouns: [nó, cái đó, cái này, điều đó, điều này, đó, ý đó, mục đó, phần đó, văn bản đó, quyết định đó]
+  # Closing phrases that ask about the same thing again for a new part ("Nơi tiếp nhận thì sao?").
+  tail_cues: [thì sao, thì thế nào, thì ra sao]
 
 # Cue lists by question facet.
 cues:

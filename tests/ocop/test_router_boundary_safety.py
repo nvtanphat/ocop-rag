@@ -155,7 +155,7 @@ def test_followup_blocks_injected_authorization_and_source_ids():
                     'graph_seed_ids':['x'], 'criterion_id':'2.1'}}
     route=route_query('Thế còn mẫu 02?',session=prior)
     assert not set(route.slots)&{'authenticated','tenant_id','evidence_unit_id','graph_seed_ids'}
-    assert route.slots['criterion_id']=='2.1'
+    assert 'criterion_id' not in route.slots and route.slots['form_id']=='2'  # a new target replaces the old one
 
 
 def test_explicit_national_decision_cannot_override_local_deadline_scope(fixture_index,monkeypatch):
