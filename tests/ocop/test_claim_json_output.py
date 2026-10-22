@@ -201,3 +201,11 @@ def test_missing_only_answer_names_the_gap_instead_of_dumping_excerpts():
         llm=_Fixed('{"claims":[{"text":"Mẫu 02 nằm ở trang 99 của phụ lục.","sources":["S1"]}],"missing":["trang đặt mẫu số 02"]}'))
     assert out['status'] == 'insufficient_evidence'
     assert 'trang đặt mẫu số 02' in out['answer'] and '[S1]' not in out['answer'] and 'VN.X.2026' not in out['answer']
+
+
+def test_rejected_alternative_may_be_labelled_as_a_table_column():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = 'Cột: Tổ chức/cá nhân | Chủ thể\nHợp tác xã Thụy Hương | Nguyễn Thị Hà'
+    claim = 'Nguyễn Thị Hà là chủ thể, không phải cột “người đại diện”.'
+    assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là người đại diện hay chủ thể?')[0]
+    assert not grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là chủ thể?')[0]

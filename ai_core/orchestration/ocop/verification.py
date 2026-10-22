@@ -198,14 +198,15 @@ def _spelled_out(text: str) -> str:
 def _without_rejected_alternative(prose: str, asked: str) -> str:
     """Drop ", không phải X" when X is something the user offered ("A hay X?"): it answers the question's
     alternative instead of asserting a new fact, and the positive part that remains is still checked."""
-    from ai_core.orchestration.ocop.language import get_language
+    from ai_core.orchestration.ocop.language import fold, get_language
     if not asked:
         return prose
     lang = get_language()
     words = set(lang.content_words(_spelled_out(asked)))
 
     def keep(match: re.Match) -> str:
-        named = lang.content_words(_spelled_out(match.group(1)))
+        labels = {fold(w) for w in lang.table_words}
+        named = [w for w in lang.content_words(_spelled_out(match.group(1))) if w not in labels]
         return '' if named and set(named) <= words else match.group(0)
     return _REJECTED_ALTERNATIVE.sub(keep, prose)
 

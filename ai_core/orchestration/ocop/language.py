@@ -48,6 +48,7 @@ class Language(BaseModel):
     stopwords: list[str]
     instruction_words: list[str]
     claim_filler: list[str] = []
+    table_words: list[str] = []
     document_types: dict[str, list[str]]
     document_number_markers: dict[str, list[str]]
     structure_nouns: dict[str, list[str]]

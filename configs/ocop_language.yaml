@@ -17,6 +17,9 @@ instruction_words: [thứ, nhất, trình, bày, cả, hai, liệt, kê, nêu, c
 # passage's content, so the claim-grounding word-coverage check ignores them.
 claim_filler: [ghi, nêu, nói, đề, cập, cho, biết, trình, bày, quy, định, có]
 
+# Words naming a table part ("không phải cột người đại diện"): they label the rejected alternative, they are not part of it.
+table_words: [cột, dòng, hàng, ô, bảng]
+
 # Words that open a document reference, e.g. "QĐ 26/2026", "Nghị định 15".
 document_types:
   decision: [quyết định, qđ]
