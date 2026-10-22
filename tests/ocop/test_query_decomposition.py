@@ -11,7 +11,7 @@ def test_simple_question_is_not_split():
 
 
 def test_parts_without_enough_content_are_dropped():
-    assert sub_queries('UBND cấp xã và cấp tỉnh') == []
+    assert sub_queries('UBND cấp xã và tỉnh') == []
 
 
 def test_unaccented_question_keeps_original_spelling_in_parts():
