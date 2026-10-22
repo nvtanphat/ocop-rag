@@ -52,7 +52,11 @@ Các công cụ cũ vẫn dùng được cho phần còn lại: `tools/evaluate_
 
 `page_in_prompt` chỉ chứng minh tầng truy xuất và dựng context đưa được trang đúng vào prompt. Nó **không** chứng minh câu trả lời đúng: điều đó do cổng claim và cổng điểm/sao quyết định (ADR-002, ADR-005).
 
-## 5. Lưu ý đọc kết quả
+## 5. Kiểm diễn giải trên nguồn đã duyệt
+
+`python tools/evaluate_reviewed_claims.py --root <corpus> --questions <câu hỏi>` chỉ chạy các câu mà mọi trang đích có ít nhất một EvidenceUnit `human_verified` trong graph hiện tại, rồi báo mỗi câu: claim nào được công bố, claim nào bị loại và lý do, phần nguồn chưa trả lời. Công cụ không đánh dấu `verified` và không nới cổng; chưa có nguồn nào được duyệt thì nó dừng (mã thoát 2) và chỉ đường duyệt (`review queue --render`, xem HUMAN_REVIEW.md). Sau mỗi quyết định duyệt, graph và chỉ mục được cập nhật cùng nhau.
+
+## 6. Lưu ý đọc kết quả
 
 * Corpus mẫu và corpus giữ riêng đều chưa có bằng chứng `verified`; vì cổng claim yêu cầu nguồn đã duyệt nên số câu LLM được công bố là 0 cho tới khi người duyệt Markdown. Đây là thiết kế, không phải lỗi.
 * Câu hỏi về chắc chắn một hạng sao dựa trên OCR được kỳ vọng bị chặn; trang đích không vào prompt là kết quả an toàn, không phải lỗi truy xuất.

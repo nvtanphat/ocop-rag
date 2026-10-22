@@ -75,11 +75,15 @@ Theo thiết kế an toàn sản xuất (AGENTS.md, ADR-001), dịch vụ API ch
    print(response.model_dump_json(indent=2))
    ```
 
-3. **Chạy lại chỉ mục trên tập mẫu**:
+3. **Dựng tập mẫu từ trong repo (đường tái lập chuẩn)**:
    ```powershell
-   Set-Location D:\AgentAI\OCOP-RAG\ocop-work-sample
-   python build_sample.py --reindex
+   python tools/cli.py debug smoke-ocop --ocr-dataset D:/AgentAI/OCOP-RAG/ocr-dataset-pilot-51-r2 `
+       --root-out D:/work/ocop-sample --page VN.OCOP.QD26.2026:3 --page VN.OCOP.QD26.2026:8 `
+       --question "QĐ26/2026 Điều 4: cơ quan nào có thẩm quyền công nhận?"
    ```
+   Lệnh sao chép `configs/` và PDF vào `--root-out` (ngoài repo), nạp các trang từ bộ OCR đã duyệt, trích xuất, dựng graph, chỉ mục, danh mục thực thể và chạy tác tử với `allow_partial_debug`. Manifest luôn mang nhãn partial; không bao giờ giả hoàn chỉnh.
+
+4. **`build_sample.py` và `run_e2e.py` không thuộc repo**: đó là hai tập lệnh trong thư mục làm việc mẫu ngoài repo (`D:/AgentAI/OCOP-RAG/ocop-work-sample`), gọi trực tiếp các hàm của `ai_core`. Chúng chỉ là tiện ích cục bộ; mọi việc chúng làm có đường tương đương trong repo: dựng bằng `debug smoke-ocop` (mục 3 ở trên) hoặc `python tools/cli.py run --build-only`; kiểm câu hỏi bằng `tools/evaluate_question_sets.py` (docs/EVALUATION.md). Sau khi đổi mã `ai_core/graph`, `ai_core/retrieval` hay trích xuất, dựng lại graph/chỉ mục của thư mục mẫu: với tập đã có tri thức, `build_sample.py --reindex` chỉ chạy lại graph + chỉ mục (không OCR).
 
 ---
 
