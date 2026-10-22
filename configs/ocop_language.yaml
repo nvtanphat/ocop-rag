@@ -81,6 +81,10 @@ followup:
   pronouns: [nó, cái đó, cái này, điều đó, điều này, đó, ý đó, mục đó, phần đó, văn bản đó, quyết định đó]
   # Closing phrases that ask about the same thing again for a new part ("Nơi tiếp nhận thì sao?").
   tail_cues: [thì sao, thì thế nào, thì ra sao]
+  # A follow-up that names a new thing the earlier question never mentioned ("Còn Điều 7?" after a question about hồ sơ) is asked
+  # afresh about that thing, inside the scope the conversation carries; the old topic words would only mislead retrieval.
+  generic_question: '{target}{scope} nói gì?'
+  scope_of: của
 
 # Cue lists by question facet.
 cues:

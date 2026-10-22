@@ -179,6 +179,17 @@ def rewrite(question: str, memory: Any, slots: dict, updates: dict, *, carried: 
             if new and pattern.search(text):
                 text = pattern.sub(' và '.join(_surface(lang, kind, v) for v in new), text, count=1)
                 replaced.append(kind)
+        # a new article/form/sheet the earlier question never referred to: ask about it afresh inside the carried scope
+        fresh = [(kind, _values(resolved, kind)) for kind in ('article', 'form', 'sheet') if _values(resolved, kind) and kind not in replaced]
+        if fresh:
+            target = ' và '.join(_surface(lang, kind, v) for kind, vals in fresh for v in vals)
+            scope = [_surface(lang, kind, v) for kind in ('document',) for v in _values(slots, kind)]
+            if slots.get('region'):
+                scope.append(str(slots['region']))
+            if slots.get('product_name'):
+                scope.append(f"sản phẩm {slots['product_name']}")
+            of = f" {lang.followup.scope_of} " + ', '.join(dict.fromkeys(scope)) if scope else ''
+            return lang.followup.generic_question.format(target=target, scope=of), 'generic_target'
         return text, ('substitute:' + ','.join(replaced)) if replaced else 'previous_standalone'
     # the question has words of its own: keep them and state the scope it relies on (including what it points back to)
     explicit = {k for k in updates if k in {key for keys in REFERENT_SLOTS.values() for key in keys} | {'region', 'product_name', 'organization_name'}}

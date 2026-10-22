@@ -34,6 +34,8 @@ class Followup(BaseModel):
     openers: list[str]
     pronouns: list[str]
     tail_cues: list[str] = []
+    generic_question: str = '{target}{scope} nói gì?'
+    scope_of: str = 'của'
 
 
 class Messages(BaseModel):

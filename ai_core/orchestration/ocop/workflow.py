@@ -84,6 +84,7 @@ class OcopAgent:
             carried=memory.plural_referents(query,safe_session.get('memory'),updates)
             if (safe_session.get('memory') or {}).get('standalone'):
                 effective,method=memory.rewrite(query,safe_session['memory'],choice.slots,updates,carried=carried)
+                if carried:method+='+compare'
             elif choice.intent==Intent.FOLLOWUP:
                 previous=str(session.get('last_query') or '')
                 if 'years' in updates:
@@ -270,7 +271,8 @@ class OcopAgent:
         have={r.get('chunk_id') for entry in results for r in (entry.get('output') or {}).get('results',[]) if isinstance(r,dict)}
         # Reuse is for a question that leans on what was already shown ("Nó thì sao?", "Hai mẫu này khác nhau ở đâu?"). When
         # the user swapped in a new thing ("Còn Điều 7?") the old evidence is about something else.
-        if not str(state.get('rewrite_method') or '').split(':')[0] in ('previous_standalone','state_scope'):
+        how=str(state.get('rewrite_method') or '')
+        if not (how.split(':')[0].split('+')[0] in ('previous_standalone','state_scope') or how.endswith('+compare')):
             if stage_trace.active():stage_trace.emit('memory.evidence',kept=kept,dropped=dropped,reused=[],skipped=state.get('rewrite_method'))
             return []
         rows=self.tools.chunks_by_reference(kept,exclude=have,limit=40)

@@ -412,7 +412,10 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     pronoun = bool(lang.words('pronouns', lang.followup.pronouns).search(folded))
     tail = bool(lang.words('tail_cues', lang.followup.tail_cues).search(folded)) if lang.followup.tail_cues else False
     # A reference ("sản phẩm đó", "... thì sao?") with no scope of its own continues the conversation, whatever its length.
-    followup = has_prior and (opener or bool(carried) or (not own_scope and (pronoun or tail)))
+    # A reference or closing cue continues the conversation unless the question says WHERE it applies (document, locality) itself:
+    # naming only a new target ("Mẫu số 02 thì sao?") still inherits the document.
+    own_where = bool(set(updates) & {'document_code', 'document_codes', 'region'})
+    followup = has_prior and (opener or bool(carried) or (not own_where and (pronoun or tail)))
     updates = {**updates, **carried}
     slots = _merge_followup(prior, updates) if followup else updates
     old_code = (prior.get('slots') or {}).get('document_code') if followup else None

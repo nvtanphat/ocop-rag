@@ -112,3 +112,32 @@ def test_a_form_gap_is_reported_while_the_rest_of_the_evidence_is_answered():
     assert 'không mô tả nội dung của biểu mẫu' in out['answer']
     only_gap = agent.answer({**state, 'results': state['results'][:1]})['answer']
     assert only_gap['status'] == 'insufficient_form_scope'
+
+
+def test_a_new_target_the_earlier_question_never_mentioned_is_asked_afresh_inside_the_scope():
+    from ai_core.orchestration.ocop import memory
+    state = memory.update(None, slots={'document_code': '26/2026'}, standalone='Quyết định 26/2026 quy định gì về hồ sơ?',
+                          citations=[], corpus_version='v1')
+    text, method = memory.rewrite('Còn Điều 7?', state, {'document_code': '26/2026', 'article_id': '7'}, {'article_id': '7'})
+    assert method == 'generic_target' and text == 'Điều 7 của Quyết định 26/2026 nói gì?'  # not "...về hồ sơ?"
+
+
+def test_naming_only_a_new_target_with_a_closing_cue_inherits_the_document():
+    prior = {'last_query': 'Quyết định 26/2026 quy định gì về hồ sơ?', 'intent': 'OCOP_OVERVIEW',
+             'slots': {'document_code': '26/2026', 'years': ['2026']}, 'capabilities': []}
+    route = route_query('Mẫu số 02 thì sao?', session=prior)
+    assert route.slots['document_code'] == '26/2026' and route.slots['form_id'] == '2'
+    # a document of its own makes it a new question about that document
+    assert route_query('Mẫu số 02 của QĐ148/2023 thì sao?', session=prior).slots['document_code'] == '148/2023'
+
+
+def test_debug_app_survives_a_request_and_keeps_serving_after_a_failed_one(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from backend.api.ocop_debug import create_debug_app
+    with TestClient(create_debug_app(tmp_path, allow_partial_debug=True), raise_server_exceptions=False) as client:
+        assert client.post('/api/ocop/query', json={'query': ''}).status_code == 422
+        assert client.post('/api/ocop/query', json={'query': 'x', 'retrieval_mode': 'bogus'}).status_code == 422
+        broken = client.post('/api/ocop/query', json={'query': 'OCOP là gì?', 'use_llm': False})
+        assert broken.status_code in (200, 503)  # an empty corpus root is reported, never an unhandled 500
+        assert client.post('/api/ocop/query', json={'query': ''}).status_code == 422  # and the app is still up
