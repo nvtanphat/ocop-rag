@@ -1,15 +1,38 @@
 name: OCOP verification
 on: [push, pull_request]
+
+# Three packages: ocop_contracts (provenance/registry contracts), ocr (ocop_ocr, PDF/OCR producer) and the
+# root ocop-graphrag application. Each job installs exactly what its tests import; CPU-only torch keeps the
+# install small. PyMuPDF is pinned below 2 in the package metadata (native table detection is validated on 1.x).
 jobs:
-  ocop-tests:
+  ocr:
+    name: ocop_contracts + ocop_ocr tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install -e '.[ocr,dev]'
+          cache: pip
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install ./ocop_contracts "./ocr[dev]"
+      - run: python -m ruff check --select F ocop_contracts ocr
+      - run: python -m pytest ocr/tests -q
+
+  rag:
+    name: ocop-graphrag tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install ./ocop_contracts ./ocr ".[agent,persistence,dev]"
+      - run: python -m ruff check --select F ai_core backend ocop_contracts tools tests
       - run: python -m pytest tests/ocop -q
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
