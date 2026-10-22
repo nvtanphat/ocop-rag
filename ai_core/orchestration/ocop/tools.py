@@ -77,6 +77,7 @@ def graph_seeds(checked_nodes: list[dict], query: str, product_name: str | None,
     return seeds
 
 
+PART_SCOPE_SLOTS=frozenset({'document_code','document_codes','region','article_id','pdf_page'})
 BAD_DOCUMENT_STATUSES=frozenset({'document_not_found_or_ambiguous','no_results','unknown'})
 
 
@@ -159,8 +160,14 @@ class ToolRegistry:
         whole=self.dispatch('search_regulations',query=query,slots=slots,context={**context,'_part':True},auth=auth)
         seen={self._hit_key(row) for row in whole.get('results',[])}
         extra=[]
+        from ai_core.orchestration.ocop.router import extract_slots
         for part in sub_queries(query):
-            found=self.dispatch('search_regulations',query=part,slots=slots,context={**context,'_part':True},auth=auth)
+            # Each part is scoped by what it names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..." must not
+            # filter the local-deadline part by the other part's document.
+            own=extract_slots(part)
+            part_slots={**{k:v for k,v in slots.items() if k not in PART_SCOPE_SLOTS},
+                        **{k:v for k,v in own.items() if k in PART_SCOPE_SLOTS}}
+            found=self.dispatch('search_regulations',query=part,slots=part_slots,context={**context,'_part':True},auth=auth)
             for row in found.get('results',[])[:4]:
                 if self._hit_key(row) not in seen:
                     seen.add(self._hit_key(row));extra.append({**row,'query_part':part})
