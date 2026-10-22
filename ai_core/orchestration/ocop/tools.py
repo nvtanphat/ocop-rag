@@ -170,6 +170,28 @@ class ToolRegistry:
         if not whole.get('results'):merged.pop('status',None)  # part hits are real evidence even if the whole found none
         return merged
 
+    def chunks_by_reference(self,refs:list[dict],*,exclude:set|None=None,limit:int=6)->list[dict]:
+        """Index chunks for remembered evidence references (by chunk id, else by evidence unit), as search-shaped rows."""
+        path=self.index_dir/"chunks.jsonl"
+        if not refs or not path.is_file():return []
+        # graph rows carry a "graph-evidence:" id that is not an index chunk: those are re-read through their evidence unit
+        by_chunk={r['chunk_id'] for r in refs if r.get('chunk_id') and not r['chunk_id'].startswith('graph-evidence:')}
+        by_unit={(r['source_id'],r['evidence_unit_id']) for r in refs
+                 if (not r.get('chunk_id') or r['chunk_id'].startswith('graph-evidence:')) and r.get('evidence_unit_id')}
+        out=[]
+        for ch in records(path):
+            if len(out)>=limit:break
+            if ch['chunk_id'] in (exclude or ()):continue
+            if ch['chunk_id'] in by_chunk or (ch['source_id'],ch['evidence_unit_id']) in by_unit:
+                out.append({"chunk_id":ch['chunk_id'],"evidence_unit_id":ch['evidence_unit_id'],"source_id":ch['source_id'],
+                    "pdf_page":ch['spans'][0]['pdf_page'],"source_spans":ch['spans'],"review_status":ch['review_status'],
+                    "corpus_version":ch['corpus_version'],"score":0.0,"text":ch['text_for_bm25'],
+                    "raw_text":ch.get('raw_text',ch['text_for_bm25']),"context":ch.get('context',{}),
+                    "row_ids":ch.get('row_ids',[]),"table_headers":ch.get('table_headers',[]),
+                    "char_start":ch.get('char_start'),"char_end":ch.get('char_end'),
+                    "ranking_reason":"memory_evidence","from_memory":True})
+        return out
+
     def search_part(self,part:str,slots:dict,context:dict,auth)->dict:
         """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
         must not filter the local-deadline part by the other part's document."""

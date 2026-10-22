@@ -55,7 +55,7 @@ def score_turn(turn: dict, slots: dict) -> dict:
     return out
 
 
-def run(root: Path, conversations: list[dict], *, mode: str, llm: str) -> list[dict]:
+def run(root: Path, conversations: list[dict], *, mode: str, llm: str, memory: bool = True) -> list[dict]:
     from ai_core.orchestration.ocop.sessions import SessionStore
     from ai_core.orchestration.ocop.workflow import OcopAgent
     rows = []
@@ -66,7 +66,7 @@ def run(root: Path, conversations: list[dict], *, mode: str, llm: str) -> list[d
         turns, started, final_prompts = [], time.perf_counter(), []
         for turn in conv['turns']:
             client.prompts.clear()
-            resp = agent.ask(turn['q'], session=store.get('s'))
+            resp = agent.ask(turn['q'], session=store.get('s') if memory else {})
             store.save('s', turn['q'], resp)
             slots = resp.route.slots
             turns.append({'q': turn['q'], 'intent': resp.intent.value, 'slots': slots, 'coref': bool(turn.get('coref')),
@@ -111,12 +111,13 @@ def main() -> None:
     ap.add_argument('--mode', choices=('sparse', 'hybrid'), default='hybrid')
     ap.add_argument('--llm', choices=('stub', 'real'), default='stub')
     ap.add_argument('--set', nargs='*', default=[])
+    ap.add_argument('--no-memory', action='store_true', help='every turn is asked without the session (ablation)')
     ap.add_argument('--out', type=Path)
     args = ap.parse_args()
     from ai_core.retrieval.ocop.settings import override_settings
     override_settings(args.set)
-    rows = run(args.root, json.loads(args.conversations.read_text(encoding='utf-8')), mode=args.mode, llm=args.llm)
-    summary = {'mode': args.mode, 'llm': args.llm, **summarize(rows)}
+    rows = run(args.root, json.loads(args.conversations.read_text(encoding='utf-8')), mode=args.mode, llm=args.llm, memory=not args.no_memory)
+    summary = {'mode': args.mode, 'llm': args.llm, 'memory': not args.no_memory, **summarize(rows)}
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps({'summary': summary, 'rows': rows}, ensure_ascii=False, indent=1), encoding='utf-8')

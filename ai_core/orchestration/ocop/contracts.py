@@ -61,4 +61,5 @@ class AgentResponse(BaseModel):
     evidence_fusion: dict[str,Any]=Field(default_factory=dict)
     workflow_engine: str
     corpus_version: str|None=None
+    standalone_query: str|None=None
     route: Route

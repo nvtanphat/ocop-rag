@@ -191,22 +191,36 @@ def diagnose(stages: dict) -> dict:
     return {'lost_at': None, 'last_held': held, 'verdict': 'gold_survived_to_' + held}
 
 
+def _memory_reuse(events: list[dict], gold: Gold) -> dict | None:
+    """Reused evidence references: how many reached the prompt and how many of those are on a gold page."""
+    ev = next((e for e in events if e['stage'] == 'memory.evidence'), None)
+    if ev is None:
+        return None
+    budget = next((e for e in events if e['stage'] == 'context.budget'), {'items': []})
+    shown = {i['chunk_id']: i['pdf_page'] for i in budget['items'] if not i['dropped']}
+    reused = ev['reused']
+    in_prompt = [c for c in reused if c in shown]
+    return {'kept_refs': len(ev['kept']), 'dropped_refs': len(ev['dropped']), 'reused_rows': len(reused), 'in_prompt': len(in_prompt),
+            'on_gold_page': sum(1 for c in in_prompt if shown[c] in gold.pages)}
+
+
 def trace_question(agent_factory, root: Path, q: dict, chunks: dict, mode: str, client_factory, turns_of) -> dict:
     gold = Gold(q.get('pages'), q.get('evidence_phrases'))
     client = client_factory()
     agent = agent_factory(client)
-    session: dict = {}
+    from ai_core.orchestration.ocop.sessions import SessionStore
+    store = SessionStore()  # the store the API uses, so memory (referents, evidence references) is traced as it is served
     events: list[dict] = []
     resp = None
     memory_out = None
-    for turn_index, turn in enumerate(turns_of(q)):
+    for turn in turns_of(q):
         client.calls.clear()
         with stage_trace.tracing() as ev:
-            resp = agent.ask(turn, session=session).model_dump(mode='json')
-        events = ev  # only the last turn is scored; earlier turns only build the session
-        session = {'last_query': turn, 'intent': resp['intent'], 'slots': resp['route']['slots'],
-                   'capabilities': resp['route']['capabilities']}
-        memory_out = dict(session)
+            answer = agent.ask(turn, session=store.get('s'))
+        events = ev  # only the last turn is scored; earlier turns only build the memory
+        store.save('s', turn, answer)
+        resp = answer.model_dump(mode='json')
+        memory_out = store.get('s').get('memory')
     view = stage_view(events, chunks)
     prompt_calls = [c for c in client.calls if c['kind'] == 'chat_structured' or c['kind'] == 'chat']
     answer_prompt = next((c for c in prompt_calls if 'SOURCE:' in c['user']), None)
@@ -220,7 +234,8 @@ def trace_question(agent_factory, root: Path, q: dict, chunks: dict, mode: str, 
                 estimated_tokens(str(i.get('text') or '')) for i in view[name])}
     report = {
         'id': q.get('id'), 'query': q.get('query') or turns_of(q)[-1], 'turns': turns_of(q), 'gold': {'pages': sorted(gold.pages), 'phrases': q.get('evidence_phrases', [])},
-        'memory': {'read': next((e for e in events if e['stage'] == 'memory.read'), None), 'written': memory_out},
+        'memory': {'read': next((e for e in events if e['stage'] == 'memory.read'), None), 'written': memory_out,
+                   'evidence': next((e for e in events if e['stage'] == 'memory.evidence'), None)},
         'route': {'intent': resp['intent'], 'tools': resp['tools_used'], 'retrieval_path': next(
             (t.get('retrieval_path') for t in resp['tool_trace'] if t.get('step') == 'retrieval_strategy'), None)},
         'searches': [{'query': e['query'], 'mode': e['mode'], 'fallback': e['fallback_reason'], 'admissible_chunks': e['admissible_chunks'],
@@ -232,6 +247,7 @@ def trace_question(agent_factory, root: Path, q: dict, chunks: dict, mode: str, 
             'system': answer_prompt['system'], 'user': answer_prompt['user'],
             'estimated_tokens': estimated_tokens(answer_prompt['system']) + estimated_tokens(answer_prompt['user']),
             'source_blocks': len(view['prompt'])},
+        'memory_reuse': _memory_reuse(events, gold),
         'answer_status': (resp['claim_verification'] or {}).get('answer_status') or resp['status'],
         'uncovered_parts': (resp.get('evidence_grade') or {}).get('uncovered_parts', []),
     }
@@ -250,7 +266,10 @@ def summarize(reports: list[dict]) -> dict:
                                                           if b['pdf_page'] in r['gold']['pages']) for r in answered if 'prompt' in r['stages'])
     blocks = sum(r['prompt']['source_blocks'] for r in answered)
     tokens = sorted(r['prompt']['estimated_tokens'] for r in answered)
-    return {'gold_questions': len(gold), 'gold_survives_to': survive,
+    reuse = [r['memory_reuse'] for r in reports if r.get('memory_reuse')]
+    memory = {'turns_with_reuse': len(reuse), 'reused_rows': sum(r['reused_rows'] for r in reuse),
+              'in_prompt': sum(r['in_prompt'] for r in reuse), 'on_gold_page': sum(r['on_gold_page'] for r in reuse)} if reuse else None
+    return {'memory_reuse': memory, 'gold_questions': len(gold), 'gold_survives_to': survive,
             'context_precision': round(useful / blocks, 3) if blocks else None,
             'prompt_tokens_median': tokens[len(tokens) // 2] if tokens else None, 'prompt_tokens_max': tokens[-1] if tokens else None,
             'source_blocks_mean': round(blocks / len(answered), 2) if answered else None}
@@ -286,6 +305,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--root', type=Path, required=True)
     ap.add_argument('--questions', type=Path)
+    ap.add_argument('--conversations', type=Path, help='multi-turn file (evaluate_conversations format); the last turn is traced')
     ap.add_argument('--ids', type=int, nargs='*')
     ap.add_argument('--query')
     ap.add_argument('--pages', type=int, nargs='*', default=[])
@@ -298,10 +318,14 @@ def main() -> None:
     args = ap.parse_args()
     if args.query:
         questions = [{'id': 0, 'query': args.query, 'pages': args.pages, 'evidence_phrases': args.phrases}]
+    elif args.conversations:
+        questions = [{'id': c['id'], 'query': c['turns'][-1]['q'], 'turns': [t['q'] for t in c['turns']],
+                      'pages': (c.get('final') or {}).get('pages', []), 'evidence_phrases': (c.get('final') or {}).get('evidence_phrases', [])}
+                     for c in json.loads(args.conversations.read_text(encoding='utf-8'))]
     elif args.questions:
         questions = json.loads(args.questions.read_text(encoding='utf-8'))
     else:
-        ap.error('give --query or --questions')
+        ap.error('give --query, --questions or --conversations')
     all_questions = questions
     if args.ids:
         questions = [q for q in questions if q['id'] in set(args.ids)]

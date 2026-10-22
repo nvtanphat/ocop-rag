@@ -13,18 +13,23 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse,Route,Intent,AuthContext
 from ai_core.orchestration.ocop.router import route_query,extract_slots,_merge_followup
+from ai_core.orchestration.ocop import memory
 from ai_core.system import stage_trace
 from ai_core.orchestration.ocop.planner import ToolPlan,build_plan,evidence_ids,recovery_safe
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
 from ai_core.system.telemetry import traced
 from ai_core.system.checkpoints import SQLiteCheckpoint,thread_key,should_checkpoint
-from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite
+from ai_core.orchestration.ocop.evidence_grader import grade_evidence,bounded_rewrite,tokens as grade_tokens
 from ai_core.orchestration.ocop.llm import OllamaClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
+from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.orchestration.ocop.catalog import load_catalog
 from ai_core.orchestration.ocop.language import get_language
 from ai_core.orchestration.ocop.privacy import redact
+
+
+MEMORY_ROWS=3  # remembered evidence rows added to a follow-up turn at most
 
 
 class OcopState(TypedDict,total=False):
@@ -40,6 +45,7 @@ class OcopState(TypedDict,total=False):
     trace:list[dict]
     evidence_coverage:dict
     evidence_grade:dict
+    rewrite_method:str
 
 
 class OcopAgent:
@@ -62,6 +68,7 @@ class OcopAgent:
         query=state['query'];session=state.get('session') or {}
         # Identity originates only from a trusted AuthContext, never a session.
         safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','dossier_id') if key in session}
+        if 'memory' in session:safe_session['memory']=memory.sanitize(session['memory'])
         auth=state.get('auth')
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
         choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
@@ -71,19 +78,23 @@ class OcopAgent:
             set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
             choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
                          missing_slots=['authentication'],reason_codes=['untrusted_session_cannot_authorize'])
-        effective=query
-        if choice.intent==Intent.FOLLOWUP:
-            previous=str(session.get('last_query') or '')
+        effective=query;method='none'
+        if choice.intent==Intent.FOLLOWUP or 'followup_slot_override' in choice.reason_codes:
             updates=extract_slots(query,catalog=self._catalog())
-            if 'years' in updates:
-                previous=re.sub(r'\b20\d{2}\b',updates['years'][-1],previous)
-            # Text query is only for ranking. Structured tools use effective
-            # merged slots, so stale values in prose cannot change their scope.
-            effective=previous+' (cập nhật yêu cầu: '+query+')'
+            carried=memory.plural_referents(query,safe_session.get('memory'),updates)
+            if (safe_session.get('memory') or {}).get('standalone'):
+                effective,method=memory.rewrite(query,safe_session['memory'],choice.slots,updates,carried=carried)
+            elif choice.intent==Intent.FOLLOWUP:
+                previous=str(session.get('last_query') or '')
+                if 'years' in updates:
+                    previous=re.sub(r'\b20\d{2}\b',updates['years'][-1],previous)
+                # Text query is only for ranking. Structured tools use effective
+                # merged slots, so stale values in prose cannot change their scope.
+                effective=previous+' (cập nhật yêu cầu: '+query+')';method='legacy_concat'
         if stage_trace.active():
-            stage_trace.emit('memory.read',session=safe_session,question=query,effective_query=effective,
+            stage_trace.emit('memory.read',session=safe_session,question=query,effective_query=effective,rewrite_method=method,
                              followup=choice.intent==Intent.FOLLOWUP,routed_slots=choice.slots,intent=choice.intent.value)
-        return {'route':choice.model_dump(mode='json'),'effective_query':effective,
+        return {'route':choice.model_dump(mode='json'),'effective_query':effective,'rewrite_method':method,
                 'trace':[{'step':'route','intent':choice.intent.value,'tools':list(choice.required_tools),
                           'reasons':choice.reason_codes,'retrieval_path':choice.retrieval_path.value}]}
 
@@ -238,7 +249,40 @@ class OcopAgent:
             trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),'optional':task.optional,
                           'status':output.get('status','ok'),
                           'hits':len(output.get('results',[])),'latency_ms':round((monotonic()-started)*1000,2)})
+        results.extend(self._memory_evidence(state,route,results,trace))
         return {'results':results,'trace':trace}
+
+    def _memory_evidence(self,state:OcopState,route:Route,results:list[dict],trace:list[dict])->list[dict]:
+        """Evidence the conversation already cited, re-read from the corpus when this turn is a follow-up.
+
+        Only references are remembered; text comes from the current index, and a reference is dropped when the corpus
+        changed or the new question is scoped to documents that do not include its source.
+        """
+        session=state.get('session') or {}
+        if not (route.intent==Intent.FOLLOWUP or 'followup_slot_override' in route.reason_codes) or not session.get('memory') or not get_settings().agent.memory_evidence_reuse:
+            return []
+        slots=route.slots
+        codes=slots.get('document_codes') or ([slots['document_code']] if slots.get('document_code') else [])
+        scope=None
+        if codes:
+            scope={sid for sid in (self.tools._resolve_source_id(str(c)) for c in codes) if sid}
+        kept,dropped=memory.reusable_evidence(session['memory'],corpus_version=self._corpus_version(),source_ids=scope)
+        have={r.get('chunk_id') for entry in results for r in (entry.get('output') or {}).get('results',[]) if isinstance(r,dict)}
+        # Reuse is for a question that leans on what was already shown ("Nó thì sao?", "Hai mẫu này khác nhau ở đâu?"). When
+        # the user swapped in a new thing ("Còn Điều 7?") the old evidence is about something else.
+        if not str(state.get('rewrite_method') or '').split(':')[0] in ('previous_standalone','state_scope'):
+            if stage_trace.active():stage_trace.emit('memory.evidence',kept=kept,dropped=dropped,reused=[],skipped=state.get('rewrite_method'))
+            return []
+        rows=self.tools.chunks_by_reference(kept,exclude=have,limit=40)
+        wanted=grade_tokens(state.get('effective_query',state['query']))
+        scored=sorted(((len(wanted&grade_tokens(str(r.get('raw_text') or r.get('text')))),i,r) for i,r in enumerate(rows)),
+                      key=lambda x:(-x[0],x[1]))
+        rows=[r for score,_,r in scored if score>0][:MEMORY_ROWS]
+        if stage_trace.active():
+            stage_trace.emit('memory.evidence',kept=kept,dropped=dropped,reused=[r['chunk_id'] for r in rows])
+        if not rows:return []
+        trace.append({'step':'memory_evidence','reused':len(rows),'dropped':len(dropped)})
+        return [{'tool':'memory_evidence','output':{'results':rows,'status':'ok'},'memory':True,'optional':True}]
 
     def recover(self,state:OcopState)->dict:
         route=Route.model_validate(state['route']);plan=state.get('plan') or build_plan(route)
@@ -422,15 +466,21 @@ class OcopAgent:
                 'cho địa phương và văn bản được hỏi. Không sử dụng văn bản quốc gia '
                 'hoặc nguồn của địa phương khác để suy ra hạn nộp.',
                 'status':'insufficient_local_guidance_scope','citations':[]}}
-        if any((item.get('output') or {}).get('status') in
-               ('incomplete_form_ids','form_source_scope_unverified','form_version_ambiguous')
-               for item in outputs):
-            missing=sorted({str(form) for item in outputs for form in
-                ((item.get('output') or {}).get('missing_form_ids') or [])},key=int)
-            return {'answer':{'answer':'Chưa có đầy đủ biểu mẫu đã xác minh để đối chiếu. '
-                'Các mẫu còn thiếu hoặc chưa xác minh: '+(', '.join(missing) if missing
-                else 'chưa xác định được phiên bản văn bản chung cho các mẫu'),
-                'status':'insufficient_form_scope','citations':[]}}
+        form_gap=[item for item in outputs if (item.get('output') or {}).get('status') in
+                  ('incomplete_form_ids','form_source_scope_unverified','form_version_ambiguous')]
+        if form_gap:
+            missing=sorted({str(form) for item in form_gap for form in
+                ((item.get('output') or {}).get('missing_form_ids') or [])},key=lambda x:(not x.isdigit(),int(x) if x.isdigit() else 0,x))
+            named=('Các mẫu còn thiếu hoặc chưa xác minh: '+', '.join(missing) if missing
+                   else 'Chưa xác định được phiên bản văn bản chung cho các mẫu')
+            # What the documents say *about* the forms is evidence; the forms' own content is not available. Report the
+            # gap, answer from the rest, never describe a template that was not verified.
+            if any(self._usable_rows(item) for item in every if item not in form_gap):
+                notices.append('Chưa có biểu mẫu đã xác minh. '+named+'. Nội dung dưới đây chỉ nêu điều các văn bản ghi về '
+                               'các mẫu này; không mô tả nội dung của biểu mẫu.')
+            else:
+                return {'answer':{'answer':'Chưa có đầy đủ biểu mẫu đã xác minh để đối chiếu. '+named,
+                                  'status':'insufficient_form_scope','citations':[]}}
         if any((item.get('output') or {}).get('status')=='recognition_scope_unverified'
                for item in outputs):
             return {'answer':{'answer':'Chưa có bản ghi công nhận đã xác minh khớp đầy đủ '
@@ -562,9 +612,9 @@ class OcopAgent:
                      'claim_verification':{**payload.get('claim_verification',{}),
                          'answer_status':payload['status'], 'corpus_status':'partial_debug_corpus'}}
         return AgentResponse(answer=payload['answer'],intent=route.intent,status=payload['status'],
-            citations=payload['citations'],tools_used=[r['tool'] for r in final.get('results',[]) if not r.get('skipped')],
+            citations=payload['citations'],tools_used=[r['tool'] for r in final.get('results',[]) if not r.get('skipped') and not r.get('memory')],
             tools_skipped=[r['tool'] for r in final.get('results',[]) if r.get('skipped')],
-            workflow_engine=engine,route=route,corpus_version=self._corpus_version(),
+            workflow_engine=engine,route=route,corpus_version=self._corpus_version(),standalone_query=final.get('effective_query'),
             tool_trace=final.get('trace',[]),evidence_coverage=final.get('evidence_coverage',{}),
             evidence_grade=final.get('evidence_grade',{}),
             claim_verification=payload.get('claim_verification',{}),

@@ -47,6 +47,7 @@ class AgentSettings(BaseModel):
     graph_hops: int = Field(2, ge=1, le=4)
     graph_node_limit: int = Field(75, ge=1)
     graph_max_facts: int = Field(32, ge=1)
+    memory_evidence_reuse: bool = True  # follow-ups re-read evidence the conversation already cited
 
 
 class Settings(BaseModel):
@@ -79,4 +80,10 @@ def override_settings(items: list[str], root: Path | None = None) -> None:
         target = getattr(get_settings(root), section)
         if name not in type(target).model_fields:
             raise SystemExit(f'unknown setting {key}')
-        setattr(target, name, type(getattr(target, name))(value))
+        kind = type(getattr(target, name))
+        if kind is bool:
+            if value.lower() not in ('true', 'false', '1', '0'):
+                raise SystemExit(f'{key} expects true/false, got {value!r}')
+            setattr(target, name, value.lower() in ('true', '1'))
+        else:
+            setattr(target, name, kind(value))

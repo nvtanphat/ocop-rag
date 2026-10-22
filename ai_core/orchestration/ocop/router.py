@@ -16,6 +16,7 @@ from datetime import date
 from ai_core.orchestration.ocop.capabilities import CAPABILITY_TO_TOOLS, MAX_TOOL_CALLS, TOOL_REGISTRY, Capability
 from ai_core.orchestration.ocop.catalog import EntityCatalog, Match
 from ai_core.orchestration.ocop.contracts import Intent, Route
+from ai_core.orchestration.ocop import memory
 from ai_core.orchestration.ocop.language import Language, fold, get_language, has_diacritics
 from ai_core.orchestration.ocop.privacy import get_privacy
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
@@ -401,6 +402,8 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     prior = session or {}
     has_prior = bool(prior.get('last_query'))
     updates = extract_slots(q, catalog=catalog, language=lang)
+    # "Hai mẫu này khác nhau ở đâu?": things the conversation discussed, named by a plural reference or a comparison.
+    carried = memory.plural_referents(q, prior.get('memory'), updates, lang) if has_prior else {}
     own_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page',
                                      'criterion_id', 'product_name', 'organization_name', 'region'})
     structural_scope = bool(set(updates) & {'document_code', 'article_id', 'form_id', 'sheet_number', 'pdf_page', 'criterion_id'})
@@ -409,7 +412,8 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     pronoun = bool(lang.words('pronouns', lang.followup.pronouns).search(folded))
     tail = bool(lang.words('tail_cues', lang.followup.tail_cues).search(folded)) if lang.followup.tail_cues else False
     # A reference ("sản phẩm đó", "... thì sao?") with no scope of its own continues the conversation, whatever its length.
-    followup = has_prior and (opener or (not own_scope and (pronoun or tail)))
+    followup = has_prior and (opener or bool(carried) or (not own_scope and (pronoun or tail)))
+    updates = {**updates, **carried}
     slots = _merge_followup(prior, updates) if followup else updates
     old_code = (prior.get('slots') or {}).get('document_code') if followup else None
     old_year = YEAR.findall(str(old_code or ''))

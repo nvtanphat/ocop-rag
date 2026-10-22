@@ -1,0 +1,214 @@
+"""Conversation memory for follow-up turns: what is being talked about, and which evidence was shown.
+
+Four different things are kept apart on purpose:
+  * conversation state (this module): the last answered topic as a standalone question, the things recently discussed
+    (``referents``), and references to the evidence units the previous answers cited;
+  * workflow checkpoints (system/checkpoints.py): LangGraph execution state, never read here;
+  * the knowledge base / graph: the only source of evidence text;
+  * answers: never stored. A reference is re-read from the corpus at the next turn, so memory can point at evidence but
+    can never become evidence.
+Nothing from a private (dossier) turn is stored.
+"""
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from ai_core.orchestration.ocop.language import Language, fold, get_language
+
+MAX_REFERENTS = 4
+MAX_EVIDENCE = 12
+MAX_TURNS = 3
+# slot keys holding the things a question can be about, per referent kind
+REFERENT_SLOTS = {'form': ('form_ids', 'form_id'), 'sheet': ('sheet_number',), 'article': ('article_id',),
+                  'document': ('document_codes', 'document_code')}
+COMPARE_CUES = ('so sanh voi', 'so voi', 'khac voi', 'cung voi')
+PLURAL = r'(?:hai|2|ba|3|ca\s+hai|cac|nhung|ca\s+ba)'
+DEMONSTRATIVE = r'(?:nay|do|ay|tren|vua\s+(?:noi|nhac|hoi|roi)|kia|nhac\s+den)'
+
+
+def empty() -> dict:
+    return {'referents': {}, 'standalone': '', 'evidence': [], 'corpus_version': None}
+
+
+def _short(value: Any, limit: int = 128) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= limit
+
+
+def sanitize(raw: Any) -> dict:
+    """Memory travels inside the session dict; only well-formed, small, public-shaped values survive."""
+    out = empty()
+    if not isinstance(raw, dict):
+        return out
+    referents = raw.get('referents')
+    if isinstance(referents, dict):
+        for kind in REFERENT_SLOTS:
+            values = referents.get(kind)
+            if isinstance(values, list):
+                out['referents'][kind] = [v for v in values if _short(v, 64)][:MAX_REFERENTS]
+    if _short(raw.get('standalone'), 600):
+        out['standalone'] = raw['standalone']
+    if _short(raw.get('corpus_version'), 64):
+        out['corpus_version'] = raw['corpus_version']
+    for ref in raw.get('evidence') or []:
+        if isinstance(ref, dict) and _short(ref.get('source_id')) and (_short(ref.get('chunk_id')) or _short(ref.get('evidence_unit_id'))):
+            out['evidence'].append({k: ref[k] for k in ('source_id', 'evidence_unit_id', 'chunk_id', 'pdf_page', 'turn')
+                                    if k in ref and (_short(ref[k]) or isinstance(ref[k], int))})
+    out['evidence'] = out['evidence'][:MAX_EVIDENCE]
+    return out
+
+
+def _values(slots: dict, kind: str) -> list[str]:
+    for key in REFERENT_SLOTS[kind]:
+        value = slots.get(key)
+        if isinstance(value, list):
+            return [str(v) for v in value]
+        if value not in (None, ''):
+            return [str(value)]
+    return []
+
+
+def update(prior: dict, *, slots: dict, standalone: str, citations: list[dict], corpus_version: str | None,
+           private: bool = False) -> dict:
+    """State after an answered turn: recency-ordered referents, the standalone question, citation references."""
+    state = sanitize(prior)
+    if private:
+        return state  # a dossier turn leaves no trace in conversation memory
+    for kind in REFERENT_SLOTS:
+        seen = [v for v in _values(slots, kind)]
+        if seen:
+            state['referents'][kind] = list(dict.fromkeys([*seen[::-1], *state['referents'].get(kind, [])]))[:MAX_REFERENTS]
+    if standalone:
+        state['standalone'] = standalone[:600]
+    turn = max([r.get('turn', 0) for r in state['evidence']] + [0]) + 1
+    fresh = [{'source_id': c['source_id'], 'pdf_page': c.get('pdf_page'), 'turn': turn,
+              **{k: c[k] for k in ('evidence_unit_id', 'chunk_id') if isinstance(c.get(k), str)}}
+             for c in citations if isinstance(c, dict) and isinstance(c.get('source_id'), str)]
+    kept = [r for r in state['evidence'] if r.get('turn', 0) > turn - MAX_TURNS]
+    state['evidence'] = sanitize({'evidence': fresh + kept})['evidence']
+    state['corpus_version'] = corpus_version
+    return state
+
+
+def _noun_pattern(lang: Language, kind: str) -> str:
+    if kind == 'document':
+        names = [n for names in lang.document_types.values() for n in names] + ['van ban']
+    else:
+        names = lang.structure_nouns.get({'form': 'form', 'sheet': 'sheet', 'article': 'article'}[kind], [])
+    return '|'.join(r'\s+'.join(re.escape(w) for w in fold(n).split()) for n in sorted(names, key=len, reverse=True))
+
+
+def plural_referents(question: str, memory: Any, updates: dict, lang: Language | None = None) -> dict:
+    """Slots for "hai mẫu này" / "so sánh với mẫu số 01": the recently discussed things the question points at.
+
+    Only things the conversation actually discussed are used; a plural reference to fewer than two of them is left unresolved.
+    """
+    lang = lang or get_language()
+    referents = sanitize(memory)['referents']
+    folded = fold(question)
+    for kind in ('form', 'sheet', 'article', 'document'):
+        pool = referents.get(kind, [])
+        noun = _noun_pattern(lang, kind)
+        if not noun:
+            continue
+        new = _values(updates, kind)
+        # "Hai mẫu này khác nhau ở đâu?": a plural demonstrative over a kind with at least two discussed items
+        if not new and len(pool) >= 2 and re.search(rf'\b{PLURAL}\s+(?:{noun})\s+{DEMONSTRATIVE}\b|\b(?:{noun})\s+{DEMONSTRATIVE}\s+khac', folded):
+            return _as_slots(kind, pool[:2][::-1])
+        # "So sánh với mẫu số 01": the new item against the most recent different one
+        if new and len(new) == 1 and any(c in folded for c in COMPARE_CUES):
+            before = [v for v in pool if v != new[0]]
+            if before:
+                return _as_slots(kind, [before[0], new[0]])
+    return {}
+
+
+def _as_slots(kind: str, values: list[str]) -> dict:
+    key = REFERENT_SLOTS[kind][0]
+    if kind in ('form', 'document'):
+        out = {key: values}
+        out[REFERENT_SLOTS[kind][1]] = values[0]
+        return out
+    return {REFERENT_SLOTS[kind][0]: values[-1]}
+
+
+def _surface(lang: Language, kind: str, value: str) -> str:
+    if kind == 'form':
+        return f"{lang.structure_nouns['form'][0].capitalize()} {int(value):02d}" if value.isdigit() else value
+    if kind == 'article':
+        return f"{lang.structure_nouns['article'][0].capitalize()} {value}"
+    if kind == 'sheet':
+        return f"{lang.structure_nouns['sheet'][0].capitalize()} {value}"
+    if kind == 'document':
+        return f"{next(iter(lang.document_types.values()))[0].capitalize()} {value}"
+    return value
+
+
+_SUBSTITUTIONS = {  # kind -> regexp finding the reference to replace inside the previous standalone question
+    'form': re.compile(r'(?i)\bmẫu(?:\s+số)?\s+\d+'),
+    'article': re.compile(r'(?i)\bđiều\s+\d+'),
+    'sheet': re.compile(r'(?i)\bphiếu(?:\s+số)?\s+\d+'),
+    'document': re.compile(r'(?i)\b(?:QĐ|Quyết\s+định|Nghị\s+định|NĐ|Thông\s+tư|TT)\s*(?:số\s+)?\d{1,4}(?:/\d{4})?(?:/[\wĐ-]+)?'),
+}
+_OPENER = re.compile(r'(?i)^\s*(?:thế\s+còn|vậy\s+còn|còn|thế\s+thì|vậy\s+thì|thế|vậy|nếu\s+vậy)\s+')
+
+
+def rewrite(question: str, memory: Any, slots: dict, updates: dict, *, carried: dict | None = None,
+            lang: Language | None = None) -> tuple[str, str]:
+    """A follow-up as a standalone question: ``(text, method)``.
+
+    1. an explicit new thing replaces the same kind of thing in the previous standalone question
+       ("Còn Điều 7?" after "QĐ26/2026 Điều 6 quy định gì?" -> "QĐ26/2026 Điều 7 quy định gì?");
+    2. otherwise the question keeps its own words and states the scope it relies on;
+    3. a bare reference ("Nó thì sao?") is the previous standalone question.
+    """
+    lang = lang or get_language()
+    state = sanitize(memory)
+    base = state['standalone']
+    if not base:
+        return question, 'no_memory'
+    stripped = _OPENER.sub('', question).strip()
+    resolved = {**updates, **(carried or {})}
+    nouns = {w for kind in ('form', 'sheet', 'article') for n in lang.structure_nouns.get(kind, []) for w in lang.content_words(n)}
+    own_words = [w for w in lang.content_words(stripped) if w not in nouns and not re.fullmatch(r'\d+|hai|ba|nay|do|ay', w)]
+    if not own_words:
+        # nothing but a reference: the previous standalone question, with whatever explicit thing the user swapped in
+        text, replaced = base, []
+        for kind, pattern in _SUBSTITUTIONS.items():
+            new = _values(resolved, kind)
+            if new and pattern.search(text):
+                text = pattern.sub(' và '.join(_surface(lang, kind, v) for v in new), text, count=1)
+                replaced.append(kind)
+        return text, ('substitute:' + ','.join(replaced)) if replaced else 'previous_standalone'
+    # the question has words of its own: keep them and state the scope it relies on (including what it points back to)
+    explicit = {k for k in updates if k in {key for keys in REFERENT_SLOTS.values() for key in keys} | {'region', 'product_name', 'organization_name'}}
+    scope = []
+    for kind in ('document', 'article', 'form', 'sheet'):
+        if set(REFERENT_SLOTS[kind]) & explicit:
+            continue
+        scope += [_surface(lang, kind, v) for v in _values(slots, kind)]
+    for key, label in (('product_name', 'sản phẩm'), ('organization_name', 'chủ thể')):
+        if slots.get(key) and key not in explicit:
+            scope.append(f"{label} {slots[key]}")
+    if slots.get('region') and 'region' not in explicit:
+        scope.append(str(slots['region']))
+    scope = list(dict.fromkeys(scope))
+    return (stripped.rstrip('?. ') + ' (' + ', '.join(scope) + ')?' if scope else stripped), 'state_scope'
+
+
+def reusable_evidence(memory: Any, *, corpus_version: str | None, source_ids: set[str] | None) -> tuple[list[dict], list[dict]]:
+    """Which remembered evidence references may be re-read for this turn, and why the others may not.
+
+    A reference is dropped when the corpus changed since it was cited, or when the new question is scoped to documents
+    that do not include its source.
+    """
+    state = sanitize(memory)
+    kept, dropped = [], []
+    for ref in state['evidence']:
+        if corpus_version and state['corpus_version'] and state['corpus_version'] != corpus_version:
+            dropped.append({**ref, 'reason': 'corpus_version_changed'})
+        elif source_ids is not None and ref['source_id'] not in source_ids:
+            dropped.append({**ref, 'reason': 'scope_changed'})
+        else:
+            kept.append(ref)
+    return kept, dropped
