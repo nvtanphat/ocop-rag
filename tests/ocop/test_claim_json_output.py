@@ -155,3 +155,21 @@ def test_grounding_allows_rejecting_the_alternative_the_user_offered():
     assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='QĐ1489 sửa đổi QĐ148 hay QĐ26?')[0]
     # an alternative the user never mentioned is a new negative assertion and stays blocked
     assert not grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Sửa đổi QĐ148?')[0]
+
+
+def test_empty_claims_without_missing_are_asked_once_more(tmp_path):
+    from ai_core.orchestration.ocop.answer import assemble
+    calls = []
+
+    class Flaky:
+        def chat_structured(self, system, user, **kw):
+            calls.append(user)
+            return '{"claims":[],"missing":[]}' if len(calls) == 1 else \
+                '{"claims":[{"text":"Hạn nộp hồ sơ là trước ngày 15/10/2026.","sources":["S1"]}],"missing":[]}'
+
+    row = {'source_id': 'VN.X.2026', 'evidence_unit_id': 'u1', 'review_status': 'needs_review', 'table_backed': False,
+           'text': 'Gửi hồ sơ trước ngày 15/10/2026. Hạn nộp hồ sơ là trước ngày 15/10/2026.',
+           'source_spans': [{'pdf_page': 3}], 'chunk_id': 'c1'}
+    out = assemble('Hạn nộp hồ sơ là khi nào?', [{'tool': 'search_regulations', 'output': {'results': [row]}}], llm=Flaky())
+    assert len(calls) == 2 and 'LƯU Ý' in calls[1]
+    assert out['status'] != 'citation_verification_failed'
