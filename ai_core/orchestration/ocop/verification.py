@@ -202,7 +202,9 @@ def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, cr
     if negation(prose) != negation(source) and re.search(r'\b(?:không|miễn)\b', prose, re.I):
         return False, 'grounding_negation_mismatch'
     lang = get_language()
-    claim_terms = lang.content_words(prose)
+    from ai_core.orchestration.ocop.language import fold
+    filler = {fold(w) for w in lang.claim_filler}
+    claim_terms = [t for t in lang.content_words(prose) if t not in filler]
     if not claim_terms:
         return False, 'grounding_no_content'
     source_terms = lang.content_words(source)

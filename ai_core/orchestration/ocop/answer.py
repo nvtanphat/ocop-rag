@@ -4,6 +4,7 @@ import json
 import math
 import re
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
+from ai_core.orchestration.ocop.entailment import SOFT_REASONS, review
 from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_markers,check_sensitive_claims,
     grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
@@ -300,6 +301,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers in claims:
+        soft_excerpt = ''
         tags = ''.join(f'[S{n}]' for n in numbers)
         # A claim may hold several sentences ("Có. Sản phẩm ..."); each one carries the claim's markers.
         marked = ' '.join(s.rstrip('. ') + ' ' + tags + '.' for s in _sentences(text)) or text + ' ' + tags
@@ -328,18 +330,29 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
                                               critical=bool(CRITICAL.search(text)), asked=question)
                 if not ok:
                     reasons.append(why)
+                    if reasons == [why] and why in SOFT_REASONS:
+                        soft_excerpt = union
             else:
                 reasons.extend(failures)
         (rejected if reasons else accepted).append({'text': text, 'sources': numbers, 'marked': marked,
                                                      'reasons': list(dict.fromkeys(reasons)), 'tier': tier,
-                                                     'unverified_source': markers['unverified_source']})
+                                                     'unverified_source': markers['unverified_source'],
+                                                     'order': len(accepted) + len(rejected),
+                                                     **({'soft_excerpt': soft_excerpt} if soft_excerpt else {})})
     return accepted, rejected
 
 
-def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question=''):
+def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question='', llm=None):
     """Publish only claims that pass every gate; name what was dropped and what the SOURCE does not answer."""
     claims, missing = parsed
     accepted, rejected = _judge_claims(claims, citations, selected, catalog, question)
+    # A faithful paraphrase fails word overlap; a second judgement must anchor it with a verbatim quote (entailment.py).
+    soft = [r for r in rejected if r.get('soft_excerpt')]
+    for index, quote in review(llm, [{'claim': r['text'], 'excerpt': r['soft_excerpt']} for r in soft], asked=question).items():
+        soft[index].update(reasons=[], tier='unreviewed_semantic', quote=quote)
+        rejected.remove(soft[index])
+        accepted.append(soft[index])
+    accepted.sort(key=lambda r: r['order'])
     diagnostics = {'layer': 'claim_verification', 'accepted': len(accepted), 'rejected': [
         {'claim': r['text'], 'reasons': r['reasons']} for r in rejected], 'missing_from_source': missing}
     if not accepted:
@@ -362,7 +375,8 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
     return {"answer": '\n'.join([body, *notes]), "status": status, "citations": citations, "evidence_fusion": fusion,
             "claim_verification": {'status': 'verified' if not rejected else 'partial', 'supported': len(accepted),
                                    'unsupported': len(rejected), 'claims': [
-                {'claim': c['text'], 'cited': c['sources'], 'status': 'supported'} for c in accepted]},
+                {'claim': c['text'], 'cited': c['sources'], 'status': 'supported', 'tier': c['tier'],
+                 **({'anchor_quote': c['quote']} if c.get('quote') else {})} for c in accepted]},
             'generation_diagnostics': diagnostics}
 
 
@@ -437,7 +451,7 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,
              else llm.chat(system,prompt,max_tokens=1024))
         parsed=_parse_claims(raw) if isinstance(raw,str) else None
         if parsed is not None:
-            return _publish_claims(parsed,citations,selected,contexts,fusion,catalog,question)
+            return _publish_claims(parsed,citations,selected,contexts,fusion,catalog,question,llm)
         text=raw
         if not isinstance(text,str) or not text.strip():
             return {'answer':'Model không trả về văn bản hợp lệ. Chỉ cung cấp bản trích xuất nguồn:\n'+
