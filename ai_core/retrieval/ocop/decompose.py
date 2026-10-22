@@ -33,6 +33,6 @@ def sub_queries(question: str) -> list[str]:
     kept: list[str] = []
     for part in parts:
         part = part.strip(' ,.;:?!')
-        if len(lang.content_words(part)) >= MIN_PART_TERMS and part.casefold() != text.casefold() and part not in kept:
+        if len(lang.content_words(part)) >= MIN_PART_TERMS and part.casefold() != text.strip(' ,.;:?!').casefold() and part not in kept:
             kept.append(part)
     return kept[:MAX_PARTS] if len(kept) >= 2 else []

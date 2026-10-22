@@ -237,10 +237,18 @@ class OcopAgent:
         if not self._should_recover(state,grade):return {'results':results,'trace':trace}
         context=self._trusted_context(state)
         started=monotonic()
+        # Targeted: evidence already found for the covered parts stays; only the parts nothing speaks to are searched,
+        # each scoped by what it names itself. Without uncovered parts (a missing structured tool) the question is rewritten.
+        parts=list(grade.get('uncovered_parts') or [])
         rewritten=bounded_rewrite(state.get('effective_query',state['query']),grade.get('missing_tools',[]),route.slots)
         try:
-            payload=self.tools.dispatch('search_regulations',query=rewritten,
-                                        slots=route.slots,context=context,auth=state.get('auth'))
+            if parts and not grade.get('missing_tools'):
+                found=[self.tools.search_part(part,route.slots,context,state.get('auth')) for part in parts]
+                rows=[{**row,'query_part':part} for part,one in zip(parts,found) for row in one.get('results',[])[:4]]
+                payload={'results':rows,'status':'ok' if rows else 'no_results'}
+            else:
+                payload=self.tools.dispatch('search_regulations',query=rewritten,
+                                            slots=route.slots,context=context,auth=state.get('auth'))
         except (RuntimeError,FileNotFoundError,TimeoutError,OSError) as exc:
             if isinstance(exc,RuntimeError) and ('Dense index not built' in str(exc) or
                 'qdrant-client is required' in str(exc) or 'sentence-transformers required' in str(exc)):
@@ -248,7 +256,7 @@ class OcopAgent:
             payload={'results':[],'status':'tool_unavailable','error_type':type(exc).__name__}
         payload=self._validate_output(payload)
         results.append({'tool':'search_regulations','output':payload,'recovery':True})
-        trace.append({'step':'recovery','name':'search_regulations','reason':'insufficient_or_irrelevant_evidence',
+        trace.append({'step':'recovery','name':'search_regulations','reason':'uncovered_question_parts' if parts and not grade.get('missing_tools') else 'insufficient_or_irrelevant_evidence','parts':parts,
                       'status':payload.get('status','ok'),
                       'hits':len(payload.get('results',[])),'latency_ms':round((monotonic()-started)*1000,2)})
         return {'results':results,'trace':trace}

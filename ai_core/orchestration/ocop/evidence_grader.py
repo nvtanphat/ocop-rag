@@ -34,6 +34,20 @@ def _text(row:dict) -> str:
     return ' '.join(str(row.get(k) or '') for k in ('text','evidence_text','row_text','label_candidate','title','source_id'))
 
 
+PART_COVERAGE=0.34
+
+
+def uncovered_parts(query:str,row_tokens:list[set[str]])->list[str]:
+    """Parts of a compound question that no scope-valid evidence row speaks to (a part is covered when one row holds
+    at least PART_COVERAGE of its content words). A question that is not compound has no parts to miss."""
+    from ai_core.retrieval.ocop.decompose import sub_queries
+    missed=[]
+    for part in sub_queries(query):
+        wanted=tokens(part)
+        if wanted and not any(len(wanted&row)/len(wanted)>=PART_COVERAGE for row in row_tokens):missed.append(part)
+    return missed
+
+
 def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_tools:list[str]|tuple[str,...]=(),
                    min_relevance:float|None=None) -> dict:
     """Inspect all required capabilities, not just whether some BM25 hit exists.
@@ -44,7 +58,7 @@ def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_
     slots=slots or {}
     min_relevance=get_settings().agent.grader_min_relevance if min_relevance is None else min_relevance
     relevant_query=tokens(query)
-    scored=[];capabilities=[];missing=[];expected=set(expected_tools)
+    scored=[];capabilities=[];missing=[];expected=set(expected_tools);scoped_rows=[]
     for entry in results:
         name=str(entry.get('tool') or '')
         output=entry.get('output') or {}
@@ -67,6 +81,7 @@ def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_
             if region and jurisdiction and jurisdiction not in ('nationwide','toàn quốc',str(region)):
                 scope='mismatch';relevance=0.0
             elif not region or jurisdiction:scope='not_contradicted'
+            if relevance>0 or not relevant_query:scoped_rows.append(tt)
             graded.append({'evidence_unit_id':row.get('evidence_unit_id') or row.get('unit_id'),
                            'source_id':row.get('source_id'),'relevance':round(relevance,3),
                            'review_status':row.get('review_status','needs_review'),
@@ -92,10 +107,11 @@ def grade_evidence(query:str,results:list[dict],*,slots:dict|None=None,expected_
     missing.extend(sorted(expected-present))
     missing=list(dict.fromkeys(missing))
     relevant=sum(c['relevant_count'] for c in capabilities)
+    uncovered=uncovered_parts(query,scoped_rows) if relevant else []
     if not relevant:status='none'
-    elif missing:status='partial'
+    elif missing or uncovered:status='partial'
     else:status='sufficient_for_generation'
-    return {'status':status,'missing_tools':missing,'tool_grades':capabilities,
+    return {'status':status,'missing_tools':missing,'uncovered_parts':uncovered,'tool_grades':capabilities,
             'evidence_grades':scored[:80], 'relevant_evidence_count':relevant,
             'verified_business_resolution':all(c['structured_resolved'] for c in capabilities
                                                if c['tool'] in STRUCTURED_TOOLS) and not missing,

@@ -160,14 +160,8 @@ class ToolRegistry:
         whole=self.dispatch('search_regulations',query=query,slots=slots,context={**context,'_part':True},auth=auth)
         seen={self._hit_key(row) for row in whole.get('results',[])}
         extra=[]
-        from ai_core.orchestration.ocop.router import extract_slots
         for part in sub_queries(query):
-            # Each part is scoped by what it names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..." must not
-            # filter the local-deadline part by the other part's document.
-            own=extract_slots(part)
-            part_slots={**{k:v for k,v in slots.items() if k not in PART_SCOPE_SLOTS},
-                        **{k:v for k,v in own.items() if k in PART_SCOPE_SLOTS}}
-            found=self.dispatch('search_regulations',query=part,slots=part_slots,context={**context,'_part':True},auth=auth)
+            found=self.search_part(part,slots,context,auth)
             for row in found.get('results',[])[:4]:
                 if self._hit_key(row) not in seen:
                     seen.add(self._hit_key(row));extra.append({**row,'query_part':part})
@@ -175,6 +169,15 @@ class ToolRegistry:
         merged={**whole,'results':[*whole.get('results',[]),*extra]}
         if not whole.get('results'):merged.pop('status',None)  # part hits are real evidence even if the whole found none
         return merged
+
+    def search_part(self,part:str,slots:dict,context:dict,auth)->dict:
+        """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
+        must not filter the local-deadline part by the other part's document."""
+        from ai_core.orchestration.ocop.router import extract_slots
+        own=extract_slots(part)
+        part_slots={**{k:v for k,v in slots.items() if k not in PART_SCOPE_SLOTS},
+                    **{k:v for k,v in own.items() if k in PART_SCOPE_SLOTS}}
+        return self.dispatch('search_regulations',query=part,slots=part_slots,context={**context,'_part':True},auth=auth)
 
     @staticmethod
     def _hit_key(row:dict):
