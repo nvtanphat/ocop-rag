@@ -200,3 +200,17 @@ def test_verify_claims_assigns_citations_correctly_when_placed_after_period():
     assert v['claims'][0]['status'] == 'supported'
     assert v['claims'][1]['status'] == 'supported'
 
+
+
+def test_star_claim_is_checked_against_the_source_it_cites_not_a_pool_of_verified_sources():
+    from ai_core.orchestration.ocop.verification import check_sensitive_claims
+    citations = [{'source_id': 'a', 'evidence_unit_id': 'u1'}, {'source_id': 'b', 'evidence_unit_id': 'u2'}]
+    rows = [{'source_id': 'a', 'evidence_unit_id': 'u1', 'review_status': 'verified', 'text': 'Sản phẩm X đạt 3 sao.'},
+            {'source_id': 'b', 'evidence_unit_id': 'u2', 'review_status': 'verified', 'text': 'Sản phẩm Y đạt 5 sao.'}]
+    pooled = check_sensitive_claims('Sản phẩm X đạt 5 sao [S1].', rows)
+    assert pooled['unsupported_score_or_star_claims'] == []  # the old pooled check let this through
+    cited = check_sensitive_claims('Sản phẩm X đạt 5 sao [S1].', rows, citations)
+    assert cited['unsupported_score_or_star_claims'] == ['5 sao']
+    assert check_sensitive_claims('Sản phẩm X đạt 3 sao [S1]. Sản phẩm Y đạt 5 sao [S2].', rows, citations)[
+        'unsupported_score_or_star_claims'] == []
+    assert check_sensitive_claims('Sản phẩm X đạt 3 sao.', rows, citations)['unsupported_score_or_star_claims'] == ['3 sao']

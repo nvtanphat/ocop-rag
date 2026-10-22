@@ -17,18 +17,46 @@ def check_source_markers(answer:str,citations:list[dict])->dict:
 
 SCORE_ASSERTION = re.compile(r"(?<!\w)\d+(?:[.,]\d+)?\s*(?:điểm|sao)\b", re.I)
 
-def check_sensitive_claims(answer:str,evidence_rows:list[dict])->dict:
+def _cited_rows(marker_ids:list[int],citations:list[dict],evidence_rows:list[dict])->list[dict]:
+    rows=[]
+    for n in marker_ids:
+        if not 0<n<=len(citations):continue
+        c=citations[n-1]
+        rows.extend(r for r in evidence_rows if r.get('source_id')==c.get('source_id') and
+                    (r.get('evidence_unit_id') or r.get('unit_id'))==c.get('evidence_unit_id') and
+                    (not c.get('chunk_id') or r.get('chunk_id')==c.get('chunk_id')))
+    return rows
+
+
+def _row_text(rows:list[dict])->str:
+    text=' '.join(str(row.get('text') or row.get('evidence_text') or row.get('row_text') or '')
+                  for row in rows if row.get('review_status')=='verified')
+    return re.sub(r"\s+"," ",text.casefold())
+
+
+def check_sensitive_claims(answer:str,evidence_rows:list[dict],citations:list[dict]|None=None)->dict:
     """Fail-closed on numeric score/star claims without verified textual support.
 
-    This is a lightweight *guard*, not semantic entailment verification.
-    A matching number alone cannot establish application to a particular sheet.
+    With ``citations`` each sentence is checked against the verified text of the sources *it cites*: "5 sao" in
+    one sentence is not excused by a different verified source that happens to contain "5 sao". Without them the
+    pooled verified text is used (legacy behaviour). Still a guard, not semantic entailment: a matching number
+    alone cannot establish application to a particular sheet.
     """
-    assertions={re.sub(r"\s+"," ",m.group(0).casefold()).strip() for m in SCORE_ASSERTION.finditer(answer)}
-    verified=' '.join(str(row.get('text') or row.get('evidence_text') or row.get('row_text') or '')
-                      for row in evidence_rows if row.get('review_status')=='verified')
-    verified=re.sub(r"\s+"," ",verified.casefold())
-    unsupported=sorted(x for x in assertions if x not in verified)
-    return {'unsupported_score_or_star_claims':unsupported,'sensitive_claim_count':len(assertions)}
+    def found(text):
+        return {re.sub(r"\s+"," ",m.group(0).casefold()).strip() for m in SCORE_ASSERTION.finditer(text)}
+    if citations is None:
+        assertions=found(answer)
+        verified=_row_text(evidence_rows)
+        return {'unsupported_score_or_star_claims':sorted(x for x in assertions if x not in verified),
+                'sensitive_claim_count':len(assertions)}
+    assertions,unsupported=set(),set()
+    for sentence in _split_claims(answer):
+        stated=found(sentence)
+        if not stated:continue
+        assertions|=stated
+        verified=_row_text(_cited_rows([int(i) for i in MARKER.findall(sentence)],citations,evidence_rows))
+        unsupported.update(x for x in stated if x not in verified)
+    return {'unsupported_score_or_star_claims':sorted(unsupported),'sensitive_claim_count':len(assertions)}
 
 # Claim-level verification. Supports an optional audited semantic entailment
 # backend; lexical overlap alone is never called semantic proof.

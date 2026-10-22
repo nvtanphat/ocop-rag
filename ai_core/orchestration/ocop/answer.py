@@ -309,7 +309,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question=''):
         markers = check_source_markers(marked, citations)
         if not numbers or markers['invalid_markers'] or markers['missing_citations']:
             reasons.append('unknown_citation_markers' if markers['invalid_markers'] else 'missing_citations')
-        sensitive = check_sensitive_claims(marked, selected)
+        sensitive = check_sensitive_claims(marked, selected, citations)
         star_unsupported = bool(sensitive['unsupported_score_or_star_claims'])
         if star_unsupported and not _prose_rule_only(numbers, citations, selected, text, catalog):
             reasons.append('unsupported_score_or_star_claims')
@@ -460,7 +460,7 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,
                         'layer':'generation','reasons':['invalid_model_text']}}
         # Server builds its own citations from tool evidence; never trust model IDs.
         verification=check_source_markers(text,citations)
-        sensitive=check_sensitive_claims(text,selected)
+        sensitive=check_sensitive_claims(text,selected,citations)
         claims=verify_claims(text,citations,selected)
         if verification["invalid_markers"] or verification["missing_citations"] or sensitive['unsupported_score_or_star_claims'] or claims['status'] != 'verified':
             reasons=[]
