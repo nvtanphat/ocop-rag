@@ -200,6 +200,7 @@ SYSTEM_PROMPT = (
     "không bịa luật, thang điểm, điều kiện, ngày tháng hoặc trích dẫn. "
     "Nếu OCR chưa verified phải nêu chưa xác minh. Tránh chỉ dẫn mang tính quyết định cấp sao chính thức. "
     "Với dòng bảng dạng 'Nhãn cột: giá trị', chỉ dùng đúng nhãn cột, không suy ra vai trò khác. "
+    "Không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể; chỉ nêu điều nguồn ghi (ngày hiệu lực ghi trong văn bản là được). "
     "Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
     "(hệ thống tự gắn nhãn chưa duyệt) và không dùng dấu ba chấm của đoạn bị cắt làm nội dung. "
     "Trả lời bằng JSON {\"claims\":[{\"text\":...,\"sources\":[\"S1\"]}],\"missing\":[...]}: mỗi claim là một ý ngắn "

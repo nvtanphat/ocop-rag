@@ -112,3 +112,13 @@ def test_review_status_disclaimers_are_not_claims():
                               {'text': 'Bản OCR của tài liệu chưa được xác minh', 'sources': ['S1']}], 'missing': ['Nội dung OCR chưa được xác minh']})
     out = assemble('Hạt sen hạng nào?', results(row('Hạt sen được công nhận hạng ba sao.', status='needs_review')), llm=model)
     assert out['status'] == 'generated_unverified_claims' and 'Đã loại' not in out['answer'] and 'Nguồn chưa trả lời' not in out['answer']
+
+
+def test_grounding_compares_dates_by_value_not_format():
+    from ai_core.orchestration.ocop.verification import grounded_in_excerpt
+    source = 'Quyết định này có hiệu lực kể từ ngày 22/05/2026 và thay thế Quyết định số 1489/QĐ-TTg.'
+    ok, _ = grounded_in_excerpt('Quyết định có hiệu lực từ ngày 22 tháng 5 năm 2026 và thay thế Quyết định số 1489/QĐ-TTg.',
+                                source, min_term_coverage=0.8)
+    assert ok
+    bad, reason = grounded_in_excerpt('Quyết định có hiệu lực từ ngày 23 tháng 5 năm 2026.', source, min_term_coverage=0.8)
+    assert not bad and reason == 'grounding_numbers_missing'

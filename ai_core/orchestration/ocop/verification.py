@@ -136,6 +136,11 @@ def verify_claims(answer:str,citations:list[dict],evidence_rows:list[dict],
             'unsupported_critical':any(c['critical'] for c in bad+uncertain)}
 
 
+def _numbers(text: str) -> set[str]:
+    """Digit runs compared by value, so ``05``/``5`` and ``22/5/2026``/``22 tháng 5 năm 2026`` agree."""
+    return {run.lstrip('0') or '0' for run in re.findall(r'\d+', text)}
+
+
 def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, critical: bool = False) -> tuple[bool, str]:
     """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
 
@@ -145,8 +150,7 @@ def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, cr
     merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
     """
     from ai_core.orchestration.ocop.language import get_language
-    nums = set(re.findall(r'(?<!\w)\d+(?:[.,]\d+)?(?!\w)', prose))
-    if nums - set(re.findall(r'(?<!\w)\d+(?:[.,]\d+)?(?!\w)', source)):
+    if _numbers(prose) - _numbers(source):
         return False, 'grounding_numbers_missing'
     negation = lambda s: bool(re.search(r'\b(?:không|chưa|miễn)\b', s, re.I))  # noqa: E731
     if negation(prose) != negation(source) and re.search(r'\b(?:không|miễn)\b', prose, re.I):

@@ -253,6 +253,12 @@ class OcopAgent:
                       'hits':len(payload.get('results',[])),'latency_ms':round((monotonic()-started)*1000,2)})
         return {'results':results,'trace':trace}
 
+    @staticmethod
+    def _usable_rows(item:dict)->bool:
+        output=item.get('output') or {}
+        return output.get('status') not in BAD_RESULT_STATUSES and any(
+            isinstance(r,dict) and r.get('source_id') for r in output.get('results',[]))
+
     def grade(self,state:OcopState)->dict:
         route=Route.model_validate(state['route'])
         plan=state.get('plan') or build_plan(route)
@@ -344,10 +350,16 @@ class OcopAgent:
             return {'answer':{'answer':'Trang PDF được yêu cầu chưa có trong corpus đã lập chỉ mục; '
                               'không dùng trang khác để suy ra nội dung trang này.',
                               'status':'insufficient_page_scope','citations':[]}}
+        notices=[]
         if any((item.get('output') or {}).get('status')=='sheet_scope_unavailable' for item in outputs):
-            return {'answer':{'answer':'Tầng tra cứu chưa có cây phiếu đã kiểm tra khớp số phiếu và nguồn '
-                              'được hỏi; không dùng phương án của phiếu khác.',
-                              'status':'insufficient_sheet_scope','citations':[]}}
+            # Another sheet's options are never substituted. If other tools found grounded evidence the answer is
+            # built from that and says which part could not be resolved; otherwise nothing is answered.
+            if any(self._usable_rows(item) for item in outputs if (item.get('output') or {}).get('status')!='sheet_scope_unavailable'):
+                notices.append('Chưa dựng được phiếu đã kiểm tra khớp số phiếu và văn bản được hỏi; không dùng phương án của phiếu khác.')
+            else:
+                return {'answer':{'answer':'Tầng tra cứu chưa có cây phiếu đã kiểm tra khớp số phiếu và nguồn '
+                                  'được hỏi; không dùng phương án của phiếu khác.',
+                                  'status':'insufficient_sheet_scope','citations':[]}}
         if any(x.get('tool') in ('review_dossier','estimate_score') for x in outputs):
             outcome=outputs[0].get('output',{}) if outputs else {'status':'not_found'}
             # Never make empty candidate data into a passing dossier or score.
@@ -370,11 +382,16 @@ class OcopAgent:
             (item.get('output') or {}).get('status')=='checked_verified_rules' and
             (item.get('output') or {}).get('applicability_status')=='applicable'
             for item in outputs):
-            return {'answer':{'answer':'Chưa đủ quy tắc hiệu lực/chuyển tiếp đã xác minh để '
-                'đối chiếu chính xác các thời điểm hoặc năm được hỏi. '
-                'Cần nguồn quy định và phạm vi thời gian được xác minh; '
-                'không suy diễn từ năm ban hành văn bản.',
-                'status':'insufficient_temporal_verification','citations':[]}}
+            # Text the documents themselves state may be reported; which version applies in a given year or on a
+            # given date may not, so the answer carries a notice and the model is told not to conclude it.
+            if not any(self._usable_rows(item) for item in outputs if item.get('tool')!='resolve_temporal_applicability'):
+                return {'answer':{'answer':'Chưa đủ quy tắc hiệu lực/chuyển tiếp đã xác minh để '
+                    'đối chiếu chính xác các thời điểm hoặc năm được hỏi. '
+                    'Cần nguồn quy định và phạm vi thời gian được xác minh; '
+                    'không suy diễn từ năm ban hành văn bản.',
+                    'status':'insufficient_temporal_verification','citations':[]}}
+            notices.append('Chưa có quy tắc hiệu lực/chuyển tiếp đã xác minh: nội dung dưới đây chỉ nêu những gì từng văn bản '
+                           'ghi, không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể.')
         if any((item.get('output') or {}).get('status') in
                ('local_guidance_not_in_corpus','local_guidance_document_scope_mismatch')
                for item in outputs):
@@ -411,6 +428,9 @@ class OcopAgent:
         if gaps and response['status'] not in ('insufficient_evidence',):
             response['optional_gaps']=gaps
             response['answer']='[Chưa có dữ liệu cho phần phụ: '+', '.join(gaps)+']\n'+response['answer']
+        if notices and response['status']!='insufficient_evidence':
+            response['answer']='['+' '.join(notices)+']'+chr(10)+response['answer']
+            response['status']=('partial_temporal_unverified' if response['status'] in ('generated_claims_verified','generated_unverified_claims','partial_claims_verified') and any('hiệu lực' in n for n in notices) else response['status'])
         coverage=state.get('evidence_coverage') or {}
         if coverage.get('status')=='partial':
             missing=list(dict.fromkeys([x['name'] for x in coverage.get('tools',[]) if not x['has_source_evidence']]+coverage.get('missing_tools',[])))
