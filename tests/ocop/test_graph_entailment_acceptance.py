@@ -348,3 +348,12 @@ def test_explicit_registered_suspension_has_a_checked_predicate():
 def test_suspension_cannot_borrow_a_number_or_ignore_modality(text):
     _, edges, _, _ = legal_graph(text, 'SUSPENDS')
     assert edges == []
+
+
+def test_list_item_inherits_its_list_header_but_not_a_sibling_items_condition():
+    from ai_core.graph.ocop.grounding import _inherited_condition
+    sibling = '2. Chủ tịch UBND cấp tỉnh thực hiện:\na) Trong trường hợp cần thiết, thông báo hướng dẫn hồ sơ\n'
+    assert _inherited_condition(sibling, 'b) Chủ tịch UBND cấp tỉnh thành lập Hội đồng') == '2. Chủ tịch UBND cấp tỉnh thực hiện:'
+    conditional_header = '2. Nếu sản phẩm đạt 1 sao:\na) lập biên bản\n'
+    assert 'Nếu' in _inherited_condition(conditional_header, 'b) UBND cấp tỉnh thông báo')
+    assert 'Trường hợp' in _inherited_condition('Nội dung A. Trường hợp X, ', 'UBND tổ chức họp')

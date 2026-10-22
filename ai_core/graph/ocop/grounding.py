@@ -341,6 +341,24 @@ def _attribute_supported(claim, node, peers):
     return False
 
 
+def _inherited_condition(prefix, statement):
+    """Text before ``statement`` that can still condition it.
+
+    A lettered list item (``b) ...``) inherits the header of its list, never the body of its sibling ``a) ...``: a
+    condition inside item a) says nothing about item b). Other statements inherit the last clause before them.
+    """
+    if re.match(r'\s*[a-zđ][.)]\s', statement, re.I):
+        lines = prefix.splitlines()
+        start = next((i for i in range(len(lines) - 1, -1, -1) if re.match(r'\s*\d+[.)]\s', lines[i])), 0)
+        header = []
+        for line in lines[start:]:
+            if re.match(r'\s*[a-zđ][.)]\s', line, re.I):
+                break
+            header.append(line)
+        return ' '.join(header)
+    return re.split(r'[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+', prefix, flags=re.I)[-1]
+
+
 def _entails(edge, source, target, units):
     relation = edge["relation_type"]
     a, b = source.get("properties", {}), target.get("properties", {})
@@ -447,7 +465,7 @@ def _entails(edge, source, target, units):
             text = units.get(uid, {}).get('text', '')
             if statement in text:
                 prefix = text[:text.index(statement)]
-                local_prefix = re.split(r'[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+', prefix, flags=re.I)[-1]
+                local_prefix = _inherited_condition(prefix, statement)
                 if re.search(conditional, local_prefix, re.I) or re.search(scoped, local_prefix, re.I):
                     return False
         return any(
