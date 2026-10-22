@@ -47,20 +47,43 @@ def _exclusive_lock(path: Path) -> Iterator[None]:
 
 def _semantic_profile(options: "PipelineOptions") -> str:
     from ai_core.knowledge.ocop.llm_proposals import semantic_profile
-    from ai_core.orchestration.ocop.llm import extraction_gleanings, extraction_model_name
-    return semantic_profile(extraction_model_name(), options.semantic_max_units, extraction_gleanings())
+    from ai_core.orchestration.ocop.llm import extraction_gleanings, extraction_identity
+    return semantic_profile(extraction_identity(), options.semantic_max_units, extraction_gleanings())
+
+
+SEMANTIC_STATES = ("disabled", "complete", "partial", "failed")
+
+
+def semantic_state(metadata: dict, *, max_units: int | None = None) -> dict:
+    """Readiness of the LLM extraction layer of a built corpus.
+
+    * disabled: the corpus was built on purpose without the extraction LLM; this is a valid corpus, not an error;
+    * complete: every selected unit was processed with no error;
+    * partial: run without errors but some selected units were not processed (resume before publishing);
+    * failed: the run recorded errors.
+    ``fingerprint`` is the recorded extraction profile; whether it equals the *current* configuration is reported
+    separately by status() (``semantic_matches_config``).
+    """
+    metadata = metadata or {}
+    if metadata.get("enabled") is not True:
+        return {"state": "disabled", "fingerprint": metadata.get("model") or "none"}
+    eligible, selected = metadata.get("eligible_unit_count"), metadata.get("selected_unit_count")
+    processed, errors = metadata.get("processed_unit_count"), metadata.get("errors")
+    detail = {"fingerprint": metadata.get("model"), "eligible_units": eligible, "selected_units": selected,
+              "processed_units": processed, "errors": errors}
+    if not isinstance(errors, int) or errors > 0:
+        return {"state": "failed", **detail}
+    expected = eligible if max_units is None else (min(eligible, max_units) if isinstance(eligible, int) else None)
+    if (isinstance(selected, int) and isinstance(eligible, int) and selected == expected and processed == selected):
+        return {"state": "complete", **detail}
+    return {"state": "partial", **detail}
 
 
 def _semantic_complete(metadata: dict, options: "PipelineOptions") -> bool:
     if not options.semantic_extract:
         return True
-    eligible = metadata.get('eligible_unit_count')
-    selected = metadata.get('selected_unit_count')
-    return (metadata.get('enabled') is True and metadata.get('errors') == 0
-            and isinstance(eligible, int) and isinstance(selected, int)
-            and selected == (eligible if options.semantic_max_units is None else min(eligible, options.semantic_max_units))
-            and metadata.get('processed_unit_count') == selected
-            and metadata.get('model') == _semantic_profile(options))
+    state = semantic_state(metadata, max_units=options.semantic_max_units)
+    return state["state"] == "complete" and metadata.get("model") == _semantic_profile(options)
 
 
 @dataclass(frozen=True)
@@ -127,6 +150,12 @@ class OcopSystemPipeline:
         from ai_core.graph.ocop.review import ledger_path,ledger_digest
         from ai_core.graph.ocop.builder import SCHEMA_REVISION
         from ai_core.graph.ocop.integrity import graph_index_mismatch
+        semantic = semantic_state(knowledge.get("semantic_proposals", {}))
+        try:
+            matches_config = (semantic["state"] == "disabled"
+                              or knowledge.get("semantic_proposals", {}).get("model") == _semantic_profile(PipelineOptions()))
+        except (RuntimeError, ValueError):
+            matches_config = None  # the extraction configuration itself is unusable
         review_current=(graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
                         ==ledger_digest(ledger_path(self.root)))
         lineage_ok = bool(
@@ -140,6 +169,7 @@ class OcopSystemPipeline:
             and index.get('index_version') == INDEX_VERSION
             and graph.get("source_knowledge_version") == knowledge.get("corpus_version")
             and graph_index_mismatch(graph, index, strict=True) is None
+            and semantic["state"] in ("disabled", "complete")
             and index.get("status") in ("sparse_ready", "hybrid_ready")
             and graph.get("status") == "local_ready" and files_ok and review_current
             and graph.get('schema_revision') == SCHEMA_REVISION and bool(graph.get('checks'))
@@ -164,6 +194,8 @@ class OcopSystemPipeline:
             "human_review_current":review_current,
             "business_semantics_ready": business_ready,
             "semantic_proposals": knowledge.get("semantic_proposals",{}),
+            "semantic": semantic,
+            "semantic_matches_config": matches_config,
             "neo4j_ready": graph.get("neo4j", {}).get("status") == "uploaded",
             "mongo_ready": bool(index.get("mongo")),
             "model_generation": "qwen3.5:2b (optional Ollama service)",

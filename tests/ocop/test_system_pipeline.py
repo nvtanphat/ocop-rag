@@ -48,13 +48,13 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         calls.append("evidence")
         output_dir.mkdir(parents=True)
         from ai_core.processing.ocop.knowledge_extract import VERSION as KNOWLEDGE_VERSION
-        from ai_core.knowledge.ocop.llm_proposals import semantic_profile
+        from ai_core.knowledge.ocop.llm_proposals import client_identity, semantic_profile
         client = kwargs.get("semantic_client")
         # Same semantic_proposals contract as the real extractor, so reuse is exercised honestly.
         semantic = {"enabled": client is not None, "processed_unit_count": 0, "errors": 0,
                     "eligible_unit_count": 0, "selected_unit_count": 0, "omitted_unit_count": 0,
                     "model": "none" if client is None else semantic_profile(
-                        client.model, kwargs.get("semantic_max_units", 50), kwargs.get("semantic_gleanings", 1))}
+                        client_identity(client), kwargs.get("semantic_max_units", 50), kwargs.get("semantic_gleanings", 1))}
         manifest = {"complete": True, "source_snapshot_sha256": "approved-snapshot",
                     "pipeline_version": KNOWLEDGE_VERSION, "semantic_proposals": semantic,
                     "corpus_version": "knowledge-fixture", "counts": {"evidence_units": 2}}
@@ -244,3 +244,36 @@ def test_incomplete_llm_run_is_resumed_instead_of_reused(tmp_path, monkeypatch):
     write_json(path,manifest)
     system.ensure()
     assert calls.count('evidence') == 2
+
+
+def _rewrite_semantics(system, **changes):
+    path = system.data / "knowledge" / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["semantic_proposals"].update(changes)
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_corpus_built_without_the_extraction_llm_is_ready_and_reported_as_disabled(tmp_path, monkeypatch):
+    system, _ = fixture_pipeline(tmp_path, monkeypatch)
+    result = system.ensure(PipelineOptions(semantic_extract=False))
+    assert result["state"] == "ready" and result["semantic"]["state"] == "disabled"
+    assert result["semantic_matches_config"] is True
+
+
+def test_status_separates_complete_partial_and_failed_semantic_runs(tmp_path, monkeypatch):
+    system, _ = fixture_pipeline(tmp_path, monkeypatch)
+    result = system.ensure()
+    assert result["semantic"]["state"] == "complete" and result["state"] == "ready"
+    _rewrite_semantics(system, eligible_unit_count=5, selected_unit_count=5, processed_unit_count=3)
+    partial = system.status(validate_sources=True)
+    assert partial["semantic"]["state"] == "partial" and partial["state"] == "not_ready"
+    _rewrite_semantics(system, eligible_unit_count=5, selected_unit_count=5, processed_unit_count=5, errors=2)
+    failed = system.status(validate_sources=True)
+    assert failed["semantic"]["state"] == "failed" and failed["state"] == "not_ready"
+
+
+def test_status_flags_a_corpus_extracted_with_a_different_model_configuration(tmp_path, monkeypatch):
+    system, _ = fixture_pipeline(tmp_path, monkeypatch)
+    system.ensure()
+    monkeypatch.setenv("OCOP_EXTRACT_LLM_REVISION", "2026-10-01")
+    assert system.status(validate_sources=True)["semantic_matches_config"] is False

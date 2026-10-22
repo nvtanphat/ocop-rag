@@ -22,7 +22,7 @@ from ocop_contracts.registry import load_registry
 from ai_core.processing.ocop.business_candidates import candidates
 from ai_core.processing.ocop.temporal_candidates import temporal_candidates
 from ai_core.knowledge.ocop.extractor import extract_semantics
-from ai_core.knowledge.ocop.llm_proposals import propose, reconcile, semantic_profile
+from ai_core.knowledge.ocop.llm_proposals import client_identity, propose, reconcile, semantic_profile
 from ai_core.knowledge.ocop.quality import audit_knowledge
 from ai_core.knowledge.ocop.contracts import BusinessEntity, BusinessRelation, validate_business_graph
 
@@ -498,7 +498,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
         raise RuntimeError("PDF PageArtifact manifest not complete")
     source_info={s.source_id:s.model_dump(mode="json") for s in load_registry(root/"configs/ocop_sources.json")}
     snapshot=manifest["input_snapshot_sha256"]
-    profile = ("none" if semantic_client is None else semantic_profile(semantic_client.model,semantic_max_units,semantic_gleanings))
+    profile = ("none" if semantic_client is None else semantic_profile(client_identity(semantic_client),semantic_max_units,semantic_gleanings))
     version=hashlib.sha256((VERSION+"|"+snapshot+"|"+profile+"|"+manifest.get("dataset_digest", "")).encode()).hexdigest()[:20]
     output_dir.mkdir(parents=True,exist_ok=True)
     units_file=output_dir/"evidence_units.jsonl";facts_file=output_dir/"domain_facts.jsonl"
@@ -557,6 +557,7 @@ def extract_artifacts(root:Path,*,input_dir:Path,output_dir:Path,max_pages:int|N
     semantics=extract_semantics(all_units,{sid:row["source_kind"] for sid,row in source_info.items()},domain_candidates,
                                source_registry=source_info)
     llm_stats={"enabled":semantic_client is not None, "model":profile, "processed_unit_count":0, "errors":0}
+    if semantic_client is not None:llm_stats["client_identity"]=client_identity(semantic_client)
     if semantic_client is not None:
         proposed=propose(all_units,semantic_client,max_units=semantic_max_units,
                          cache_dir=semantic_cache_dir,max_workers=semantic_workers,

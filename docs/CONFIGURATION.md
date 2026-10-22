@@ -21,6 +21,7 @@ Hệ thống hỗ trợ nạp cấu hình tự động từ tệp `.env` tại t
 * `OCOP_EXTRACT_LLM_MODEL`: Tên mô hình trích xuất. Mặc định: `qwen3.5:2b` (Ollama) hoặc `gpt-5.6-sol` (OpenAI).
 * `OCOP_EXTRACT_OPENAI_BASE_URL`: URL máy chủ OpenAI-compatible cho tác vụ trích xuất.
 * `OCOP_EXTRACT_OPENAI_API_KEY`: Khóa API cho tác vụ trích xuất.
+* `OCOP_EXTRACT_LLM_REVISION`: (tùy chọn) chuỗi phiên bản/revision của mô hình trích xuất khi nhà cung cấp công bố; đổi giá trị này làm mất hiệu lực cache và tri thức đã trích.
 * `OCOP_EXTRACT_LLM_WORKERS`: Số luồng trích xuất đồng thời. Mặc định: `4`.
 * `OCOP_EXTRACT_LLM_GLEANINGS`: Số lượt đọc lại (gleaning iterations) để trích xuất tri thức sót. Mặc định: `1`.
 
@@ -92,6 +93,10 @@ Thực thể của corpus (số hiệu văn bản, sản phẩm, chủ thể, c�
 ### 2.3. `ocop_privacy.yaml`
 
 Danh sách `redactions` (`name`, `pattern`, `replacement`) áp dụng cho câu hỏi trước khi lưu vào phiên hoặc checkpoint: gán tenant/dossier/principal, mã dạng `ABC-001`, email, số điện thoại, token. Mẫu `private_handle` cũng được router dùng để nhận diện yêu cầu mở hồ sơ riêng.
+
+### 2.4. Dấu vân tay trích xuất LLM và trạng thái semantic
+
+Cache phản hồi và `knowledge/manifest.json` dùng cùng một dấu vân tay: nhà cung cấp, endpoint (đã bỏ thông tin đăng nhập và query), mô hình, `OCOP_EXTRACT_LLM_REVISION`, tham số lấy mẫu (nhiệt độ, `num_ctx` hoặc ngân sách suy luận), phiên bản mã/prompt, băm schema phản hồi, số lượt gleaning và giới hạn đơn vị. Số luồng và khóa API không nằm trong đó. `python tools/cli.py status` trả `semantic.state`: `disabled` (cố ý không chạy LLM, hợp lệ), `complete`, `partial` (chưa xử lý hết đơn vị đã chọn) hoặc `failed` (có lỗi); `partial` và `failed` làm corpus `not_ready`. `semantic_matches_config` cho biết cấu hình hiện tại còn trùng dấu vân tay đã lưu hay không.
 
 ---
 

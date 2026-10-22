@@ -172,9 +172,31 @@ GLEANING_PROMPT = ("MANY entities and relations were missed in the previous extr
                    "refer to the PREVIOUS entities followed by your new entities.")
 
 
-def semantic_profile(model: str, max_units: int | None, gleanings: int = 1) -> str:
-    """Identity of an LLM extraction run; changes invalidate reused knowledge."""
-    return f"{model}:{PROMPT_VERSION}:g{gleanings}:{max_units if max_units is not None else 'all'}"
+def client_identity(client) -> dict:
+    """Provider, endpoint, model, revision and sampling parameters of a client (never credentials)."""
+    declared = getattr(client, 'identity', None)
+    base = dict(declared()) if callable(declared) else {}
+    return {'provider': base.get('provider', 'unknown'), 'endpoint': base.get('endpoint', ''),
+            'model': str(getattr(client, 'model', base.get('model', ''))), 'revision': base.get('revision', ''),
+            'params': base.get('params', {})}
+
+
+def _fingerprint_payload(identity: dict) -> dict:
+    schema = hashlib.sha256(json.dumps(response_schema(), sort_keys=True).encode()).hexdigest()[:16]
+    return {'identity': identity, 'prompt': PROMPT_VERSION, 'schema': schema}
+
+
+def semantic_profile(identity: dict | str, max_units: int | None, gleanings: int = 1) -> str:
+    """Fingerprint of an LLM extraction run; any change invalidates reused knowledge.
+
+    Covers provider, endpoint, model, model revision, sampling parameters, prompt/code version, response schema,
+    gleaning passes and the unit limit. Workers and API keys do not change results and are excluded.
+    """
+    if isinstance(identity, str):  # a bare model name (tests, old manifests)
+        identity = {'provider': 'unknown', 'endpoint': '', 'model': identity, 'revision': '', 'params': {}}
+    digest = hashlib.sha256(json.dumps({**_fingerprint_payload(identity), 'gleanings': gleanings,
+                                        'max_units': max_units}, sort_keys=True).encode()).hexdigest()[:20]
+    return f"{identity['model']}:{digest}"
 
 
 def norm_label(text: str) -> str:
@@ -219,8 +241,10 @@ class _Cache:
         if directory is not None:
             directory.mkdir(parents=True, exist_ok=True)
 
-    def key(self, model: str, text: str) -> str:
-        return hashlib.sha256(f"{model}|{PROMPT_VERSION}|{text}".encode()).hexdigest()
+    def key(self, identity: dict, text: str) -> str:
+        """Response cache key: the full client identity, prompt version and schema, then the request text."""
+        payload = json.dumps(_fingerprint_payload(identity), sort_keys=True)
+        return hashlib.sha256(f"{payload}|{text}".encode()).hexdigest()
 
     def get(self, key: str) -> str | None:
         if self.dir is None:
@@ -355,7 +379,7 @@ def _attributes(kind: str, anchor: str, raw, grounder: "_Grounder", stats: dict,
 
 
 def _ask(client: StructuredLLM, cache: _Cache, prompt: str) -> dict:
-    key = cache.key(client.model, prompt)
+    key = cache.key(client_identity(client), prompt)
     raw = cache.get(key)
     fresh = raw is None
     if fresh:
