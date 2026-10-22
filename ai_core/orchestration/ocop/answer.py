@@ -94,6 +94,7 @@ def _merge_continuations(entries):
 
 
 _SIBLING_SLOTS=3
+_RESERVED_SLOTS=3
 
 
 def _most_relevant(entries,terms,limit,fill_min=None,facets=()):
@@ -122,8 +123,18 @@ def _most_relevant(entries,terms,limit,fill_min=None,facets=()):
     for facet in facets:
         if facet.startswith('terms:'):continue
         first=next((i for i,e in enumerate(entries) if covers(e[1],facet)),None)
-        if first is not None and first not in chosen and len(chosen)<limit:
+        if first is not None and first not in chosen:
             chosen.append(first);covered|=found[first]
+    # Each part of a compound question was searched on its own (row['query_part']); the best-ranked block that search added keeps
+    # its place even when no question word names it ("cơ quan ban hành" is answered by a heading that says "Ủy ban nhân dân").
+    for part in dict.fromkeys(e[1].get('query_part') for e in entries if e[1].get('query_part')):
+        first=next((i for i,e in enumerate(entries) if e[1].get('query_part')==part),None)
+        if first is not None and first not in chosen:
+            chosen.append(first);covered|=found[first]
+    # reserved blocks are added to the limit, never taken out of it (the token budget stays the last bound)
+    reserved=min(len(chosen),_RESERVED_SLOTS)
+    limit+=reserved
+    fill_min=None if fill_min is None else fill_min+reserved
     while len(chosen)<limit:
         gain=lambda i:sum(weight[t] for t in found[i]-covered)  # noqa: E731
         best=max((i for i in range(len(entries)) if i not in chosen),key=lambda i:(gain(i),-i),default=None)

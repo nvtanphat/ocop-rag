@@ -252,3 +252,15 @@ def test_model_failure_names_its_type_and_http_status_but_not_the_provider_messa
     diag = out['generation_diagnostics']
     assert diag['reasons'] == ['model_unavailable'] and diag['http_status'] == '524' and diag['error_type'] == 'RuntimeError'
     assert 'quota' not in json.dumps(diag)
+
+
+def test_the_best_block_of_each_searched_part_keeps_its_place_even_without_a_shared_question_word():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+    prose = [((f'S{i}', 6, f'u{i}', f'c{i}'), {'raw_text': 'công nhận sản phẩm đơn vị sản xuất hồ sơ', 'text': 'công nhận sản phẩm'}, {}, False)
+             for i in range(8)]
+    heading = (('S9', 1, 'u9', 'c9'), {'raw_text': 'ỦY BAN NHÂN DÂN THÀNH PHỐ HẢI PHÒNG', 'text': 'ỦY BAN NHÂN DÂN', 'query_part': 'văn bản đó do cơ quan nào ban hành'},
+               {}, False)
+    terms = ['cong', 'san', 'pham', 'don', 'vi', 'co', 'quan', 'hanh']
+    assert heading in _most_relevant(prose + [heading], terms, 3)
+    plain = (heading[0], {k: v for k, v in heading[1].items() if k != 'query_part'}, {}, False)
+    assert plain not in _most_relevant(prose + [plain], terms, 3)

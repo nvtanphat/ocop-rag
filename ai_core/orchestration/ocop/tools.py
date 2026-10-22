@@ -162,7 +162,7 @@ class ToolRegistry:
         extra=[]
         earlier=[]  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
         for part in sub_queries(query):
-            scope=self._anaphoric_source(part,earlier) if not slots.get('document_code') else None
+            scope=self._anaphoric_source(part,earlier,(slots.get('product_name'),slots.get('organization_name')),mode=context.get('retrieval_mode','sparse')) if not slots.get('document_code') else None
             found=self.search_part(part,slots,{**context,**({'_scope_source':scope} if scope else {})},auth)
             earlier.extend(found.get('results',[])[:4])
             for row in found.get('results',[])[:4]:
@@ -195,17 +195,28 @@ class ToolRegistry:
                     "ranking_reason":"memory_evidence","from_memory":True})
         return out
 
-    @staticmethod
-    def _anaphoric_source(part:str,earlier:list[dict])->str|None:
-        """Source a part like "văn bản đó do cơ quan nào ban hành" points back to: the one document that dominates the
-        rows of the parts before it. Without a clear single source the part is searched unscoped."""
+    def _anaphoric_source(self,part:str,earlier:list[dict],anchors:tuple=(),*,mode:str='sparse')->str|None:
+        """Source a part like "văn bản đó do cơ quan nào ban hành" points back to.
+
+        "That document" is the one that holds the thing the question names (a product, an organisation): the entity is
+        searched on its own and the source that dominates the rows mentioning it is used. With no named entity, the source
+        that dominates the rows of the parts before it. Without a clear single source the part is searched unscoped."""
         from collections import Counter
         from ai_core.orchestration.ocop import memory
         from ai_core.orchestration.ocop.language import fold,get_language
         noun=memory._noun_pattern(get_language(),'document')
-        if not earlier or not re.search(r'(?:'+noun+r')\s+'+memory.DEMONSTRATIVE+r'\b',fold(part)):return None
-        top=Counter(r['source_id'] for r in earlier if r.get('source_id')).most_common(1)
-        return top[0][0] if top and top[0][1]/len(earlier)>=0.6 else None
+        if not re.search(r'(?:'+noun+r')\s+'+memory.DEMONSTRATIVE+r'\b',fold(part)):return None
+        wanted=[fold(a) for a in anchors if a]
+        if wanted:
+            try:
+                rows=search(self.index_dir,' '.join(a for a in anchors if a),mode=mode,top_k=8)
+            except (RuntimeError,ValueError,OSError):
+                return None
+            rows=[r for r in rows if any(a in fold(str(r.get('raw_text') or r.get('text') or '')) for a in wanted)]
+        else:
+            rows=[r for r in earlier if r.get('source_id')]
+        top=Counter(r['source_id'] for r in rows).most_common(1)
+        return top[0][0] if top and top[0][1]/len(rows)>=0.6 else None
 
     def search_part(self,part:str,slots:dict,context:dict,auth)->dict:
         """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
