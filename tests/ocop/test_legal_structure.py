@@ -171,6 +171,10 @@ def test_document_relations_materialize_with_attributes_and_no_rejections(tmp_pa
     nodes = [json.loads(s) for s in (graph/'nodes.jsonl').read_text(encoding='utf-8').splitlines()]
     assert len([n for n in nodes if n['node_type']=='SourceDocument' and n['source_id']=='DOC.CURRENT'])==1
     edge = next(e for e in edges if e['relation_type'] == 'REPLACES')
-    assert edge['properties']['effective_from'] == '2026-05-22'
-    assert edge['properties']['expires_after_days'] == 60
+    # A cited-only document is grounded by the citing text (not failed for lacking pages of its own); the automatic
+    # graph view exposes the relation but not unverified legal dates, which stay in the knowledge layer for review.
+    assert edge['check'] == 'passed' and 'effective_from' not in edge['properties']
+    attributes = next(r['attributes'] for r in result['business_relations'] if r['relation_type'] == 'REPLACES')
+    assert attributes['effective_from'] == '2026-05-22' and attributes['expires_after_days'] == 60
+    assert attributes['interpretation_verified'] is False
     assert all(c['source_sha256'] == 'a'*64 for c in edge['citations'])

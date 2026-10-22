@@ -578,7 +578,14 @@ def _node_exclusion_reason(node, units, registry):
     }:
         reason = "no_automatic_domain_verifier"
     elif kind == "SourceDocument":
-        if not any(u["source_id"] == node["source_id"] and u.get("spans") for u in units.values()):
+        props = node.get("properties", {})
+        if props.get("reference_only"):
+            # A document that is only cited (its pages may not be ingested yet) is grounded by the citing text:
+            # at least one citation must literally contain its number.
+            number = norm(str(props.get("document_number_candidate") or ""))
+            if not number or not any(number in norm(c.get("quote", "")) for c in node.get("citations", [])):
+                reason = "reference_number_not_in_citation"
+        elif not any(u["source_id"] == node["source_id"] and u.get("spans") for u in units.values()):
             reason = "source_not_in_evidence_registry"
     elif kind == "RecognitionDecision":
         if not (

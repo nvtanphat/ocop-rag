@@ -7,6 +7,7 @@ from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
 from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_markers,check_sensitive_claims,
     grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
+from ai_core.orchestration.ocop.language import fold
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
@@ -90,6 +91,23 @@ def _merge_continuations(entries):
     return out
 
 
+def _most_relevant(entries,terms,limit):
+    """Keep the `limit` blocks that mention the most distinct question terms (ties keep tool order).
+
+    Tool order alone lets one structured tool fill the prompt with rows of the wrong page; relevance to the
+    question decides which blocks stay, and the kept blocks keep their original order.
+    """
+    if len(entries)<=limit or not terms:return entries[:limit]
+    wanted=set(terms)
+    def score(entry):
+        row=entry[1]
+        text=str(row.get('raw_text') or row.get('text') or '')+' '+' '.join(
+            str(c.get('quote','')) for c in (row.get('context') or {}).get('parent_source_spans',[]) if isinstance(c,dict))
+        return len(wanted & set(re.findall(r'[a-z0-9]+',fold(text))))
+    ranked=sorted(range(len(entries)),key=lambda i:(-score(entries[i]),i))[:limit]
+    return [entries[i] for i in sorted(ranked)]
+
+
 def _drop_repeats(entries):
     """Skip a block whose text is already shown on the same page (graph rows often repeat a heading or a clause)."""
     seen:dict[tuple,list[str]]={}
@@ -145,7 +163,7 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
             isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox')) for item in spans))
         entries.append((key,row,span,table_backed))
     entries=_merge_continuations(entries)
-    entries=_drop_repeats(entries)[:cfg.max_source_blocks]
+    entries=_most_relevant(_drop_repeats(entries),terms,cfg.max_source_blocks)
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")
              for i,(key,row,span,flag) in enumerate(entries,1)]

@@ -52,7 +52,7 @@ def test_repeated_text_on_the_same_page_is_shown_once_and_blocks_are_capped():
     from ai_core.orchestration.ocop.answer import assemble
     rows = [dict(_chunk(f'r{i}', 'Điều 7. Trình tự đánh giá', 0, 25), chunk_id=f'r{i}', evidence_unit_id=f'U{i}') for i in range(6)]
     rows += [dict(_chunk(f'x{i}', f'Nội dung riêng số {i} về hội đồng', 0, 30), evidence_unit_id=f'X{i}') for i in range(30)]
-    out = assemble('hội đồng?', [{'tool': 'search_regulations', 'output': {'results': rows}}])
+    out = assemble('trình tự đánh giá hội đồng?', [{'tool': 'search_regulations', 'output': {'results': rows}}])
     assert sum('Điều 7. Trình tự đánh giá' in c for c in [out['answer']]) == 1
     from ai_core.retrieval.ocop.settings import get_settings
     assert len(out['citations']) <= get_settings().context.max_source_blocks
