@@ -404,7 +404,7 @@ class OcopAgent:
                 'Năm ban hành quyết định không thể tự coi là năm công nhận hay năm đánh giá.',
                 'status':'insufficient_year_scope','citations':[]}}
         outputs=every
-        response=assemble(state.get('effective_query',state['query']),outputs,llm=self.llm)
+        response=assemble(state.get('effective_query',state['query']),outputs,llm=self.llm,catalog=self._catalog())
         gaps=[item['tool'] for item in outputs if item.get('optional') and (
             item.get('skipped') or (item.get('output') or {}).get('status') in BAD_RESULT_STATUSES or
             not (item.get('output') or {}).get('results'))]

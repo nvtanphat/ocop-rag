@@ -4,7 +4,8 @@ import json
 import math
 import re
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
-from ai_core.orchestration.ocop.verification import check_source_markers,check_sensitive_claims,verify_claims
+from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_markers,check_sensitive_claims,
+    grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
@@ -62,6 +63,46 @@ def _citation_spans(spans:list[dict], pdf_page:int)->list[dict]:
     return result
 
 
+def _merge_continuations(entries):
+    """Fold a continuation chunk into the hit it continues, so one excerpt reads as one passage.
+
+    Both chunks are slices of the same evidence-unit text (char offsets), so the overlap is removed exactly; the
+    merged block keeps the first chunk's identity and carries the spans of both for citation.
+    """
+    index={e[0][3]:i for i,e in enumerate(entries) if e[0][3]}
+    absorbed,merged=set(),{}
+    for i,(key,row,span,flag) in enumerate(entries):
+        parent=row.get('continues_chunk')
+        if not parent or parent not in index or flag or entries[index[parent]][3]:continue
+        p=index[parent];base=merged.get(p) or dict(entries[p][1])
+        raw,nxt=str(base.get('raw_text') or base.get('text') or ''),str(row.get('raw_text') or row.get('text') or '')
+        overlap=(base.get('char_end') or 0)-(row.get('char_start') or 0)
+        base['raw_text']=raw+(nxt[overlap:] if 0<=overlap<len(nxt) else (chr(10)+nxt if overlap<0 else ''))
+        base['char_end']=row.get('char_end')
+        base['source_spans']=list(base.get('source_spans') or [])+[s for s in (row.get('source_spans') or [])
+                                                                  if s not in (base.get('source_spans') or [])]
+        base['merged_chunk_ids']=list(base.get('merged_chunk_ids') or [base.get('chunk_id')])+[row.get('chunk_id')]
+        merged[p]=base;absorbed.add(i)
+    out=[]
+    for i,(key,row,span,flag) in enumerate(entries):
+        if i in absorbed:continue
+        out.append((key,merged.get(i,row),span,flag))
+    return out
+
+
+def _drop_repeats(entries):
+    """Skip a block whose text is already shown on the same page (graph rows often repeat a heading or a clause)."""
+    seen:dict[tuple,list[str]]={}
+    kept=[]
+    for key,row,span,flag in entries:
+        folded=' '.join(str(row.get('raw_text') or row.get('text') or '').casefold().split())
+        shown=seen.setdefault((key[0],key[1]),[])
+        if folded and any(folded in other for other in shown):continue
+        shown.append(folded)
+        kept.append((key,row,span,flag))
+    return kept
+
+
 def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tuple[list[dict],list[str],list[dict]]:
     """Select source-backed evidence visible to the LLM and the verifier.
 
@@ -103,6 +144,8 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
         table_backed=bool(context_metadata.get('table_id') or any(
             isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox')) for item in spans))
         entries.append((key,row,span,table_backed))
+    entries=_merge_continuations(entries)
+    entries=_drop_repeats(entries)[:cfg.max_source_blocks]
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")
              for i,(key,row,span,flag) in enumerate(entries,1)]
@@ -127,6 +170,7 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
         chosen=dict(row)
         chosen['text']=excerpt.evidence
         chosen['source_spans']=[span]
+        chosen['table_backed']=table_backed
         citations.append(citation)
         selected.append(chosen)
         contexts.append(f"[S{len(citations)}] {key[0]}, PDF p.{key[1]}, "
@@ -138,6 +182,8 @@ SYSTEM_PROMPT = (
     "không bịa luật, thang điểm, điều kiện, ngày tháng hoặc trích dẫn. "
     "Nếu OCR chưa verified phải nêu chưa xác minh. Tránh chỉ dẫn mang tính quyết định cấp sao chính thức. "
     "Với dòng bảng dạng 'Nhãn cột: giá trị', chỉ dùng đúng nhãn cột, không suy ra vai trò khác. "
+    "Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
+    "(hệ thống tự gắn nhãn chưa duyệt) và không dùng dấu ba chấm của đoạn bị cắt làm nội dung. "
     "Trả lời bằng JSON {\"claims\":[{\"text\":...,\"sources\":[\"S1\"]}],\"missing\":[...]}: mỗi claim là một ý ngắn "
     "liên quan trực tiếp câu hỏi, ưu tiên trích nguyên văn, kèm mã nguồn S# chứa ý đó; \"missing\" liệt kê phần câu hỏi "
     "mà SOURCE không trả lời. Không thêm điểm/sao nếu câu hỏi không yêu cầu. "
@@ -152,6 +198,9 @@ CLAIMS_SCHEMA = {
         'missing': {'type': 'array', 'items': {'type': 'string'}}}}
 
 
+REVIEW_DISCLAIMER = re.compile(r'chưa\s+(?:được\s+)?(?:xác\s+minh|duyệt)|(?:OCR|trích xuất)[^.]{0,40}chưa', re.I)
+
+
 def _parse_claims(raw):
     """JSON claims -> ([(text, [source numbers])], missing); None when the model did not return the schema."""
     try:
@@ -164,15 +213,42 @@ def _parse_claims(raw):
     for item in data['claims']:
         if not isinstance(item, dict) or not isinstance(item.get('text'), str) or not item['text'].strip():
             continue
+        if REVIEW_DISCLAIMER.search(item['text']):
+            continue  # the system labels unreviewed sources itself; a claim about review status is not content
         numbers = [int(m) for s in item.get('sources') or [] if isinstance(s, str) for m in re.findall(r'\d+', s)]
         # A marker written inside the text counts too; ids outside the SOURCE list are kept so the checker rejects them.
         numbers += [int(m) for m in re.findall(r'\[S(\d+)\]', item['text'])]
         claims.append((re.sub(r'\s*\[S\d+\]', '', item['text']).strip(), list(dict.fromkeys(numbers))))
-    missing = [str(x) for x in data.get('missing') or [] if isinstance(x, str) and x.strip()]
+    missing = [str(x) for x in data.get('missing') or [] if isinstance(x, str) and x.strip()
+               and not re.search(r'chưa\s+(?:được\s+)?(?:xác\s+minh|duyệt)', x, re.I)]  # review status is labelled by the system
     return claims, missing
 
 
-def _judge_claims(claims, citations, selected):
+def _cites(row: dict, citation: dict) -> bool:
+    return (row.get('source_id') == citation.get('source_id') and
+            (row.get('evidence_unit_id') or row.get('unit_id')) == citation.get('evidence_unit_id') and
+            (not citation.get('chunk_id') or row.get('chunk_id') == citation.get('chunk_id')))
+
+
+def _prose_rule_only(numbers, citations, selected, claim, catalog) -> bool:
+    """True when a star/score expression is a generic legal rule, not a rating of a named product or organisation.
+
+    Needs the entity catalog: a rule such as "UBND cấp tỉnh công nhận sản phẩm 3 sao, 4 sao" names no product, while a
+    decision's "công nhận sản phẩm Mứt X đạt 4 sao" does, and a table row carries per-product scores. Without a
+    catalog (or with any catalogued product/organisation in the claim or the cited text, or a table-backed
+    excerpt) the claim stays blocked until a human verifies the source.
+    """
+    if catalog is None or catalog.empty:
+        return False
+    rows = [next((r for r in selected if _cites(r, citations[n - 1])), None) for n in numbers if 0 < n <= len(citations)]
+    if not rows or any(r is None or r.get('table_backed') is not False for r in rows):
+        return False
+    text = claim + ' ' + ' '.join(str(r.get('text') or '') for r in rows)
+    mentions = catalog.mentions(text)
+    return not any(mentions.get(kind) for kind in ('product', 'organization', 'product_group'))
+
+
+def _judge_claims(claims, citations, selected, catalog=None):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers in claims:
@@ -182,21 +258,36 @@ def _judge_claims(claims, citations, selected):
         if not numbers or markers['invalid_markers'] or markers['missing_citations']:
             reasons.append('unknown_citation_markers' if markers['invalid_markers'] else 'missing_citations')
         sensitive = check_sensitive_claims(marked, selected)
-        if sensitive['unsupported_score_or_star_claims']:
+        star_unsupported = bool(sensitive['unsupported_score_or_star_claims'])
+        if star_unsupported and not _prose_rule_only(numbers, citations, selected, text, catalog):
             reasons.append('unsupported_score_or_star_claims')
         verdict = verify_claims(marked, citations, selected)
+        tier = 'verified'
         if verdict['status'] != 'verified':
-            reasons.extend(r for c in verdict['claims'] if c['status'] != 'supported' for r in c['reason'].split(','))
+            failures = [r for c in verdict['claims'] if c['status'] != 'supported' for r in c['reason'].split(',')]
+            # Unreviewed OCR/extracted sources: a claim that is deterministically grounded in the excerpt it cites may
+            # be shown labelled as unreviewed. Score/star assertions stay blocked (check_sensitive_claims above).
+            if failures and set(failures) == {'source_not_verified'} and not reasons:
+                tier = 'unreviewed'
+                # A claim may combine what several cited passages say: it is checked against their union.
+                cited = [next((r for r in selected if _cites(r, citations[n - 1])), None) for n in numbers if 0 < n <= len(citations)]
+                union = chr(10).join(str((r or {}).get('text') or '') for r in cited)
+                ok, why = grounded_in_excerpt(text, union, min_term_coverage=get_settings().context.grounding_min_term_coverage,
+                                              critical=bool(CRITICAL.search(text)))
+                if not ok:
+                    reasons.append(why)
+            else:
+                reasons.extend(failures)
         (rejected if reasons else accepted).append({'text': text, 'sources': numbers, 'marked': marked,
-                                                     'reasons': list(dict.fromkeys(reasons)),
+                                                     'reasons': list(dict.fromkeys(reasons)), 'tier': tier,
                                                      'unverified_source': markers['unverified_source']})
     return accepted, rejected
 
 
-def _publish_claims(parsed, citations, selected, contexts, fusion):
+def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None):
     """Publish only claims that pass every gate; name what was dropped and what the SOURCE does not answer."""
     claims, missing = parsed
-    accepted, rejected = _judge_claims(claims, citations, selected)
+    accepted, rejected = _judge_claims(claims, citations, selected, catalog)
     diagnostics = {'layer': 'claim_verification', 'accepted': len(accepted), 'rejected': [
         {'claim': r['text'], 'reasons': r['reasons']} for r in rejected], 'missing_from_source': missing}
     if not accepted:
@@ -223,8 +314,8 @@ def _publish_claims(parsed, citations, selected, contexts, fusion):
             'generation_diagnostics': diagnostics}
 
 
-def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)->dict:
-    result=_assemble(question,tool_results,llm=llm)
+def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None)->dict:
+    result=_assemble(question,tool_results,llm=llm,catalog=catalog)
     missing=result.get('evidence_fusion',{}).get('missing_facets',[])
     if missing:
         result['evidence_fusion']['answer_status']=result['status']
@@ -233,7 +324,7 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)-
     return result
 
 
-def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)->dict:
+def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None)->dict:
     records=[]
     for result in tool_results:
         if not isinstance(result,dict):continue
@@ -294,7 +385,7 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None)
              else llm.chat(system,prompt,max_tokens=1024))
         parsed=_parse_claims(raw) if isinstance(raw,str) else None
         if parsed is not None:
-            return _publish_claims(parsed,citations,selected,contexts,fusion)
+            return _publish_claims(parsed,citations,selected,contexts,fusion,catalog)
         text=raw
         if not isinstance(text,str) or not text.strip():
             return {'answer':'Model không trả về văn bản hợp lệ. Chỉ cung cấp bản trích xuất nguồn:\n'+

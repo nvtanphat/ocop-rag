@@ -204,3 +204,15 @@ def test_dense_query_is_counted_with_real_tokenizer_and_cut_explicitly():
     assert meta['query_truncated'] is True and meta['query_tokens'] <= 10
     query, meta = module._fit_query(Model(), 'ngắn gọn thôi')
     assert meta['query_truncated'] is False and query == 'ngắn gọn thôi'
+
+
+def test_hit_cut_mid_sentence_brings_its_continuation_chunk_only_when_asked(tmp_path):
+    from ai_core.retrieval.ocop.search import search
+    rows = [dict(_row('first', 'danh sách thành viên hội đồng gồm Bộ Y tế và Bộ', parent='U1'), char_start=0, char_end=60),
+            dict(_row('second', 'Khoa học và Công nghệ. Phần khác', parent='U1'), char_start=50, char_end=110),
+            dict(_row('other', 'nội dung không liên quan'), char_start=0, char_end=30)]
+    idx = _index(tmp_path / 'idx', rows)
+    plain = search(idx, 'thành viên hội đồng', top_k=1)
+    assert [r['chunk_id'] for r in plain] == ['first']
+    both = search(idx, 'thành viên hội đồng', top_k=1, with_continuations=True)
+    assert [r['chunk_id'] for r in both] == ['first', 'second'] and both[1]['continues_chunk'] == 'first'

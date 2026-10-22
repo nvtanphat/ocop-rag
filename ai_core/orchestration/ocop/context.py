@@ -101,7 +101,13 @@ def _labelled_row(row: dict) -> str | None:
     if header_row is None or header_row == row_no:
         return None
     names = {c.get('col'): _clean(c.get('text')) for c in cells if c.get('row') == header_row}
-    values = sorted((c for c in cells if c.get('row') == row_no), key=lambda c: c.get('col', 0))
+    own = [c for c in cells if c.get('row') == row_no]
+    taken = {c.get('col') for c in own}
+    # A merged (rowspan) cell that starts above this row still covers it: "Tổ chức/cá nhân" is often one cell for
+    # several product rows. Geometry decides, nothing is guessed.
+    covering = [c for c in cells if isinstance(c.get('row'), int) and c['row'] < row_no < c['row'] + int(c.get('rowspan') or 1)
+                and c.get('col') not in taken and c['row'] != header_row]
+    values = sorted(own + covering, key=lambda c: c.get('col', 0))
     pairs = [(names.get(c.get('col')) or 'Cột ' + str(c.get('col'))) + ': ' + _clean(c.get('text'))
              for c in values if _clean(c.get('text'))]
     return '; '.join(pairs) if pairs else None

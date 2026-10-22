@@ -134,3 +134,41 @@ def verify_claims(answer:str,citations:list[dict],evidence_rows:list[dict],
             'claims':claims,'supported':sum(c['status']=='supported' for c in claims),
             'unsupported':len(bad),'unknown':len(uncertain),
             'unsupported_critical':any(c['critical'] for c in bad+uncertain)}
+
+
+def grounded_in_excerpt(prose: str, source: str, *, min_term_coverage: float, critical: bool = False) -> tuple[bool, str]:
+    """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
+
+    Used only for sources that no human has reviewed: such a claim may be shown, labelled as unreviewed, when
+    (1) every number in it occurs in the excerpt, (2) negation/exemption wording agrees with the excerpt,
+    (3) enough of its content words occur in the excerpt (stricter for critical claims) and (4) its words are not
+    merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
+    """
+    from ai_core.orchestration.ocop.language import get_language
+    nums = set(re.findall(r'(?<!\w)\d+(?:[.,]\d+)?(?!\w)', prose))
+    if nums - set(re.findall(r'(?<!\w)\d+(?:[.,]\d+)?(?!\w)', source)):
+        return False, 'grounding_numbers_missing'
+    negation = lambda s: bool(re.search(r'\b(?:không|chưa|miễn)\b', s, re.I))  # noqa: E731
+    if negation(prose) != negation(source) and re.search(r'\b(?:không|miễn)\b', prose, re.I):
+        return False, 'grounding_negation_mismatch'
+    lang = get_language()
+    claim_terms = lang.content_words(prose)
+    if not claim_terms:
+        return False, 'grounding_no_content'
+    source_terms = lang.content_words(source)
+    present = set(source_terms)
+    coverage = sum(t in present for t in claim_terms) / len(claim_terms)
+    if coverage < (0.9 if critical else min_term_coverage):
+        return False, 'grounding_terms_missing'
+    run, best, previous = 0, 0, -1
+    positions = {}
+    for i, t in enumerate(source_terms):
+        positions.setdefault(t, []).append(i)
+    for t in claim_terms:
+        nxt = next((p for p in positions.get(t, []) if p == previous + 1), None)
+        run = run + 1 if nxt is not None else 1 if t in positions else 0
+        previous = nxt if nxt is not None else (positions[t][0] if t in positions else -1)
+        best = max(best, run)
+    if best < min(3, len(claim_terms)):
+        return False, 'grounding_terms_scattered'
+    return True, 'grounded_in_unreviewed_excerpt'

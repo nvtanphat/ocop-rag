@@ -249,6 +249,41 @@ def _rerank(query:str,candidates:list[dict],model_id:str,revision:str|None=None,
     return candidates
 
 
+_SENTENCE_END=(".",";",":","!","?")
+
+
+def _with_following_chunks(results:list[dict],ordered:list[dict],chunks:dict,allowed,limit:int,mode:str,
+                           requested_mode:str)->list[dict]:
+    """Add the chunk that continues a top hit cut mid-sentence (sliding-window / parent-child expansion).
+
+    The continuation is a real indexed chunk of the same evidence unit with its own spans and citation, placed right
+    after the hit; nothing outside retrieved chunks is shown. Only the first `limit` hits are considered.
+    """
+    if limit<=0:return results
+    present={r['chunk_id'] for r in results}
+    by_unit:dict[str,list[dict]]={}
+    for ch in ordered:by_unit.setdefault(ch['evidence_unit_id'],[]).append(ch)
+    out=[]
+    for rank,row in enumerate(results):
+        out.append(row)
+        raw=str(row.get('raw_text') or '').rstrip()
+        if rank>=limit or not raw or raw.endswith(_SENTENCE_END) or row.get('char_end') is None or row.get('row_ids'):continue
+        following=[c for c in by_unit.get(row['evidence_unit_id'],[]) if c.get('char_start') is not None and
+                   row['char_start']<c['char_start']<=row['char_end'] and c['chunk_id'] not in present and allowed(c['chunk_id'])]
+        if not following:continue
+        ch=min(following,key=lambda c:c['char_start'])
+        present.add(ch['chunk_id'])
+        out.append({"chunk_id":ch['chunk_id'],"evidence_unit_id":ch["evidence_unit_id"],"source_id":ch["source_id"],
+          "pdf_page":ch["spans"][0]["pdf_page"],"source_spans":ch["spans"],"review_status":ch["review_status"],
+          "corpus_version":ch["corpus_version"],"score":0.0,"text":ch["text_for_bm25"],
+          "raw_text":ch.get('raw_text',ch['text_for_bm25']),"context":ch.get('context',{}),
+          "row_ids":ch.get('row_ids',[]),"table_headers":ch.get('table_headers',[]),
+          "char_start":ch.get('char_start'),"char_end":ch.get('char_end'),"over_budget":ch.get('over_budget',False),
+          "retrieval_mode":mode,"requested_retrieval_mode":requested_mode,"continues_chunk":row['chunk_id'],
+          "ranking_reason":"continuation_of_previous_hit"})
+    return out
+
+
 @traced("ocop.retrieval.search")
 def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
            source_id:str|None=None,include_needs_review:bool=True,rerank:bool=False,
@@ -256,7 +291,7 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
            reranker_revision:str|None=DEFAULT_RERANKER_REVISION,expand_parent:bool=False,
            parent_max_chars:int=2400,rerank_candidates:int|None=None,
            pair_token_budget:int|None=None,
-           evidence_unit_ids:set[str]|None=None)->list[dict]:
+           evidence_unit_ids:set[str]|None=None,with_continuations:bool=False)->list[dict]:
     if mode not in ("sparse","hybrid","dense"):
         raise ValueError("mode must be sparse, dense or hybrid")
     if top_k<=0:raise ValueError("top_k must be positive")
@@ -336,6 +371,7 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
         row.setdefault('ranking_reason','local_reranker' if 'reranker_score' in row else
                        'deterministic_'+mode+'_order; reranker_not_requested')
     results=results[:top_k]
+    results=_with_following_chunks(results,ordered,chunks,allowed,settings.neighbor_chunks if with_continuations else 0,mode,requested_mode)
     if expand_parent and results:
         wanted={r['evidence_unit_id'] for r in results}
         parents={}

@@ -30,8 +30,12 @@ def layout_signature() -> dict | None:
     params = model_dir() / "inference.pdiparams"
     if not params.is_file():
         return None
-    from importlib.metadata import version
-    return {"model": MODEL_NAME, "params_sha256": sha256_file(params), "paddleocr": version("paddleocr"),
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        paddle_version = version("paddleocr")
+    except PackageNotFoundError:
+        return None  # the optional 'layout' extra is not installed: the model cannot run
+    return {"model": MODEL_NAME, "params_sha256": sha256_file(params), "paddleocr": paddle_version,
             "adapter_sha256": sha256_file(Path(__file__)), "min_score": MIN_SCORE}
 
 

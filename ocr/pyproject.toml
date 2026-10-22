@@ -9,7 +9,7 @@ description = "Source-locked OCOP PDF OCR and review dataset producer"
 requires-python = ">=3.11"
 dependencies = [
   "ocop-contracts==0.1.0",
-  "pymupdf>=1.24", "pillow>=10", "numpy>=1.26",
+  "pymupdf>=1.24,<2", "pillow>=10", "numpy>=1.26",
   "easyocr>=1.7.2,<2", "vietocr==0.3.13",
   "opencv-python-headless>=4.8", "torch>=2.0",
 ]

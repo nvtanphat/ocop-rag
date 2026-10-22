@@ -10,14 +10,29 @@ from ocop_ocr.profiler import profile_pdf
 from ocop_ocr.table_parser import native_tables
 
 
+def _rule(page, x0, y0, x1, y1):
+    """A table rule as a thin filled rectangle, the way real PDFs draw them (a stroked zero-height line or an
+    outline-only rectangle is not detected as a rule by every PyMuPDF release)."""
+    page.draw_rect((x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5), color=None, fill=(0, 0, 0))
+
+
+def _grid(page, xs, ys, partial=()):
+    for y in ys:
+        _rule(page, xs[0], y, xs[-1], y)
+    for x in xs:
+        _rule(page, x, ys[0], x, ys[-1])
+    for x, y0, y1 in partial:
+        _rule(page, x, y0, x, y1)
+
+
 def test_native_header_preserves_horizontal_merge():
     with fitz.open() as document:
         page = document.new_page(width=400, height=400)
         for y in (60, 100, 140):
-            page.draw_line((40, y), (340, y))
+            _rule(page, 40, y, 340, y)
         for x in (40, 340):
-            page.draw_line((x, 60), (x, 140))
-        page.draw_line((190, 100), (190, 140))
+            _rule(page, x, 60, x, 140)
+        _rule(page, 190, 100, 190, 140)
         page.insert_text((60, 85), "Score options")
         page.insert_text((60, 125), "Criterion")
         page.insert_text((210, 125), "3")
@@ -75,10 +90,7 @@ def test_page_job_embeds_source_digest_and_rejects_cache_for_other_bytes(tmp_pat
 def _word_spaced_table(gap: float):
     document = fitz.open()
     page = document.new_page(width=400, height=300)
-    for y in (60, 120, 180):
-        page.draw_line((40, y), (340, y))
-    for x in (40, 190, 340):
-        page.draw_line((x, 60), (x, 180))
+    _grid(page, (40, 190, 340), (60, 120, 180))
     x = 50
     for word in ("Cong", "ty", "Trach", "nhiem"):       # positioned words, no space glyphs between them
         page.insert_text((x, 90), word, fontsize=11)

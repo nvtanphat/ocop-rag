@@ -19,6 +19,8 @@ class ContextSettings(BaseModel):
     parent_chain_max_tokens: int = Field(40, ge=0)
     parent_label_max_chars: int = Field(90, ge=20)
     min_term_coverage: float = Field(0.25, ge=0, le=1)
+    max_source_blocks: int = Field(12, ge=1)
+    grounding_min_term_coverage: float = Field(0.8, ge=0, le=1)
 
 
 class RetrievalSettings(BaseModel):
@@ -33,6 +35,7 @@ class RetrievalSettings(BaseModel):
     rerank_threads: int = Field(6, ge=1)
     rerank_cache_entries: int = Field(512, ge=0)
     query_max_chars: int = Field(1500, ge=50)
+    neighbor_chunks: int = Field(2, ge=0, le=8)
 
 
 class AgentSettings(BaseModel):

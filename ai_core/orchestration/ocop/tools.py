@@ -265,7 +265,7 @@ class ToolRegistry:
             if doc and not source_filter:
                 return {"results":[],"status":"document_not_found_or_ambiguous"}
             return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter,
-                                      rerank=bool(context.get("rerank",False)))}
+                                      rerank=bool(context.get("rerank",False)),with_continuations=True)}
         if name=="lookup_legal_unit":
             code=slots.get('document_code')
             source=self._resolve_source_id(code) if code else None

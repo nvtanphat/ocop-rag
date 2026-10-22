@@ -10,6 +10,14 @@
 4. Lỗi cấu hình/hạ tầng trả 503 với thân cố định `{code, layer, error_type, message}`, không lặp lại nội dung ngoại lệ.
 5. `tools_used` chỉ liệt kê công cụ đã chạy; `tools_skipped` liệt kê bước bị bỏ do phụ thuộc.
 
+## Cập nhật: tầng "chưa duyệt" có kiểm chứng căn cứ
+
+Chặn mọi claim chỉ vì nguồn chưa duyệt khiến hệ thống chỉ trả lại đoạn OCR. Hiện có hai tầng, tách bạch trong kết quả:
+* **verified**: nguồn `verified` + marker + entailment (không đổi).
+* **unreviewed**: nguồn chưa duyệt; claim chỉ được hiển thị, kèm nhãn "[LƯU Ý: Nguồn OCR/trích xuất chưa được duyệt]" và trạng thái `generated_unverified_claims`, khi qua `grounded_in_excerpt` trên **hợp** các đoạn nó trích: mọi con số có trong đoạn, phủ định khớp, ≥80% từ nội dung có trong đoạn (≥90% với claim quan trọng) và có một chuỗi từ liên tiếp trùng đoạn.
+* **Cổng điểm/sao không nới**: điểm hoặc sao của một sản phẩm từ nguồn chưa duyệt vẫn bị chặn. Chỉ quy tắc pháp lý chung (ví dụ "UBND cấp tỉnh công nhận sản phẩm 3 sao, 4 sao") được hiển thị, và chỉ khi đoạn trích là văn bản thường, không có sản phẩm/chủ thể trong danh mục xuất hiện và có danh mục thực thể để kiểm.
+* Claim về trạng thái duyệt ("OCR chưa xác minh") không phải nội dung; hệ thống tự gắn nhãn.
+
 ## Dự án đã tham khảo
 | Dự án / tài liệu | Ngày đọc | Ý tưởng | Quyết định |
 | --- | --- | --- | --- |

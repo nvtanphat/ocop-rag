@@ -261,8 +261,11 @@ def _require_min_transformers()->None:
     """Refuse to embed with a library older than the model needs (silent attention fallback otherwise)."""
     minimum=load_models_config().get("embedding",{}).get("min_transformers_version")
     if not minimum:return
-    import transformers
-    from packaging.version import Version
+    try:
+        import transformers
+        from packaging.version import Version
+    except ImportError:
+        return  # not installed: the embedding loader reports that itself
     if Version(transformers.__version__)<Version(str(minimum)):
         raise RuntimeError(f"transformers>={minimum} is required by the embedding model "
                            f"(installed {transformers.__version__}); upgrade and rebuild the dense index")

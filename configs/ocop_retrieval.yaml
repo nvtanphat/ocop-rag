@@ -9,6 +9,8 @@ context:
   table_excerpt_max_chars: 5000    # table rows are short; keep the whole matched table chunk
   parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
   parent_label_max_chars: 90
+  max_source_blocks: 12            # SOURCE blocks in one prompt after merging continuations and dropping repeats
+  grounding_min_term_coverage: 0.8 # share of an unreviewed-source claim's content words found in its cited excerpt (0.9 for critical claims)
   min_term_coverage: 0.25          # share of question content terms present in the prompt SOURCE text; below it no generation
 retrieval:
   top_k: 8
@@ -21,6 +23,7 @@ retrieval:
   rerank_threads: 6
   rerank_cache_entries: 512
   query_max_chars: 1500
+  neighbor_chunks: 2               # top hits cut mid-sentence also bring the chunk that continues them
 agent:
   max_tool_calls: 5                # AGENTS.md: default maximum of five tool calls per question
   grader_min_relevance: 0.13       # min share of question terms in a row for it to count as relevant evidence
