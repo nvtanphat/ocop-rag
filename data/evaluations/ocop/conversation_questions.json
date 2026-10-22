@@ -1,0 +1,57 @@
+[
+ {"id": "C1", "note": "article switch keeps the document",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Còn Điều 7?", "expect_slots": {"document_code": "26/2026", "article_id": "7"}}],
+  "final": {"pages": [5], "evidence_phrases": ["Trình tự đánh giá"]}},
+ {"id": "C2", "note": "a new target (form) must replace the old target (article), not stack on it",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Còn mẫu số 02?", "expect_slots": {"document_code": "26/2026", "form_id": "02"}, "absent_slots": ["article_id"]}],
+  "final": {"pages": [4], "evidence_phrases": ["Mẫu số 02"]}},
+ {"id": "C3", "note": "locality carries to a content-only follow-up",
+  "turns": [
+   {"q": "Hạn nộp hồ sơ OCOP phường Thành Sen năm 2026 là khi nào?", "expect_slots": {"region": "Thành Sen"}},
+   {"q": "Nơi tiếp nhận hồ sơ thì sao?", "expect_slots": {"region": "Thành Sen"}}],
+  "final": {"pages": [3], "evidence_phrases": ["Nơi tiếp nhận"], "forbid_sources": ["VN.OCOP.QD26.2026"]}},
+ {"id": "C4", "note": "product and document carry through a pronoun",
+  "turns": [
+   {"q": "QĐ525 có tên sản phẩm HANA không?", "expect_slots": {"document_code": "525", "product_name": "HANA"}},
+   {"q": "Chủ thể sản xuất sản phẩm đó là ai?", "expect_slots": {"product_name": "HANA"}, "coref": true}],
+  "final": {"pages": [3], "evidence_phrases": ["Thụy Hương"]}},
+ {"id": "C5", "note": "plural referent: 'hai mẫu này' = the two forms discussed",
+  "turns": [
+   {"q": "Hồ sơ lần đầu theo QĐ26/2026 gồm những mẫu nào?", "expect_slots": {"document_code": "26/2026"}},
+   {"q": "Mẫu số 01 dùng để làm gì?", "expect_slots": {"form_id": "01"}},
+   {"q": "Còn mẫu số 02?", "expect_slots": {"form_id": "02"}},
+   {"q": "Hai mẫu này khác nhau ở đâu?", "expect_slots": {"form_ids": ["01", "02"]}, "coref": true}],
+  "final": {"pages": [4], "evidence_phrases": ["Mẫu số 01", "Mẫu số 02"]}},
+ {"id": "C6", "note": "switching to a document that is not indexed must not borrow the previous document's evidence",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Còn QĐ148/2023?", "expect_slots": {"document_code": "148/2023"}}],
+  "final": {"pages": [], "forbid_sources": ["VN.OCOP.QD26.2026"]}},
+ {"id": "C7", "note": "a self-contained new question inherits nothing",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Hạn nộp hồ sơ OCOP phường Thành Sen năm 2026 là khi nào?", "expect_slots": {"region": "Thành Sen"}, "absent_slots": ["document_code", "article_id"]}],
+  "final": {"pages": [1, 2, 3, 4], "forbid_sources": ["VN.OCOP.QD26.2026"]}},
+ {"id": "C8", "note": "a bare pronoun keeps the topic of the last answered turn",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Còn Điều 7?", "expect_slots": {"document_code": "26/2026", "article_id": "7"}},
+   {"q": "Nó thì sao?", "expect_slots": {"document_code": "26/2026", "article_id": "7"}, "coref": true}],
+  "final": {"pages": [5]}},
+ {"id": "C9", "note": "a turn that needed clarification must not move the conversation's scope",
+  "turns": [
+   {"q": "QĐ26/2026 Điều 6 quy định hồ sơ lần đầu ra sao?", "expect_slots": {"document_code": "26/2026", "article_id": "6"}},
+   {"q": "Còn năm 2023?", "forbid_slot_values": {"years": ["2023"]}},
+   {"q": "Còn Điều 7?", "expect_slots": {"document_code": "26/2026", "article_id": "7"}, "forbid_slot_values": {"years": ["2023"]}}],
+  "final": {"pages": [5]}},
+ {"id": "C10", "note": "after an explicit document switch the new document stays",
+  "turns": [
+   {"q": "QĐ525 có tên sản phẩm HANA không?", "expect_slots": {"document_code": "525"}},
+   {"q": "Còn QĐ26/2026 Điều 4?", "expect_slots": {"document_code": "26/2026", "article_id": "4"}, "absent_slots": ["product_name"]},
+   {"q": "Cơ quan nào công nhận sản phẩm 5 sao?"}],
+  "final": {"pages": [3], "evidence_phrases": ["Bộ Nông nghiệp và Môi trường"]}}
+]

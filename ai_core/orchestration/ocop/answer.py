@@ -96,7 +96,7 @@ def _merge_continuations(entries):
 _SIBLING_SLOTS=3
 
 
-def _most_relevant(entries,terms,limit):
+def _most_relevant(entries,terms,limit,fill_min=None):
     """Keep `limit` blocks by greedy, rarity-weighted coverage of the question's terms (ties keep tool order).
 
     Tool order alone lets one structured tool fill the prompt with rows of the wrong page, and counting distinct
@@ -120,10 +120,10 @@ def _most_relevant(entries,terms,limit):
         gain=lambda i:sum(weight[t] for t in found[i]-covered)  # noqa: E731
         best=max((i for i in range(len(entries)) if i not in chosen),key=lambda i:(gain(i),-i),default=None)
         if best is None:break
-        if gain(best)<=0:  # everything coverable is covered: fill by plain weighted relevance
+        if gain(best)<=0:  # everything coverable is covered: fill by plain weighted relevance, up to `fill_min` blocks
             rest=sorted((i for i in range(len(entries)) if i not in chosen),
                         key=lambda i:(-sum(weight[t] for t in found[i]),i))
-            chosen.extend(rest[:limit-len(chosen)]);break
+            chosen.extend(rest[:max(0,min(limit,limit if fill_min is None else fill_min)-len(chosen))]);break
         chosen.append(best);covered|=found[best]
     # Cells of one table that tools returned together describe one row (product / owner / representative): a chosen
     # table block brings its returned siblings, at most `_SIBLING_SLOTS` extra.
@@ -205,7 +205,7 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
     _stage('context.merged',entries)
     entries=_drop_repeats(entries)
     _stage('context.deduped',entries)
-    entries=_most_relevant(entries,terms,cfg.max_source_blocks)
+    entries=_most_relevant(entries,terms,cfg.max_source_blocks,cfg.fill_min_blocks)
     _stage('context.packed',entries)
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")

@@ -240,6 +240,22 @@ def trace_question(agent_factory, root: Path, q: dict, chunks: dict, mode: str, 
     return report
 
 
+def summarize(reports: list[dict]) -> dict:
+    """Survival of gold evidence per stage, context precision and prompt cost over the questions that have gold."""
+    gold = [r for r in reports if r['gold']['pages']]
+    survive = {name: sum(1 for r in gold if r['stages'].get(name, {}).get('content_hit')) for name in STAGES}
+    answered = [r for r in gold if r['prompt']]
+    # a prompt block is useful when it is on a gold page; precision = useful blocks / blocks
+    useful = sum(r['stages']['prompt']['page_hit'] and sum(1 for b in source_part(r['prompt']['user'])
+                                                          if b['pdf_page'] in r['gold']['pages']) for r in answered if 'prompt' in r['stages'])
+    blocks = sum(r['prompt']['source_blocks'] for r in answered)
+    tokens = sorted(r['prompt']['estimated_tokens'] for r in answered)
+    return {'gold_questions': len(gold), 'gold_survives_to': survive,
+            'context_precision': round(useful / blocks, 3) if blocks else None,
+            'prompt_tokens_median': tokens[len(tokens) // 2] if tokens else None, 'prompt_tokens_max': tokens[-1] if tokens else None,
+            'source_blocks_mean': round(blocks / len(answered), 2) if answered else None}
+
+
 def render_html(reports: list[dict]) -> str:
     def cell(stage):
         if stage is None:
@@ -276,6 +292,7 @@ def main() -> None:
     ap.add_argument('--phrases', nargs='*', default=[])
     ap.add_argument('--mode', choices=('sparse', 'hybrid', 'rerank'), default='hybrid')
     ap.add_argument('--llm', choices=('stub', 'real'), default='stub')
+    ap.add_argument('--set', nargs='*', default=[], metavar='section.key=value', help='override a retrieval setting for this run, e.g. context.fill_min_blocks=6')
     ap.add_argument('--out', type=Path)
     ap.add_argument('--html', type=Path)
     args = ap.parse_args()
@@ -290,6 +307,8 @@ def main() -> None:
         questions = [q for q in questions if q['id'] in set(args.ids)]
 
     from ai_core.orchestration.ocop.workflow import OcopAgent
+    from ai_core.retrieval.ocop.settings import override_settings
+    override_settings(args.set)
 
     def turns_of(q):
         if q.get('turns'):
@@ -313,9 +332,10 @@ def main() -> None:
             args.root, q, chunks, args.mode, client_factory, turns_of))
         d = reports[-1].get('diagnosis') or {}
         print(f"#{q['id']} lost_at={d.get('lost_at')} held={d.get('last_held')} :: {d.get('verdict', '')}", flush=True)
+    summary = summarize(reports)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        args.out.write_text(json.dumps(reports, ensure_ascii=False, indent=1, default=str), encoding='utf-8')
+        args.out.write_text(json.dumps({'summary': summary, 'reports': reports}, ensure_ascii=False, indent=1, default=str), encoding='utf-8')
     if args.html:
         args.html.parent.mkdir(parents=True, exist_ok=True)
         args.html.write_text(render_html(reports), encoding='utf-8')
@@ -324,7 +344,7 @@ def main() -> None:
         key = (r.get('diagnosis') or {}).get('verdict')
         if key:
             tally[key] = tally.get(key, 0) + 1
-    print(json.dumps({'questions': len(reports), 'verdicts': tally}, ensure_ascii=False))
+    print(json.dumps({'questions': len(reports), 'verdicts': tally, **summary}, ensure_ascii=False))
 
 
 if __name__ == '__main__':
