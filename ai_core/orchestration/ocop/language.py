@@ -52,7 +52,6 @@ class Language(BaseModel):
     instruction_words: list[str]
     claim_filler: list[str] = []
     table_words: list[str] = []
-    relation_glosses: dict[str, str] = {}
     document_types: dict[str, list[str]]
     document_number_markers: dict[str, list[str]]
     structure_nouns: dict[str, list[str]]
