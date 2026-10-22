@@ -232,7 +232,7 @@ def test_native_real_hai_phong_coordinates_and_rowspan():
     product=next(c for c in table['cells'] if c['row']==1 and c['col']==2)
     assert owner['bbox'][0] < product['bbox'][0]
     assert owner['rowspan']==4
-    assert owner['text'].startswith('Công ty Trách')
+    assert owner['text'].startswith('Công ty Trách') and 'Côngty' not in owner['text']
 
 
 def test_score_option_has_cell_level_pdf_provenance():

@@ -70,3 +70,42 @@ def test_page_job_embeds_source_digest_and_rejects_cache_for_other_bytes(tmp_pat
     changed = pipeline._page_job(job)
     assert changed["source_sha256"] == sha256_file(path)
     assert changed["source_sha256"] != artifact["source_sha256"]
+
+
+def _word_spaced_table(gap: float):
+    document = fitz.open()
+    page = document.new_page(width=400, height=300)
+    for y in (60, 120, 180):
+        page.draw_line((40, y), (340, y))
+    for x in (40, 190, 340):
+        page.draw_line((x, 60), (x, 180))
+    x = 50
+    for word in ("Cong", "ty", "Trach", "nhiem"):       # positioned words, no space glyphs between them
+        page.insert_text((x, 90), word, fontsize=11)
+        x += fitz.get_text_length(word, fontsize=11) + gap
+    page.insert_text((200, 90), "San pham A")
+    page.insert_text((50, 150), "x")
+    page.insert_text((200, 150), "y")
+    return document, page
+
+
+def test_native_cell_text_restores_word_spaces_from_glyph_positions():
+    document, page = _word_spaced_table(3.2)
+    with document:
+        cells = native_tables(page)[0]["cells"]
+    assert cells[0]["text"] == "Cong ty Trach nhiem"
+    assert [c["text"] for c in cells[1:]] == ["San pham A", "x", "y"]
+
+
+def test_native_cell_text_does_not_invent_spaces_inside_words():
+    document, page = _word_spaced_table(0.2)           # tight spacing: one word, kerning only
+    with document:
+        cells = native_tables(page)[0]["cells"]
+    assert cells[0]["text"].replace(" ", "") == "CongtyTrachnhiem" and "Cong ty" not in cells[0]["text"]
+
+
+def test_native_cell_text_keeps_the_extractor_text_when_the_clip_disagrees():
+    from ocop_ocr.table_parser import _cell_text
+    document, page = _word_spaced_table(3.2)
+    with document:
+        assert _cell_text(page, (0, 0, 400, 300), "different characters") == "different characters"

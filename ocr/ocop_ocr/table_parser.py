@@ -12,6 +12,66 @@ def _bbox(rect):
     return [round(float(v), 2) for v in rect]
 
 
+# A horizontal gap wider than this fraction of the font size between two glyphs is a word break. Normal letter
+# spacing and kerning stay below ~0.1 em; a real inter-word space is ~0.25-0.3 em. PDFs that position words
+# without space glyphs are otherwise read back as "Côngty" by table.extract().
+WORD_GAP_EM = 0.15
+
+
+def _cell_text(page, box, extracted: str) -> str:
+    """Text of one cell with word spaces restored from glyph positions; source characters are never altered.
+
+    Falls back to the extractor's text when the clip does not contain exactly the same non-space characters
+    (a neighbouring cell's glyph, or a lost one).
+    """
+    try:
+        raw = page.get_text("rawdict", clip=tuple(box))
+    except (RuntimeError, ValueError, TypeError, AttributeError):
+        return extracted
+    lines = []
+    for block in raw.get("blocks", []):
+        if block.get("type") != 0:
+            continue
+        for line in block.get("lines", []):
+            text, previous = "", None
+            for span in line.get("spans", []):
+                size = float(span.get("size") or 0)
+                for ch in span.get("chars", []):
+                    glyph = ch.get("c", "")
+                    if (previous is not None and glyph.strip() and previous[0].strip() and size > 0
+                            and ch["bbox"][0] - previous[1] > WORD_GAP_EM * size):
+                        text += " "
+                    text += glyph
+                    previous = (glyph, ch["bbox"][2])
+            if text.strip():
+                lines.append(text.strip())
+    rebuilt = chr(10).join(lines)
+    squeeze = lambda s: "".join((s or "").split())  # noqa: E731
+    if not rebuilt or squeeze(rebuilt) != squeeze(extracted):
+        return extracted
+    return _union_spacing(extracted, rebuilt)
+
+
+def _gaps(text: str) -> dict[int, str]:
+    """Whitespace between consecutive non-space characters, keyed by the index of the character after it."""
+    found, count, pending = {}, 0, ""
+    for ch in text:
+        if ch.isspace():
+            pending = chr(10) if (ch == chr(10) or pending == chr(10)) else " "
+        else:
+            if pending and count:
+                found[count] = pending
+            count, pending = count + 1, ""
+    return found
+
+
+def _union_spacing(extracted: str, rebuilt: str) -> str:
+    """Same characters, with a break wherever either reading has one (the extractor keeps its own spaces)."""
+    gaps = {**_gaps(rebuilt), **_gaps(extracted)}
+    chars = [ch for ch in extracted if not ch.isspace()]
+    return "".join(gaps.get(i, "") + ch for i, ch in enumerate(chars))
+
+
 def native_tables(page) -> list[dict]:
     tables = []
     if not hasattr(page, "find_tables"):
@@ -43,6 +103,8 @@ def native_tables(page) -> list[dict]:
                 if box is None:  # covered by a merged cell, not a blank owner
                     continue
                 value = matrix[r][c] if r < len(matrix) and c < len(matrix[r]) else None
+                if value:
+                    value = _cell_text(page, box, value)
                 # A native table rowspan is geometrically observable: a cell
                 # from row r extends into one or more following row bands.
                 covers = 1
