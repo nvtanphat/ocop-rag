@@ -171,7 +171,7 @@ def test_qdrant_dense_build_creates_keyword_payload_indexes_first(monkeypatch):
     result=ip.build_dense(data,collection='test_dense',model_id='fake')
     assert result['points']==1
     assert [item[1]['field_name'] for item in events if item[0]=='create_payload_index']==[
-        'source_id','review_status','corpus_version']
+        'source_id','review_status','corpus_version','evidence_unit_id']
     assert [name for name,_ in events].index('create_payload_index') < [name for name,_ in events].index('upsert')
 
 

@@ -324,7 +324,7 @@ def build_dense(chunks:list[dict],*,collection:str,model_id:str,revision:str|Non
         if configured!=dim:raise RuntimeError(f"Existing Qdrant dim={configured}, model dim={dim}")
     # Exact-match filters must be indexed before ingest (Qdrant strict mode
     # can reject unindexed filters, and filter-aware HNSW benefits from early indexes).
-    for key in ('source_id','review_status','corpus_version'):
+    for key in ('source_id','review_status','corpus_version','evidence_unit_id'):
         client.create_payload_index(collection_name=collection,field_name=key,
                                     field_schema=models.PayloadSchemaType.KEYWORD,wait=True)
     import uuid
