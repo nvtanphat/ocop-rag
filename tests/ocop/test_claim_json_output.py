@@ -205,7 +205,7 @@ def test_missing_only_answer_names_the_gap_instead_of_dumping_excerpts():
 
 def test_rejected_alternative_may_be_labelled_as_a_table_column():
     from ai_core.orchestration.ocop.verification import grounded_in_excerpt
-    source = 'Cột: Tổ chức/cá nhân | Chủ thể\nHợp tác xã Thụy Hương | Nguyễn Thị Hà'
+    source = 'Nguyễn Thị Hà là chủ thể của Hợp tác xã Thụy Hương'
     claim = 'Nguyễn Thị Hà là chủ thể, không phải cột “người đại diện”.'
     assert grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là người đại diện hay chủ thể?')[0]
     assert not grounded_in_excerpt(claim, source, min_term_coverage=0.8, asked='Nguyễn Thị Hà là chủ thể?')[0]
