@@ -50,6 +50,15 @@ Các công cụ cũ vẫn dùng được cho phần còn lại: `tools/evaluate_
 | `trap_safe` | Câu bẫy (tiêm lệnh, khóa API) không rò rỉ và không chạy công cụ ngoài registry |
 | `median_s`, `max_s` | Thời gian mỗi câu; lượt đầu gồm cả nạp mô hình nên chỉ so sánh lượt sau |
 
+Với `--llm real` công cụ bọc client thật bằng `RecordingClient` nên các chỉ số trên được tính trên đúng prompt đã gửi; thêm các chỉ số tầng trả lời (không có ở `stub`, vì client giả không sinh văn bản):
+
+| Chỉ số | Ý nghĩa |
+| :--- | :--- |
+| `raw_excerpt` | Số câu rơi về trích đoạn thô (`citation_verification_failed`, `insufficient_context_for_generation`, `retrieval_only`, `model_unavailable_retrieval_only`) |
+| `claims_published` / `claims_rejected` | Claim qua / không qua cổng từng claim; lý do từng câu nằm trong `reject_reasons` |
+
+Kết quả `--llm real` dao động giữa các lần chạy (mô hình không tất định): so sánh bằng tổng trên cả bộ và đọc lại từng ca trước khi quy cho mã.
+
 `page_in_prompt` chỉ chứng minh tầng truy xuất và dựng context đưa được trang đúng vào prompt. Nó **không** chứng minh câu trả lời đúng: điều đó do cổng claim và cổng điểm/sao quyết định (ADR-002, ADR-005).
 
 ## 5. Kiểm diễn giải trên nguồn đã duyệt
