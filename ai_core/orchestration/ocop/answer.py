@@ -9,6 +9,7 @@ from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_marke
     grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
 from ai_core.orchestration.ocop.language import fold
+from ai_core.system import stage_trace as trace
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
@@ -146,6 +147,12 @@ def _drop_repeats(entries):
     return kept
 
 
+def _stage(name:str,entries)->None:
+    if trace.active():
+        trace.emit(name,items=[{'chunk_id':key[3],'evidence_unit_id':key[2],'pdf_page':key[1],'source_id':key[0],
+                                'raw_text':str(row.get('raw_text') or row.get('text') or '')} for key,row,_,_ in entries])
+
+
 def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tuple[list[dict],list[str],list[dict]]:
     """Select source-backed evidence visible to the LLM and the verifier.
 
@@ -173,6 +180,7 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
         key=(row['source_id'],span['pdf_page'],row.get('evidence_unit_id') or row.get('unit_id'),chunk_id)
         grouped.setdefault(key,[]).append((row,span,body))
     entries=[]
+    conflicting=[]
     for key,group in grouped.items():
         # Equal identities are only safely deduplicated when the evidence and
         # provenance agree. Never promote a duplicate candidate to verified.
@@ -180,19 +188,35 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
                      json.dumps(row.get('source_spans') or row.get('spans') or span,
                                 ensure_ascii=False,sort_keys=True,default=str))
                     for row,span,body in group}
-        if len(signatures)!=1:continue
+        if len(signatures)!=1:
+            conflicting.append(key);continue
         row,span,body=group[0]
         spans=row.get('source_spans') or row.get('spans') or []
         context_metadata=row.get('context') if isinstance(row.get('context'),dict) else {}
         table_backed=bool(context_metadata.get('table_id') or any(
             isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox')) for item in spans))
         entries.append((key,row,span,table_backed))
+    if trace.active():
+        trace.emit('context.input',records=len(records),terms=terms,max_source_blocks=cfg.max_source_blocks,
+                   unusable=len(records)-sum(len(g) for g in grouped.values()),
+                   conflicting_duplicates=[{'chunk_id':k[3],'pdf_page':k[1]} for k in conflicting])
+    _stage('context.candidates',entries)
     entries=_merge_continuations(entries)
-    entries=_most_relevant(_drop_repeats(entries),terms,cfg.max_source_blocks)
+    _stage('context.merged',entries)
+    entries=_drop_repeats(entries)
+    _stage('context.deduped',entries)
+    entries=_most_relevant(entries,terms,cfg.max_source_blocks)
+    _stage('context.packed',entries)
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")
              for i,(key,row,span,flag) in enumerate(entries,1)]
     excerpts=fit_budget([e[1] for e in entries],[e[3] for e in entries],terms,cfg,budget,headers) if entries else []
+    if trace.active():
+        trace.emit('context.budget',budget_tokens=budget,overhead_tokens=overhead_tokens,items=[
+            {'chunk_id':key[3],'pdf_page':key[1],'dropped':ex is None,'source_chars':len(str(row.get('raw_text') or row.get('text') or '')),
+             **({} if ex is None else {'shown_chars':len(ex.evidence),'cut_left':ex.cut_left,'cut_right':ex.cut_right,
+                                       'tokens':estimated_tokens(ex.display),'display':ex.display})}
+            for (key,row,_,_),ex in zip(entries,excerpts)])
     citations=[];contexts=[];selected=[]
     for (key,row,span,table_backed),excerpt in zip(entries,excerpts):
         if excerpt is None or not excerpt.evidence.strip():continue

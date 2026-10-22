@@ -13,6 +13,7 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse,Route,Intent,AuthContext
 from ai_core.orchestration.ocop.router import route_query,extract_slots,_merge_followup
+from ai_core.system import stage_trace
 from ai_core.orchestration.ocop.planner import ToolPlan,build_plan,evidence_ids,recovery_safe
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
@@ -79,6 +80,9 @@ class OcopAgent:
             # Text query is only for ranking. Structured tools use effective
             # merged slots, so stale values in prose cannot change their scope.
             effective=previous+' (cập nhật yêu cầu: '+query+')'
+        if stage_trace.active():
+            stage_trace.emit('memory.read',session=safe_session,question=query,effective_query=effective,
+                             followup=choice.intent==Intent.FOLLOWUP,routed_slots=choice.slots,intent=choice.intent.value)
         return {'route':choice.model_dump(mode='json'),'effective_query':effective,
                 'trace':[{'step':'route','intent':choice.intent.value,'tools':list(choice.required_tools),
                           'reasons':choice.reason_codes,'retrieval_path':choice.retrieval_path.value}]}
@@ -223,6 +227,13 @@ class OcopAgent:
                 output={'results':[],'status':'tool_unavailable','error_type':type(exc).__name__}
             output=self._validate_output(output)
             results.append({'tool':name,'output':output,**({'optional':True} if task.optional else {})})
+            if stage_trace.active():
+                stage_trace.emit('tool.output',tool=name,status=output.get('status','ok'),rows=[
+                    {'chunk_id':r.get('chunk_id'),'evidence_unit_id':r.get('evidence_unit_id') or r.get('unit_id'),
+                     'pdf_page':r.get('pdf_page') or next((x.get('pdf_page') for x in (r.get('source_spans') or r.get('spans') or [])
+                                                          if isinstance(x,dict)),None),
+                     'source_id':r.get('source_id'),'query_part':r.get('query_part')}
+                    for r in output.get('results',[]) if isinstance(r,dict)])
             finished[name]=output
             trace.append({'step':'tool','name':name,'dependencies':list(task.depends_on),'optional':task.optional,
                           'status':output.get('status','ok'),
