@@ -126,6 +126,7 @@ class OcopSystemPipeline:
         from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
         from ai_core.graph.ocop.review import ledger_path,ledger_digest
         from ai_core.graph.ocop.builder import SCHEMA_REVISION
+        from ai_core.graph.ocop.integrity import graph_index_mismatch
         review_current=(graph.get('human_review',{}).get('ledger_sha256',ledger_digest(None))
                         ==ledger_digest(ledger_path(self.root)))
         lineage_ok = bool(
@@ -138,6 +139,7 @@ class OcopSystemPipeline:
             and index.get("source_knowledge_version") == knowledge.get("corpus_version")
             and index.get('index_version') == INDEX_VERSION
             and graph.get("source_knowledge_version") == knowledge.get("corpus_version")
+            and graph_index_mismatch(graph, index, strict=True) is None
             and index.get("status") in ("sparse_ready", "hybrid_ready")
             and graph.get("status") == "local_ready" and files_ok and review_current
             and graph.get('schema_revision') == SCHEMA_REVISION and bool(graph.get('checks'))

@@ -1,5 +1,6 @@
 """Entire review lifecycle on a synthetic PDF. Never approves real corpus data."""
 import json
+import shutil
 from pathlib import Path
 import pytest
 from ai_core.graph.ocop.builder import build_graph
@@ -31,7 +32,7 @@ def corpus(tmp_path):
                              entity('owner:synthetic','Organization','Synthetic owner')],
         'business_relations':[{'relation_id':'relation:synthetic','source_entity_id':'product:synthetic',
           'target_entity_id':'owner:synthetic','relation_type':'OWNED_BY','status':'candidate','evidence':[ref]}]}
-    (k/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'synthetic-review'}))
+    (k/'manifest.json').write_text(json.dumps({'complete':True,'corpus_version':'synthetic-review','counts':{'pages':1,'units':1}}))
     for name,rows in layers.items():
         (k/(name+'.jsonl')).write_text(''.join(json.dumps(r)+'\n' for r in rows),encoding='utf-8')
     build_graph(k,base/'graph')
@@ -238,3 +239,57 @@ def test_decision_write_fails_closed_without_valid_reviewer_configuration(corpus
         json={'target_id':item['target_id'],'content_hash':item['content_hash'],'decision':'approve'})
     assert response.status_code==503 and response.json()['detail']['layer']=='configuration'
     assert (ledger.read_text() if ledger.exists() else '')==before
+
+
+def test_review_changes_graph_then_index_is_refreshed_before_queries(corpus):
+    """review -> rebuild graph -> (mismatch is refused) -> refresh index -> query."""
+    from ai_core.graph.ocop.integrity import graph_index_mismatch
+    from ai_core.graph.ocop.lookup import GraphEvidence
+    from ai_core.retrieval.ocop.index_pipeline import build_index
+    from ai_core.retrieval.ocop.search import search
+    from ai_core.system.index_refresh import refresh_index_after_graph_change
+    base=corpus/'data/processed/ocop'
+    shutil.rmtree(base/'index')
+    build_index(knowledge=base/'knowledge',index_dir=base/'index',graph_dir=base/'graph',allow_partial=True)
+    first=json.loads((base/'graph/manifest.json').read_text())['graph_version']
+    GraphEvidence(base/'graph',base/'index',allow_partial_debug=True)
+    assert refresh_index_after_graph_change(corpus)['status']=='current'
+    decide(corpus,next(i['target_id'] for i in load_queue(corpus) if i['type']=='EvidenceUnit'))
+    decide(corpus,'product:synthetic')
+    graph=json.loads((base/'graph/manifest.json').read_text())
+    index=json.loads((base/'index/manifest.json').read_text())
+    assert graph['graph_version']!=first and index['structural_graph_version']==first
+    assert graph_index_mismatch(graph,index)=='graph/index graph version mismatch'
+    with pytest.raises(ValueError,match='graph version mismatch'):
+        GraphEvidence(base/'graph',base/'index',allow_partial_debug=True)
+    result=refresh_index_after_graph_change(corpus)
+    assert result['status']=='refreshed' and result['graph_version']==graph['graph_version']
+    index=json.loads((base/'index/manifest.json').read_text())
+    assert index['structural_graph_version']==graph['graph_version'] and index['entity_catalog']['sha256']
+    GraphEvidence(base/'graph',base/'index',allow_partial_debug=True)
+    assert search(base/'index','Synthetic product')[0]['source_id']=='SYNTHETIC'
+    assert not (base/'index.previous').exists() and not (base/'index.refresh').exists() and not (base/'.promoting').exists()
+    assert refresh_index_after_graph_change(corpus)['status']=='current'
+
+
+def test_failed_refresh_keeps_the_previous_index(corpus,monkeypatch):
+    from ai_core.retrieval.ocop import index_pipeline
+    from ai_core.retrieval.ocop.index_pipeline import build_index
+    from ai_core.system.index_refresh import refresh_index_after_graph_change
+    base=corpus/'data/processed/ocop'
+    shutil.rmtree(base/'index')
+    build_index(knowledge=base/'knowledge',index_dir=base/'index',graph_dir=base/'graph',allow_partial=True)
+    decide(corpus,next(i['target_id'] for i in load_queue(corpus) if i['type']=='EvidenceUnit'))
+    before=(base/'index/manifest.json').read_text()
+    monkeypatch.setattr(index_pipeline,'build_index',lambda **kw:(_ for _ in ()).throw(RuntimeError('boom')))
+    with pytest.raises(RuntimeError,match='boom'):refresh_index_after_graph_change(corpus)
+    assert (base/'index/manifest.json').read_text()==before and not (base/'index.refresh').exists()
+
+
+def test_strict_contract_rejects_an_index_that_names_no_graph():
+    from ai_core.graph.ocop.integrity import graph_index_mismatch
+    graph={'source_knowledge_version':'k','graph_version':'g'}
+    assert graph_index_mismatch(graph,{'source_knowledge_version':'k'}) is None
+    assert graph_index_mismatch(graph,{'source_knowledge_version':'k'},strict=True)=='index was built without a graph snapshot'
+    assert graph_index_mismatch(graph,{'source_knowledge_version':'x','structural_graph_version':'g'})=='graph/index knowledge version mismatch'
+    assert graph_index_mismatch(graph,{'source_knowledge_version':'k','structural_graph_version':'g'},strict=True) is None

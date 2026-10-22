@@ -8,7 +8,7 @@ from ocop_contracts.ratings import level_class
 from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION, records
 from ai_core.graph.ocop.grounding import public_record, USABLE_CHECKS
-from ai_core.graph.ocop.integrity import validate_graph_snapshot
+from ai_core.graph.ocop.integrity import graph_index_mismatch, validate_graph_snapshot
 
 
 _LEGAL_UNIT_TYPES = {'Article', 'Clause', 'Point'}
@@ -43,8 +43,9 @@ class GraphEvidence:
         validate_graph_snapshot(path, allow_partial=allow_partial_debug)
         if index_dir is not None and (index_dir / 'manifest.json').is_file():
             index = json.loads((index_dir / 'manifest.json').read_text(encoding='utf8'))
-            if index.get('source_knowledge_version') != self.manifest['source_knowledge_version']:
-                raise ValueError('graph/index knowledge version mismatch')
+            problem = graph_index_mismatch(self.manifest, index)
+            if problem:
+                raise ValueError(problem)
         self.nodes = {n['node_id']: public_record(n) for n in records(path / 'nodes.jsonl')
                       if n.get('check') in USABLE_CHECKS}
         self.edges = [public_record(e) for e in records(path / 'edges.jsonl')

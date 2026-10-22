@@ -5,6 +5,23 @@ from pathlib import Path
 from ocop_contracts.ids import content_sha256
 
 
+def graph_index_mismatch(graph_manifest: dict, index_manifest: dict, *, strict: bool = False) -> str | None:
+    """Why an index cannot be served together with a graph snapshot (None when they belong together).
+
+    The index is built from the knowledge version *and* from the checked graph (parent chains, entity catalog,
+    structural_graph_version). After a human-review rebuild the graph version changes, so an index that still
+    names the old one must be refreshed. ``strict`` also rejects an index that records no graph version.
+    """
+    if index_manifest.get('source_knowledge_version') != graph_manifest.get('source_knowledge_version'):
+        return 'graph/index knowledge version mismatch'
+    recorded = index_manifest.get('structural_graph_version')
+    if recorded is None:
+        return 'index was built without a graph snapshot' if strict else None
+    if recorded != graph_manifest.get('graph_version'):
+        return 'graph/index graph version mismatch'
+    return None
+
+
 def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False,
                             allow_partial: bool = False) -> dict:
     manifest_file = path / "manifest.json"

@@ -71,6 +71,8 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
         manifest = {"source_knowledge_version": "knowledge-fixture", "corpus_version": "index-fixture",
                     "index_version": INDEX_VERSION,
+                    "structural_graph_version": json.loads(
+                        (index_dir.parent / "graph" / "manifest.json").read_text(encoding="utf-8"))["graph_version"],
                     "status": "sparse_ready", "dense": {"enabled": False}}
         write_json(index_dir / "manifest.json", manifest)
         (index_dir / "chunks.jsonl").write_text("", encoding="utf-8")

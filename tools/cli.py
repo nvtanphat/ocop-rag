@@ -60,7 +60,7 @@ def main() -> None:
     status = sub.add_parser("status", help="Validate current unified corpus readiness")
     status.add_argument("--root", type=Path, default=ROOT)
     review=sub.add_parser('review',help='Export human review queue, record one decision, or show statistics')
-    review.add_argument('action',choices=['queue','decide','stats'])
+    review.add_argument('action',choices=['queue','decide','stats','refresh-index'])
     review.add_argument('--root',type=Path,default=ROOT)
     review.add_argument('--out',type=Path)
     review.add_argument('--render',action='store_true',help='Render source-checked crops when exporting')
@@ -86,7 +86,12 @@ def main() -> None:
                 correction=json.loads(args.correction_file.read_text(encoding='utf-8')) if args.correction_file else None
                 event=record_decision(args.root,args.target_id,args.content_hash,args.decision,args.reviewer,
                                       correction=correction,notes=args.notes)
-                result={'decision':event,'graph':rebuild_reviewed_graph(args.root)['counts']}
+                graph=rebuild_reviewed_graph(args.root)
+                from ai_core.system.index_refresh import refresh_index_after_graph_change
+                result={'decision':event,'graph':graph['counts'],'index':refresh_index_after_graph_change(args.root)}
+            elif args.action=='refresh-index':
+                from ai_core.system.index_refresh import refresh_index_after_graph_change
+                result=refresh_index_after_graph_change(args.root)
             else:
                 items=load_queue(args.root)
                 result=statistics(items)

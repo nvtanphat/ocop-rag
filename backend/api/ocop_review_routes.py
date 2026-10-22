@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from backend.api import ocop_routes
 from backend.api.review_auth import authenticate
+from ai_core.system.index_refresh import refresh_index_after_graph_change
 from ai_core.graph.ocop.review import load_queue,statistics,record_decision,render_crop,rebuild_reviewed_graph
 
 router=APIRouter(prefix='/api/ocop/review',tags=['OCOP human review'])
@@ -76,4 +77,11 @@ def decide(body:DecisionRequest,authorization:str|None=Header(default=None)):
         ocop_routes._graph_data.cache_clear()
     except (OSError,ValueError,RuntimeError) as exc:
         raise HTTPException(503,'Đã ghi quyết định; cần build lại graph: '+str(exc)) from exc
-    return {'decision':row,'graph':graph['counts'],'review':graph['human_review']}
+    try:
+        index=refresh_index_after_graph_change(ocop_routes.ROOT)
+        ocop_routes._agent.cache_clear()
+    except (OSError,ValueError,RuntimeError) as exc:
+        # The decision and the graph are durable; queries refuse a mismatched index until the refresh succeeds.
+        raise HTTPException(503,{'code':'index_refresh_failed','layer':'index','error_type':type(exc).__name__,
+            'message':'Đã ghi quyết định và graph; cần cập nhật chỉ mục (python tools/cli.py review refresh-index).'}) from exc
+    return {'decision':row,'graph':graph['counts'],'review':graph['human_review'],'index':index}

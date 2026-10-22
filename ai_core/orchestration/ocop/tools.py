@@ -150,7 +150,8 @@ class ToolRegistry:
                 try:
                     gm=validate_graph_snapshot(self.graph_dir,allow_partial=context.get('allow_partial_debug') is True)
                     im=json.loads((self.index_dir/'manifest.json').read_text(encoding='utf8'))
-                    if gm['source_knowledge_version']!=im.get('source_knowledge_version'):
+                    from ai_core.graph.ocop.integrity import graph_index_mismatch
+                    if graph_index_mismatch(gm,im):
                         raise ValueError('sheet graph/index version mismatch')
                     path=self.graph_dir/'snapshots'/gm['graph_version']
                     validate_graph_snapshot(path,allow_partial=context.get('allow_partial_debug') is True)
@@ -512,10 +513,8 @@ class ToolRegistry:
                     # Chunk/index version is a derived hash of chunk settings,
                     # deliberately distinct from the knowledge source version.
                     # Compare the shared upstream knowledge version instead.
-                    index_source_version=(index_manifest.get('source_knowledge_version')
-                                          or index_manifest.get('corpus_version'))
-                    if (index_source_version and
-                            index_source_version!=graph_manifest.get("source_knowledge_version")):
+                    from ai_core.graph.ocop.integrity import graph_index_mismatch
+                    if graph_index_mismatch(graph_manifest,index_manifest):
                         return {"results":[],"status":"graph_index_version_mismatch"}
             except (ValueError, OSError, KeyError):
                 return {"results":[],"status":"graph_integrity_failed"}

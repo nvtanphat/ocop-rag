@@ -85,6 +85,7 @@ Khi lệnh `decide` hoàn tất, hệ thống tự động kích hoạt hàm `re
 2. Nâng cấp trạng thái các nút/cạnh được phê duyệt từ `needs_review` sang `human_verified` (`check: human_verified`).
 3. Loại bỏ các nút/cạnh bị bác bỏ khỏi đồ thị tra cứu.
 4. Sinh lại snapshot đồ thị mới kèm chữ ký số và cập nhật `manifest.json`.
+5. **Cập nhật chỉ mục**: chỉ mục ghi `structural_graph_version`; sau khi graph đổi phiên bản, `refresh_index_after_graph_change` dựng lại chỉ mục (BM25, danh mục thực thể, và vector nếu đang bật) với đúng cấu hình cũ trong thư mục tạm, kiểm hợp đồng graph↔chỉ mục rồi hoán đổi dưới cờ `.promoting`. Trong lúc chưa khớp phiên bản, mọi công cụ dùng graph trả `graph_index_version_mismatch` và `pipeline.status()` báo chưa sẵn sàng. API `POST /api/ocop/review/decisions` làm bước này trong cùng yêu cầu (503 `index_refresh_failed` nếu lỗi: quyết định và graph vẫn được giữ); chạy tay bằng `python tools/cli.py review refresh-index`.
 
 ---
 
