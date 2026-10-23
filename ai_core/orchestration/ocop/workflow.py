@@ -73,7 +73,7 @@ class OcopAgent:
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
         choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
             indexed_content_bigram_coverage=lambda text:query_content_bigram_coverage(
-                self.tools.index_dir,text),catalog=self._catalog(),dialogue_client=self.llm)
+                self.tools.index_dir,text),catalog=self._catalog())
         if (choice.intent in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or
             set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
             choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
