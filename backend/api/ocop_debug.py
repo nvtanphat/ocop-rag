@@ -9,6 +9,7 @@ from backend.api import ocop_routes
 from backend.api.ocop_routes import AskRequest, service_unavailable
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.orchestration.ocop.llm import make_answer_client
+from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import SessionStore
 
 
@@ -41,7 +42,8 @@ def create_debug_app(root: Path, *, allow_partial_debug: bool = False) -> FastAP
     @app.post('/api/ocop/query')
     async def query(request: AskRequest):
         try:
-            agent = OcopAgent(root, llm=make_answer_client() if request.use_llm else None,
+            use_llm = request.use_llm and understand(request.query)[0].action != 'respond'
+            agent = OcopAgent(root, llm=make_answer_client() if use_llm else None,
                               allow_partial_debug=True, retrieval_mode=request.retrieval_mode)
         except (RuntimeError, ValueError, OSError) as exc:
             raise service_unavailable('llm_unavailable' if request.use_llm else 'agent_unavailable', 'configuration', exc) from exc

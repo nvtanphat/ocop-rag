@@ -194,3 +194,36 @@ def test_model_failure_preserves_deterministic_route():
     old = route_query(query)
     current = route_query(query, dialogue_client=SimpleNamespace(chat_structured=unavailable))
     assert current == old
+
+
+def test_debug_http_social_survives_missing_model_configuration(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from backend.api import ocop_debug
+    def unavailable():
+        raise RuntimeError('model not configured')
+    monkeypatch.setattr(ocop_debug, 'make_answer_client', unavailable)
+    with TestClient(ocop_debug.create_debug_app(tmp_path, allow_partial_debug=True)) as client:
+        social = client.post('/api/ocop/query', json={'query': 'Hello', 'use_llm': True})
+        assert social.status_code == 200
+        assert social.json()['intent'] == 'CONVERSATION' and not social.json()['tools_used']
+        task = client.post('/api/ocop/query', json={'query': 'Điều 7 QĐ26', 'use_llm': True})
+        assert task.status_code == 503
+
+
+def test_public_http_social_does_not_construct_model(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from backend.api import ocop_routes
+    (tmp_path/'index').mkdir()
+    (tmp_path/'index/manifest.json').write_text('{"corpus_version":"v1"}', encoding='utf-8')
+    monkeypatch.setattr(ocop_routes, 'DATA', tmp_path)
+    monkeypatch.setattr(ocop_routes.OcopSystemPipeline, 'status', lambda *a, **kw: {'state': 'ready'})
+    def construct(use_llm, *a, **kw):
+        assert use_llm is False
+        return OcopAgent(tmp_path)
+    monkeypatch.setattr(ocop_routes, '_agent', construct)
+    app = FastAPI()
+    app.include_router(ocop_routes.router)
+    with TestClient(app) as client:
+        result = client.post('/api/ocop/query', json={'query': 'Hello', 'use_llm': True})
+    assert result.status_code == 200 and result.json()['intent'] == 'CONVERSATION'

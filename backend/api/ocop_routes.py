@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.orchestration.ocop.llm import make_answer_client
+from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
 
@@ -260,7 +261,8 @@ async def ask(request: AskRequest):
         ))
     # Public search only. No client-provided tenant_id or dossier privileges.
     try:
-        agent = _agent(request.use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
+        use_llm = request.use_llm and understand(request.query)[0].action != 'respond'
+        agent = _agent(use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
     except (RuntimeError, ValueError, OSError) as exc:
         raise service_unavailable('llm_unavailable' if request.use_llm else 'agent_unavailable', 'configuration', exc) from exc
     try:
