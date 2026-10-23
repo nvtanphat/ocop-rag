@@ -571,6 +571,14 @@ class OcopAgent:
             allowed={item.value for item in Capability}
             safe_session['capabilities']=[item for item in original['capabilities'][:24]
                   if isinstance(item,str) and item in allowed]
+        if isinstance(original.get('memory'),dict):
+            safe_session['memory']=memory.sanitize(original['memory'])
+        pending=original.get('unresolved')
+        if isinstance(pending,dict) and isinstance(pending.get('question'),str):
+            missing=pending.get('missing_slots')
+            safe_session['unresolved']={'question':redact(pending['question'])[:600],
+                'missing_slots':[key for key in missing[:16] if isinstance(key,str) and len(key)<=64]
+                if isinstance(missing,list) else []}
         provided=initial.get('context') or {}
         safe_context={}
         if isinstance(provided.get('as_of_date'),str) and re.fullmatch(

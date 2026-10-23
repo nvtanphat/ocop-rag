@@ -234,3 +234,14 @@ def test_public_http_social_does_not_construct_model(tmp_path, monkeypatch):
     with TestClient(app) as client:
         result = client.post('/api/ocop/query', json={'query': 'Hello', 'use_llm': True})
     assert result.status_code == 200 and result.json()['intent'] == 'CONVERSATION'
+
+
+def test_checkpoint_preserves_bounded_public_dialogue_context_without_authority():
+    public = memory.update(None, slots={'document_code': '26'}, standalone='active topic', citations=[], corpus_version='v1')
+    initial = {'query': 'Hello', 'session': {**PRIOR, 'tenant_id': 'untrusted', 'memory': {**public, 'text': 'not evidence'},
+               'unresolved': {'question': '1.6', 'missing_slots': ['document_or_sheet_for_code'], 'permission': True}},
+               'auth': None}
+    safe = OcopAgent._checkpoint_public_input(initial)['session']
+    assert safe['memory'] == public
+    assert safe['unresolved'] == {'question': '1.6', 'missing_slots': ['document_or_sheet_for_code']}
+    assert 'tenant_id' not in safe and 'text' not in safe['memory']
