@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from copy import copy
 from functools import lru_cache
 
@@ -33,7 +34,7 @@ def understand(query: str, *, language=None) -> tuple[DialogueDecision, str]:
     patterns = _patterns(tuple(grammar.items()))
     # Folding preserves character offsets for NFC Vietnamese. Only remove edge
     # punctuation/particles; numbers and task words always remain significant.
-    text = re.sub(r'\s+', ' ', query).strip()
+    text = re.sub(r'\s+', ' ', unicodedata.normalize('NFC', query)).strip()
     folded = fold(text)
     acts = []
     offset = 0

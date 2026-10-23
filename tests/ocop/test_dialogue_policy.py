@@ -245,3 +245,10 @@ def test_checkpoint_preserves_bounded_public_dialogue_context_without_authority(
     assert safe['memory'] == public
     assert safe['unresolved'] == {'question': '1.6', 'missing_slots': ['document_or_sheet_for_code']}
     assert 'tenant_id' not in safe and 'text' not in safe['memory']
+
+
+def test_http_fast_path_normalizes_decomposed_unicode_before_model_construction():
+    import unicodedata
+    from ai_core.orchestration.ocop.dialogue import understand
+    decision, remainder = understand(unicodedata.normalize('NFD', 'Xin chào bạn nhé!'))
+    assert decision.action == 'respond' and not remainder
