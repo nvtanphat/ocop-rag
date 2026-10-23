@@ -42,9 +42,29 @@ class SessionStore:
             return
         with self._lock:
             prior = self._items.get(session_id, (0.0, {}))[1]
+            if self._clock() - self._items.get(session_id, (0.0, {}))[0] > self._ttl:
+                prior = {}
+            if set(getattr(response.route, 'required_tools', []) or []) & PRIVATE_TOOLS:
+                # A private request must not become the active public question
+                # that a later rephrase/source request would retrieve.
+                self._items[session_id] = (self._clock(), copy.deepcopy(prior))
+                self._items.move_to_end(session_id)
+                while len(self._items) > self._limit:
+                    self._items.popitem(last=False)
+                return
+            if response.intent.value == 'CONVERSATION':
+                # Social traffic refreshes TTL but cannot age evidence, overwrite
+                # the active query, or consume a pending clarification.
+                state = copy.deepcopy(prior)
+                state['dialogue'] = {'acts': list(getattr(getattr(response.route, 'dialogue', None), 'acts', []))}
+                self._items[session_id] = (self._clock(), state)
+                self._items.move_to_end(session_id)
+                while len(self._items) > self._limit:
+                    self._items.popitem(last=False)
+                return
             answered = not (getattr(response.route, 'needs_clarification', False) or response.intent.value in UNANSWERED_INTENTS)
-            if answered or not prior:
-                state = {'last_query': redact(query), 'slots': dict(response.route.slots), 'intent': response.intent.value,
+            if answered:
+                state = {'last_query': redact(getattr(response, 'standalone_query', None) or query), 'slots': dict(response.route.slots), 'intent': response.intent.value,
                          'capabilities': list(response.route.capabilities),
                          'memory': memory.update(
                              prior.get('memory'), slots=response.route.slots,

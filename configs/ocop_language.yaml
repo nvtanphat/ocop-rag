@@ -154,11 +154,27 @@ cues:
     hồ sơ tôi cần chuẩn bị, hồ sơ gồm những gì]
   recognition_signal: [công nhận, đã đạt ocop, đạt sao ocop, sản phẩm được công nhận, danh sách sản phẩm ocop, sản phẩm đạt sao]
 
+# Full-utterance dialogue grammar. Unknown remainder always abstains; these are
+# compositional language forms, never substring triggers or business rules.
+dialogue:
+  address: '(?:ban|anh|chi|em|ad|bot|assistant)'
+  particle: '(?:nhe|nha|a|ah|nhi|voi|di|nhieu|lam|rat nhieu)'
+  greeting: '(?:(?:xin )?chao|hello|hi|hey)(?: {address})?'
+  thanks: '(?:(?:ok|okay|vang|da) )?(?:cam on|thank you|thanks)(?: {address})?'
+  acknowledgment: '(?:ok|okay|vang|da|(?:ok )?(?:minh|toi) (?:da )?hieu(?: roi)?)'
+  farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
+  identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'
+  help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'
+  rephrase: '(?:(?:minh|toi) chua hieu|(?:hay )?(?:giai thich|noi)(?: lai)? (?:de hieu|don gian|de)(?: hon)?(?: duoc khong)?|explain (?:that )?(?:more simply|again))'
+  correction: '(?:(?:khong phai|sai roi)(?: y (?:minh|toi))?|{address} (?:tra loi )?sai roi|that is wrong)'
+  sources: '(?:(?:cho (?:minh|toi) )?(?:xem )?nguon(?: cua cau (?:do|nay))?|show (?:me )?(?:the )?sources?)'
+
 # Messages shown for non-answer routes.
 messages:
   out_of_scope: Mình chỉ hỗ trợ tra cứu và rà soát kiến thức OCOP từ nguồn đã lập chỉ mục.
   clarify_prefix: "Cần bổ sung thông tin để xử lý: "
   clarify_slots:
+    correction_detail: 'Bạn muốn sửa phần nào? Hãy nêu ý đúng hoặc phạm vi cần tra cứu lại.'
     question: câu hỏi
     topic: chủ đề (văn bản, điều, phiếu hoặc sản phẩm cụ thể)
     document_or_sheet: văn bản hoặc phiếu mà mã/chỉ mục này thuộc về

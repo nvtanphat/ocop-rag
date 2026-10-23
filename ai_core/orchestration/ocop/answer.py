@@ -450,8 +450,8 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
             'generation_diagnostics': diagnostics}
 
 
-def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None)->dict:
-    result=_assemble(question,tool_results,llm=llm,catalog=catalog)
+def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None,style:str='')->dict:
+    result=_assemble(question,tool_results,llm=llm,catalog=catalog,style=style)
     missing=result.get('evidence_fusion',{}).get('missing_facets',[])
     if missing:
         result['evidence_fusion']['answer_status']=result['status']
@@ -460,7 +460,7 @@ def assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,c
     return result
 
 
-def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None)->dict:
+def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,catalog=None,style:str='')->dict:
     records=[]
     for result in tool_results:
         if not isinstance(result,dict):continue
@@ -507,6 +507,8 @@ def _assemble(question:str,tool_results:list[dict],*,llm:OllamaClient|None=None,
                           "\n".join(contexts)),
                 "status":"retrieval_only","citations":citations,"evidence_fusion":fusion}
     system=SYSTEM_PROMPT
+    if style=='simple':
+        system+='\nDiễn giải ngắn gọn, dễ hiểu. Giữ nguyên nghĩa và chỉ dùng thông tin trong SOURCE.'
     prompt="CÂU HỎI: "+question+"\nSOURCE:\n"+"\n".join(contexts)
     cfg=get_settings().context
     if fusion['context_term_coverage']<cfg.min_term_coverage and question_terms(question):

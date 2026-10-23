@@ -67,23 +67,33 @@ class OcopAgent:
     def route(self,state:OcopState)->dict:
         query=state['query'];session=state.get('session') or {}
         # Identity originates only from a trusted AuthContext, never a session.
-        safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','dossier_id') if key in session}
+        safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','dossier_id','unresolved') if key in session}
         if 'memory' in session:safe_session['memory']=memory.sanitize(session['memory'])
         auth=state.get('auth')
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
         choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
             indexed_content_bigram_coverage=lambda text:query_content_bigram_coverage(
-                self.tools.index_dir,text),catalog=self._catalog())
+                self.tools.index_dir,text),catalog=self._catalog(),dialogue_client=self.llm)
         if (choice.intent in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or
             set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
             choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
                          missing_slots=['authentication'],reason_codes=['untrusted_session_cannot_authorize'])
         effective=query;method='none'
+        if choice.dialogue.acts and choice.dialogue.action=='task':
+            from ai_core.orchestration.ocop.dialogue import understand
+            _,effective=understand(query)
+            method='dialogue_task_remainder'
+        if 'dialogue_revalidate_topic' in choice.reason_codes:
+            effective=(safe_session.get('memory') or {}).get('standalone') or safe_session['last_query']
+            method='dialogue_revalidate_topic'
+        elif 'clarification_resumed' in choice.reason_codes:
+            effective=str(safe_session['unresolved']['question'])+' '+query
+            method='clarification_resumed'
         if choice.intent==Intent.FOLLOWUP or 'followup_slot_override' in choice.reason_codes:
-            updates=extract_slots(query,catalog=self._catalog())
-            carried=memory.plural_referents(query,safe_session.get('memory'),updates)
+            updates=extract_slots(effective,catalog=self._catalog())
+            carried=memory.plural_referents(effective,safe_session.get('memory'),updates)
             if (safe_session.get('memory') or {}).get('standalone'):
-                effective,method=memory.rewrite(query,safe_session['memory'],choice.slots,updates,carried=carried)
+                effective,method=memory.rewrite(effective,safe_session['memory'],choice.slots,updates,carried=carried)
                 if carried:method+='+compare'
             elif choice.intent==Intent.FOLLOWUP:
                 previous=str(session.get('last_query') or '')
@@ -192,7 +202,7 @@ class OcopAgent:
     def execute(self,state:OcopState)->dict:
         route=Route.model_validate(state['route']);plan=state.get('plan') or build_plan(route)
         results=[];trace=list(state.get('trace') or [])
-        if route.needs_clarification or route.intent==Intent.OUT_OF_SCOPE:return {'results':[], 'trace':trace}
+        if route.needs_clarification or route.intent in (Intent.OUT_OF_SCOPE,Intent.CONVERSATION):return {'results':[], 'trace':trace}
         context=self._trusted_context(state)
         ordered=plan.tasks or tuple()
         task_map={task.name:task for task in ordered}
@@ -354,7 +364,7 @@ class OcopAgent:
         """
         route=Route.model_validate(state['route'])
         outputs=state.get('results') or []
-        if route.needs_clarification or route.intent==Intent.OUT_OF_SCOPE:
+        if route.needs_clarification or route.intent in (Intent.OUT_OF_SCOPE,Intent.CONVERSATION):
             return {'evidence_coverage':{'status':'not_applicable','tools':[]}}
         checks=[]
         for entry in [x for x in outputs if not x.get('optional')]:
@@ -395,6 +405,9 @@ class OcopAgent:
 
     def answer(self,state:OcopState)->dict:
         route=Route.model_validate(state['route'])
+        if route.intent==Intent.CONVERSATION:
+            from ai_core.orchestration.ocop.dialogue import respond
+            return {'answer':{'answer':respond(route.dialogue),'status':'conversation','citations':[]}}
         if route.needs_clarification:
             if 'tool_budget_exceeded' in route.reason_codes:
                 return {'answer':{'answer':'Câu hỏi gồm nhiều phần tra cứu độc lập. '
@@ -496,7 +509,9 @@ class OcopAgent:
                 'Năm ban hành quyết định không thể tự coi là năm công nhận hay năm đánh giá.',
                 'status':'insufficient_year_scope','citations':[]}}
         outputs=every
-        response=assemble(state.get('effective_query',state['query']),outputs,llm=self.llm,catalog=self._catalog())
+        question=state.get('effective_query',state['query'])
+        response=assemble(question,outputs,llm=self.llm,catalog=self._catalog(),
+                          **({'style':'simple'} if route.dialogue.action=='rephrase' else {}))
         gaps=[item['tool'] for item in outputs if item.get('optional') and (
             item.get('skipped') or (item.get('output') or {}).get('status') in BAD_RESULT_STATUSES or
             not (item.get('output') or {}).get('results'))]
@@ -528,7 +543,7 @@ class OcopAgent:
         graph.add_node('answer',self.answer)
         graph.add_edge(START,'route')
         graph.add_conditional_edges('route',lambda s:'answer' if s['route'].get('needs_clarification') or
-            s['route']['intent']==Intent.OUT_OF_SCOPE.value else 'plan',{'answer':'answer','plan':'plan'})
+            s['route']['intent'] in (Intent.OUT_OF_SCOPE.value,Intent.CONVERSATION.value) else 'plan',{'answer':'answer','plan':'plan'})
         graph.add_edge('plan','execute')
         graph.add_edge('execute','grade')
         graph.add_conditional_edges('grade',lambda s:'recover' if self._should_recover(s) else 'verify',
@@ -601,7 +616,7 @@ class OcopAgent:
             if require_langgraph or 'langgraph not installed' not in str(exc):raise
             engine='deterministic_fallback'
             final=dict(initial);final.update(self.route(final))
-            if not final['route'].get('needs_clarification') and final['route']['intent']!=Intent.OUT_OF_SCOPE.value:
+            if not final['route'].get('needs_clarification') and final['route']['intent'] not in (Intent.OUT_OF_SCOPE.value,Intent.CONVERSATION.value):
                 final.update(self.plan(final));final.update(self.execute(final));final.update(self.grade(final))
                 if self._should_recover(final):
                     final.update(self.recover(final));final.update(self.grade(final))

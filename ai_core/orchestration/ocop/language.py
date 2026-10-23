@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 _ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_VERSION = 1
@@ -68,6 +68,7 @@ class Language(BaseModel):
     followup: Followup
     cues: dict[str, list[str] | dict[str, list[str]]]
     messages: Messages
+    dialogue: dict[str, str] = Field(default_factory=dict)
 
     @field_validator('schema_version')
     @classmethod

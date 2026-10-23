@@ -102,6 +102,17 @@ def _points_back(folded: str, noun: str) -> bool:
     return bool(re.search(rf'\b{PLURAL}\s+(?:{noun})\s+{DEMONSTRATIVE}\b|\b(?:{noun})\s+{DEMONSTRATIVE}\s+khac', folded))
 
 
+def singular_reference(question: str, lang: Language | None = None) -> bool:
+    """A named kind + optional modifiers + demonstrative refers to an active topic.
+
+    This composes catalog-independent structure nouns with the same demonstrative
+    grammar used for plural references, rather than enumerating complete phrases.
+    """
+    lang = lang or get_language()
+    nouns = '|'.join(_noun_pattern(lang, kind) for kind in REFERENT_SLOTS)
+    return bool(re.search(rf'\b(?:{nouns})(?:\s+[a-z]+){{0,2}}\s+{DEMONSTRATIVE}\b', fold(question)))
+
+
 def dangling_reference(question: str, memory: Any, updates: dict, lang: Language | None = None) -> str | None:
     """Kind of thing (form, sheet, article, document) that a plural reference points back to when the conversation holds
     fewer than two such things and the question names none itself ("Hai mẫu này khác nhau ở đâu?" in a new session)."""

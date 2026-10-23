@@ -95,7 +95,7 @@ def _ordered_tasks(requested: tuple[str, ...], optional: frozenset[str] = frozen
 
 
 def build_plan(route: Route, *, graph_available: bool | None = None) -> ToolPlan:
-    if route.needs_clarification or route.intent in (Intent.CLARIFY, Intent.OUT_OF_SCOPE):
+    if route.needs_clarification or route.intent in (Intent.CLARIFY, Intent.OUT_OF_SCOPE, Intent.CONVERSATION):
         return ToolPlan(())
     requested=list(dict.fromkeys(route.required_tools))
     reasons=[]

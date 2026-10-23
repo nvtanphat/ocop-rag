@@ -1,7 +1,7 @@
 """OCOP agent route and response contracts."""
 from __future__ import annotations
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field, ConfigDict
 from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath
 
@@ -20,6 +20,15 @@ class Intent(str,Enum):
     FOLLOWUP="FOLLOWUP"
     CLARIFY="CLARIFY"
     OUT_OF_SCOPE="OUT_OF_SCOPE"
+    CONVERSATION="CONVERSATION"
+
+class DialogueDecision(BaseModel):
+    """Conversation control is independent of the business intent and tool plan."""
+    model_config=ConfigDict(extra="forbid")
+    acts: list[Literal['greeting','thanks','acknowledgment','farewell','identity','help',
+                       'rephrase','correction','sources']]=Field(default_factory=list)
+    action: Literal['task','respond','rephrase','correction','sources','resume']='task'
+    method: Literal['business','grammar','abstain','structured_llm']='business'
 
 class Route(BaseModel):
     model_config=ConfigDict(extra="forbid")
@@ -35,6 +44,7 @@ class Route(BaseModel):
     missing_slots: list[str]=Field(default_factory=list)
     reason_codes: list[str]=Field(default_factory=list)
     confidence: float|None=None
+    dialogue: DialogueDecision=Field(default_factory=DialogueDecision)
 
 class AuthContext(BaseModel):
     """Only a trusted server-side authentication adapter may construct/pass this.

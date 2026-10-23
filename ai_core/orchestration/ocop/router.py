@@ -261,7 +261,7 @@ def _merge_followup(prior: dict, updates: dict) -> dict:
         key in ('years', 'form_ids') and isinstance(value, list) and len(value) <= 8 and
         all(isinstance(x, str) and len(x) <= 12 for x in value))}
     new_doc = updates.get('document_code')
-    if new_doc and slots.get('document_code') and fold(str(new_doc)) != fold(str(slots['document_code'])):
+    if new_doc and fold(str(new_doc)) != fold(str(slots.get('document_code') or '')):
         slots = {key: value for key, value in slots.items() if key not in TARGET_KEYS}  # another document: its Điều/Mẫu/Phiếu are not the old one's
     if set(updates) & TARGET_KEYS:  # a new thing asked about replaces the old one ("Còn mẫu số 02?" is no longer Điều 6)
         slots = {key: value for key, value in slots.items() if key not in TARGET_KEYS}
@@ -392,7 +392,7 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
     return primary, secondary
 
 
-def route_query(query: str, *, session: dict | None = None, llm_route: Callable[[str], dict] | None = None,
+def _route_business(query: str, *, session: dict | None = None, llm_route: Callable[[str], dict] | None = None,
                 indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
                 catalog: EntityCatalog | None = None, language: Language | None = None) -> Route:
     lang = language or get_language()
@@ -417,6 +417,7 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
     content = lang.content_words(q)
     opener = bool(re.match(r'^(?:' + _alt(lang.followup.openers) + r'|20\d{2}\b|nam\s+20\d{2}\b)', folded))
     pronoun = bool(lang.words('pronouns', lang.followup.pronouns).search(folded))
+    pronoun = pronoun or memory.singular_reference(q, lang)
     tail = bool(lang.words('tail_cues', lang.followup.tail_cues).search(folded)) if lang.followup.tail_cues else False
     # A reference ("sản phẩm đó", "... thì sao?") with no scope of its own continues the conversation, whatever its length.
     # A reference or closing cue continues the conversation unless the question says WHERE it applies (document, locality) itself:
@@ -521,7 +522,7 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
             try:
                 result = llm_route(q)
                 candidate = Intent(result['intent'])
-                if candidate not in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE) or prior.get('dossier_id'):
+                if candidate != Intent.CONVERSATION and (candidate not in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE) or prior.get('dossier_id')):
                     intent = candidate
                 safe = {'product_name', 'product_group', 'region', 'as_of_date', 'document_code', 'form_id', 'criterion_id'}
                 slots.update({k: v for k, v in (result.get('slots') or {}).items()
@@ -545,7 +546,9 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
         if Capability.CRITERIA not in caps:
             caps.insert(0, Capability.CRITERIA)
         cap_reasons.append('normative_star_requires_criteria_not_recognition_records')
-    if followup and caps == [Capability.OVERVIEW]:
+    document_changed = bool(updates.get('document_code') and
+                            updates['document_code'] != (prior.get('slots') or {}).get('document_code'))
+    if followup and caps == [Capability.OVERVIEW] and not document_changed:
         previous = [Capability(x) for x in prior.get('capabilities') or [] if x in Capability._value2member_map_]
         if previous:
             caps = previous
@@ -589,3 +592,63 @@ def route_query(query: str, *, session: dict | None = None, llm_route: Callable[
                  reason_codes=(['followup_slot_override' if followup else 'deterministic_multi_signal'] + cap_reasons +
                                (['indexed_content_bigram_scope_recovery'] if reopened else [])),
                  confidence=None)
+
+
+def route_query(query: str, *, session: dict | None = None, llm_route: Callable[[str], dict] | None = None,
+                indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
+                catalog: EntityCatalog | None = None, language: Language | None = None,
+                dialogue_client=None) -> Route:
+    """Dialogue acts compose with, rather than compete against, business intents."""
+    from ai_core.orchestration.ocop import dialogue
+    prior = session or {}
+    decision, task = dialogue.understand(_nfc(query), language=language)
+    options = dict(session=prior, llm_route=llm_route, catalog=catalog, language=language,
+                   indexed_content_bigram_coverage=indexed_content_bigram_coverage)
+    # A complete grammar match consumes all words. Mixed messages keep the task
+    # remainder and must take business routing, including private/auth policy.
+    if decision.action == 'respond':
+        return Route(intent=Intent.CONVERSATION, strategy='conversation', dialogue=decision,
+                     reason_codes=['dialogue_full_utterance'])
+    if decision.action in dialogue.REPAIR:
+        return _repair_route(decision, prior, options)
+    pending = prior.get('unresolved') or {}
+    if (pending.get('question') and extract_slots(task, catalog=catalog, language=language)
+            and set(pending.get('missing_slots') or []) & {'topic', 'document_or_sheet_for_code', 'document_or_sheet'}):
+        # Resume only topic clarification. Authentication/version conflicts are
+        # never satisfied by a conversational slot answer.
+        pending_query = str(pending['question'])
+        if BARE_CRITERION.fullmatch(pending_query):
+            pending_query = (language or get_language()).structure_nouns['criterion'][0]+' '+pending_query
+        resumed = _route_business(pending_query + ' ' + task, **options)
+        resumed.reason_codes.append('clarification_resumed')
+        resumed.dialogue = decision.model_copy(update={'action': 'resume'})
+        return resumed
+    business_query = task or query
+    if 'correction' in decision.acts and prior.get('last_query'):
+        business_query = (language or get_language()).followup.openers[0]+' '+business_query
+    choice = _route_business(business_query, **options)
+    if (dialogue_client is not None and not decision.acts and
+            choice.intent in (Intent.CLARIFY, Intent.OUT_OF_SCOPE) and
+            not choice.slots and choice.reason_codes in (['fragment_needs_scope'], ['no_domain_signal'])):
+        assisted = dialogue.assisted(dialogue_client, query, has_topic=bool(prior.get('last_query')))
+        if assisted:
+            if assisted.action in dialogue.REPAIR:
+                return _repair_route(assisted, prior, options)
+            return Route(intent=Intent.CONVERSATION, strategy='conversation', dialogue=assisted,
+                         reason_codes=['dialogue_structured_abstention_fallback'])
+    choice.dialogue = decision
+    return choice
+
+
+def _repair_route(decision, prior: dict, options: dict) -> Route:
+    if decision.action == 'correction' or not prior.get('last_query'):
+        return Route(intent=Intent.CLARIFY, strategy='clarify', needs_clarification=True,
+                     missing_slots=['correction_detail' if prior.get('last_query') else 'topic'],
+                     reason_codes=['dialogue_repair_needs_detail'], dialogue=decision)
+    # Re-read the active question against current corpus. Never treat a previous
+    # answer, or social prose, as evidence. Existing verification still applies.
+    choice = _route_business(str(prior['last_query']), **options)
+    choice.slots = dict(prior.get('slots') or choice.slots)
+    choice.reason_codes.append('dialogue_revalidate_topic')
+    choice.dialogue = decision
+    return choice
