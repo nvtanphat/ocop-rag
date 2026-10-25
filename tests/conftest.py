@@ -3,6 +3,7 @@
 from __future__ import annotations
 import os
 import sys
+import socket
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,16 @@ def _hermetic_llm_config(monkeypatch):
             monkeypatch.delenv(key, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _no_external_connections(monkeypatch):
+    """Accidental network/model calls must fail in the offline test suite."""
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("Tests must use local fixtures instead of external connections")
+
+    monkeypatch.setattr(socket, "create_connection", refuse)
+
+
 @pytest.fixture
 def api_client(tmp_path, monkeypatch):
     """Exercise the actual application with isolated corpus/session dependencies."""
@@ -40,7 +51,8 @@ def api_client(tmp_path, monkeypatch):
     monkeypatch.setattr(ocop_routes, "DATA", data)
     monkeypatch.setattr(ocop_routes, "default_store", SessionStore())
     monkeypatch.setattr(ocop_routes.OcopSystemPipeline, "status", lambda *a, **k: {"state": "ready"})
-    ocop_routes._agent.cache_clear()
+    agent_factory = ocop_routes._agent
+    agent_factory.cache_clear()
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
-    ocop_routes._agent.cache_clear()
+    agent_factory.cache_clear()

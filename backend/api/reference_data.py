@@ -11,6 +11,7 @@ import fitz
 from pydantic import BaseModel, Field, ValidationError
 
 from ocop_contracts.models import SourceSpan
+from ai_core.orchestration.ocop.verification import check_sensitive_claims
 
 
 class ReferenceCitation(SourceSpan):
@@ -63,7 +64,14 @@ def read_references(root: Path, kind: Literal["criteria", "products"], *, ready:
             continue
         try:
             item = ReferenceItem.model_validate(record)
-            if all(_matches(root, c, sources, hashes, units) for c in item.citations):
+            matching = all(_matches(root, c, sources, hashes, units) for c in item.citations)
+            support = [
+                {"review_status": "verified", "text": units[c.evidence_unit_id].get("text", "")}
+                for c in item.citations
+                if c.evidence_unit_id in units
+            ]
+            safe = not check_sensitive_claims(item.label, support)["unsupported_score_or_star_claims"]
+            if matching and safe:
                 result.items.append(item)
         except (ValidationError, KeyError, ValueError):
             continue
@@ -82,6 +90,7 @@ def _matches(root: Path, c: ReferenceCitation, sources: dict, hashes: dict, unit
     if (
         not source
         or not unit
+        or unit.get("review_status") not in {"verified", "human_verified"}
         or unit.get("source_id") != c.source_id
         or hashes.get(c.source_id) != c.source_sha256
     ):
