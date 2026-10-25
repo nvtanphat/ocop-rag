@@ -96,6 +96,6 @@ Tài liệu mô tả luồng dữ liệu từ PDF nguồn đến câu trả lờ
 | **Tìm kiếm & Rerank** | `ai_core/retrieval/ocop/` | `search.py`, `fusion.py`, `settings.py`, `graph_context.py`, `models_config.py` |
 | **Điều phối & An toàn** | `ai_core/orchestration/ocop/` | `workflow.py`, `router.py`, `language.py`, `catalog.py`, `planner.py`, `tools.py`, `context.py`, `answer.py`, `verification.py`, `sessions.py`, `privacy.py`, `llm.py` |
 | **Điều khiển Hệ thống** | `ai_core/system/` | `pipeline.py`, `smoke.py`, `runtime.py`, `checkpoints.py` |
-| **Dịch vụ API** | `backend/api/` | `ocop_main.py`, `ocop_routes.py`, `ocop_review_routes.py`, `ocop_debug.py` |
+| **Dịch vụ API** | `backend/api/` | `ocop_main.py`, `ocop_routes.py`, `ocop_debug.py` |
 | **Dòng lệnh & Tiện ích** | `tools/` | `cli.py`, `debug_cli.py`, `evaluate_manual_pdf.py`, `evaluate_ocop.py`, `package_ocop.py` |
 | **Giao diện Web** | `frontend/src/` | `ocop/Chat.tsx`, `ocop/Review.tsx`, `ocop/api.ts`, `pages/Dashboard.tsx` |

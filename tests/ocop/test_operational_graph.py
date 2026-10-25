@@ -127,23 +127,6 @@ def test_agent_executes_text_to_checked_multihop_graph_with_machine_sources(tmp_
     assert OcopAgent._verified_slots(executed['results']) == {}
 
 
-def test_public_graph_uses_checked_snapshot_and_detects_tampering(tmp_path, monkeypatch):
-    from backend.api import ocop_routes as routes
-    from backend.api.ocop_main import app
-    from fastapi.testclient import TestClient
-    graph, _ = build(tmp_path)
-    monkeypatch.setattr(routes, 'DATA', graph.parent)
-    routes._graph_data.cache_clear()
-    client = TestClient(app)
-    response = client.get('/api/ocop/graph?node_type=Article')
-    assert response.status_code == 200
-    assert response.json()['kind'] == 'source_grounded_graph'
-    assert response.json()['nodes']
-    (graph / 'edges.jsonl').write_text('tampered', encoding='utf-8')
-    assert client.get('/api/ocop/graph').status_code == 409
-    routes._graph_data.cache_clear()
-
-
 def test_recognition_table_links_are_checked_but_scores_stay_out(tmp_path):
     from test_business_entity_extraction import _recognition_fixture
     from ai_core.processing.ocop.business_candidates import candidates

@@ -263,7 +263,7 @@ def main() -> int:
     http, units, registry = Http(args.base_url, args.timeout), evidence_texts(args.root), set(TOOL_REGISTRY)
 
     report: dict = {'base_url': args.base_url, 'mode': args.mode, 'real_llm': args.real_llm, 'cases': [], 'endpoints': {}}
-    for path in ('/api/ocop/health', '/api/ocop/sources', '/api/ocop/overview', '/api/ocop/graph'):
+    for path in ('/api/ocop/health', '/api/ocop/sources'):
         st, body, secs = http.json('GET', path)
         report['endpoints'][path] = {'http': st, 'secs': round(secs, 2)}
         if path.endswith('health') and st == 200:

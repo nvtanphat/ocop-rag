@@ -49,18 +49,6 @@ def _json(path: Path) -> dict[str, Any]:
         return {}
 
 
-def _jsonl(path: Path):
-    if not path.is_file():
-        return
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            if line.strip():
-                try:
-                    yield json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-
 def _registry() -> list[dict[str, Any]]:
     return _json(ROOT / "configs" / "ocop_sources.json").get("sources", [])
 
@@ -97,18 +85,6 @@ def health():
         "dense_ready": bool(index.get("dense", {}).get("enabled")),
         "graph_status": graph.get("status", "missing"),
         "corpus_version": index.get("corpus_version"),
-    }
-
-
-@router.get("/overview")
-def overview():
-    return {
-        "sources": len(_registry()),
-        "pages": _json(DATA / "pages" / "manifest.json").get("counts", {}),
-        "knowledge": _json(DATA / "knowledge" / "manifest.json").get("counts", {}),
-        "index": _json(DATA / "index" / "manifest.json"),
-        "graph": _json(DATA / "graph" / "manifest.json"),
-        "verification": "machine_extracted_not_verified",
     }
 
 
@@ -151,91 +127,6 @@ def source_page_evidence(source_id: str, page: int, box: list[str] = Query(defau
     except (OSError, RuntimeError) as exc:
         raise service_unavailable('render_failed', 'pdf', exc) from exc
     return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
-
-
-@router.get("/criteria")
-def criteria(q: str = Query(default="", max_length=160), source_id: str = "", offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100)):
-    filtered = []
-    for row in _catalog('Criterion'):
-        if source_id and row.get("source_id") != source_id:
-            continue
-        if q and q.casefold() not in row['label'].casefold():
-            continue
-        filtered.append(row)
-    return {"items": filtered[offset:offset + limit], "total": len(filtered), "kind": "checked_graph"}
-
-
-@router.get("/forms")
-def forms():
-    return {"items": _catalog('FormTemplate'), "kind": "checked_graph"}
-
-
-@router.get("/recognitions")
-def recognitions(q: str = Query(default="", max_length=160), offset: int = Query(default=0, ge=0), limit: int = Query(default=25, ge=1, le=100)):
-    filtered = [row for row in _catalog('RecognitionRecord')
-                if not q or q.casefold() in ' '.join([row['label'], *row['linked_labels']]).casefold()]
-    return {"items": filtered[offset:offset + limit], "total": len(filtered), "kind": "checked_graph"}
-
-
-def _catalog(kind):
-    if not (DATA / 'graph' / 'manifest.json').is_file():
-        return []
-    _, nodes, edges = _checked_snapshot()
-    by_id = {n['node_id']: n for n in nodes}
-    linked = {}
-    predicates = {'FormTemplate': {'HAS_FIELD'}, 'RecognitionRecord': {'RECOGNIZES', 'DECLARED_BY'}}
-    for edge in edges:
-        if edge['relation_type'] in predicates.get(kind, set()):
-            linked.setdefault(edge['source_entity_id'], []).append(by_id[edge['target_entity_id']]['label'])
-    return [{**node, 'linked_labels': sorted(set(linked.get(node['node_id'], [])))}
-            for node in nodes if node['node_type'] == kind]
-
-
-@lru_cache(maxsize=1)
-def _graph_data(graph_version: str = ""):
-    # Version-keyed cache invalidates automatically after a corpus swap.
-    from ai_core.graph.ocop.integrity import validate_graph_snapshot
-    path = DATA / 'graph' / 'snapshots' / graph_version
-    validate_graph_snapshot(path)
-    from ai_core.graph.ocop.grounding import usable, public_record
-    nodes = [public_record(n) for n in _jsonl(path / "nodes.jsonl") if usable(n)]
-    ids = {n['node_id'] for n in nodes}
-    edges = [public_record(e) for e in _jsonl(path / "edges.jsonl") if usable(e)
-             and e['source_entity_id'] in ids and e['target_entity_id'] in ids]
-    return nodes, edges
-
-
-@router.get("/graph")
-def graph(q: str = Query(default="", max_length=160), node_type: str = "", limit: int = Query(default=60, ge=1, le=200)):
-    if not (DATA / 'graph' / 'manifest.json').is_file():
-        return {'nodes': [], 'edges': [], 'total_matches': 0,
-                'kind': 'source_grounded_graph', 'status': 'graph_not_built'}
-    manifest, nodes, edges = _checked_snapshot()
-    if q:
-        matches = [n for n in nodes if q.casefold() in str(n.get("label", "")).casefold()]
-    elif node_type:
-        matches = [n for n in nodes if n.get("node_type") == node_type]
-    else:
-        matches = [n for n in nodes if n.get("node_type") == "SourceDocument"]
-        matches += [n for n in nodes if n.get("node_type") in ("Product", "Organization", "RecognitionDecision", "ProductGroup", "FormTemplate")]
-    selected = matches[:limit]
-    ids = {n["node_id"] for n in selected}
-    connected = [e for e in edges if e.get("source_entity_id", e.get("source_id")) in ids and e.get("target_entity_id", e.get("target_id")) in ids]
-    return {"nodes": selected, "edges": connected[:600], "total_matches": len(matches),
-            "kind": "source_grounded_graph", 'validation': manifest['checks']}
-
-
-def _checked_snapshot():
-    from ai_core.graph.ocop.integrity import validate_graph_snapshot
-    from ai_core.graph.ocop.builder import SCHEMA_REVISION
-    try:
-        manifest = validate_graph_snapshot(DATA / 'graph')
-        if not manifest.get('checks') or manifest.get('schema_revision') != SCHEMA_REVISION:
-            raise ValueError('graph check policy changed; rebuild corpus')
-        nodes, edges = _graph_data(manifest['graph_version'])
-        return manifest, nodes, edges
-    except (ValueError, OSError, KeyError) as exc:
-        raise HTTPException(status_code=409, detail='Graph chưa có snapshot đã kiểm tra hợp lệ; cần build lại corpus.') from exc
 
 
 # Session state contains only conversational slots, never identity/tenant permissions.

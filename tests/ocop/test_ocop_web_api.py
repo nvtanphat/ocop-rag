@@ -14,17 +14,6 @@ ROOT = Path(__file__).resolve().parents[2]
 client = TestClient(app)
 
 
-def test_overview_without_artifacts(monkeypatch, tmp_path):
-    monkeypatch.setattr(routes, "DATA", tmp_path)
-    response = client.get('/api/ocop/overview')
-    assert response.status_code == 200
-    data = response.json()
-    assert data['sources'] == 12
-    assert data['pages'] == {}
-    assert data['index'] == {}
-    assert data['graph'] == {}
-
-
 def test_sources_and_signed_pdf_remain_available_before_build():
     sources = client.get('/api/ocop/sources').json()
     assert len(sources) == 12
@@ -33,18 +22,6 @@ def test_sources_and_signed_pdf_remain_available_before_build():
     assert response.status_code == 200
     assert response.content.startswith(b'%PDF')
     assert client.get('/api/ocop/sources/NOT-REGISTERED/pdf').status_code == 404
-
-
-def test_extracted_views_empty_when_not_built(monkeypatch, tmp_path):
-    monkeypatch.setattr(routes, "DATA", tmp_path)
-    routes._graph_data.cache_clear()
-    criteria = client.get('/api/ocop/criteria?limit=2').json()
-    assert criteria['kind'] == 'checked_graph'
-    assert criteria['items'] == []
-    assert client.get('/api/ocop/forms').json()['items'] == []
-    assert client.get('/api/ocop/recognitions?limit=2').json()['items'] == []
-    graph = client.get('/api/ocop/graph').json()
-    assert graph['nodes'] == [] and graph['edges'] == []
 
 
 def test_api_fails_closed_without_built_corpus(monkeypatch, tmp_path):

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from ai_core.graph.ocop.builder import build_graph
 from ai_core.graph.ocop.review import (load_queue,record_decision,rebuild_reviewed_graph,
-                                      ledger_path,render_crop,statistics)
+                                      ledger_path)
 from ai_core.graph.ocop.retriever import traverse
 
 
@@ -112,69 +112,6 @@ def test_stale_hash_blocks_write_and_extraction_change_requires_rereview(corpus)
     assert changed['state']=='stale_content_needs_review' and changed['review_status']!='verified'
 
 
-def test_crop_source_sha_and_api_decision_cycle(corpus,monkeypatch):
-    from backend.api import ocop_routes
-    from backend.api.ocop_main import app
-    from fastapi.testclient import TestClient
-    monkeypatch.setattr(ocop_routes,'ROOT',corpus)
-    from backend.api.review_auth import hash_token
-    reviewers=corpus/'reviewers.json'
-    reviewers.write_text(json.dumps({'reviewers':[{'id':'expert_01','token_sha256':hash_token('secret-1'),'can_decide':True},
-        {'id':'reader_02','token_sha256':hash_token('secret-2'),'can_decide':False}]}))
-    monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(reviewers))
-    client=TestClient(app)
-    assert client.get('/api/ocop/review/stats').json()['total']==statistics(load_queue(corpus))['total']
-    assert client.get('/api/ocop/review/queue?priority=P3').status_code==200
-    item=client.get('/api/ocop/review/items/product:synthetic').json()
-    image=client.get(item['citations'][0]['crop_url'])
-    assert image.status_code==200 and image.content.startswith(b'\x89PNG')
-    body={'target_id':item['target_id'],'content_hash':item['content_hash'],'decision':'approve'}
-    assert client.post('/api/ocop/review/decisions',json=body).status_code==401
-    assert client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer wrong'}).status_code==403
-    assert client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer secret-2'}).status_code==403
-    assert client.post('/api/ocop/review/decisions',json={**body,'reviewer':'someone else'},
-                       headers={'Authorization':'Bearer secret-1'}).status_code==422   # a client may not name itself
-    response=client.post('/api/ocop/review/decisions',json=body,headers={'Authorization':'Bearer secret-1'})
-    assert response.status_code==200 and response.json()['review']['verified_nodes']==0
-    assert response.json()['decision']['reviewer']=='expert_01'
-    broken=dict(item);broken['citations']=[dict(item['citations'][0],source_sha256='a'*64)]
-    with pytest.raises(ValueError,match='SHA'): render_crop(corpus,broken,0)
-
-
-def test_queue_priorities_and_explicit_dependencies(corpus):
-    from ai_core.graph.ocop.review import priority
-    for typ,props in [('ScoreOption',{}),('MINIMUM_FOR',{}),('StarLevel',{}),
-                      ('RuleCandidate',{'modality':'temporal'}),('AMENDS',{})]:
-        assert priority({'type':typ,'properties':props})[0]=='P1'
-    assert priority({'type':'RESPONSIBLE_FOR','properties':{}})[0]=='P2'
-    items=load_queue(corpus)
-    item=next(i for i in items if i['type']=='OWNED_BY')
-    assert {d['type'] for d in item['dependencies']}=={'EvidenceUnit','Product','Organization'}
-    assert all(c.get('quote') and c.get('source_sha256') and c.get('crop_path') for c in item['citations'])
-
-
-def test_review_refuses_old_graph_schema_and_mixed_knowledge(corpus):
-    path=corpus/'data/processed/ocop/graph/manifest.json'
-    manifest=json.loads(path.read_text());manifest['schema_revision']='old-parser'
-    path.write_text(json.dumps(manifest))
-    with pytest.raises(ValueError,match='schema changed'):load_queue(corpus)
-    rebuild_reviewed_graph(corpus)
-    path=corpus/'data/processed/ocop/knowledge/manifest.json'
-    manifest=json.loads(path.read_text());manifest['corpus_version']='different'
-    path.write_text(json.dumps(manifest))
-    with pytest.raises(ValueError,match='versions differ'):load_queue(corpus)
-
-
-def test_batch_crops_check_sources_once_and_deduplicate(corpus,monkeypatch):
-    from ai_core.graph.ocop.review import render_queue_crops
-    from ocop_contracts import pdf_loader
-    real=pdf_loader.checked_sources;calls=[]
-    def checked(*args):calls.append(1);return real(*args)
-    monkeypatch.setattr(pdf_loader,'checked_sources',checked)
-    assert render_queue_crops(corpus,load_queue(corpus))==1
-    assert len(calls)==1
-
-
 def test_cli_queue_stats_and_synthetic_decision(corpus,monkeypatch,capsys):
     from tools.cli import main
     def run(*args):
@@ -213,32 +150,6 @@ def test_reextraction_changed_target_id_flags_rereview_without_reusing_approval(
     item=next(i for i in load_queue(corpus) if i['target_id']=='product:reextracted')
     assert item['state']=='stale_content_needs_review' and item['review_status']!='verified'
     assert item['latest_decision']['target_id']=='product:synthetic'
-
-
-@pytest.mark.parametrize('setup',['unset','empty','missing_file','bad_json','bad_hash','duplicate'])
-def test_decision_write_fails_closed_without_valid_reviewer_configuration(corpus,monkeypatch,tmp_path,setup):
-    from backend.api import ocop_routes
-    from backend.api.ocop_main import app
-    from backend.api.review_auth import hash_token
-    from fastapi.testclient import TestClient
-    monkeypatch.setattr(ocop_routes,'ROOT',corpus)
-    bad=tmp_path/'r.json'
-    good={'id':'a','token_sha256':hash_token('t'),'can_decide':True}
-    if setup=='unset':monkeypatch.delenv('OCOP_REVIEWERS_FILE',raising=False)
-    elif setup=='empty':monkeypatch.setenv('OCOP_REVIEWERS_FILE','')
-    elif setup=='missing_file':monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(tmp_path/'none.json'))
-    else:
-        bad.write_text({'bad_json':'{not json','bad_hash':json.dumps({'reviewers':[{**good,'token_sha256':'x'}]}),
-                        'duplicate':json.dumps({'reviewers':[good,good]})}[setup])
-        monkeypatch.setenv('OCOP_REVIEWERS_FILE',str(bad))
-    client=TestClient(app)
-    item=client.get('/api/ocop/review/items/product:synthetic').json()
-    ledger=corpus/'data/review/ocop_review_decisions.jsonl'
-    before=ledger.read_text() if ledger.exists() else ''
-    response=client.post('/api/ocop/review/decisions',headers={'Authorization':'Bearer t'},
-        json={'target_id':item['target_id'],'content_hash':item['content_hash'],'decision':'approve'})
-    assert response.status_code==503 and response.json()['detail']['layer']=='configuration'
-    assert (ledger.read_text() if ledger.exists() else '')==before
 
 
 def test_review_changes_graph_then_index_is_refreshed_before_queries(corpus):

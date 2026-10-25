@@ -83,27 +83,6 @@ def test_invalid_construction_is_retained_but_never_traversed(tmp_path):
     assert next(i for i in load_queue(tmp_path) if i['target_id'] == 'bad-product')['check'] == 'failed'
 
 
-def test_public_catalogs_cannot_bypass_graph_checks(tmp_path, monkeypatch):
-    from test_operational_graph import build, write
-    from backend.api import ocop_routes as routes
-    from backend.api.ocop_main import app
-    from fastapi.testclient import TestClient
-
-    graph, _ = build(tmp_path)
-    for kind in ('criterion', 'form', 'recognition'):
-        write(graph.parent / 'knowledge' / f'{kind}_candidates.jsonl', [{
-            'candidate_id': 'UNSAFE', 'label_candidate': 'UNSAFE', 'row_text': 'UNSAFE'}])
-    monkeypatch.setattr(routes, 'DATA', graph.parent)
-    routes._graph_data.cache_clear()
-    client = TestClient(app)
-    for endpoint in ('criteria', 'forms', 'recognitions'):
-        response = client.get('/api/ocop/' + endpoint)
-        assert response.status_code == 200
-        assert response.json()['kind'] == 'checked_graph'
-        assert 'UNSAFE' not in response.text
-    routes._graph_data.cache_clear()
-
-
 def test_negated_submission_is_not_a_checked_evidence_requirement(tmp_path):
     from test_operational_graph import build
     graph, _ = build(tmp_path, 'Điều 6. Hồ sơ\n1. UBND cấp xã chuẩn bị hồ sơ, không nộp phiếu kiểm nghiệm.')

@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.api.ocop_routes import router
-from backend.api.ocop_review_routes import router as review_router
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX_FILE = ROOT / "frontend" / "dist" / "index.html"
@@ -20,7 +19,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 app.include_router(router)
-app.include_router(review_router)
 
 ASSETS_DIR = ROOT / "frontend" / "dist" / "assets"
 if ASSETS_DIR.is_dir():
