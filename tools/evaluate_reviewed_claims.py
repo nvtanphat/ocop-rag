@@ -3,7 +3,7 @@
     python tools/evaluate_reviewed_claims.py --root <corpus root> --questions questions.json [--limit N]
 
 A question is eligible when every page it targets has at least one EvidenceUnit node with ``check: human_verified``
-in the current graph (the ledger written by the Human Review API/CLI). The tool never marks anything verified and
+in the current graph (the ledger written by the review CLI). The tool never marks anything verified and
 never relaxes a gate: it reports, per question, what the unchanged gates published, what they dropped and why, so a
 reviewer can see whether grounded paraphrase works once sources are approved. With no reviewed evidence it stops
 and says what to review instead of running the model.

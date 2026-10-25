@@ -14,9 +14,8 @@ COPY backend ./backend
 COPY tools ./tools
 COPY configs ./configs
 COPY ocop_contracts ./ocop_contracts
-COPY ocr ./ocr
 COPY --from=frontend /frontend/dist ./frontend/dist
-RUN pip install --no-cache-dir ./ocop_contracts ./ocr ".[agent]"
+RUN --mount=type=cache,target=/root/.cache/pip pip install ./ocop_contracts ".[agent]"
 RUN useradd --create-home --uid 10001 ocop && mkdir -p /app/data && chown ocop:ocop /app/data
 USER ocop
 EXPOSE 8000
