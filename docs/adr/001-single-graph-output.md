@@ -1,13 +1,13 @@
-# ADR 001: Đồ thị một đầu ra duy nhất (Single Graph Output)
+# ADR 001: Đồ thị một đầu ra duy nhất
 
 ## Bối cảnh
-Trước đây, hệ thống sinh ra nhiều file đồ thị trung gian rời rạc (`agent_nodes.jsonl`, `agent_edges.jsonl`, các lớp layout riêng biệt), gây phân mảnh dữ liệu, khó kiểm tra tính toàn vẹn và tạo nguy cơ truy vấn nhầm vào các nhánh chưa được thẩm định.
+Nhiều tệp đồ thị song song làm phân mảnh dữ liệu, khó kiểm tra toàn vẹn và dễ để truy vấn chạm vào nhánh chưa thẩm định.
 
 ## Quyết định
-* Hợp nhất toàn bộ tri thức thực thể và quan hệ vào một tập đầu ra đồ thị chuẩn duy nhất tại `data/processed/ocop/graph/`: `nodes.jsonl`, `edges.jsonl` và `manifest.json`.
-* Mọi nút và cạnh đều mang trường `check` (`passed` hoặc `human_verified`) và `origin` (`deterministic`, `llm`, hoặc `human`).
-* Các đối tượng vi phạm ràng buộc kỹ thuật được ghi riêng vào `rejected.jsonl` và bị loại hoàn toàn khỏi các truy vấn runtime.
+* Toàn bộ tri thức thực thể và quan hệ nằm trong một tập đầu ra chuẩn tại `data/processed/ocop/graph/`: `nodes.jsonl`, `edges.jsonl` và `manifest.json`.
+* Mọi nút và cạnh mang trường `check` (`passed` hoặc `human_verified`) và `origin` (`deterministic`, `llm` hoặc `human`).
+* Đối tượng vi phạm ràng buộc được ghi vào `rejected.jsonl` và không bao giờ được dùng khi truy vấn.
 
 ## Hệ quả
-* Runtime, router và frontend chỉ đọc từ một nguồn đồ thị đã được xác thực mã băm SHA-256.
-* Loại bỏ toàn bộ các nhánh tương thích trung gian và đơn giản hóa việc xuất sang Neo4j.
+* Runtime, router và frontend chỉ đọc một nguồn đồ thị có mã băm SHA-256 được kiểm.
+* Không có nhánh tương thích trung gian; việc xuất sang Neo4j đi từ cùng một tập đầu ra.

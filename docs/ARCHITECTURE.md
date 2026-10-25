@@ -38,8 +38,20 @@ Hai endpoint reference đọc `knowledge/verified_criteria.jsonl` và `verified_
 
 ## Frontend
 
-`src/api/client.ts` là client duy nhất. Timeout, lỗi HTTP và mất kết nối đều hiển thị lỗi; không trả dữ liệu giả. `app/Workspace.tsx` quản lý phiên và dữ liệu; `features/chat`, `documents`, `references`, `pdf` render các phần tương ứng. Chỉ có một `components/TopHeader.tsx`.
+Giao diện React (Vite) là một ứng dụng một trang, bố cục fluid: nền phong cảnh, thanh trên, rail điều hướng và vùng chính. Màn hình gồm chat, thư viện văn bản, tiêu chí, sản phẩm và lịch sử phiên. Chat có cột phải (hành động nhanh, tài liệu nguồn, sản phẩm đã xác minh) và hai bảng thay thế cột phải: trình xem PDF và đồ thị dẫn chứng.
 
-Câu trả lời render Markdown không cho raw HTML. Marker hợp lệ mở citation của chính câu trả lời đó, không dùng map toàn cục có thể bị lượt sau ghi đè. EvidenceViewer gửi đúng SHA và bbox tới endpoint ảnh; liên kết PDF gốc giữ đúng trang. Tiêu chí và sản phẩm dùng cùng view reference, không có bộ dữ liệu FE riêng. Truy vết công cụ lấy từ response thực tế.
+| Thư mục | Vai trò |
+| --- | --- |
+| `src/api/client.ts` | Client duy nhất gọi `/api/ocop/*`; timeout, lỗi HTTP và mất kết nối đều thành lỗi hiển thị, không có dữ liệu thay thế |
+| `src/app/Workspace.tsx` | Trạng thái phiên, dữ liệu và điều hướng; đồng bộ `data-view`, `dark`, `pdf-open`, `graph-open` lên `body` cho stylesheet |
+| `src/components/` | Header, rail, cột phải, phân trang, biểu tượng, nền |
+| `src/features/chat` | Hội thoại; Markdown không cho raw HTML; marker hợp lệ mở citation của chính câu trả lời |
+| `src/features/documents` | Danh mục nguồn từ `/sources`, nhóm theo loại, lọc theo phạm vi, dạng lưới/danh sách |
+| `src/features/references` | Tiêu chí và sản phẩm từ `/criteria`, `/products`, xuất CSV; dùng chung một view |
+| `src/features/pdf` | Ảnh trang từ `evidence.png` với đúng SHA và bbox, điều hướng trang, thu phóng, bật/tắt vùng trích dẫn, mở PDF gốc đúng trang |
+| `src/features/graph` | Liên kết câu hỏi → nguồn trích dẫn thực tế của một câu trả lời; không suy diễn quan hệ pháp lý |
+| `src/styles/workspace.css` | Stylesheet duy nhất của giao diện, gồm giao diện sáng/tối |
+
+Tài liệu, sản phẩm, tiêu chí, trang và vị trí citation đều đến từ API; FE chỉ giữ nhãn giao diện. Thiếu dữ liệu xác minh thì hiện trạng thái rỗng, không hiện điểm/sao. Truy vết công cụ lấy từ response thực tế.
 
 Review thực hiện qua CLI; không có API hay màn hình ghi quyết định review. Xem [RUNBOOK](RUNBOOK.md). Các quyết định nền tảng nằm trong [ADR](adr/README.md).

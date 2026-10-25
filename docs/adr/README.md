@@ -13,4 +13,4 @@ Thư mục ghi nhận các quyết định kiến trúc và an toàn nền tản
 | [ADR-007](007-vocabulary-file-and-entity-catalog.md) | Từ vựng cấu hình và danh mục thực thể | Router đọc từ vựng từ tệp có schema và thực thể từ registry/graph, không literal trong mã. |
 | [ADR-008](008-retrieval-budgets-and-embedding-version.md) | Ngân sách truy xuất và phiên bản nhúng | transformers>=4.57, dự phòng dense, rerank có ngân sách và cache. |
 | [ADR-009](009-claim-level-answers-and-session-privacy.md) | Claim JSON, phiên, che định danh | Công bố từng claim qua cổng, phiên dùng chung, 503 có schema. |
-| [ADR-010](010-reference-projects-and-what-was-adopted.md) | Dự án tham khảo và phần áp dụng | Docling/MinerU/LangExtract/KAG/GraphRAG/LightRAG/RAGFlow: chỉ lấy ý tưởng đã đo được, không thêm phụ thuộc. |
+| [ADR-010](010-reference-projects-and-what-was-adopted.md) | Dự án tham khảo và phần áp dụng | Docling, MinerU, LangExtract, KAG, GraphRAG, LightRAG, RAGFlow, LlamaIndex: chỉ lấy ý tưởng đo được, không thêm phụ thuộc. |

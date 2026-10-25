@@ -26,11 +26,11 @@ Pop-Location
 
 `pytest` bao gồm `tests/ocop` và `ocr/tests`. Các nhóm test ứng dụng: `api`, `retrieval`, `graph`, `orchestration`, `extraction`, `contracts`, `privacy`. Fixture dùng chung nằm trong `tests/fixtures`. Giữ các assertion về provenance, điểm/sao, quyền riêng tư, phiên bản ghim và ngân sách tool. Không thay chúng bằng kiểm tra chuỗi mã nguồn hoặc nới điều kiện để tránh lỗi.
 
-Test API dùng `backend.api.ocop_main.app` với fixture cô lập corpus, phiên và dependencies; không tạo app debug riêng. Test không đọc `.env` cá nhân, không gọi model/mạng thật; fixture chặn kết nối ngoài trong bộ ứng dụng. Test OCR giữ skip khi dependency tuỳ chọn không có. Vitest dùng fake fetch/timer, render citation an toàn; build luôn chạy TypeScript trước Vite. CI chạy Ruff đầy đủ, cả hai bộ Python và test/build frontend.
+Test API dùng `backend.api.ocop_main.app` với fixture cô lập corpus, phiên và dependencies. Test không đọc `.env` cá nhân, không gọi model/mạng thật; fixture chặn kết nối ngoài trong bộ ứng dụng. Test OCR giữ skip khi dependency tuỳ chọn không có. Vitest dùng fake fetch/timer, render citation an toàn; build luôn chạy TypeScript trước Vite. CI chạy Ruff đầy đủ, cả hai bộ Python và test/build frontend.
 
 ## Frontend
 
-`src/api/client.ts` là nơi duy nhất gọi API. `app/Workspace.tsx` quản lý dữ liệu, `components/TopHeader.tsx` hiện trạng thái, `features/` chứa chat, documents, references và pdf. Các nhãn UI được phép là hằng; tài liệu, sản phẩm, điểm/sao, quan hệ và vị trí citation phải đến từ API.
+`src/api/client.ts` là nơi duy nhất gọi API; cấu trúc thư mục xem [ARCHITECTURE](ARCHITECTURE.md). Nhãn giao diện là hằng; tài liệu, sản phẩm, điểm/sao, quan hệ và vị trí citation phải đến từ API.
 
 Khi cần HMR, chạy backend cổng 8000 và Vite ở terminal riêng:
 
@@ -50,4 +50,4 @@ Tool mới phải được đăng ký ở `capabilities.py`, có logic dispatch 
 
 Không sửa/đổi tên PDF gốc, không tái khoá nguồn để che thay đổi. Dữ liệu nguồn mới cần quy trình phê duyệt registry/lock riêng; sau đó dựng lại dataset và corpus. Entity catalog sinh từ registry/graph, không viết cứng tên văn bản/sản phẩm trong router. Từ vựng ở `ocop_language.yaml`; ngưỡng và ngân sách ở `ocop_retrieval.yaml`/`ocop_models.yaml`.
 
-Commit nhỏ theo conventional commits; chỉ stage đường dẫn đã sửa. Không commit `.env`, dữ liệu riêng tư, dẫn xuất runtime hoặc báo cáo sinh tự động. Không push hay tạo PR khi chưa được yêu cầu. Xem [EVALUATION](EVALUATION.md) trước khi sử dụng bộ giữ riêng.
+Commit nhỏ theo conventional commits; chỉ stage đường dẫn đã sửa. Không commit `.env`, dữ liệu riêng tư, dẫn xuất runtime hoặc báo cáo sinh tự động. Xem [EVALUATION](EVALUATION.md) trước khi sử dụng bộ giữ riêng.
