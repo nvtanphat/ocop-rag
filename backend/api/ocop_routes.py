@@ -21,6 +21,7 @@ from ai_core.orchestration.ocop.llm import make_answer_client
 from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
+from backend.api.reference_data import ReferenceResponse, read_references
 
 ROOT = Path(os.environ.get('OCOP_ROOT',Path(__file__).resolve().parents[2])).resolve()
 DATA = ROOT / "data" / "processed" / "ocop"
@@ -102,6 +103,24 @@ def sources():
         "ocr_pages": by_id.get(s["source_id"], {}).get("counts", {}).get("ocr_executed", 0),
         "filename": Path(s["path"]).name,
     } for s in _registry()]
+
+
+def references(kind: Literal["criteria", "products"]) -> ReferenceResponse:
+    try:
+        ready = OcopSystemPipeline(ROOT).status(validate_sources=True)["state"] == "ready"
+        return read_references(ROOT, kind, ready=ready)
+    except (OSError, ValueError, KeyError, RuntimeError) as exc:
+        raise service_unavailable("reference_unavailable", "reference", exc) from exc
+
+
+@router.get("/criteria", response_model=ReferenceResponse)
+def criteria():
+    return references("criteria")
+
+
+@router.get("/products", response_model=ReferenceResponse)
+def products():
+    return references("products")
 
 
 @router.get("/sources/{source_id}/pdf")

@@ -2,7 +2,8 @@
 .env
 .venv/
 node_modules/
-frontend/
+frontend/node_modules/
+frontend/dist/
 data/
 outputs/
 models/

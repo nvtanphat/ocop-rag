@@ -1,0 +1,32 @@
+﻿:root { font-family: system-ui, sans-serif; color: #163c36; background: #eef5f1; }
+body, #root { overflow: auto; height: auto; min-height: 100vh; background: #eef5f1; }
+.workspace { max-width: 1600px; margin: auto; padding: 24px; }
+.workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 24px; background: white; border-radius: 18px; border-bottom: 4px solid #2e8060; }
+h1 { font-size: 25px; margin: 0; } h2 { font-size: 22px; } h3 { font-size: 17px; }
+p { line-height: 1.7; } small { display: block; overflow-wrap: anywhere; color: #516860; }
+.corpus-status { font-size: 14px; max-width: 520px; }
+.workspace-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+.workspace nav { display: flex; flex-direction: column; gap: 12px; }
+.workspace button, .workspace a { font: inherit; cursor: pointer; }
+.workspace button { border: 1px solid #b9cfc4; background: white; border-radius: 9px; padding: 10px 14px; color: #174d3c; }
+.workspace button:hover { background: #e4f3eb; } .workspace button:disabled { opacity: .55; cursor: default; }
+.workspace button[aria-current=page], .workspace button[type=submit] { color: white; background: #226348; }
+.workspace main { background: white; border-radius: 18px; padding: 28px; min-height: 70vh; }
+.workspace input[type=search], .workspace textarea { display: block; width: 100%; border: 1px solid #9dbdae; padding: 12px; border-radius: 8px; font: inherit; margin: 8px 0 14px; }
+.workspace textarea { min-height: 100px; resize: vertical; }
+.workspace .llm-option { display: inline-flex; gap: 8px; margin: 0 18px 18px 0; }
+.messages article { padding: 20px 0; border-bottom: 1px solid #dae6df; }
+.messages { margin-bottom: 24px; } .messages h3 { padding: 12px; background: #edf5ef; border-radius: 8px; }
+.citations { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace .citation { padding: 2px 5px; margin: 0 3px; color: #175fbd; }
+.records { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 20px; }
+.records article { border: 1px solid #d8e5de; border-radius: 12px; padding: 18px; }
+.records button { margin-top: 14px; }
+.error { color: #a32625; background: #fff0ed; padding: 12px; border-radius: 8px; }
+.evidence-backdrop { position: fixed; inset: 0; z-index: 100; background: #102f2bd9; padding: 3vh 4vw; }
+.evidence-viewer { background: white; border-radius: 14px; padding: 20px; height: 94vh; overflow: auto; }
+.evidence-viewer header, .evidence-controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.evidence-viewer p { margin: 6px 0; overflow-wrap: anywhere; }
+.evidence-image { text-align: center; margin-top: 16px; }
+.evidence-image img { max-width: 100%; height: auto; border: 1px solid #bac7c2; }
+@media (max-width: 750px) { .workspace { padding: 10px; } .workspace-header { flex-wrap: wrap; } .workspace-layout { grid-template-columns: 1fr; } .workspace nav { flex-direction: row; flex-wrap: wrap; } .workspace main { padding: 18px; } }

@@ -8,8 +8,6 @@ from backend.api.ocop_routes import router
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX_FILE = ROOT / "frontend" / "dist" / "index.html"
-if not INDEX_FILE.is_file():
-    INDEX_FILE = ROOT / "frontend" / "index.html"
 
 app = FastAPI(title="OCOP GraphRAG API", version="1.0.0")
 app.add_middleware(
