@@ -136,3 +136,23 @@ def test_unverified_source_cannot_publish_a_verified_reference(reference_api):
     units_file.write_text(json.dumps(unit) + "\n")
     (data / "knowledge/verified_criteria.jsonl").write_text(json.dumps(record) + "\n")
     assert client.get("/api/ocop/criteria").json()["items"] == []
+
+
+@pytest.mark.parametrize(
+    "label,expected",
+    [
+        ("Sản phẩm A đạt 5 sao", []),
+        ("Sản phẩm B không đạt 5 sao", []),
+        ("Sản phẩm B đạt 5 sao", ["rule"]),
+    ],
+)
+def test_matching_number_is_not_enough_to_verify_a_product_star_assertion(reference_api, label, expected):
+    client, data, record = reference_api
+    unit_file = data / "knowledge/evidence_units.jsonl"
+    unit = json.loads(unit_file.read_text())
+    unit["text"] = "Sản phẩm B đạt 5 sao"
+    unit_file.write_text(json.dumps(unit) + "\n")
+    record["label"] = label
+    (data / "knowledge/verified_products.jsonl").write_text(json.dumps(record) + "\n")
+    result = client.get("/api/ocop/products").json()
+    assert [item["id"] for item in result["items"]] == expected

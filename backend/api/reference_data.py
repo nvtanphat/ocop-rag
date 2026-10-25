@@ -11,7 +11,7 @@ import fitz
 from pydantic import BaseModel, Field, ValidationError
 
 from ocop_contracts.models import SourceSpan
-from ai_core.orchestration.ocop.verification import check_sensitive_claims
+from ai_core.orchestration.ocop.verification import check_sensitive_claims, verify_claims
 
 
 class ReferenceCitation(SourceSpan):
@@ -66,11 +66,16 @@ def read_references(root: Path, kind: Literal["criteria", "products"], *, ready:
             item = ReferenceItem.model_validate(record)
             matching = all(_matches(root, c, sources, hashes, units) for c in item.citations)
             support = [
-                {"review_status": "verified", "text": units[c.evidence_unit_id].get("text", "")}
+                {**units[c.evidence_unit_id], "review_status": "verified"}
                 for c in item.citations
                 if c.evidence_unit_id in units
             ]
-            safe = not check_sensitive_claims(item.label, support)["unsupported_score_or_star_claims"]
+            sensitive = check_sensitive_claims(item.label, support)
+            safe = not sensitive["unsupported_score_or_star_claims"]
+            if safe and sensitive["sensitive_claim_count"]:
+                marked = item.label + " " + " ".join(f"[S{i}]" for i in range(1, len(item.citations) + 1))
+                verdict = verify_claims(marked, [c.model_dump(mode="json") for c in item.citations], support)
+                safe = verdict["status"] == "verified"
             if matching and safe:
                 result.items.append(item)
         except (ValidationError, KeyError, ValueError):
