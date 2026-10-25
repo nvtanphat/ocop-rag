@@ -180,7 +180,6 @@ def main() -> None:
     ap.add_argument('--lock', type=Path, help='JSON {file name: sha256}; refuse to run if the questions changed')
     ap.add_argument('--mode', choices=('sparse', 'hybrid', 'rerank'), default='sparse')
     ap.add_argument('--llm', choices=('stub', 'real'), default='stub')
-    ap.add_argument('--set', nargs='*', default=[], metavar='section.key=value', help='override a retrieval setting for this run')
     ap.add_argument('--out', type=Path)
     ap.add_argument('--sealed', action='store_true', help='print totals only')
     args = ap.parse_args()
@@ -189,8 +188,6 @@ def main() -> None:
         if hashlib.sha256(args.questions.read_bytes()).hexdigest() != lock.get(args.questions.name):
             sys.exit('question set changed after it was frozen')
     questions = json.loads(args.questions.read_text(encoding='utf-8'))
-    from ai_core.retrieval.ocop.settings import override_settings
-    override_settings(args.set)
     rows = evaluate(args.root, questions, mode=args.mode, llm=args.llm)
     summary = {'mode': args.mode, 'llm': args.llm, **summarize(rows)}
     if args.llm == 'stub':  # the capture client writes no text: answer-layer counts would only describe the stub

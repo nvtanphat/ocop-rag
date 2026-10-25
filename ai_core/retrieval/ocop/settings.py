@@ -20,7 +20,6 @@ class ContextSettings(BaseModel):
     parent_label_max_chars: int = Field(90, ge=20)
     min_term_coverage: float = Field(0.25, ge=0, le=1)
     max_source_blocks: int = Field(12, ge=1)
-    fill_min_blocks: int = Field(12, ge=1)  # once every coverable question term is covered, extra filler blocks stop here
     grounding_min_term_coverage: float = Field(0.8, ge=0, le=1)
 
 
@@ -70,20 +69,3 @@ def get_settings(root: Path | None = None) -> Settings:
         if candidate.is_file():
             return _load(str(candidate), candidate.stat().st_mtime_ns)
     return Settings()
-
-
-def override_settings(items: list[str], root: Path | None = None) -> None:
-    """Experiment helper: ``["context.fill_min_blocks=6"]`` changes the loaded settings of this process only."""
-    for item in items:
-        key, value = item.split('=', 1)
-        section, name = key.split('.', 1)
-        target = getattr(get_settings(root), section)
-        if name not in type(target).model_fields:
-            raise SystemExit(f'unknown setting {key}')
-        kind = type(getattr(target, name))
-        if kind is bool:
-            if value.lower() not in ('true', 'false', '1', '0'):
-                raise SystemExit(f'{key} expects true/false, got {value!r}')
-            setattr(target, name, value.lower() in ('true', '1'))
-        else:
-            setattr(target, name, kind(value))

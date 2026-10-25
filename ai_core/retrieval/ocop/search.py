@@ -6,7 +6,6 @@ import json
 import os
 from collections import OrderedDict
 from functools import lru_cache
-from ai_core.system import stage_trace as _trace
 from ai_core.system.telemetry import traced
 from pathlib import Path
 from ocop_contracts.ids import content_sha256
@@ -285,10 +284,6 @@ def _with_following_chunks(results:list[dict],ordered:list[dict],chunks:dict,all
     return out
 
 
-def _pool(ids:list[str],scores:dict,chunks:dict)->list[dict]:
-    return [{'rank':i,'chunk_id':c,'pdf_page':chunks[c]['spans'][0]['pdf_page'],'score':round(float(scores.get(c,0)),6)} for i,c in enumerate(ids,1)]
-
-
 @traced("ocop.retrieval.search")
 def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
            source_id:str|None=None,include_needs_review:bool=True,rerank:bool=False,
@@ -339,18 +334,11 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
             if not sparse:
                 for pos,score in bm25.search(query,top_k=pool_floor,allowed_docs=allowed_positions):
                     cid=ordered[pos]['chunk_id'];sparse.append(cid);sparse_scores[cid]=score
-    if _trace.active():
-        _trace.emit('search.pools',query=query,mode=mode,requested_mode=requested_mode,top_k=top_k,rerank=rerank,
-                    source_id=source_id,evidence_unit_scope=None if evidence_unit_ids is None else len(evidence_unit_ids),
-                    admissible_chunks=len(allowed_positions),fallback_reason=fallback_reason,
-                    sparse=_pool(sparse,sparse_scores,chunks),dense=_pool(dense,dense_scores,chunks))
     if mode=="hybrid":
         fused=rrf([sparse,dense],weights=[settings.rrf_weight_sparse,settings.rrf_weight_dense])
     else:
         fused=dict(sparse_scores) if mode=="sparse" else dense_scores
     items=sorted(fused.items(),key=lambda x:(-x[1],x[0]))[:pool_size]
-    if _trace.active():
-        _trace.emit('search.fused',pool_size=pool_size,items=_pool([c for c,_ in items],fused,chunks))
     results=[]
     for cid,score in items:
         ch=chunks[cid]
@@ -379,16 +367,10 @@ def search(index_dir:Path,query:str,*,mode:str="sparse",top_k:int=8,
             for row in results:
                 row['rerank_unavailable']=True
                 row['ranking_reason']=f"rerank_unavailable: {reason}; deterministic_{mode}_order"
-    if _trace.active() and rerank:
-        _trace.emit('search.reranked',candidates=rerank_candidates,
-                    order=_pool([r['chunk_id'] for r in results],{r['chunk_id']:r.get('reranker_score',r['score']) for r in results},chunks))
     for row in results:
         row.setdefault('ranking_reason','local_reranker' if 'reranker_score' in row else
                        'deterministic_'+mode+'_order; reranker_not_requested')
     results=results[:top_k]
-    if _trace.active():
-        _trace.emit('search.returned',top_k=top_k,items=[{'rank':i,'chunk_id':r['chunk_id'],'pdf_page':r['pdf_page'],'score':r['score'],
-                    'raw_text':r['raw_text'],'text':r['text']} for i,r in enumerate(results,1)])
     results=_with_following_chunks(results,ordered,chunks,allowed,settings.neighbor_chunks if with_continuations else 0,mode,requested_mode)
     if expand_parent and results:
         wanted={r['evidence_unit_id'] for r in results}

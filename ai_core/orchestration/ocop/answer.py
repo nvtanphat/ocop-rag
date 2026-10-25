@@ -9,7 +9,6 @@ from ai_core.orchestration.ocop.verification import (CRITICAL,check_source_marke
     grounded_in_excerpt,verify_claims)
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
 from ai_core.orchestration.ocop.language import fold
-from ai_core.system import stage_trace as trace
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
@@ -134,15 +133,14 @@ def _most_relevant(entries,terms,limit,fill_min=None,facets=()):
     # reserved blocks are added to the limit, never taken out of it (the token budget stays the last bound)
     reserved=min(len(chosen),_RESERVED_SLOTS)
     limit+=reserved
-    fill_min=None if fill_min is None else fill_min+reserved
     while len(chosen)<limit:
         gain=lambda i:sum(weight[t] for t in found[i]-covered)  # noqa: E731
         best=max((i for i in range(len(entries)) if i not in chosen),key=lambda i:(gain(i),-i),default=None)
         if best is None:break
-        if gain(best)<=0:  # everything coverable is covered: fill by plain weighted relevance, up to `fill_min` blocks
+        if gain(best)<=0:  # everything coverable is covered: fill by plain weighted relevance
             rest=sorted((i for i in range(len(entries)) if i not in chosen),
                         key=lambda i:(-sum(weight[t] for t in found[i]),i))
-            chosen.extend(rest[:max(0,min(limit,limit if fill_min is None else fill_min)-len(chosen))]);break
+            chosen.extend(rest[:max(0,limit-len(chosen))]);break
         chosen.append(best);covered|=found[best]
     # Cells of one table that tools returned together describe one row (product / owner / representative): a chosen
     # table block brings its returned siblings, at most `_SIBLING_SLOTS` extra.
@@ -164,12 +162,6 @@ def _drop_repeats(entries):
         shown.append(folded)
         kept.append((key,row,span,flag))
     return kept
-
-
-def _stage(name:str,entries)->None:
-    if trace.active():
-        trace.emit(name,items=[{'chunk_id':key[3],'evidence_unit_id':key[2],'pdf_page':key[1],'source_id':key[0],
-                                'raw_text':str(row.get('raw_text') or row.get('text') or '')} for key,row,_,_ in entries])
 
 
 def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tuple[list[dict],list[str],list[dict]]:
@@ -215,27 +207,13 @@ def _evidence(records:list[dict], *, question:str='', overhead_tokens:int=0)->tu
         table_backed=bool(context_metadata.get('table_id') or any(
             isinstance(item,dict) and (item.get('table_id') or item.get('table_bbox')) for item in spans))
         entries.append((key,row,span,table_backed))
-    if trace.active():
-        trace.emit('context.input',records=len(records),terms=terms,max_source_blocks=cfg.max_source_blocks,
-                   unusable=len(records)-sum(len(g) for g in grouped.values()),
-                   conflicting_duplicates=[{'chunk_id':k[3],'pdf_page':k[1]} for k in conflicting])
-    _stage('context.candidates',entries)
     entries=_merge_continuations(entries)
-    _stage('context.merged',entries)
     entries=_drop_repeats(entries)
-    _stage('context.deduped',entries)
-    entries=_most_relevant(entries,terms,cfg.max_source_blocks,cfg.fill_min_blocks,query_facets(question))
-    _stage('context.packed',entries)
+    entries=_most_relevant(entries,terms,cfg.max_source_blocks,facets=query_facets(question))
     budget=cfg.prompt_token_budget-cfg.output_reserve_tokens-overhead_tokens
     headers=[estimated_tokens(f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status','needs_review')}: ")
              for i,(key,row,span,flag) in enumerate(entries,1)]
     excerpts=fit_budget([e[1] for e in entries],[e[3] for e in entries],terms,cfg,budget,headers) if entries else []
-    if trace.active():
-        trace.emit('context.budget',budget_tokens=budget,overhead_tokens=overhead_tokens,items=[
-            {'chunk_id':key[3],'pdf_page':key[1],'dropped':ex is None,'source_chars':len(str(row.get('raw_text') or row.get('text') or '')),
-             **({} if ex is None else {'shown_chars':len(ex.evidence),'cut_left':ex.cut_left,'cut_right':ex.cut_right,
-                                       'tokens':estimated_tokens(ex.display),'display':ex.display})}
-            for (key,row,_,_),ex in zip(entries,excerpts)])
     citations=[];contexts=[];selected=[]
     for (key,row,span,table_backed),excerpt in zip(entries,excerpts):
         if excerpt is None or not excerpt.evidence.strip():continue

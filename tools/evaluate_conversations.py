@@ -1,7 +1,7 @@
 """Multi-turn evaluation: does the conversation keep the right scope, resolve references and show the right evidence?
 
     python tools/evaluate_conversations.py --root <corpus root> --conversations data/evaluations/ocop/conversation_questions.json \
-        [--mode sparse|hybrid] [--llm stub|real] [--out result.json] [--set context.key=value]
+        [--mode sparse|hybrid] [--llm stub|real] [--out result.json]
 
 Turns run through the same ``SessionStore`` the API uses (get -> ask -> save), so whatever memory the product keeps is what
 is measured. Per turn: ``expect_slots`` (scope the turn must resolve to), ``absent_slots`` / ``forbid_slot_values`` (stale
@@ -110,12 +110,9 @@ def main() -> None:
     ap.add_argument('--conversations', type=Path, required=True)
     ap.add_argument('--mode', choices=('sparse', 'hybrid'), default='hybrid')
     ap.add_argument('--llm', choices=('stub', 'real'), default='stub')
-    ap.add_argument('--set', nargs='*', default=[])
     ap.add_argument('--no-memory', action='store_true', help='every turn is asked without the session (ablation)')
     ap.add_argument('--out', type=Path)
     args = ap.parse_args()
-    from ai_core.retrieval.ocop.settings import override_settings
-    override_settings(args.set)
     rows = run(args.root, json.loads(args.conversations.read_text(encoding='utf-8')), mode=args.mode, llm=args.llm, memory=not args.no_memory)
     summary = {'mode': args.mode, 'llm': args.llm, 'memory': not args.no_memory, **summarize(rows)}
     if args.out:

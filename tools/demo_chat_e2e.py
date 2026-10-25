@@ -248,47 +248,6 @@ def judge(case: dict, status: int, d: dict, http: Http, units: dict[str, str], r
             'missing_from_source': (d.get('generation_diagnostics') or {}).get('missing_from_source')}
 
 
-def inprocess_trace(root: Path, cases: list[dict], mode: str) -> dict:
-    """Replay the same sessions in-process (no LLM) to capture memory events and the SOURCE that reaches the model."""
-    from ai_core.orchestration.ocop.sessions import SessionStore
-    from ai_core.orchestration.ocop.workflow import OcopAgent
-    from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
-    from ai_core.system import stage_trace
-
-    class Capture:
-        model = 'capture'
-
-        def __init__(self):
-            self.prompts = []
-
-        def chat(self, system, user, **kw):
-            self.prompts.append(user)
-            return ''
-        chat_structured = chat
-
-        def route(self, question):
-            raise ValueError('capture')
-    out, stores, client = {}, {}, Capture()
-    agent = OcopAgent(root, llm=client, retrieval_mode='sparse' if mode == 'sparse' else 'hybrid', allow_partial_debug=True)
-    for case in cases:
-        store = stores.setdefault(case['session'], SessionStore())
-        client.prompts.clear()
-        before = store.get('s').get('memory')
-        with stage_trace.tracing() as events:
-            resp = agent.ask(case['q'], session=store.get('s'))
-        store.save('s', case['q'], resp)
-        source = next((p.split('SOURCE:', 1)[-1] for p in client.prompts if 'SOURCE:' in p), '')
-        out[case['id']] = {
-            'label': 'inprocess_stub', 'memory_before': before,
-            'memory_read': next(({k: e.get(k) for k in ('question', 'effective_query', 'rewrite_method', 'followup')} for e in events if e['stage'] == 'memory.read'), None),
-            'memory_evidence': next(({'kept': len(e['kept']), 'dropped': e['dropped'], 'reused': len(e['reused']), 'skipped': e.get('skipped')}
-                                     for e in events if e['stage'] == 'memory.evidence'), None),
-            'memory_after': store.get('s').get('memory'),
-            'source_blocks': len(re.findall(r'(?m)^\[S\d+\] ', source)), 'source_pages': [int(x) for x in re.findall(r'(?m)^\[S\d+\][^\n]*?, PDF p\.(\d+)', source)],
-            'source_tokens': estimated_tokens(source), 'prompt_tokens': estimated_tokens(client.prompts[-1]) if client.prompts else 0}
-    return out
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--base-url', default='http://127.0.0.1:8000')
@@ -296,7 +255,6 @@ def main() -> int:
     ap.add_argument('--real-llm', action='store_true', help='send use_llm=true (required for a DEMO READY verdict)')
     ap.add_argument('--mode', choices=('sparse', 'dense', 'hybrid'), default='sparse')
     ap.add_argument('--timeout', type=float, default=300)
-    ap.add_argument('--inprocess-trace', action='store_true')
     ap.add_argument('--only', nargs='*', help='case ids, e.g. Q02 Q07')
     ap.add_argument('--run-id', default=time.strftime('%H%M%S'), help='suffix that makes the sessions of this run new')
     ap.add_argument('--out', type=Path, default=Path('demo-chat-e2e.json'))
@@ -338,8 +296,6 @@ def main() -> int:
     secs = sorted(c['secs'] for c in report['cases'])
     report['latency'] = {'p50': round(statistics.median(secs), 2), 'p95': round(secs[min(len(secs) - 1, int(len(secs) * .95))], 2),
                          'max': secs[-1]} if secs else {}
-    if args.inprocess_trace:
-        report['inprocess'] = inprocess_trace(args.root, selected, args.mode)
     counts = {k: sum(c['result'] == k for c in report['cases']) for k in ('PASS', 'FAIL', 'BLOCKED')}
     report['summary'] = {**counts, 'sent': len(report['cases']),
                          'verdict': 'DEMO READY' if counts['FAIL'] == 0 and counts['BLOCKED'] == 0 and args.real_llm and len(selected) == len(CASES)
