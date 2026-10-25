@@ -21,8 +21,6 @@ class Capability(str, Enum):
     TEMPORAL = 'temporal'
     RECOGNITION = 'recognition'
     SECTOR_COMPLIANCE = 'sector_compliance'
-    REVIEW_DOSSIER = 'review_dossier'
-    ESTIMATE_SCORE = 'estimate_score'
     EXACT_ARTICLE = 'exact_article'
     RELATION_REASONING = 'relation_reasoning'
 
@@ -50,8 +48,6 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
     'lookup_recognition': ToolSpec('lookup_recognition', produces=('evidence_unit_id',), description='Recognition decision candidates', public_description='tra quyết định công nhận'),
     'resolve_temporal_applicability': ToolSpec('resolve_temporal_applicability', input_slots=('as_of_date',), produces=('temporal_verdict',), description='Verified temporal rules only', public_description='đối chiếu thời điểm áp dụng khi có quy tắc đã xác minh'),
     'search_graph': ToolSpec('search_graph', produces=('evidence_unit_id',), description='Typed source-backed graph traversal', public_description='tìm liên hệ giữa các văn bản'),
-    'review_dossier': ToolSpec('review_dossier', input_slots=('dossier_id',), requires_auth=True, description='Private checklist'),
-    'estimate_score': ToolSpec('estimate_score', input_slots=('dossier_id',), requires_auth=True, description='Private provisional score from verified rules'),
     'open_source_span': ToolSpec('open_source_span', input_slots=('evidence_unit_id',), description='Open exact PDF source evidence'),
 }
 
@@ -64,8 +60,6 @@ CAPABILITY_TO_TOOLS: dict[Capability, tuple[str, ...]] = {
     Capability.TEMPORAL: ('resolve_temporal_applicability','search_regulations'),
     Capability.RECOGNITION: ('lookup_recognition',),
     Capability.SECTOR_COMPLIANCE: ('search_regulations',),
-    Capability.REVIEW_DOSSIER: ('review_dossier',),
-    Capability.ESTIMATE_SCORE: ('estimate_score',),
     Capability.EXACT_ARTICLE: ('lookup_legal_unit',),
     Capability.RELATION_REASONING: ('search_graph',),
 }

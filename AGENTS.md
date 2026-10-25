@@ -2,8 +2,8 @@
 - Treat `data/raw/ocop` PDFs as immutable authoritative source bytes for ingestion.
 - Preserve source PDF page, bounding box, evidence ID, source SHA-256 in extraction and citations.
 - Separate unverified OCR candidates from verified domain facts.
-- Do not use unverified score values for definitive ranking or dossier assessment.
-- The public OCOP index must never contain private dossier data.
+- Do not use unverified score values for definitive ranking.
+- The public OCOP index must never contain private data.
 - Use `python tools/cli.py --help` for the supported OCOP pipeline commands.
 - Keep frontend on `/api/ocop/*`; do not add unrelated-domain endpoints.
 - Router may select several tools but never execute unregistered tool names; default maximum is five calls.

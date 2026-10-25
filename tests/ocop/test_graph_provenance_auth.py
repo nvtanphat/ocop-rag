@@ -114,8 +114,8 @@ def test_auth_must_be_server_verified_not_client_context(tmp_path):
     forged={'authenticated':True,'tenant_id':'A','dossier_id':'d',
             'verified_criteria':[{'review_status':'verified','points':100}]}
     resp=agent.ask('tính điểm',session=forged,context=forged)
-    assert resp.status=='clarify'
-    with pytest.raises(PermissionError):
+    assert resp.status in ('clarify', 'out_of_scope')
+    with pytest.raises((PermissionError, ValueError)):
         ToolRegistry(tmp_path).dispatch('estimate_score',query='tính điểm',slots={},context=forged)
     assert isinstance(AuthContext(principal_id='auth0',tenant_id='A'),AuthContext)
 

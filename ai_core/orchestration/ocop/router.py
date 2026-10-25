@@ -33,8 +33,6 @@ ROUTES = {
     Intent.TEMPORAL_COMPARE: ('graph_hybrid', ['resolve_temporal_applicability', 'search_regulations']),
     Intent.RECOGNITION_LOOKUP: ('structured', ['lookup_recognition']),
     Intent.SECTOR_COMPLIANCE: ('hybrid', ['search_regulations']),
-    Intent.DOSSIER_REVIEW: ('agentic', ['review_dossier']),
-    Intent.SCORE_ESTIMATE: ('agentic', ['estimate_score']),
     Intent.MULTIHOP_REASONING: ('graph_hybrid', ['search_regulations', 'search_graph']),
     Intent.FOLLOWUP: ('hybrid', ['search_regulations']),
     Intent.CLARIFY: ('clarify', []),
@@ -46,7 +44,7 @@ INTENT_CAPABILITY = {
     Intent.SECTOR_COMPLIANCE: Capability.SECTOR_COMPLIANCE, Intent.TEMPORAL_COMPARE: Capability.TEMPORAL,
     Intent.MULTIHOP_REASONING: Capability.RELATION_REASONING,
 }
-PRIVATE_CAPABILITIES = frozenset({Capability.REVIEW_DOSSIER, Capability.ESTIMATE_SCORE})
+PRIVATE_CAPABILITIES: frozenset[Capability] = frozenset()
 YEAR = re.compile(r'\b20\d{2}\b')
 DATE_ISO = re.compile(r'\b(20\d{2})[-/](0?[1-9]|1[0-2])[-/](0?[1-9]|[12]\d|3[01])\b')
 DATE_VI = re.compile(r'\b(0?[1-9]|[12]\d|3[01])[/.-](0?[1-9]|1[0-2])[/.-](20\d{2})\b')
@@ -336,10 +334,6 @@ def _capabilities(facets: Facets, slots: dict) -> tuple[list[Capability], list[s
         add(Capability.RECOGNITION, 'recognition_signal')
     if facets.compliance:
         add(Capability.SECTOR_COMPLIANCE, 'compliance_signal')
-    if facets.private_dossier:
-        add(Capability.REVIEW_DOSSIER, 'private_dossier_action')
-    if facets.private_scoring:
-        add(Capability.ESTIMATE_SCORE, 'private_scoring_action')
     if facets.relation or (Capability.EVIDENCE_REQUIREMENTS in found and Capability.CRITERIA in found):
         add(Capability.RELATION_REASONING, 'relational_signal')
     if not found:
@@ -440,14 +434,12 @@ def _route_business(query: str, *, session: dict | None = None, llm_route: Calla
     else:
         slots_for_caps = slots
 
-    # Private requests never reach public search; AuthContext is checked in the workflow.
-    if facets.private_scope and not facets.private_dossier and not facets.private_scoring:
-        return Route(intent=Intent.DOSSIER_REVIEW, strategy='agentic', slots={}, required_tools=['review_dossier'],
-                     capabilities=[Capability.REVIEW_DOSSIER.value], reason_codes=['private_scope_request'])
+    if facets.private_scope or facets.private_dossier or facets.private_scoring:
+        return Route(intent=Intent.OUT_OF_SCOPE, strategy='clarify', slots=slots, reason_codes=['private_dossier_unsupported'])
 
     in_domain = (lang.hit(q, 'in_domain') or structural_scope or facets.temporal or facets.classification or
                  facets.compliance or facets.authority or facets.criteria or facets.recognition or facets.scoring_method or
-                 facets.private_dossier or facets.private_scoring or any(catalog.mentions(q).values()) or
+                 any(catalog.mentions(q).values()) or
                  bool(slots.get('star_rating') or slots.get('years') and followup))
     explicit_oos = lang.hit(q, 'explicit_out_of_scope')
     bare_code = bool(BARE_CRITERION.match(q)) and not followup
@@ -472,12 +464,8 @@ def _route_business(query: str, *, session: dict | None = None, llm_route: Calla
 
     caps, cap_reasons = _capabilities(Facets(lang, q, slots_for_caps) if producer else facets, slots_for_caps)
     scores: dict[Intent, int] = {}
-    if facets.private_scoring and not facets.scoring_method:
-        scores[Intent.SCORE_ESTIMATE] = 90
     if facets.scoring_method:
         scores[Intent.CRITERIA_LOOKUP] = 70
-    if facets.private_dossier:
-        scores[Intent.DOSSIER_REVIEW] = 85
     if facets.multihop and (facets.criteria or facets.procedure or facets.compliance or facets.recognition):
         scores[Intent.MULTIHOP_REASONING] = 80
     if facets.temporal:
@@ -522,7 +510,7 @@ def _route_business(query: str, *, session: dict | None = None, llm_route: Calla
             try:
                 result = llm_route(q)
                 candidate = Intent(result['intent'])
-                if candidate != Intent.CONVERSATION and (candidate not in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE) or prior.get('dossier_id')):
+                if candidate != Intent.CONVERSATION and (True):
                     intent = candidate
                 safe = {'product_name', 'product_group', 'region', 'as_of_date', 'document_code', 'form_id', 'criterion_id'}
                 slots.update({k: v for k, v in (result.get('slots') or {}).items()
@@ -530,7 +518,7 @@ def _route_business(query: str, *, session: dict | None = None, llm_route: Calla
             except (ValueError, KeyError, TypeError, AttributeError):
                 pass
     effective = intent
-    if followup and Intent.SCORE_ESTIMATE not in scores and Intent.DOSSIER_REVIEW not in scores:
+    if followup:
         if not scores or max(scores.values()) < 75:
             intent = Intent.FOLLOWUP
             try:
@@ -574,12 +562,6 @@ def _route_business(query: str, *, session: dict | None = None, llm_route: Calla
         required = list(dict.fromkeys(['resolve_temporal_applicability', *required]))
     if slots.get('pdf_page') and slots.get('document_code') and not set(caps) & PRIVATE_CAPABILITIES:
         required, secondary = ['lookup_legal_unit'], []
-    missing = []
-    if effective in (Intent.DOSSIER_REVIEW, Intent.SCORE_ESTIMATE):
-        missing = [key for key in ('tenant_id', 'dossier_id') if not prior.get(key)]
-    if missing:
-        return Route(intent=Intent.CLARIFY, strategy='clarify', slots=slots, needs_clarification=True,
-                     missing_slots=missing, reason_codes=['required_dossier_context_missing'])
     if len(required) + len(secondary) > MAX_TOOL_CALLS:
         secondary = secondary[:max(0, MAX_TOOL_CALLS - len(required))]
     if len(required) > MAX_TOOL_CALLS:

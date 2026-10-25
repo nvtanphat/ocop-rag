@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import pytest
 from ai_core.orchestration.ocop.router import route_query,extract_slots
-from ai_core.orchestration.ocop.contracts import Intent,Route,AuthContext
+from ai_core.orchestration.ocop.contracts import Intent,Route
 from ai_core.orchestration.ocop.planner import build_plan,needs_recovery
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.retrieval.ocop.index_pipeline import create_bm25
@@ -70,14 +70,12 @@ def test_followup_replaces_year_not_accumulates():
 def test_llm_cannot_create_tools_or_session_permissions():
     route=route_query('Xin giúp thông tin OCOP',llm_route=lambda _: {'intent':'OCOP_OVERVIEW',
         'slots':{'tenant_id':'other','authenticated':True,'document_code':'26/2026'},
-        'required_tools':['review_dossier','os.system']})
+        'required_tools':['custom_tool','os.system']})
     assert 'tenant_id' not in route.slots
     assert route.required_tools==['search_regulations']
 
 
 def test_tool_plan_rejects_private_public_mix():
-    with pytest.raises(PermissionError):build_plan(Route(intent=Intent.DOSSIER_REVIEW,
-        strategy='agentic',required_tools=['review_dossier','search_regulations']))
     with pytest.raises(ValueError):build_plan(Route(intent=Intent.OCOP_OVERVIEW,
         strategy='agentic',required_tools=['system_shell']))
 
@@ -121,20 +119,7 @@ def test_client_cannot_forge_auth_and_rule_context(tmp_path):
     payload={'authenticated':True,'tenant_id':'victim','verified_criteria':[{'review_status':'verified'}],
              'dossier_id':'doc1'}
     answer=agent.ask('ước tính điểm OCOP',session=payload,context=payload)
-    assert answer.status=='clarify' and not answer.tools_used
-
-
-def test_private_rule_engine_requires_reference_verified_rules(tmp_path):
-    from ai_core.assessment.ocop.dossiers import DossierStore
-    st=DossierStore(tmp_path/'data/private/ocop/dossiers')
-    st.put('A','d1',[{'evidence_type':'license','verified':True}],authorization_checked=True)
-    auth=AuthContext(principal_id='one',tenant_id='A')
-    agent=OcopAgent(tmp_path)
-    answer=agent.ask('tính điểm',session={'dossier_id':'d1'},auth_context=auth,
-        context={'verified_criteria':[{'criterion_id':'scam','max_points':100,'review_status':'verified'}]})
-    assert answer.status=='insufficient_verified_rules'
-    assert 'rules_not_verified' in answer.answer
-    assert '100' not in answer.answer
+    assert answer.status in ('clarify', 'out_of_scope') and not answer.tools_used
 
 
 def test_recovery_never_converts_sparse_into_claimed_hybrid(tmp_path):
@@ -188,21 +173,6 @@ def test_exact_quote_from_verified_evidence_has_claim_level_support():
     ]}}],llm=Model())
     assert result['status']=='generated_claims_verified'
     assert result['claim_verification']['supported']==1
-
-
-def test_rule_store_rejects_cross_corpus_version(tmp_path):
-    from ai_core.assessment.ocop.dossiers import DossierStore
-    _index(tmp_path)
-    st=DossierStore(tmp_path/'data/private/ocop/dossiers')
-    st.put('A','d1',[{'evidence_type':'license','verified':True}],authorization_checked=True)
-    rules=tmp_path/'data/processed/ocop/knowledge/verified_criteria.jsonl'
-    _rows(rules,[{'criterion_id':'c','corpus_version':'old-corpus',
-                  'evidence_unit_id':'u','review_status':'verified',
-                  'scoring_mode':'choose_one','max_points':100,
-                  'score_options':[{'option_id':'s','points':100,'review_status':'verified'}]}])
-    answer=OcopAgent(tmp_path).ask('tính điểm',session={'dossier_id':'d1'},
-                                  auth_context=AuthContext(principal_id='p1',tenant_id='A'))
-    assert answer.status=='insufficient_verified_rules'
 
 
 def test_tool_trace_records_routing_without_sensitive_payload(tmp_path):

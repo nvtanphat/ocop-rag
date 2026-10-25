@@ -19,7 +19,6 @@ class RetrievalPath(str, Enum):
 def choose_retrieval_path(tools: list[str]) -> RetrievalPath:
     requested=set(tools)
     if not requested:return RetrievalPath.NONE
-    if requested & {'review_dossier','estimate_score'}:return RetrievalPath.AGENTIC
     if 'search_graph' in requested:
         if requested & {'search_regulations','lookup_legal_unit','lookup_criterion',
                         'lookup_evidence_requirements','lookup_product_subgroup',

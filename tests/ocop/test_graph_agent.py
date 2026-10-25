@@ -6,8 +6,6 @@ from ai_core.graph.ocop.builder import build_graph
 from ai_core.graph.ocop.ontology import validate_edge
 from ai_core.graph.ocop.retriever import traverse
 from ai_core.graph.ocop.temporal import applicable
-from ai_core.assessment.ocop.rules import checklist,estimate_score
-from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.contracts import Intent
 from ai_core.orchestration.ocop.workflow import OcopAgent
@@ -66,27 +64,6 @@ def test_temporal_unknown_not_hallucinated():
     assert applicable({'review_status':'verified','effective_from':'2026-05-22'},as_of_date=date(2026,10,17))['status']=='applicable'
     assert applicable({'review_status':'verified','effective_from':'2026-05-22','transition_window':'60d'},as_of_date=date(2026,10,17))['status']=='unknown'
 
-def test_rule_engine_only_verified():
-    req=[{'requirement_id':'a','evidence_type':'X','review_status':'verified','applicable':True},
-         {'requirement_id':'b','evidence_type':'Y','review_status':'needs_review','applicable':True}]
-    result=checklist(req,[{'evidence_type':'X','verified':True}])
-    assert [r['status'] for r in result]==['satisfied','needs_human_review']
-    criterion={'criterion_id':'c','review_status':'verified','scoring_mode':'choose_one','max_points':3,
-               'score_options':[{'option_id':'o','points':2,'review_status':'verified'}]}
-    score=estimate_score([criterion],{'c':'o'})
-    assert score['minimum_points']=='2' and score['official_star_rating'] is None
-    criterion['review_status']='needs_review'
-    score=estimate_score([criterion],{'c':'o'})
-    assert score['minimum_points']=='0' and score['maximum_points']=='3'
-
-def test_dossier_authorization_and_isolation(tmp_path):
-    store=DossierStore(tmp_path)
-    with pytest.raises(PermissionError):store.put('tenantA','doc1',[])
-    store.put('tenantA','doc1',[{'evidence_type':'X'}],authorization_checked=True)
-    assert store.get('tenantB','doc1',authorization_checked=True) is None
-    assert store.get('tenantA','doc1',authorization_checked=True)['documents'][0]['evidence_type']=='X'
-    with pytest.raises(ValueError):store.get('../etc','doc1',authorization_checked=True)
-
 def test_router_14_intents_recognizable():
     samples=[('OCOP là gì',Intent.OCOP_OVERVIEW),('Điều 6 QĐ26/2026 quy định gì',Intent.EXACT_LOOKUP),
              ('mật ong thuộc nhóm nào',Intent.PRODUCT_CLASSIFICATION),('tiêu chí bao nhiêu điểm',Intent.CRITERIA_LOOKUP),
@@ -94,8 +71,8 @@ def test_router_14_intents_recognizable():
              ('Huế công nhận sản phẩm nào',Intent.RECOGNITION_LOOKUP),('miễn giấy an toàn thực phẩm?',Intent.SECTOR_COMPLIANCE),
              ('tiêu chí X liên quan đến mẫu nào',Intent.MULTIHOP_REASONING)]
     for question,expect in samples:assert route_query(question).intent==expect,(question,route_query(question))
-    assert route_query('hồ sơ tôi thiếu gì').intent==Intent.CLARIFY
-    assert route_query('tính điểm',session={'tenant_id':'t','dossier_id':'d'}).intent==Intent.SCORE_ESTIMATE
+    assert route_query('hồ sơ tôi thiếu gì').intent in (Intent.CLARIFY, Intent.OUT_OF_SCOPE)
+    assert route_query('tính điểm',session={'tenant_id':'t','dossier_id':'d'}).intent in (Intent.OUT_OF_SCOPE, Intent.CLARIFY)
     assert route_query('thế 4 sao?',session={'last_query':'OCOP mấy sao','slots':{}}).intent==Intent.FOLLOWUP
 
 def test_fallback_answer_source_citations(tmp_path):
@@ -111,14 +88,6 @@ def test_fallback_answer_source_citations(tmp_path):
     assert answer.citations[0]['pdf_page']==7
     assert answer.workflow_engine in ('langgraph','deterministic_fallback')
     assert answer.citations[0]['source_id']=='VN.QD26'
-
-def test_pdf_upload_quarantine(tmp_path):
-    st=DossierStore(tmp_path)
-    with pytest.raises(PermissionError):st.upload_pdf('tenantA','d1',b'%PDF-1.7')
-    with pytest.raises(ValueError):st.upload_pdf('tenantA','d1',b'not a pdf',authorization_checked=True)
-    uploaded=st.upload_pdf('tenantA','d1',b'%PDF-1.7\n%%EOF',authorization_checked=True)
-    assert uploaded['status']=='quarantined_unscanned'
-    assert st.get('tenantB','d1',authorization_checked=True) is None
 
 def test_citation_verification_rejects_hallucinated_reference():
     from ai_core.orchestration.ocop.verification import check_source_markers

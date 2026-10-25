@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from ai_core.orchestration.ocop import memory
-from ai_core.orchestration.ocop.contracts import AgentResponse, Intent, Route
+from ai_core.orchestration.ocop.contracts import AgentResponse, Intent
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.sessions import SessionStore
 from ai_core.orchestration.ocop.workflow import OcopAgent
@@ -94,7 +94,7 @@ def test_capability_help_tracks_public_registry_and_avoids_internal_tool_names()
         TOOL_REGISTRY['lookup_form'] = ToolSpec('lookup_form', public_description='chức năng công khai mới')
         answer = respond(choice.dialogue)
         assert 'chức năng công khai mới' in answer
-        assert 'lookup_form' not in answer and 'review_dossier' not in answer
+        assert 'lookup_form' not in answer
     finally:
         TOOL_REGISTRY['lookup_form'] = original
 
@@ -108,15 +108,6 @@ def test_repeated_repairs_keep_the_active_knowledge_question():
         assert route.required_tools and all(route.slots[k] == v for k, v in PRIOR['slots'].items())
         store.save('a', query, response(route, PRIOR['last_query']))
         assert store.get('a')['last_query'] == PRIOR['last_query']
-
-
-def test_private_turn_cannot_become_a_public_repair_query():
-    store = SessionStore()
-    store.save('a', PRIOR['last_query'], response(route_query(PRIOR['last_query']), PRIOR['last_query']))
-    snapshot = store.get('a')
-    private = Route(intent=Intent.DOSSIER_REVIEW, strategy='agentic', required_tools=['review_dossier'], slots={'secret': 'private'})
-    store.save('a', 'private record secret', response(private, 'private record secret'))
-    assert store.get('a') == snapshot
 
 
 def test_social_does_not_resurrect_expired_topic_or_cross_session_limits():

@@ -87,11 +87,8 @@ def test_remembered_evidence_is_dropped_when_the_corpus_or_the_document_scope_ch
     assert not kept and {d['reason'] for d in dropped} == {'corpus_version_changed'}
 
 
-def test_a_private_turn_leaves_nothing_in_memory_and_malformed_memory_is_discarded():
+def test_malformed_memory_is_discarded():
     from ai_core.orchestration.ocop import memory
-    private = memory.update(None, slots={'document_code': '1'}, standalone='hồ sơ của tôi', private=True,
-                            citations=[{'source_id': 'dossier', 'chunk_id': 'x'}], corpus_version='v1')
-    assert private == memory.empty()
     assert memory.sanitize({'referents': {'form': 'not-a-list'}, 'evidence': [{'source_id': 3}, 'x'], 'standalone': 5}) == memory.empty()
 
 

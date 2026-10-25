@@ -68,12 +68,9 @@ def _values(slots: dict, kind: str) -> list[str]:
     return []
 
 
-def update(prior: dict, *, slots: dict, standalone: str, citations: list[dict], corpus_version: str | None,
-           private: bool = False) -> dict:
+def update(prior: dict, *, slots: dict, standalone: str, citations: list[dict], corpus_version: str | None) -> dict:
     """State after an answered turn: recency-ordered referents, the standalone question, citation references."""
     state = sanitize(prior)
-    if private:
-        return state  # a dossier turn leaves no trace in conversation memory
     for kind in REFERENT_SLOTS:
         seen = [v for v in _values(slots, kind)]
         if seen:

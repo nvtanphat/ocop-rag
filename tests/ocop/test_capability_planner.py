@@ -118,8 +118,8 @@ def test_tool_registry_does_not_accept_llm_created_tools(tmp_path):
     registry=ToolRegistry(tmp_path)
     with pytest.raises(ValueError,match='Unknown or unauthorized'):
         registry.dispatch('shell_exec',query='run command',slots={})
-    assert TOOL_REGISTRY['review_dossier'].requires_auth
-    with pytest.raises(PermissionError):
+    assert 'review_dossier' not in TOOL_REGISTRY
+    with pytest.raises(ValueError, match='Unknown or unauthorized'):
         registry.dispatch('review_dossier',query='review',slots={},context={'authenticated':True})
 
 

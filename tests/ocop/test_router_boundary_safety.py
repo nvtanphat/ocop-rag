@@ -190,25 +190,19 @@ def test_local_guidance_deduplicates_and_rejects_adapter_cross_scope(fixture_ind
     assert len(result['results'])==1  # two adapters must not duplicate identical chunk IDs
 
 
-@pytest.mark.parametrize('status',['not_found','tool_unavailable','unexpected_backend_status'])
-def test_private_dossier_failure_cannot_be_labeled_provisional(tmp_path,status):
-    from ai_core.orchestration.ocop.contracts import Route,Intent
-    route=Route(intent=Intent.DOSSIER_REVIEW,strategy='agentic',
-                required_tools=['review_dossier'])
-    answer=OcopAgent(tmp_path).answer({'query':'Rà soát hồ sơ',
-        'route':route.model_dump(mode='json'),
-        'results':[{'tool':'review_dossier','output':{'status':status}}]})['answer']
-    assert answer['status']!='provisional'
-    assert answer['citations']==[]
-
-
 def test_missing_private_dossier_with_auth_returns_clear_unresolved_status(tmp_path):
     from ai_core.orchestration.ocop.contracts import AuthContext
     answer=OcopAgent(tmp_path).ask('Rà soát hồ sơ của tôi còn thiếu gì?',
         session={'dossier_id':'does-not-exist'},
         auth_context=AuthContext(principal_id='user-1',tenant_id='tenant-1'))
-    assert answer.status=='dossier_not_found'
+    assert answer.intent.value in ('OUT_OF_SCOPE', 'CLARIFY') or answer.status in ('out_of_scope', 'clarify')
     assert answer.citations==[]
+
+def test_score_estimation_query_routes_out_of_scope_or_clarify():
+    from ai_core.orchestration.ocop.contracts import Intent
+    for q in ('chấm điểm hồ sơ của tôi', 'ước tính điểm hồ sơ OCOP', 'tính điểm cho sản phẩm của tôi'):
+        r = route_query(q)
+        assert r.intent in (Intent.OUT_OF_SCOPE, Intent.CLARIFY), (q, r.intent)
 
 
 @pytest.mark.parametrize('status',['local_guidance_not_in_corpus', 'local_guidance_document_scope_mismatch'])

@@ -66,17 +66,13 @@ class OcopAgent:
     def route(self,state:OcopState)->dict:
         query=state['query'];session=state.get('session') or {}
         # Identity originates only from a trusted AuthContext, never a session.
-        safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','dossier_id','unresolved') if key in session}
+        safe_session={key:session[key] for key in ('last_query','slots','intent','capabilities','unresolved') if key in session}
         if 'memory' in session:safe_session['memory']=memory.sanitize(session['memory'])
         auth=state.get('auth')
         if isinstance(auth,AuthContext):safe_session['tenant_id']=auth.tenant_id
         choice=route_query(query,session=safe_session,llm_route=(self.llm.route if self.llm else None),
             indexed_content_bigram_coverage=lambda text:query_content_bigram_coverage(
                 self.tools.index_dir,text),catalog=self._catalog())
-        if (choice.intent in (Intent.DOSSIER_REVIEW,Intent.SCORE_ESTIMATE) or
-            set(choice.required_tools)&{'review_dossier','estimate_score'}) and not isinstance(auth,AuthContext):
-            choice=Route(intent=Intent.CLARIFY,strategy='clarify',needs_clarification=True,
-                         missing_slots=['authentication'],reason_codes=['untrusted_session_cannot_authorize'])
         effective=query;method='none'
         if choice.dialogue.acts and choice.dialogue.action=='task':
             from ai_core.orchestration.ocop.dialogue import understand
@@ -131,7 +127,7 @@ class OcopAgent:
         context={'retrieval_mode':self.retrieval_mode,'rerank':self.rerank,
                  'allow_partial_debug':self.allow_partial_debug,
                  'business_intent':Route.model_validate(state['route']).intent.value,
-                 'dossier_id':(state.get('session') or {}).get('dossier_id')}
+}
         if slots.get('as_of_date'):context['as_of_date']=slots['as_of_date']
         elif isinstance(provided.get('as_of_date'),str) and re.fullmatch(r'20\d{2}-\d{2}-\d{2}',provided['as_of_date']):
             context['as_of_date']=provided['as_of_date']
@@ -428,20 +424,6 @@ class OcopAgent:
                 return {'answer':{'answer':'Tầng tra cứu chưa có cây phiếu đã kiểm tra khớp số phiếu và nguồn '
                                   'được hỏi; không dùng phương án của phiếu khác.',
                                   'status':'insufficient_sheet_scope','citations':[]}}
-        if any(x.get('tool') in ('review_dossier','estimate_score') for x in outputs):
-            outcome=outputs[0].get('output',{}) if outputs else {'status':'not_found'}
-            # Never make empty candidate data into a passing dossier or score.
-            private_status={
-                'provisional_not_official':'provisional',
-                'rules_not_verified':'insufficient_verified_rules',
-                'not_ready':'insufficient_verified_rules',
-                'not_found':'dossier_not_found',
-                'tool_unavailable':'backend_unavailable',
-            }.get(outcome.get('status'),'private_assessment_unavailable')
-            return {'answer':{'answer':('Đánh giá sơ bộ (không phải phân hạng chính thức): '
-                       if private_status=='provisional' else 'Không thể hoàn tất đánh giá hồ sơ: ')+
-                       json.dumps(outcome,ensure_ascii=False),
-                       'status':private_status,'citations':[]}}
         # A dated law/criteria comparison requires verified temporal rules,
         # not just PDFs with publication years in filenames. Text retrieval
         # may provide background, but never silently certify applicability.
@@ -589,12 +571,8 @@ class OcopAgent:
                            'auth':auth_context}
         engine='langgraph'
         checkpointer=None;invoke_config=None
-        # Private dossier state must not be recorded in plaintext LangGraph
-        # snapshots. Public workflow checkpointing is explicit opt-in.
-        private_requested=bool({'review_dossier','estimate_score'} & set(
-            route_query(query,session=session or {},catalog=self._catalog()).required_tools))
         if should_checkpoint(env=os.environ,auth=auth_context,session=session or {},
-                             private_tools={'private'} if private_requested else set()):
+                             private_tools=set()):
             if self._checkpoint is None:
                 location=os.environ.get('OCOP_LANGGRAPH_CHECKPOINT_PATH')
                 if not location:raise RuntimeError('Set OCOP_LANGGRAPH_CHECKPOINT_PATH to a private writable location')

@@ -216,16 +216,6 @@ def test_recovery_invalid_output_fails_closed(tmp_path,monkeypatch):
     assert result['results'][1]['output']['results']==[]
 
 
-def test_private_tool_failure_never_recovers_into_public_retrieval(tmp_path):
-    route=Route(intent=Intent.DOSSIER_REVIEW,strategy='agentic',
-                required_tools=['review_dossier'])
-    agent=OcopAgent(tmp_path)
-    state={**_state(route),'results':[{'tool':'review_dossier',
-         'output':{'status':'tool_unavailable','results':[]}}]}
-    assert not agent._should_recover(state)
-    assert agent.recover(state)['results']==state['results']
-
-
 def test_recover_at_most_once_even_when_no_evidence(tmp_path,monkeypatch):
     route=_route(['lookup_form'])
     agent=OcopAgent(tmp_path);calls=[]

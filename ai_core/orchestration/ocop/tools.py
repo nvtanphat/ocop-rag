@@ -12,8 +12,6 @@ from ai_core.graph.ocop.retriever import traverse
 from ai_core.graph.ocop.lookup import GraphEvidence
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.temporal import resolve_event_applicability
-from ai_core.assessment.ocop.rules import checklist,estimate_score
-from ai_core.assessment.ocop.dossiers import DossierStore
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
@@ -86,7 +84,6 @@ class ToolRegistry:
         self.root=Path(root)
         self.index_dir=self.root/"data/processed/ocop/index"
         self.graph_dir=self.root/"data/processed/ocop/graph"
-        self.dossiers=DossierStore(self.root/"data/private/ocop/dossiers")
 
     def _graph_failure(self):
         return {'results':[], 'layer':'graph', 'reason':'checked_graph_snapshot_unavailable',
@@ -734,35 +731,6 @@ class ToolRegistry:
                         'not_applicable' if resolved else 'unknown'),
                     'reason':None if resolved else ('unresolved_applicability_verdict' if found
                         else 'no_applicable_verified_rules'), 'results':found}
-        if name in ("review_dossier","estimate_score"):
-            if not isinstance(auth,AuthContext):
-                raise PermissionError("Dossier tool requires trusted server AuthContext")
-            tenant,did=auth.tenant_id,context.get("dossier_id")
-            if not did:raise PermissionError("Dossier scope required")
-            dossier=self.dossiers.get(tenant,did,authorization_checked=True)
-            if dossier is None:return {"status":"not_found"}
-            # Rules are loaded only from the verified reference store, never
-            # from caller-controlled context or an LLM tool argument.
-            rules_path=self.root/"data/processed/ocop/knowledge"/(
-                "verified_requirements.jsonl" if name=="review_dossier" else "verified_criteria.jsonl")
-            if not rules_path.is_file():
-                return {"status":"rules_not_verified","reason":"verified_rules_store_missing","results":[]}
-            index_manifest=self.index_dir/"manifest.json"
-            if not index_manifest.is_file():return {"status":"rules_not_verified","reason":"missing_active_corpus","results":[]}
-            active_version=json.loads(index_manifest.read_text(encoding="utf-8")).get("corpus_version")
-            rules=[]
-            with rules_path.open(encoding="utf-8") as stream:
-                for line in stream:
-                    if line.strip():
-                        record=json.loads(line)
-                        if (record.get("review_status")=="verified" and record.get("evidence_unit_id") and
-                            record.get("corpus_version")==active_version):
-                            rules.append(record)
-            if not rules:return {"status":"rules_not_verified","reason":"no_verified_rules","results":[]}
-            if name=="review_dossier":
-                return {"status":"provisional_not_official","results":checklist(rules,dossier["documents"])}
-            answer_map=dossier.get("verified_answers") or {}
-            return estimate_score(rules,answer_map)
         if name=="open_source_span":
             identity=slots.get("evidence_unit_id")
             if not identity:return {"results":[]}

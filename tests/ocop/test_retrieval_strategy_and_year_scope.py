@@ -5,6 +5,7 @@ All rows and expected values are fabricated fixtures, NOT verified OCOP law.
 from __future__ import annotations
 import json
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path, RetrievalPath
+from ai_core.orchestration.ocop.contracts import Intent
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.workflow import OcopAgent
@@ -47,7 +48,6 @@ def test_path_phase_reflects_allowlisted_tools():
     assert choose_retrieval_path(['search_regulations'])==RetrievalPath.TEXT
     assert choose_retrieval_path(['search_graph'])==RetrievalPath.GRAPH
     assert choose_retrieval_path(['search_regulations','search_graph'])==RetrievalPath.HYBRID_GRAPH
-    assert choose_retrieval_path(['estimate_score'])==RetrievalPath.AGENTIC
 
 
 def test_two_level_router_keeps_business_intent():
@@ -56,7 +56,7 @@ def test_two_level_router_keeps_business_intent():
     compound=route_query('Đối chiếu tiêu chí chất lượng với mẫu hồ sơ OCOP?')
     assert compound.retrieval_path==RetrievalPath.HYBRID_GRAPH
     private=route_query('Rà soát hồ sơ của tôi còn thiếu gì?')
-    assert private.needs_clarification  # no authenticated dossier in session
+    assert private.intent in (Intent.OUT_OF_SCOPE, Intent.CLARIFY)
     assert private.retrieval_path==RetrievalPath.NONE
 
 

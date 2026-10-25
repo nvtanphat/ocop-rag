@@ -13,7 +13,6 @@ def test_all_five_public_strategy_labels_are_resolvable():
         (['search_regulations'], RetrievalPath.TEXT),
         (['search_graph'], RetrievalPath.GRAPH),
         (['search_graph', 'search_regulations'], RetrievalPath.HYBRID_GRAPH),
-        (['review_dossier'], RetrievalPath.AGENTIC),
         ([], RetrievalPath.NONE),
     ]
     for tools, expected in cases:

@@ -12,7 +12,6 @@ from time import monotonic
 from typing import Any
 
 from ai_core.orchestration.ocop import memory
-from ai_core.orchestration.ocop.capabilities import PRIVATE_TOOLS
 from ai_core.orchestration.ocop.privacy import redact
 
 TTL_SECONDS = 3600.0
@@ -44,14 +43,6 @@ class SessionStore:
             prior = self._items.get(session_id, (0.0, {}))[1]
             if self._clock() - self._items.get(session_id, (0.0, {}))[0] > self._ttl:
                 prior = {}
-            if set(getattr(response.route, 'required_tools', []) or []) & PRIVATE_TOOLS:
-                # A private request must not become the active public question
-                # that a later rephrase/source request would retrieve.
-                self._items[session_id] = (self._clock(), copy.deepcopy(prior))
-                self._items.move_to_end(session_id)
-                while len(self._items) > self._limit:
-                    self._items.popitem(last=False)
-                return
             if response.intent.value == 'CONVERSATION':
                 # Social traffic refreshes TTL but cannot age evidence, overwrite
                 # the active query, or consume a pending clarification.
@@ -70,8 +61,7 @@ class SessionStore:
                              prior.get('memory'), slots=response.route.slots,
                              standalone=redact(getattr(response, 'standalone_query', None) or query),
                              citations=list(getattr(response, 'citations', None) or []),
-                             corpus_version=getattr(response, 'corpus_version', None),
-                             private=bool(set(getattr(response.route, 'required_tools', []) or []) & PRIVATE_TOOLS))}
+                             corpus_version=getattr(response, 'corpus_version', None))}
             else:
                 # A turn that only asked for clarification (or was out of scope) did not establish a topic: keep the scope the
                 # conversation had, remember what is still unresolved.
