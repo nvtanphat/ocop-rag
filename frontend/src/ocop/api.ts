@@ -58,15 +58,26 @@ export interface Recognition extends GraphNode { linked_labels: string[] }
 export interface FormCandidate extends GraphNode { linked_labels: string[] }
 export interface GraphNode {
   node_id: string
-  check: "passed" | "human_verified"
+  check: "passed" | "human_verified" | "failed"
   origin: string
   node_type: string
   label: string
   source_id?: string
   review_status?: string
   evidence_unit_ids?: string[]
-  validation?: { status: string; legal_verified: boolean }
-  citations?: Array<{ pdf_page: number; source_sha256?: string }>
+  properties?: Record<string, any>
+  validation?: { status: string; legal_verified: boolean; method?: string }
+  citations?: Array<{
+    pdf_page: number
+    source_id?: string
+    source_sha256?: string
+    bbox?: number[] | null
+    quote?: string
+    row?: number
+    cell_id?: string
+    table_id?: string
+    evidence_unit_id?: string
+  }>
 }
 export interface GraphEdge {
   source_entity_id?: string
@@ -111,6 +122,8 @@ export const api = {
     request<AskResult>('/query', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, retrieval_mode, use_llm, session_id }), signal }),
   pdf: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf#page=${Math.max(1, page)}`,
+  sourcePdfUrl: (sourceId: string) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf`,
+  evidencePngUrl: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pages/${page}/evidence.png`,
 }
 
 export interface ReviewItem {

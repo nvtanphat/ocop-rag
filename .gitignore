@@ -21,6 +21,9 @@ reports/
 *.db
 
 # Local-only results and transient state
+/*.pdf
+/*.html
+.c2c.json
 coverage/
 htmlcov/
 .cache/

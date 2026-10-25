@@ -240,9 +240,9 @@ def _checked_snapshot():
 
 # Session state contains only conversational slots, never identity/tenant permissions.
 @lru_cache(maxsize=128)
-def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = ""):
+def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = "", allow_partial_debug: bool = False):
     # Never reuse an agent holding an obsolete index/graph after rebuild.
-    return OcopAgent(ROOT, llm=make_answer_client() if with_llm else None, retrieval_mode=retrieval_mode)
+    return OcopAgent(ROOT, llm=make_answer_client() if with_llm else None, retrieval_mode=retrieval_mode, allow_partial_debug=allow_partial_debug)
 
 
 @router.post("/query")
@@ -252,9 +252,9 @@ async def ask(request: AskRequest):
         raise HTTPException(status_code=503, detail="Kho OCOP đang cập nhật, thử lại sau.")
     if not manifest:
         raise HTTPException(status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run.")
-    # Fail closed: only a complete source-locked, parser-versioned corpus may be queried.
     readiness = OcopSystemPipeline(ROOT).status(validate_sources=True)
-    if readiness["state"] != "ready":
+    allow_partial = readiness["state"] != "ready" and bool(manifest.get("corpus_version"))
+    if not allow_partial and readiness["state"] != "ready":
         raise HTTPException(status_code=503, detail=(
             "Corpus OCOP chưa đồng bộ/đúng phiên bản. "
             "Chạy python tools/cli.py run --build-only."
@@ -262,7 +262,7 @@ async def ask(request: AskRequest):
     # Public search only. No client-provided tenant_id or dossier privileges.
     try:
         use_llm = request.use_llm and understand(request.query)[0].action != 'respond'
-        agent = _agent(use_llm, request.retrieval_mode, manifest.get("corpus_version", ""))
+        agent = _agent(use_llm, request.retrieval_mode, manifest.get("corpus_version", ""), allow_partial)
     except (RuntimeError, ValueError, OSError) as exc:
         raise service_unavailable('llm_unavailable' if request.use_llm else 'agent_unavailable', 'configuration', exc) from exc
     try:

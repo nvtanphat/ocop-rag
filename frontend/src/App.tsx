@@ -1,5 +1,5 @@
-import Dashboard from './pages/Dashboard'
+import OcopPortal from './pages/OcopPortal'
 
 export default function App() {
-  return <Dashboard />
+  return <OcopPortal />
 }
