@@ -347,8 +347,6 @@ def build_dense(chunks:list[dict],*,collection:str,model_id:str,revision:str|Non
 def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24,
                 with_dense:bool=False,embedding_model:str=DEFAULT_EMBEDDING_MODEL,
                 embedding_revision:str|None=DEFAULT_EMBEDDING_REVISION,
-                with_mongo:bool=False,mongo_uri:str="mongodb://127.0.0.1:27017",
-                mongo_database:str="ocop_rag",
                 qdrant_host:str="localhost",qdrant_port:int=6333,
                 token_budget:int=DEFAULT_TARGET_CHUNK_TOKENS,tokenizer_path:str|None=None,
                 model_max_tokens:int|None=None,
@@ -426,11 +424,6 @@ def build_index(*,knowledge:Path,index_dir:Path,max_words:int=200,overlap:int=24
              host=qdrant_host,port=qdrant_port)
         manifest["dense"]=dense;manifest["status"]="hybrid_ready"
         _write_json(index_dir/"manifest.json",manifest)
-    if with_mongo:
-        from ai_core.retrieval.ocop.mongo_index import index_mongo
-        manifest["mongo"]=index_mongo(index_dir,corpus_version=corpus_version,
-            uri=mongo_uri,database=mongo_database)
-        _write_json(index_dir/"manifest.json",manifest)
     if allow_partial:
         manifest["status"]="partial_debug_not_production"
         _write_json(index_dir/"manifest.json",manifest)
@@ -453,10 +446,6 @@ def main():
     p.add_argument("--allow-partial",action="store_true",
                    help="Debug-only: index incomplete evidence and mark output non-production")
     p.add_argument("--with-dense",action="store_true")
-    p.add_argument("--with-mongo",action="store_true",
-                   help="Materialize OCOP evidence/chunks/facts in separate MongoDB database")
-    p.add_argument("--mongo-uri",default="mongodb://127.0.0.1:27017")
-    p.add_argument("--mongo-database",default="ocop_rag")
     p.add_argument("--embedding-model",default=DEFAULT_EMBEDDING_MODEL)
     p.add_argument("--embedding-revision",default=DEFAULT_EMBEDDING_REVISION,
                    help="Pinned Hugging Face model commit; recommended for repeatable index releases")
@@ -467,7 +456,6 @@ def main():
     out=build_index(knowledge=local(args.knowledge),index_dir=local(args.output),max_words=args.max_words,
        overlap=args.overlap,with_dense=args.with_dense,embedding_model=args.embedding_model,
        embedding_revision=args.embedding_revision,
-       with_mongo=args.with_mongo,mongo_uri=args.mongo_uri,mongo_database=args.mongo_database,
        qdrant_host=args.qdrant_host,qdrant_port=args.qdrant_port,
        token_budget=args.token_budget,tokenizer_path=args.tokenizer_path,
        model_max_tokens=args.model_max_tokens,

@@ -39,16 +39,14 @@ def main() -> None:
                      help="Use the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules (enabled by default; --no-semantic-extract disables it)")
     run.add_argument("--semantic-max-units", type=int, default=None,
                      help="Maximum EvidenceUnits sent to the extraction LLM (default: all eligible units)")
-    run.add_argument("--full", action="store_true", help="Require Dense, MongoDB, Neo4j and the answer LLM")
+    run.add_argument("--full", action="store_true", help="Require Dense, Neo4j and the answer LLM")
     run.add_argument("--require-eval-gate", action="store_true", help="Block serving when verified production evaluation gates fail")
-    run.add_argument("--mongo", action="store_true", help="Also materialize structured data in MongoDB")
     run.add_argument("--neo4j", action="store_true", help="Also publish graph into Neo4j")
     run.add_argument("--dpi", type=int, default=300)
     run.add_argument("--embedding-model", default="google/embeddinggemma-300m")
     run.add_argument("--embedding-revision")
     run.add_argument("--qdrant-host", default="localhost")
     run.add_argument("--qdrant-port", type=int, default=6333)
-    run.add_argument("--mongo-uri", default="mongodb://127.0.0.1:27017")
     run.add_argument("--neo4j-uri", default="bolt://localhost:7687")
     run.add_argument("--no-llm", action="store_true", help="Use evidence-only answer mode")
     run.add_argument("--retrieval-mode", choices=("auto", "sparse", "dense", "hybrid"), default="auto")
@@ -128,11 +126,11 @@ def main() -> None:
                                     os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"))
         prepared = system.ensure(PipelineOptions(
             ocr_dataset=args.ocr_dataset,
-            refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, mongo=args.mongo or args.full, neo4j=args.neo4j or args.full,
+            refresh=args.refresh, semantic_extract=args.semantic_extract, semantic_max_units=args.semantic_max_units, dense=args.dense or args.full, neo4j=args.neo4j or args.full,
             dpi=args.dpi,
             embedding_model=args.embedding_model, embedding_revision=args.embedding_revision,
             qdrant_host=args.qdrant_host, qdrant_port=args.qdrant_port,
-            mongo_uri=args.mongo_uri, neo4j_uri=args.neo4j_uri,
+            neo4j_uri=args.neo4j_uri,
         ))
         print(json.dumps({"pipeline": prepared}, indent=2, ensure_ascii=False), flush=True)
         if args.require_eval_gate or os.environ.get('OCOP_ENFORCE_RELEASE_GATE')=='1':

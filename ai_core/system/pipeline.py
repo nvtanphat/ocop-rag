@@ -91,12 +91,9 @@ class PipelineOptions:
     ocr_dataset: Path | None = None
     dpi: int = 300
     dense: bool = False
-    mongo: bool = False
     neo4j: bool = False
     embedding_model: str = "google/embeddinggemma-300m"
     embedding_revision: str | None = None
-    mongo_uri: str = "mongodb://127.0.0.1:27017"
-    mongo_database: str = "ocop_rag"
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
     neo4j_uri: str = "bolt://localhost:7687"
@@ -197,7 +194,6 @@ class OcopSystemPipeline:
             "semantic": semantic,
             "semantic_matches_config": matches_config,
             "neo4j_ready": graph.get("neo4j", {}).get("status") == "uploaded",
-            "mongo_ready": bool(index.get("mongo")),
             "model_generation": "qwen3.5:2b (optional Ollama service)",
             "provenance_status": "machine_extracted_not_legally_verified",
             "last_build": manifest.get("built_at"),
@@ -226,7 +222,6 @@ class OcopSystemPipeline:
             if not options.refresh and current["state"] == "ready":
                 index = _load_json(self.data / "index" / "manifest.json")
                 graph = _load_json(self.data / "graph" / "manifest.json")
-                mongo_ok = not options.mongo or bool(index.get("mongo"))
                 neo4j_ok = not options.neo4j or graph.get("neo4j", {}).get("status") == "uploaded"
                 dense_config_ok = (not options.dense or (current["dense_ready"]
                     and index.get("dense", {}).get("model_id") == options.embedding_model
@@ -237,7 +232,7 @@ class OcopSystemPipeline:
                 pdf_config_ok = runtime_config_ok
                 knowledge_manifest = _load_json(self.data / "knowledge" / "manifest.json")
                 semantic_ok = _semantic_complete(knowledge_manifest.get('semantic_proposals', {}), options)
-                if dense_config_ok and pdf_config_ok and mongo_ok and neo4j_ok and semantic_ok:
+                if dense_config_ok and pdf_config_ok and neo4j_ok and semantic_ok:
                     return {**current, "reused": True}
             # Construct the complete pipeline away from the live artifact tree.
             with tempfile.TemporaryDirectory(prefix="ocop-build-", dir=self.data) as temporary:
@@ -311,8 +306,6 @@ class OcopSystemPipeline:
                     index = build_index(
                         knowledge=staging_dir / "knowledge", index_dir=staging_dir / "index",
                         with_dense=options.dense,
-                        with_mongo=options.mongo,
-                        mongo_uri=options.mongo_uri, mongo_database=options.mongo_database,
                         embedding_model=options.embedding_model, embedding_revision=options.embedding_revision,
                         qdrant_host=options.qdrant_host, qdrant_port=options.qdrant_port,
                         model_max_tokens=__import__('ai_core.retrieval.ocop.models_config', fromlist=['get_model_max_tokens']).get_model_max_tokens(self.root),
@@ -321,8 +314,6 @@ class OcopSystemPipeline:
                         raise RuntimeError("Cross-store corpus version mismatch")
                     if options.dense and not index.get("dense", {}).get("enabled"):
                         raise RuntimeError("Requested dense indexing was not completed")
-                    if options.mongo and not index.get("mongo"):
-                        raise RuntimeError("Requested MongoDB materialization was not completed")
                     if options.neo4j and graph.get("neo4j", {}).get("status") != "uploaded":
                         from ai_core.graph.ocop.store import publish_neo4j
                         password = os.getenv("NEO4J_PASSWORD")

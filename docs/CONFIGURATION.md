@@ -137,9 +137,6 @@ ocr:
 * **Qdrant Vector DB** (Mặc định: `http://localhost:6333`):
   * Lưu trữ các điểm vector 768 chiều từ `EmbeddingGemma-300M` cho tìm kiếm dày đặc (dense retrieval).
   * Bộ sưu tập (collection): `ocop_dense_chunks`.
-* **MongoDB** (Tùy chọn, mặc định: `mongodb://127.0.0.1:27017`):
-  * Dùng để vật chất hóa các bản ghi cấu trúc và bảng biểu qua cờ `--mongo` hoặc `--full`.
-  * Database: `ocop_rag`.
 * **Neo4j** (Tùy chọn, mặc định: `bolt://localhost:7687`):
   * Dùng để lưu trữ và trực quan hóa đồ thị tri thức qua cờ `--neo4j` hoặc `--full`.
   * Tài khoản mặc định: `neo4j` / Mật khẩu: khai báo qua `NEO4J_PASSWORD`.

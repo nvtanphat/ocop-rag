@@ -16,11 +16,6 @@ services:
     depends_on: [backend]
     ports:
       - "127.0.0.1:5173:80"
-  mongo:
-    image: mongo:7
-    profiles: [stores]
-    ports: ["127.0.0.1:27017:27017"]
-    volumes: [ocop_mongo:/data/db]
   qdrant:
     image: qdrant/qdrant:latest
     profiles: [stores]
@@ -34,6 +29,5 @@ services:
     ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
     volumes: [ocop_neo4j:/data]
 volumes:
-  ocop_mongo:
   ocop_qdrant:
   ocop_neo4j:
