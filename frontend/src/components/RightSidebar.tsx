@@ -1,6 +1,16 @@
+import { useRef } from "react";
 import type { Citation, ReferenceResponse, Source } from "../api/client";
 import type { View } from "../app/navigation";
-import { Icon } from "./Icon";
+import { sourceTitle } from "../app/sourceLabels";
+import { Icon, type IconName } from "./Icon";
+
+const tiles = [
+  ["#f3b86a", "#d98521"],
+  ["#a8dca0", "#46a05a"],
+  ["#9fd3ea", "#3a86b4"],
+  ["#f2b18a", "#c4623b"],
+  ["#c9b6ea", "#7a56c2"],
+];
 
 export function RightSidebar({
   sources,
@@ -23,136 +33,116 @@ export function RightSidebar({
   onCitation: (citation: Citation) => void;
   onGraph: () => void;
 }) {
+  const track = useRef<HTMLDivElement>(null);
+  const scroll = (direction: number) =>
+    track.current?.scrollBy({ left: (direction * track.current.clientWidth) / 1.5 });
+  const actions: Array<{ cls: string; icon: IconName; title: string; hint: string; run: () => void }> = [
+    { cls: "c1", icon: "docs", title: "Tra cứu văn bản", hint: "Pháp luật OCOP", run: () => onNavigate("documents") },
+    { cls: "c2", icon: "criteria", title: "Xem tiêu chí", hint: "Đã xác minh", run: () => onNavigate("criteria") },
+    { cls: "c3", icon: "store", title: "Tìm sản phẩm", hint: "Nguồn đã duyệt", run: () => onNavigate("products") },
+    { cls: "c4", icon: "graph", title: "Đồ thị dẫn chứng", hint: "Truy vết câu trả lời", run: onGraph },
+  ];
   return (
-    <aside className="right-sidebar">
-      <section className="side-card panel">
+    <aside className="cv rightcol" id="rightcol">
+      <section className="rcd">
         <h3>
-          <Icon name="sparkles" size={18} className="gold-icon" />
+          <Icon name="bolt" />
           Hành động nhanh
         </h3>
-        <div className="quick-actions">
-          <button onClick={() => onNavigate("documents")}>
-            <span className="quick-icon">
-              <Icon name="file" size={23} />
-            </span>
-            <span>
-              <b>Tra cứu văn bản</b>
-              <small>Pháp luật OCOP</small>
-            </span>
-          </button>
-          <button onClick={() => onNavigate("criteria")}>
-            <span className="quick-icon">
-              <Icon name="criteria" size={23} />
-            </span>
-            <span>
-              <b>Xem tiêu chí</b>
-              <small>Đã xác minh</small>
-            </span>
-          </button>
-          <button onClick={() => onNavigate("products")}>
-            <span className="quick-icon">
-              <Icon name="box" size={23} />
-            </span>
-            <span>
-              <b>Tìm sản phẩm</b>
-              <small>Nguồn đã duyệt</small>
-            </span>
-          </button>
-          <button onClick={onGraph}>
-            <span className="quick-icon">
-              <Icon name="graph" size={23} />
-            </span>
-            <span>
-              <b>Đồ thị dẫn chứng</b>
-              <small>Truy vết câu trả lời</small>
-            </span>
-          </button>
+        <div className="qa">
+          {actions.map((action) => (
+            <button key={action.cls} type="button" className={action.cls} onClick={action.run}>
+              <span className="ic">
+                <Icon name={action.icon} size={30} />
+              </span>
+              <div>
+                <b>{action.title}</b>
+                <span>{action.hint}</span>
+              </div>
+            </button>
+          ))}
         </div>
       </section>
-      <section className="side-card panel">
+      <section className="rcd">
         <h3>
-          <Icon name="file" size={17} />
+          <Icon name="docs" strokeWidth={1.8} />
           Tài liệu nguồn
-          <button className="text-link" onClick={() => onNavigate("documents")}>
+          <a href="#documents" onClick={(event) => { event.preventDefault(); onNavigate("documents"); }}>
             Xem thêm →
-          </button>
+          </a>
         </h3>
         {loading ? (
-          <p className="side-note">Đang tải tài liệu…</p>
+          <p className="vstate">Đang tải tài liệu…</p>
         ) : sourceError ? (
-          <p className="inline-error" role="alert">
-            {sourceError}
-          </p>
+          <p className="vstate err" role="alert">{sourceError}</p>
         ) : !sources.length ? (
-          <p className="side-note">Chưa có tài liệu trong danh mục.</p>
+          <p className="vstate">Chưa có tài liệu trong danh mục.</p>
         ) : (
-          <div className="related-documents">
+          <div className="rel">
             {sources.slice(0, 4).map((source) => (
-              <button key={source.source_id} onClick={() => onDocument(source)}>
-                <span className="file-badge">PDF</span>
-                <span className="related-copy">
-                  <b>{source.document_number || source.filename}</b>
-                  <small>{source.jurisdiction || source.filename}</small>
-                </span>
-                <Icon name="right" size={13} />
+              <button key={source.source_id} type="button" onClick={() => onDocument(source)}>
+                <span className="fi k-pdf">PDF</span>
+                <div className="t">
+                  <b>{sourceTitle(source, source.source_id)}</b>
+                  <span className="s">{source.jurisdiction || source.filename}</span>
+                </div>
               </button>
             ))}
           </div>
         )}
       </section>
-      <section className="side-card panel products-card">
+      <section className="rcd grow">
         <h3>
-          <Icon name="award" size={17} />
+          <Icon name="criteria" strokeWidth={1.8} />
           Sản phẩm OCOP
-          <button className="text-link" onClick={() => onNavigate("products")}>
+          <a href="#products" onClick={(event) => { event.preventDefault(); onNavigate("products"); }}>
             Xem thêm →
-          </button>
+          </a>
         </h3>
         {loading ? (
-          <p className="side-note">Đang tải sản phẩm…</p>
+          <p className="vstate">Đang tải sản phẩm…</p>
         ) : productError ? (
-          <p className="inline-error" role="alert">
-            {productError}
-          </p>
+          <p className="vstate err" role="alert">{productError}</p>
         ) : !products?.items.length ? (
-          <div className="product-empty">
-            <div className="product-empty-art">
-              <Icon name="leaf" size={43} />
-              <span />
-              <i />
+          <div className="vstate">
+            <h3>Chưa có dữ liệu xác minh</h3>
+            <p>Sản phẩm chỉ hiển thị khi có căn cứ đã được đối soát với nguồn.</p>
+          </div>
+        ) : (
+          <div className="car">
+            <button type="button" className="pv" onClick={() => scroll(-1)} aria-label="Trước">
+              <Icon name="left" size={16} strokeWidth={2.4} />
+            </button>
+            <div className="track" ref={track}>
+              {products.items.map((item, index) => {
+                const [c1, c2] = tiles[index % tiles.length];
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="pc"
+                    onClick={() => onCitation(item.citations[0])}
+                  >
+                    <div className="im tile" style={{ ["--c1" as string]: c1, ["--c2" as string]: c2 }}>
+                      <Icon name="box" size={44} />
+                    </div>
+                    <div className="tx">
+                      <b>{item.label}</b>
+                      <span className="ver">
+                        <Icon name="check" size={12} strokeWidth={2.4} />
+                        Nguồn đã xác minh
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <b>Chưa có dữ liệu xác minh</b>
-            <p>Sản phẩm sẽ hiển thị khi có căn cứ đã được đối soát.</p>
-            <button
-              className="subtle-button"
-              onClick={() => onNavigate("products")}
-            >
-              Xem danh mục <Icon name="arrow" size={14} />
+            <button type="button" className="nx" onClick={() => scroll(1)} aria-label="Sau">
+              <Icon name="right" size={16} strokeWidth={2.4} />
             </button>
           </div>
-        ) : (
-          <div className="verified-products">
-            {products.items.slice(0, 3).map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onCitation(item.citations[0])}
-              >
-                <span className="verified-product-icon">
-                  <Icon name="box" size={31} />
-                </span>
-                <b>{item.label}</b>
-                <small>
-                  <Icon name="check" size={12} /> Nguồn đã xác minh
-                </small>
-              </button>
-            ))}
-          </div>
         )}
       </section>
-      <p className="sidebar-footnote">
-        <Icon name="leaf" size={13} />
-        Tri thức từ nguồn · Tin cậy từ bằng chứng
-      </p>
     </aside>
   );
 }

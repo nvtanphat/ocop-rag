@@ -9,6 +9,7 @@ export function TopHeader({
   error,
   onReload,
   search,
+  placeholder,
   onSearch,
   onSubmit,
   searchRef,
@@ -20,6 +21,7 @@ export function TopHeader({
   error?: string;
   onReload: () => void;
   search: string;
+  placeholder: string;
   onSearch: (value: string) => void;
   onSubmit: () => void;
   searchRef: RefObject<HTMLInputElement | null>;
@@ -37,65 +39,65 @@ export function TopHeader({
           ? "Đang cập nhật corpus"
           : "Corpus chưa sẵn sàng";
   return (
-    <header className="workspace-header">
-      <a className="brand" href="#" aria-label="OCOP RAG">
-        <img
-          src={brand}
-          alt="OCOP RAG — Trợ lý pháp lý và quy chuẩn OCOP Việt Nam"
-        />
-      </a>
+    <header id="top">
+      <img
+        className="brand"
+        src={brand}
+        alt="OCOP RAG — Trợ lý pháp lý và quy chuẩn OCOP Việt Nam"
+      />
       <div className="tagline">
         Tri thức OCOP<span>luôn có căn cứ</span>
       </div>
-      <div className="header-actions">
-        <form
-          className="global-search"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit();
-          }}
-        >
-          <Icon name="search" size={17} />
-          <input
-            ref={searchRef}
-            aria-label="Tìm kiếm OCOP"
-            placeholder="Khám phá tri thức OCOP…"
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-          />
-          <kbd>Ctrl K</kbd>
-        </form>
-        <button
-          className="header-icon"
-          onClick={onTheme}
-          aria-label="Đổi giao diện"
-          title={dark ? "Giao diện sáng" : "Giao diện tối"}
-        >
-          <Icon name={dark ? "moon" : "sun"} />
-        </button>
-        <span className="profile-icon" title="Phiên tra cứu công khai">
-          <Icon name="user" size={21} />
-        </span>
-      </div>
+      <form
+        className="glass search"
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <Icon name="search" size={18} strokeWidth={2} />
+        <input
+          ref={searchRef}
+          id="gsearch"
+          type="text"
+          aria-label="Tìm kiếm OCOP"
+          placeholder={placeholder}
+          autoComplete="off"
+          value={search}
+          onChange={(event) => onSearch(event.target.value)}
+        />
+        <kbd>Ctrl K</kbd>
+      </form>
+      <button
+        type="button"
+        className="glass theme hov"
+        onClick={onTheme}
+        title="Đổi giao diện sáng/tối"
+        aria-label="Đổi giao diện"
+      >
+        <Icon name={dark ? "moon" : "sun"} strokeWidth={1.8} />
+      </button>
+      <span className="avc top-av" title="Phiên tra cứu công khai">
+        <Icon name="userSolid" size={26} />
+      </span>
       <div
-        className="header-status"
+        className="glass hstatus"
         role="status"
         title={
           error ||
           `Backend: ${health?.status || "đang kết nối"} · Corpus: ${health?.corpus_version || "chưa có"}`
         }
       >
-        <span
-          className={`status-dot ${error ? "offline" : ready ? "ready" : "pending"}`}
-        />
+        <i className={error ? "off" : ready ? "ok" : ""} />
         <span>{state}</span>
         {health && (
-          <span className="source-count">
+          <small>
             {health.sources_registered} nguồn · {health.pages} trang
-          </span>
+          </small>
         )}
         <button
+          type="button"
           onClick={onReload}
           disabled={loading}
           aria-label="Tải lại dữ liệu"

@@ -1,49 +1,60 @@
 import type { CSSProperties } from "react";
 
-const paths = {
-  chat: "M4 4h16v12H9l-5 4V4Zm4 5h8M8 12h5",
-  file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 12h8M8 16h6",
-  criteria: "M9 3H5v18h14V3h-4M9 2h6v4H9V2Zm-1 11 3 3 5-6",
-  award: "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm-4 0-1 7 5-3 5 3-1-7",
-  history: "M3 11a9 9 0 1 1 2.5 7M3 4v7h7m2-4v5l3 2",
-  sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5",
-  moon: "M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z",
-  search: "M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm5.5 13 5 5",
-  send: "m22 2-7 20-4-9L2 9l20-7ZM11 13 22 2",
-  arrow: "M4 12h16m-6-6 6 6-6 6",
-  left: "m15 5-7 7 7 7",
-  right: "m9 5 7 7-7 7",
-  close: "m6 6 12 12M6 18 18 6",
-  refresh: "M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6",
-  copy: "M9 9h12v12H9V9ZM5 16H3V3h13v2",
-  check: "m5 12 4 4L19 6",
-  graph:
-    "M5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm14 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm-7 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 7l5 10M18 7l-5 10M7 5h10",
-  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 9v-2a8 8 0 0 1 16 0v2",
-  plus: "M12 5v14M5 12h14",
-  sparkles:
-    "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3ZM20 2v4m-2-2h4",
-  help: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm-3-14a3 3 0 0 1 6 0c0 2-3 2-3 5m0 4h.01",
-  external: "M14 3h7v7m0-7L10 14M10 3H3v18h18v-7",
-  leaf: "M20 4C8 2 2 9 6 16s16 3 14-12ZM4 21 16 9",
-  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-12v7m0-10h.01",
-  grid: "M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z",
-  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
-  book: "M12 6C8 3 4 3 2 4v15c4-1 7 0 10 2m0-15c4-3 8-3 10-2v15c-4-1-7 0-10 2V6Z",
-  box: "m12 2 9 5v10l-9 5-9-5V7l9-5Zm-9 5 9 5 9-5M12 12v10M7 4.5l10 5.5",
-  zoomIn: "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6M7 10h6m-3-3v6",
-  zoomOut: "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6M7 10h6",
+// Static SVG fragments (no user input), drawn on a 24x24 grid.
+const inner = {
+  chat: '<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  docs: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',
+  criteria: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 12l2 2 4-4"/>',
+  award: '<circle cx="12" cy="9" r="5"/><path d="M9 13.5L7.5 21l4.5-2.5 4.5 2.5L15 13.5"/>',
+  store: '<path d="M4 9l2-5h12l2 5v1a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-4 0zM5 13v7h14v-7"/>',
+  history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  moon: '<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 114 2c-.9.6-1.6 1-1.6 2M12 17v.2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M16 16l5 5"/>',
+  send: '<path d="M21 3L3 10l7 3 3 7z"/><path d="M10 13l11-10"/>',
+  bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6z" fill="#f5b014" stroke="#f5b014" stroke-width="1"/>',
+  graph: '<circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 7l4 9M17 7l-4 9M7.2 6h9.6"/>',
+  left: '<path d="M15 5l-7 7 7 7"/>',
+  right: '<path d="M9 5l7 7-7 7"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  refresh: '<path d="M20 7a9 9 0 0 0-15-2L2 8m0-6v6h6m-4 9a9 9 0 0 0 15 2l3-3m0 6v-6h-6"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/>',
+  expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  open: '<path d="M14 4h6v6M20 4l-8 8M10 20H4v-6"/>',
+  region: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3"/>',
+  fit: '<rect x="5" y="5" width="14" height="14" rx="3"/><circle cx="12" cy="12" r="2.5"/>',
+  gridView: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
+  listView: '<path d="M5 7h14M5 12h14M5 17h14"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  list: '<path d="M5 6h14M5 12h14M5 18h8"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/>',
+  compare: '<path d="M7 7h12l-3-3M17 17H5l3 3"/>',
+  person: '<circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  page: '<rect x="5" y="3" width="14" height="18" rx="2"/>',
+  pages: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6"/>',
+  box: '<path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm-9 5 9 5 9-5M12 12v10"/>',
+  userSolid: '<g fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7z"/></g>',
+  hlDot: '<circle cx="12" cy="12" r="10" fill="#e0343c" stroke="none"/><circle cx="12" cy="12" r="3.5" stroke="#fff" stroke-width="2"/>',
+  checkBadge: '<circle cx="12" cy="12" r="10" fill="#18a56e" stroke="none"/><path d="M7 12.5l3.2 3L17 9" stroke="#fff" stroke-width="2.6"/>',
+  leaf: '<path d="M20 4C8 2 2 9 6 16s16 3 14-12ZM4 21 16 9"/>',
 } as const;
 
-export type IconName = keyof typeof paths;
+export type IconName = keyof typeof inner;
 export function Icon({
   name,
   size = 20,
+  strokeWidth = 1.7,
   className,
   style,
 }: {
   name: IconName;
   size?: number;
+  strokeWidth?: number;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -54,14 +65,13 @@ export function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       className={className}
       style={style}
-    >
-      <path d={paths[name]} />
-    </svg>
+      dangerouslySetInnerHTML={{ __html: inner[name] }}
+    />
   );
 }

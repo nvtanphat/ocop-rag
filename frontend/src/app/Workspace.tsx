@@ -15,12 +15,20 @@ import { TopHeader } from "../components/TopHeader";
 import { Sidebar } from "../components/Sidebar";
 import { RightSidebar } from "../components/RightSidebar";
 import { Backdrop } from "../components/Backdrop";
-import { Icon } from "../components/Icon";
+import { Icon, type IconName } from "../components/Icon";
 import type { View } from "./navigation";
 import "../styles/workspace.css";
 
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "Không tải được dữ liệu OCOP.";
+const placeholders: Record<View, string> = {
+  chat: "Khám phá tri thức OCOP...",
+  documents: "Tìm văn bản pháp quy...",
+  criteria: "Tìm tiêu chí chấm điểm...",
+  products: "Tìm sản phẩm OCOP...",
+  history: "Tìm trong lịch sử...",
+};
+
 export default function Workspace() {
   const [view, setView] = useState<View>("chat");
   const [health, setHealth] = useState<Health | null>(null);
@@ -92,6 +100,14 @@ export default function Workspace() {
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
   }, []);
+  // The shared stylesheet keys its layout off body state.
+  useEffect(() => {
+    const body = document.body;
+    body.dataset.view = view === "chat" ? "chat" : view;
+    body.classList.toggle("dark", dark);
+    body.classList.toggle("pdf-open", view === "chat" && !!selected);
+    body.classList.toggle("graph-open", view === "chat" && graphOpen);
+  }, [view, dark, selected, graphOpen]);
 
   const send = async (suggested?: string) => {
     const text = (suggested ?? question).trim();
@@ -113,9 +129,7 @@ export default function Workspace() {
         use_llm: useLlm,
       });
       setMessages((previous) =>
-        previous.map((message) =>
-          message.id === id ? { ...message, answer } : message,
-        ),
+        previous.map((message) => (message.id === id ? { ...message, answer } : message)),
       );
     } catch (error) {
       setMessages((previous) =>
@@ -134,20 +148,16 @@ export default function Workspace() {
     setGraphOpen(false);
   };
   const openCitation = (citation: Citation) => {
+    setView("chat");
     setSelected(citation);
     setGraphOpen(false);
   };
   const openDocument = (source: Source) =>
-    openCitation({
-      source_id: source.source_id,
-      pdf_page: 1,
-      evidence_unit_id: null,
-    });
+    openCitation({ source_id: source.source_id, pdf_page: 1, evidence_unit_id: null });
   const openGraph = (message?: Message) => {
+    setView("chat");
     setGraphMessage(
-      message ||
-        [...messages].reverse().find((item) => item.answer?.citations.length) ||
-        null,
+      message || [...messages].reverse().find((item) => item.answer?.citations.length) || null,
     );
     setGraphOpen(true);
     setSelected(null);
@@ -168,11 +178,31 @@ export default function Workspace() {
       0,
     );
   };
-  const reference = view === "criteria" ? criteria : products;
-  const detailed = !!selected || graphOpen;
+
+  const viewState = (name: string) =>
+    errors[name] ? (
+      <div className="vstate err" role="alert">
+        <h3>Không tải được dữ liệu</h3>
+        <p>{errors[name]}</p>
+        <button type="button" onClick={() => void load()}>
+          Thử lại
+        </button>
+      </div>
+    ) : null;
+  const heading = (icon: IconName, title: string, text: string) => (
+    <div className="vhead">
+      <div className="vico" style={{ background: "#eef0ed", color: "#2f6b52" }}>
+        <Icon name={icon} size={28} strokeWidth={1.8} />
+      </div>
+      <div className="vt">
+        <h2>{title}</h2>
+        <p>{text}</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="workspace" data-theme={dark ? "dark" : "light"}>
+    <>
       <Backdrop />
       <TopHeader
         health={health}
@@ -180,6 +210,7 @@ export default function Workspace() {
         error={errors.health}
         onReload={() => void load()}
         search={search}
+        placeholder={placeholders[view]}
         onSearch={setSearch}
         onSubmit={() => {
           if (view === "chat" && search.trim()) {
@@ -200,194 +231,148 @@ export default function Workspace() {
         onTheme={() => setDark(!dark)}
         onHelp={() => setHelp(true)}
       />
-      <main
-        className={`workspace-main ${view === "chat" ? "chat-layout" : "browse-layout"} ${detailed ? "with-detail" : ""}`}
-      >
-        {view === "chat" ? (
-          <ChatView
-            messages={messages}
-            busy={busy}
-            question={question}
-            setQuestion={setQuestion}
-            useLlm={useLlm}
-            setUseLlm={setUseLlm}
-            onSend={(text) => void send(text)}
-            onOpen={openCitation}
-            onGraph={openGraph}
-          />
-        ) : (
-          <section
-            className="browse-view panel"
-            aria-label={
-              view === "documents"
-                ? "Thư viện văn bản"
-                : view === "history"
-                  ? "Lịch sử hội thoại"
-                  : view === "criteria"
-                    ? "Tiêu chí OCOP"
-                    : "Sản phẩm OCOP"
-            }
-          >
-            {loading && view !== "history" && (
-              <div className="view-loading" role="status">
-                <span className="loading-ring" />
-                Đang tải dữ liệu…
-              </div>
+      <main id="main">
+        {view === "chat" && (
+          <>
+            <ChatView
+              messages={messages}
+              sources={sources}
+              busy={busy}
+              question={question}
+              setQuestion={setQuestion}
+              useLlm={useLlm}
+              setUseLlm={setUseLlm}
+              onSend={(text) => void send(text)}
+              onOpen={openCitation}
+              onGraph={openGraph}
+            />
+            {selected ? (
+              <EvidenceViewer
+                key={`${selected.source_id}:${selected.pdf_page}:${selected.evidence_unit_id}`}
+                citation={selected}
+                source={sources.find((source) => source.source_id === selected.source_id)}
+                onClose={() => setSelected(null)}
+              />
+            ) : graphOpen ? (
+              <EvidenceGraph
+                key={graphMessage?.id}
+                message={graphMessage}
+                sources={sources}
+                onOpen={openCitation}
+                onClose={() => setGraphOpen(false)}
+              />
+            ) : (
+              <RightSidebar
+                sources={sources}
+                products={products}
+                loading={loading}
+                sourceError={errors.documents}
+                productError={errors.products}
+                onNavigate={navigate}
+                onDocument={openDocument}
+                onCitation={openCitation}
+                onGraph={() => openGraph()}
+              />
             )}
-            {errors[view] && (
-              <p role="alert" className="view-error">
-                <Icon name="info" size={18} />
-                {errors[view]}
-              </p>
-            )}
-            {view === "documents" ? (
+          </>
+        )}
+        {view === "documents" && (
+          <section className="glass view" aria-label="Thư viện văn bản">
+            {viewState("documents") || (
               <DocumentsView
                 sources={sources}
                 search={search}
                 setSearch={setSearch}
-                loaded={!loading && !errors.documents}
+                loaded={!loading}
                 onOpen={openDocument}
               />
-            ) : view === "history" ? (
-              <>
-                <div className="view-header">
-                  <div className="view-icon">
-                    <Icon name="history" size={28} />
-                  </div>
-                  <div className="view-title">
-                    <h1>Lịch sử hội thoại</h1>
-                    <p>Các câu hỏi trong phiên tra cứu hiện tại</p>
-                  </div>
-                  <button
-                    className="primary-button"
-                    onClick={newChat}
-                    disabled={busy}
-                  >
-                    <Icon name="plus" size={16} />
-                    Chat mới
-                  </button>
-                </div>
-                <div className="history-list">
-                  {!messages.length ? (
-                    <div className="empty-state">
-                      <Icon name="history" size={42} />
-                      <h2>Chưa có cuộc trò chuyện</h2>
-                      <p>Bắt đầu một câu hỏi để tra cứu tri thức OCOP.</p>
-                      <button
-                        className="primary-button"
-                        onClick={() => navigate("chat")}
-                      >
-                        Bắt đầu hỏi đáp
-                        <Icon name="arrow" size={15} />
-                      </button>
-                    </div>
-                  ) : (
-                    messages
-                      .filter((message) =>
-                        message.question
-                          .toLocaleLowerCase()
-                          .includes(search.toLocaleLowerCase()),
-                      )
-                      .map((message) => (
-                        <button
-                          key={message.id}
-                          onClick={() => replay(message)}
-                        >
-                          <span className="history-icon">
-                            <Icon name="chat" size={20} />
-                          </span>
-                          <span>
-                            <b>{message.question}</b>
-                            <small>
-                              {message.answer
-                                ? `${message.answer.citations.length} trích dẫn`
-                                : message.error
-                                  ? "Yêu cầu chưa thành công"
-                                  : "Đang xử lý"}
-                            </small>
-                          </span>
-                          <time>{message.time}</time>
-                          <Icon name="right" size={16} />
-                        </button>
-                      ))
-                  )}
-                </div>
-              </>
-            ) : (
+            )}
+          </section>
+        )}
+        {(view === "criteria" || view === "products") && (
+          <section
+            className="glass view"
+            aria-label={view === "criteria" ? "Tiêu chí OCOP" : "Sản phẩm OCOP"}
+          >
+            {viewState(view) || (
               <ReferenceView
-                data={reference}
+                key={view}
+                kind={view}
+                data={view === "criteria" ? criteria : products}
+                sources={sources}
                 search={search}
                 setSearch={setSearch}
-                loaded={!loading && !errors[view]}
-                kind={view}
+                loaded={!loading}
                 onOpen={openCitation}
               />
             )}
           </section>
         )}
-        {selected ? (
-          <EvidenceViewer
-            key={`${selected.source_id}:${selected.pdf_page}:${selected.evidence_unit_id}`}
-            citation={selected}
-            source={sources.find(
-              (source) => source.source_id === selected.source_id,
+        {view === "history" && (
+          <section className="glass view" aria-label="Lịch sử hội thoại">
+            {heading("history", "Lịch sử hội thoại", "Các câu hỏi trong phiên tra cứu hiện tại")}
+            {!messages.length ? (
+              <div className="vstate">
+                <h3>Chưa có cuộc trò chuyện</h3>
+                <p>Bắt đầu một câu hỏi để tra cứu tri thức OCOP.</p>
+                <button type="button" onClick={() => navigate("chat")}>
+                  Bắt đầu hỏi đáp
+                </button>
+              </div>
+            ) : (
+              <div className="hist">
+                {messages
+                  .filter((message) =>
+                    message.question.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+                  )
+                  .map((message) => (
+                    <button key={message.id} type="button" onClick={() => replay(message)}>
+                      <Icon name="chat" size={22} />
+                      <span className="t">
+                        <b>{message.question}</b>
+                        <small>
+                          {message.answer
+                            ? `${message.answer.citations.length} trích dẫn`
+                            : message.error
+                              ? "Yêu cầu chưa thành công"
+                              : "Đang xử lý"}
+                        </small>
+                      </span>
+                      <time>{message.time}</time>
+                    </button>
+                  ))}
+              </div>
             )}
-            onClose={() => setSelected(null)}
-          />
-        ) : graphOpen ? (
-          <EvidenceGraph
-            message={graphMessage}
-            onOpen={openCitation}
-            onClose={() => setGraphOpen(false)}
-          />
-        ) : view === "chat" ? (
-          <RightSidebar
-            sources={sources}
-            products={products}
-            loading={loading}
-            sourceError={errors.documents}
-            productError={errors.products}
-            onNavigate={navigate}
-            onDocument={openDocument}
-            onCitation={openCitation}
-            onGraph={() => openGraph()}
-          />
-        ) : null}
+          </section>
+        )}
       </main>
       {help && (
         <div className="help-backdrop" onClick={() => setHelp(false)}>
           <section
-            className="help-dialog panel"
+            className="help-dialog"
             role="dialog"
             aria-modal="true"
             aria-label="Hướng dẫn sử dụng"
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              className="icon-button help-close"
-              onClick={() => setHelp(false)}
-              aria-label="Đóng hướng dẫn"
-            >
-              <Icon name="close" />
-            </button>
-            <span className="help-emblem">
-              <Icon name="book" size={32} />
-            </span>
             <h2>Tra cứu OCOP có căn cứ</h2>
             <p>
-              Đặt câu hỏi ở khung chat. Bấm vào ký hiệu [S…] hoặc thẻ nguồn để
-              xem đúng trang và vùng trích dẫn trên PDF gốc.
+              Đặt câu hỏi ở khung chat. Bấm vào ký hiệu [S…] hoặc thẻ nguồn để xem đúng trang và
+              vùng trích dẫn trên PDF gốc.
             </p>
             <p>
-              Thông tin chưa được duyệt sẽ có nhãn riêng. Tiêu chí và sản phẩm
-              chỉ hiển thị khi có dữ liệu xác minh.
+              Thông tin chưa được duyệt sẽ có nhãn riêng. Tiêu chí và sản phẩm chỉ hiển thị khi có
+              dữ liệu xác minh.
             </p>
-            <span className="keyboard-tip">
-              <kbd>Ctrl K</kbd>Tìm kiếm nhanh<kbd>Esc</kbd>Đóng bảng đang mở
-            </span>
+            <p className="gnote">
+              <kbd>Ctrl K</kbd> tìm kiếm nhanh · <kbd>Esc</kbd> đóng bảng đang mở
+            </p>
+            <button type="button" onClick={() => setHelp(false)}>
+              Đã hiểu
+            </button>
           </section>
         </div>
       )}
-    </div>
+    </>
   );
 }

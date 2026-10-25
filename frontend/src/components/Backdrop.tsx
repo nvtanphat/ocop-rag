@@ -3,13 +3,13 @@ import leafRight from "../assets/leaf-right.png";
 
 export function Backdrop() {
   return (
-    <div className="landscape" aria-hidden="true">
-      <div className="landscape-terrain" />
-      <div className="landscape-haze" />
-      <div className="landscape-hero" />
-      <img className="landscape-leaf leaf-top" src={leafLeft} alt="" />
-      <img className="landscape-leaf leaf-bottom" src={leafRight} alt="" />
-      <img className="landscape-leaf leaf-right" src={leafRight} alt="" />
+    <div id="bgfx" aria-hidden="true">
+      <div className="b-terr" />
+      <div className="b-haze" />
+      <div className="b-hero" />
+      <img className="leaf l1" src={leafLeft} alt="" />
+      <img className="leaf l2" src={leafRight} alt="" />
+      <img className="leaf l3" src={leafRight} alt="" />
     </div>
   );
 }
