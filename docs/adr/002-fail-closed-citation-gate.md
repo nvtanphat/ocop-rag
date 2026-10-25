@@ -11,5 +11,5 @@ Mô hình sinh ngôn ngữ lớn (LLM) có thể tạo ảo giác (hallucination
 * Nếu câu trả lời viện dẫn sai marker, trỏ tới bằng chứng không tồn tại, hoặc sai lệch mã băm, cổng bảo vệ sẽ từ chối công bố câu trả lời và hạ cấp về chế độ an toàn (`citation_verification_failed` hoặc trả về trích dẫn thuần túy `retrieval_only`).
 
 ## Hệ quả
-* Ngăn chặn 100% rủi ro bịa đặt viện dẫn pháp lý.
+* Chặn trích dẫn sai định danh/provenance; không chứng minh ngữ nghĩa đúng chỉ bằng marker hợp lệ. Tuyên bố cũ “ngăn chặn 100% rủi ro” đã được **Superseded** bởi phạm vi kiểm chứng từng claim trong ADR-009.
 * Đảm bảo tính giải trình: mọi câu trả lời người dùng nhận được đều có thể truy vết về chính xác trang và tọa độ trên file PDF gốc.

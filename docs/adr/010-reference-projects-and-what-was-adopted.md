@@ -16,6 +16,6 @@ Chỉ áp dụng ý tưởng giải quyết lỗi đã đo được; không thê
 | RAGFlow | Hiểu tài liệu theo mẫu, xem trích dẫn trên trang gốc | Áp dụng phần xem trích dẫn: bấm `[S#]` hiện vùng bằng chứng trên PDF khóa SHA-256 |
 
 ## Hệ quả
-Không thêm phụ thuộc. Quy tắc ngôn ngữ nằm trong `configs/ocop_language.yaml` và mã chung; `tests/ocop/test_no_corpus_literals.py` giữ cho mã không chứa hằng số theo corpus.
+Quy tắc ngôn ngữ nằm trong `configs/ocop_language.yaml` và mã chung; `tests/ocop/contracts/test_no_corpus_literals.py` giữ cho mã không chứa hằng số theo corpus. Dependency UI/test được khai báo trong package frontend; ADR này không cấm công cụ kiểm thử cần thiết.
 Điều kiện cạnh `RESPONSIBLE_FOR`: mục `b)` chỉ thừa hưởng tiêu đề danh sách, không thừa hưởng điều kiện của mục `a)` anh em.
 Review rebuild, làm mới index và build corpus dùng chung khóa `.system.lock`.

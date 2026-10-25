@@ -1,74 +1,33 @@
-# OCOP GraphRAG
+﻿# OCOP GraphRAG
 
-Hệ thống tra cứu, suy luận và thẩm định văn bản quy phạm pháp luật, hồ sơ OCOP dựa trên kiến trúc GraphRAG tích hợp trích dẫn hình học chính xác từ PDF gốc.
+Hệ thống tra cứu tài liệu OCOP với trích dẫn truy ngược về PDF gốc, trang, vùng bằng chứng và mã SHA-256. Nội dung OCR chưa được duyệt được phân biệt với dữ liệu đã xác minh; điểm/sao chưa xác minh không dùng để kết luận xếp hạng.
 
-Corpus gồm 12 văn bản PDF quy chuẩn được kiểm tra và khóa băm SHA-256 bất biến (`configs/ocop_sources.lock.json`).
+PDF được khoá nguồn → dataset OCR độc lập → EvidenceUnit → đồ thị đã kiểm và chỉ mục → router giới hạn công cụ → kiểm chứng từng claim → API FastAPI và giao diện React. Backend phục vụ bản build frontend; mọi yêu cầu dữ liệu của giao diện đi qua `/api/ocop/*`. Không có dữ liệu tài liệu, sản phẩm hay tiêu chí viết cứng trong FE.
 
----
+Cần Python 3.11+, Node.js 22.14+ và dependencies trong [DEVELOPMENT](docs/DEVELOPMENT.md). Khởi động giao diện và API bằng một lệnh PowerShell:
 
-## 1. Yêu cầu hệ thống
-
-* **Python**: 3.11 trở lên (khuyến nghị Python 3.12).
-* **Mô hình OCR cục bộ**: EasyOCR CRAFT detection và VietOCR VGG Transformer (không gọi API ngoài, nạp offline).
-* **Mô hình nhúng & xếp hạng (tùy chọn)**: `google/embeddinggemma-300m` và `BAAI/bge-reranker-v2-m3`.
-* **Mô hình ngôn ngữ (tùy chọn)**: Ollama cục bộ (`qwen3.5:2b`) hoặc API tương thích OpenAI.
-* **Frontend**: Node.js 20+ (khuyến nghị Node.js 22).
-
----
-
-## 2. Cài đặt và khởi chạy nhanh
-
-### Cài đặt môi trường Python
 ```powershell
-python -m pip install -e .
-python -m pytest -q tests/ocop
+.\run.ps1
 ```
 
-### Kiểm tra trạng thái hệ thống
+Mở http://127.0.0.1:8000. Script build FE rồi chạy backend trong cùng terminal; Ctrl+C dừng dịch vụ. Với dataset OCR hoàn chỉnh trong `data/ocr-dataset`, lệnh sau dựng corpus rồi khởi động:
+
 ```powershell
-python tools/cli.py status
+.\run.ps1 -OcrDataset data/ocr-dataset
 ```
 
-### Xây dựng corpus (Build)
-Trích xuất text, OCR các trang scan, xây dựng EvidenceUnits, tạo đồ thị tri thức duy nhất và chỉ mục tìm kiếm:
+Dataset không đi kèm repo. Thiếu dataset không được coi là đã có corpus đầy đủ; xem trạng thái backend/corpus ở header. Quy trình chuẩn bị dữ liệu và Docker nằm trong [RUNBOOK](docs/RUNBOOK.md).
+
+Kiểm thử từ gốc repo:
+
 ```powershell
-python tools/cli.py run --build-only --dpi 300
+python tools/cli.py --help
+python -m pytest -q
+ruff check .
+Push-Location frontend
+npm test
+npm run build
+Pop-Location
 ```
 
-### Hỏi đáp qua dòng lệnh (CLI)
-```powershell
-# Chế độ trích dẫn bằng chứng thuần túy (không cần LLM)
-python tools/cli.py run --no-llm --query "Hồ sơ đề xuất đánh giá sản phẩm OCOP gồm những biểu mẫu nào?"
-
-# Chế độ sinh câu trả lời với LLM cục bộ (Ollama)
-python tools/cli.py run --query "Hồ sơ đề xuất đánh giá sản phẩm OCOP gồm những biểu mẫu nào?"
-```
-
-### Khởi chạy dịch vụ API
-```powershell
-python tools/cli.py run --no-llm --host 127.0.0.1 --port 8000
-```
-Kiểm tra API health: `http://127.0.0.1:8000/api/ocop/health`.
-
-### Khởi chạy giao diện Frontend (React / Vite)
-Tại cửa sổ dòng lệnh thứ hai:
-```powershell
-npm --prefix frontend run dev
-```
-Truy cập giao diện: `http://localhost:5173`.
-
----
-
-## 3. Bản đồ Tài liệu Kỹ thuật
-
-| Tài liệu | Mô tả |
-| :--- | :--- |
-| [Kiến trúc hệ thống](docs/ARCHITECTURE.md) | Luồng xử lý chi tiết từ PDF đến đồ thị và API; vị trí mã nguồn các tầng. |
-| [Cấu hình & Biến môi trường](docs/CONFIGURATION.md) | Danh mục biến `.env`, các tệp cấu hình `configs/` và mô hình ghim. |
-| [Vận hành & Runbook](docs/RUNBOOK.md) | Hướng dẫn build corpus, debug mẫu, chạy E2E và xử lý lỗi vận hành. |
-| [Đánh giá chất lượng](docs/EVALUATION.md) | Bộ phát triển, bộ giữ riêng, benchmark 126 câu và cách đo trên prompt thật. |
-| [Thẩm định người dùng](docs/HUMAN_REVIEW.md) | Quy trình phê duyệt bằng chứng, nhật ký review ledger và xác minh tri thức. |
-| [Hướng dẫn phát triển](docs/DEVELOPMENT.md) | Kiểm thử hermetic, quy tắc chống hardcode và test chặn, thêm văn bản không sửa mã, mở rộng tool/quan hệ. |
-| [Thuật ngữ miền](GLOSSARY.md) | Định nghĩa các thực thể và trạng thái kiểm chứng miền OCOP. |
-| [Quyết định kiến trúc (ADR)](docs/adr/README.md) | Quyết định nền tảng (đồ thị một đầu ra, cổng fail-closed, mô hình ghim) và thiết kế context, từ vựng/danh mục, truy xuất, claim/phiên. |
-| [Dự án con OCR](ocr/README.md) | Pipeline OCR độc lập, hợp đồng dataset, duyệt Markdown và xuất nhập kiểm soát. |
+Tài liệu: [kiến trúc](docs/ARCHITECTURE.md), [cấu hình](docs/CONFIGURATION.md), [vận hành và review](docs/RUNBOOK.md), [phát triển](docs/DEVELOPMENT.md), [đánh giá](docs/EVALUATION.md), [thuật ngữ](GLOSSARY.md), [ADR](docs/adr/README.md), [OCR](ocr/README.md).

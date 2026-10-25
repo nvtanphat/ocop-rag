@@ -22,4 +22,4 @@ Router cũ chứa danh sách tỉnh, danh sách sản phẩm, hàng chục tuple
 
 ## Hệ quả
 * Thêm văn bản hoặc sản phẩm mới: dựng lại chỉ mục là đủ, không sửa mã (xem docs/DEVELOPMENT.md).
-* Test `tests/ocop/test_no_corpus_literals.py` chặn literal của corpus quay lại mã runtime.
+* Test `tests/ocop/contracts/test_no_corpus_literals.py` chặn literal của corpus quay lại mã runtime.

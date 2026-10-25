@@ -1,48 +1,49 @@
-# Thuật ngữ Miền OCOP GraphRAG (Domain Glossary)
+﻿# Thuật ngữ miền OCOP GraphRAG
 
-Tài liệu định nghĩa các khái niệm cốt lõi trong hệ thống OCOP GraphRAG. Mọi tầng trích xuất, lưu trữ đồ thị, tìm kiếm và giao diện đều tuân thủ các thuật ngữ này.
+Một ngữ cảnh miền thống nhất cho nguồn OCOP, bằng chứng, tri thức và kết quả tra cứu.
 
----
+## Nguồn và tri thức
 
-### 1. Thực thể và Dữ liệu Nguồn
+**SourceDocument**: Văn bản gốc thuộc danh mục OCOP được phê duyệt, có danh tính và mã SHA-256 xác định duy nhất nội dung PDF.
 
-* **`SourceDocument`**: Văn bản pháp quy hoặc quyết định công nhận OCOP gốc. Mỗi văn bản được quản lý bằng `source_id` duy nhất (ví dụ: `VN.OCOP.QD26.2026`), định danh trong `configs/ocop_sources.json` và khóa băm SHA-256 bất biến trong `configs/ocop_sources.lock.json`.
-* **`EvidenceUnit`**: Đơn vị bằng chứng nguyên tử trích xuất từ PDF gốc. Mỗi `EvidenceUnit` mang mã `unit_id` tiền tố `ocop:evidence:`, đại diện cho đoạn văn bản, bảng biểu, hoặc dòng bảng, luôn bảo lưu tọa độ hộp bao (`bbox`), số trang PDF (`pdf_page`), mã văn bản (`source_id`), và mã băm nguồn (`source_sha256`).
-* **`CriterionSheet`**: Bộ phiếu tiêu chí đánh giá và phân hạng sản phẩm OCOP theo ngành/nhóm sản phẩm (ví dụ: thực phẩm tươi sống, đồ uống, thảo dược). Mỗi phiếu chứa danh sách các tiêu chí thành phần và điểm tối đa tương ứng.
-* **`Criterion` / `Subcriterion`**: Tiêu chí hoặc tiêu chí con trong bảng chấm điểm OCOP, gắn với mã mục (ví dụ: `1.1`, `2.1`) và mức điểm thành phần.
-* **`RecognitionRecord`**: Bản ghi công nhận kết quả xếp hạng sao OCOP cho một sản phẩm và chủ thể cụ thể tại một địa phương, trích xuất từ quyết định UBND.
-* **`FormTemplate` / `FormField`**: Cấu trúc mẫu biểu hồ sơ (ví dụ: Mẫu số 01, Mẫu 02) và các trường thông tin thủ tục bắt buộc mà chủ thể OCOP cần hoàn thiện.
+**EvidenceUnit**: Đơn vị bằng chứng trích từ nguồn, có định danh và một hoặc nhiều vùng trên trang PDF gốc. Mỗi vùng giữ trang, bbox và SHA nguồn để đối soát.
 
----
+**Provenance**: Dấu vết nối một nội dung với danh tính nguồn, bằng chứng, trang, vùng và bytes nguồn gốc. Provenance hợp lệ không tự chứng minh nội dung được suy ra đúng nghĩa.
 
-### 2. Thuộc tính Kiểm chứng và Nguồn gốc (Provenance & Checks)
+**CriterionSheet**: Phiếu tiêu chí đánh giá cho một ngành hoặc nhóm sản phẩm OCOP.
 
-* **`origin`**: Phân loại nguồn gốc phát sinh của thực thể hoặc quan hệ:
-  * `deterministic`: Trích xuất dựa trên quy tắc tất định từ văn bản hoặc cấu trúc bảng gốc.
-  * `llm`: Đề xuất suy luận ngữ nghĩa bởi mô hình ngôn ngữ từ các bằng chứng cụ thể.
-  * `human`: Bổ sung hoặc xác nhận trực tiếp từ chuyên gia thẩm định.
-* **`check`**: Trạng thái kiểm chứng kỹ thuật của nút hoặc cạnh trên đồ thị:
-  * `passed`: Đạt toàn bộ các ràng buộc về hình học tọa độ, mã SHA nguồn, tính toàn vẹn liên kết và schema.
-  * `failed`: Vi phạm ít nhất một ràng buộc kỹ thuật; bị loại khỏi đồ thị công khai và truy vấn runtime.
-  * `human_verified`: Đã được con người kiểm tra và xác nhận hợp lệ qua nhật ký thẩm định.
-* **`review_status`**: Mức độ tin cậy nghiệp vụ của bằng chứng và thực thể:
-  * `candidate` / `needs_review`: Dữ liệu thô từ OCR hoặc suy luận mô hình; cần con người duyệt trước khi dùng làm kết luận khẳng định.
-  * `verified` / `human_verified`: Dữ liệu đã được đối chiếu hoặc chuyên gia thẩm định xác nhận.
-  * `rejected`: Dữ liệu bị bác bỏ, không tham gia vào quá trình tính điểm hay đánh giá.
+**Criterion / Subcriterion**: Tiêu chí hoặc tiêu chí con thuộc phiếu đánh giá, có nội dung và điều kiện áp dụng từ nguồn.
 
----
+**RecognitionRecord**: Kết quả công nhận OCOP đối với sản phẩm và chủ thể cụ thể tại một địa phương; không đồng nhất với ứng viên OCR của bảng công nhận.
 
-### 3. Quy trình Thẩm định và Vận hành
+**FormTemplate / FormField**: Mẫu biểu và trường thông tin trong hồ sơ thủ tục OCOP.
 
-* **`Review Ledger`**: Nhật ký bất biến lưu trữ quyết định duyệt của con người tại `data/review/ocop_review_decisions.jsonl`. Mọi thay đổi đều được ghi nối tiếp kèm dấu thời gian và người duyệt; không sửa đè lịch sử.
-* **`Fail-Closed Citation Gate`**: Cổng chặn an toàn trong tầng sinh câu trả lời: câu trả lời bắt buộc phải có trích dẫn marker `[S#]` trỏ tới `EvidenceUnit` hợp lệ với đúng mã băm `source_sha256` và tọa độ hình học. Mọi câu trả lời thiếu trích dẫn hoặc viện dẫn sai đều bị từ chối công bố.
+**Quy tắc tham chiếu đã xác minh**: Quy định đã được đối chiếu nguồn, có căn cứ và đúng phiên bản corpus đang dùng. Quy tắc do người dùng hoặc mô hình tự đề xuất không thuộc khái niệm này.
 
----
+## Trạng thái và kiểm chứng
 
-### 4. Truy xuất và trả lời
+**origin**: Nguồn hình thành tri thức: trích xuất tất định (`deterministic`), đề xuất mô hình (`llm`) hoặc con người (`human`). Nguồn hình thành không phải mức độ xác minh.
 
-* **Danh mục thực thể (`entity_catalog.json`)**: Danh sách văn bản, địa danh, sản phẩm, nhóm sản phẩm, chủ thể, cơ quan, phiếu và mẫu do bước dựng chỉ mục sinh từ registry và graph đã kiểm; router chỉ nhận diện thực thể có trong danh mục (ADR-007).
-* **Chuỗi cha (`parent_chain`)**: Nhãn tổ tiên trực tiếp của đoạn (ví dụ Điều → khoản) đặt trước chunk khi đánh chỉ mục, ngắn và đã khử trùng; tách khỏi `raw_text` dùng để hiển thị (ADR-006).
-* **Năng lực chính / phụ**: Công cụ chính trả lời câu hỏi; công cụ phụ chỉ làm giàu và nếu thiếu dữ liệu thì chỉ được ghi chú, không chặn câu trả lời.
-* **Claim**: Một ý trả lời ngắn kèm mã nguồn `[S#]`; đơn vị được kiểm tra và công bố độc lập (ADR-009).
-* **Bộ giữ riêng (held-out)**: Bộ câu hỏi soạn từ trang ngoài mẫu phát triển, khóa bằng mã băm, chỉ xem số tổng (docs/EVALUATION.md).
+**check**: Kết quả kiểm kỹ thuật của đối tượng đồ thị: `passed`, `failed` hoặc `human_verified`. Đạt kiểm kỹ thuật không tự đồng nghĩa được xác minh về nghiệp vụ.
+
+**review_status**: Trạng thái duyệt nội dung: ứng viên/chưa duyệt (`candidate`, `needs_review`), đã xác minh (`verified`, `human_verified`) hoặc bị bác bỏ (`rejected`). Điểm/sao chưa được duyệt không dùng để kết luận xếp hạng.
+
+**Review Ledger**: Nhật ký nối tiếp các quyết định duyệt, bác bỏ hoặc hiệu chỉnh, gắn với người duyệt và đúng nội dung được đối soát. Quyết định mới không xoá lịch sử cũ.
+
+**Claim**: Một nhận định có căn cứ trích dẫn, được kiểm và công bố độc lập trong câu trả lời.
+
+**Fail-Closed Citation Gate**: Cổng từ chối công bố nhận định khi thiếu điều kiện kiểm chứng trích dẫn, căn cứ hoặc điểm/sao. Marker hợp lệ chỉ là một trong các điều kiện.
+
+## Phiên bản và truy xuất
+
+**Corpus active**: Tập dẫn xuất nguồn đang được hệ thống dùng để tra cứu. Phiên bản corpus không tự xác định văn bản nào có hiệu lực tại một năm lịch sử.
+
+**Quyết định đã ghim**: Phiên bản văn bản được người hỏi chọn rõ ràng; một thay đổi về năm lịch sử không được âm thầm thay thế lựa chọn đó.
+
+**Danh mục thực thể**: Danh sách văn bản, địa danh, sản phẩm, chủ thể, cơ quan, phiếu và mẫu có căn cứ từ corpus.
+
+**Chuỗi cha**: Ngữ cảnh tổ tiên trực tiếp của một đoạn nguồn, ví dụ Điều và khoản; phân biệt với nội dung nguyên văn của đoạn.
+
+**Năng lực chính / phụ**: Năng lực chính trả lời yêu cầu; năng lực phụ chỉ bổ sung và không được tự tạo căn cứ còn thiếu.
+
+**Bộ giữ riêng**: Bộ câu hỏi độc lập đã khoá trước khi đánh giá, không dùng để điều chỉnh hệ thống theo từng câu.
