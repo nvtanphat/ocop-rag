@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { CitationText } from './CitationText'
-import type { Citation } from '../api/client'
+import type { Citation } from '../../api/client'
 
 const citation: Citation = { source_id: 'SOURCE', pdf_page: 3, bbox: [10, 20, 30, 40], evidence_unit_id: 'unit', source_sha256: 'a'.repeat(64) }
 describe('citation rendering', () => {

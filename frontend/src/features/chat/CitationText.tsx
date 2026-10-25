@@ -1,5 +1,5 @@
 import ReactMarkdown from 'react-markdown'
-import type { Citation } from '../api/client'
+import type { Citation } from '../../api/client'
 
 export function CitationText({ text, citations, onOpen }: {
   text: string; citations: Citation[]; onOpen: (citation: Citation) => void

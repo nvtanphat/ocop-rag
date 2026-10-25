@@ -1,5 +1,5 @@
-import OcopPortal from './pages/OcopPortal'
+import Workspace from './app/Workspace'
 
 export default function App() {
-  return <OcopPortal />
+  return <Workspace />
 }

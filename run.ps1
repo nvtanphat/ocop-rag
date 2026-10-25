@@ -1,22 +1,33 @@
-# OCOP GraphRAG: single corpus-to-answer launcher + React development UI
-param([switch]$BackendOnly, [switch]$Refresh)
+﻿param(
+    [switch]$BackendOnly,
+    [switch]$Refresh,
+    [string]$OcrDataset,
+    [int]$Port = 8000
+)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $projectRoot
-$argsPipeline = @('tools/cli.py', 'run')
-if ($Refresh) { $argsPipeline += '--refresh' }
-Write-Host 'Starting OCOP end-to-end pipeline (PDF to API): http://127.0.0.1:8000'
-if ($BackendOnly) {
-    python @argsPipeline
-} else {
-    $pipelineCommand = 'python tools/cli.py run'
-    if ($Refresh) { $pipelineCommand += ' --refresh' }
-    Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile', '-Command', $pipelineCommand -WorkingDirectory $projectRoot
-    Set-Location (Join-Path $projectRoot 'frontend')
-    if (-not (Test-Path (Join-Path (Get-Location) 'node_modules'))) {
-        Write-Host 'Installing frontend packages with npm ci (first run)...'
-        npm ci
-        if ($LASTEXITCODE -ne 0) { throw 'npm ci failed; check Node 22 and network access' }
-    }
-    npm run dev
+
+if (-not $BackendOnly) {
+    Push-Location (Join-Path $projectRoot 'frontend')
+    try {
+        if (-not (Test-Path -LiteralPath 'node_modules')) {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+        }
+        npm run build
+        if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
+    } finally { Pop-Location }
 }
+
+if ($OcrDataset -or $Refresh) {
+    $pipelineArguments = @('tools/cli.py', 'run', '--build-only', '--no-semantic-extract')
+    if ($OcrDataset) { $pipelineArguments += @('--ocr-dataset', $OcrDataset) }
+    if ($Refresh) { $pipelineArguments += '--refresh' }
+    python @pipelineArguments
+    if ($LASTEXITCODE -ne 0) { throw 'Corpus build failed; API was not started' }
+}
+
+Write-Host "OCOP GraphRAG: http://127.0.0.1:$Port"
+python -m uvicorn backend.api.ocop_main:app --host 127.0.0.1 --port $Port
+exit $LASTEXITCODE

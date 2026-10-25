@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from 'react'
-import { api, type Citation } from '../api/client'
+import { api, type Citation } from '../../api/client'
 
-export function PortalPdfModal({ citation, onClose }: { citation: Citation; onClose: () => void }) {
+export function EvidenceViewer({ citation, onClose }: { citation: Citation; onClose: () => void }) {
   const [page, setPage] = useState(citation.pdf_page)
   const [highlight, setHighlight] = useState(true)
   const [error, setError] = useState(false)

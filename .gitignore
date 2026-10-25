@@ -13,6 +13,7 @@ models/
 # Source PDFs are intentionally included for reproducibility.
 # Runtime artifacts are generated from the immutable, source-locked PDFs.
 data/processed/
+data/ocr-dataset/
 data/runtime/
 data/review/
 reports/

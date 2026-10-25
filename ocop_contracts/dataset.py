@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 
@@ -11,7 +12,7 @@ from .models import PageArtifact
 from .registry import sha256_file
 
 SCHEMA_VERSION = 1
-DEFAULT_DATASET = Path("D:/AgentAI/OCOP-RAG/ocr-dataset")
+DEFAULT_DATASET = Path(os.environ.get("OCOP_OCR_DATASET", "data/ocr-dataset"))
 
 
 def digest_json(value) -> str:

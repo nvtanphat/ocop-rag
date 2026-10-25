@@ -22,4 +22,4 @@ USER ocop
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ocop/health')" || exit 1
-CMD ["python", "tools/cli.py", "run", "--no-semantic-extract", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "backend.api.ocop_main:app", "--host", "0.0.0.0", "--port", "8000"]

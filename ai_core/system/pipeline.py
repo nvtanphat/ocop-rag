@@ -242,7 +242,7 @@ class OcopSystemPipeline:
             if not current.get("source_snapshot_sha256"):
                 raise RuntimeError(current.get("source_error", "source lock validation failed"))
             page_config = _load_json(self.data / "pages" / "manifest.json")
-            dataset = (options.ocr_dataset or DEFAULT_DATASET).resolve()
+            dataset = (options.ocr_dataset or (self.root / DEFAULT_DATASET)).resolve()
             locked = _load_json(self.root / "configs/ocop_sources.lock.json")
             dataset_manifest, _ = read_dataset(dataset, locked)
             runtime_config_ok = page_config.get("dataset_digest") == dataset_manifest["dataset_digest"]
