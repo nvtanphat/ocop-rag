@@ -1,4 +1,5 @@
 """Explicit Markdown review; PDF and raw OCR cache are never changed."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -63,8 +64,9 @@ def _publish_manifest(root: Path, manifest: dict, sources_pages) -> dict:
         source["artifact_sha256"] = sha256_file(dataset_file(root, source["artifact"]))
     manifest["sources"] = [source for source, _ in sources_pages]
     corrections = root / "review/corrections.jsonl"
-    manifest["corrections_sha256"] = (sha256_file(corrections) if corrections.is_file()
-                                          else hashlib.sha256(b"").hexdigest())
+    manifest["corrections_sha256"] = (
+        sha256_file(corrections) if corrections.is_file() else hashlib.sha256(b"").hexdigest()
+    )
     manifest["dataset_digest"] = digest_json({k: v for k, v in manifest.items() if k != "dataset_digest"})
     write_json(root / "manifest.json", manifest)
     return manifest
@@ -75,26 +77,37 @@ def create_dataset(input_dir: Path, root: Path) -> dict:
     if (root / "manifest.json").exists():
         raise FileExistsError(f"dataset already exists: {root}; use a new dataset directory")
     original = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
-    manifest = {"schema_version": SCHEMA_VERSION, "ocr_version": original["parser_version"],
-                "complete": bool(original["complete"]), "sources": [], "da_duyet": 0,
-                "input_snapshot_sha256": original.get("input_snapshot_sha256"),
-                "counts": original.get("counts", {})}
+    manifest = {
+        "schema_version": SCHEMA_VERSION,
+        "ocr_version": original["parser_version"],
+        "complete": bool(original["complete"]),
+        "sources": [],
+        "da_duyet": 0,
+        "input_snapshot_sha256": original.get("input_snapshot_sha256"),
+        "counts": original.get("counts", {}),
+    }
     sources_pages = []
     for source in original["sources"]:
         sid = source["source_id"]
         if not re.fullmatch(r"[A-Za-z0-9_.-]+", sid) or sid in {".", ".."}:
             raise ValueError(f"unsafe source_id: {sid}")
-        pages = [json.loads(line) for line in dataset_file(input_dir, source["artifact"]).read_text(
-            encoding="utf-8").splitlines()]
+        pages = [
+            json.loads(line)
+            for line in dataset_file(input_dir, source["artifact"]).read_text(encoding="utf-8").splitlines()
+        ]
         for page in pages:
             page["ocr_hash"] = digest_json(page)
             page["reviewed"] = False
             for _, obj in _objects(page):
                 obj["ocr_text"] = obj.get("text", "")
                 obj["reviewed"] = False
-        record = {"source_id": sid, "source_sha256": source["source_sha256"],
-                  "page_count_expected": source["page_count_expected"],
-                  "pages": [p["pdf_page"] for p in pages], "artifact": f"pages/{sid}.jsonl"}
+        record = {
+            "source_id": sid,
+            "source_sha256": source["source_sha256"],
+            "page_count_expected": source["page_count_expected"],
+            "pages": [p["pdf_page"] for p in pages],
+            "artifact": f"pages/{sid}.jsonl",
+        }
         manifest["sources"].append(record)
         sources_pages.append((record, pages))
     # All input validation precedes publication.
@@ -104,20 +117,39 @@ def create_dataset(input_dir: Path, root: Path) -> dict:
 
 
 def _encode(text) -> str:
-    return html.escape(str(text), quote=False).replace("|", "&#124;").replace("\n", "&#10;").replace("\r", "&#13;")
+    return (
+        html.escape(str(text), quote=False)
+        .replace("|", "&#124;")
+        .replace("\n", "&#10;")
+        .replace("\r", "&#13;")
+    )
 
 
 def _markdown(page: dict) -> tuple[list[str], dict[int, str]]:
     """Stable skeleton with explicitly identified editable cells/lines."""
     warnings = page.get("ocr_attention", page.get("warnings", []))
     quality = page.get("page_quality", {})
-    metadata = {"source_id": page["source_id"], "pdf_page": page["pdf_page"],
-                "source_sha256": page["source_sha256"], "ocr_hash": page["ocr_hash"],
-                "confidence": page.get("ocr_confidence_mean", quality.get("mean_block_ocr_confidence")), "warnings": warnings,
-                "trang_thai": "da_duyet" if page.get("reviewed") else "chua_duyet"}
-    lines = ["---", *[f"{k}: {json.dumps(v, ensure_ascii=False)}" for k, v in metadata.items()],
-             "---", "", f"![Trang PDF](../images/{page['source_id']}/p{page['pdf_page']:03d}.png)",
-             "", "## Chữ", "", "| Khối | Chữ |", "| --- | --- |"]
+    metadata = {
+        "source_id": page["source_id"],
+        "pdf_page": page["pdf_page"],
+        "source_sha256": page["source_sha256"],
+        "ocr_hash": page["ocr_hash"],
+        "confidence": page.get("ocr_confidence_mean", quality.get("mean_block_ocr_confidence")),
+        "warnings": warnings,
+        "trang_thai": "da_duyet" if page.get("reviewed") else "chua_duyet",
+    }
+    lines = [
+        "---",
+        *[f"{k}: {json.dumps(v, ensure_ascii=False)}" for k, v in metadata.items()],
+        "---",
+        "",
+        f"![Trang PDF](../images/{page['source_id']}/p{page['pdf_page']:03d}.png)",
+        "",
+        "## Chữ",
+        "",
+        "| Khối | Chữ |",
+        "| --- | --- |",
+    ]
     editable = {}
     for index, block in enumerate(page.get("blocks", [])):
         editable[len(lines)] = f"block:{index}"
@@ -148,13 +180,15 @@ def _markdown(page: dict) -> tuple[list[str], dict[int, str]]:
     return lines, editable
 
 
-def export_markdown(root: Path, *, pdf_root: Path | None = None, registry: Path | None = None,
-                    lock: Path | None = None) -> int:
+def export_markdown(
+    root: Path, *, pdf_root: Path | None = None, registry: Path | None = None, lock: Path | None = None
+) -> int:
     manifest = _manifest(root)
     sources_pages = _pages(root, manifest)
     source_paths = {}
     if pdf_root is not None:
         from ocop_contracts.pdf_loader import checked_sources
+
         sources, _ = checked_sources(pdf_root, registry, lock)
         source_paths = {s.source_id: pdf_root / s.path for s in sources}
     index = []
@@ -169,6 +203,7 @@ def export_markdown(root: Path, *, pdf_root: Path | None = None, registry: Path 
             file.write_text("\n".join(lines) + "\n", encoding="utf-8")
             if source_paths:
                 import fitz
+
                 pdf = source_paths[source["source_id"]]
                 if sha256_file(pdf) != page["source_sha256"]:
                     raise ValueError(f"PDF SHA mismatch: {pdf}")
@@ -181,8 +216,12 @@ def export_markdown(root: Path, *, pdf_root: Path | None = None, registry: Path 
     index.sort()
     target = root / "review/INDEX.md"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text("# Duyệt OCR\n\n" + "\n".join(
-        f"- [{'x' if reviewed else ' '}] [{name}]({name})" for _, name, reviewed in index) + "\n", encoding="utf-8")
+    target.write_text(
+        "# Duyệt OCR\n\n"
+        + "\n".join(f"- [{'x' if reviewed else ' '}] [{name}]({name})" for _, name, reviewed in index)
+        + "\n",
+        encoding="utf-8",
+    )
     return len(index)
 
 
@@ -215,7 +254,9 @@ def import_markdown(root: Path) -> dict:
                     modified["reviewed"] = status == "da_duyet"
                     continue
                 if number not in editable:
-                    label = "ocr_hash conflict" if old.startswith("ocr_hash:") else "changed immutable structure"
+                    label = (
+                        "ocr_hash conflict" if old.startswith("ocr_hash:") else "changed immutable structure"
+                    )
                     raise ValueError(f"{error}: {label}")
                 parts = [p.strip() for p in new.split("|")]
                 old_parts = [p.strip() for p in old.split("|")]
@@ -236,14 +277,25 @@ def import_markdown(root: Path) -> dict:
             if modified == page:
                 continue
             modified["extracted_text"] = join_blocks_by_line(modified.get("blocks", []))
-            corrections.append({"timestamp": datetime.now(timezone.utc).isoformat(),
-                                "source_id": page["source_id"], "pdf_page": page["pdf_page"],
-                                "source_sha256": page["source_sha256"], "ocr_hash": page["ocr_hash"],
-                                "reviewed": modified["reviewed"],
-                                "changes": [{"location": location, "old_text": old.get("text", ""),
-                                             "text": objects[location].get("text", "")}
-                                            for location, old in _objects(page)
-                                            if old.get("text", "") != objects[location].get("text", "")]})
+            corrections.append(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source_id": page["source_id"],
+                    "pdf_page": page["pdf_page"],
+                    "source_sha256": page["source_sha256"],
+                    "ocr_hash": page["ocr_hash"],
+                    "reviewed": modified["reviewed"],
+                    "changes": [
+                        {
+                            "location": location,
+                            "old_text": old.get("text", ""),
+                            "text": objects[location].get("text", ""),
+                        }
+                        for location, old in _objects(page)
+                        if old.get("text", "") != objects[location].get("text", "")
+                    ],
+                }
+            )
             page.clear()
             page.update(modified)
     # No filesystem mutations until EVERY Markdown file has validated.
@@ -253,11 +305,16 @@ def import_markdown(root: Path) -> dict:
     before = ledger.read_bytes() if ledger.exists() else b""
     # Durable intent precedes all writes. Recovery appends only the missing suffix
     # and re-materializes pages, preserving an append-only corrections ledger.
-    write_json(root / ".pending-import.json", {
-        "ledger_before_size": len(before), "ledger_before_sha256": hashlib.sha256(before).hexdigest(),
-        "ledger_append": "".join(json.dumps(c, ensure_ascii=False) + "\n" for c in corrections),
-        "manifest": manifest, "sources_pages": sources_pages,
-    })
+    write_json(
+        root / ".pending-import.json",
+        {
+            "ledger_before_size": len(before),
+            "ledger_before_sha256": hashlib.sha256(before).hexdigest(),
+            "ledger_append": "".join(json.dumps(c, ensure_ascii=False) + "\n" for c in corrections),
+            "manifest": manifest,
+            "sources_pages": sources_pages,
+        },
+    )
     return recover_import(root)
 
 
@@ -270,12 +327,13 @@ def recover_import(root: Path) -> dict | None:
     current = ledger.read_bytes() if ledger.exists() else b""
     size = intent["ledger_before_size"]
     append = intent["ledger_append"].encode("utf-8")
-    if (hashlib.sha256(current[:size]).hexdigest() != intent["ledger_before_sha256"]
-            or not append.startswith(current[size:])):
+    if hashlib.sha256(current[:size]).hexdigest() != intent["ledger_before_sha256"] or not append.startswith(
+        current[size:]
+    ):
         raise ValueError("interrupted import ledger conflict; refusing to overwrite history")
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with ledger.open("ab") as stream:
-        stream.write(append[len(current) - size:])
+        stream.write(append[len(current) - size :])
         stream.flush()
         os.fsync(stream.fileno())
     for source, pages in intent["sources_pages"]:

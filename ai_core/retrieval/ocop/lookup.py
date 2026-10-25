@@ -3,6 +3,7 @@
 No embedding/LLM required. Values are *machine candidates* until separately
 verified. This is a indexing lookup, not the later legal rule engine.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -45,9 +46,13 @@ def exact_lookup(
     for path in haystack:
         for record in _iter_jsonl(path):
             spans = record.get("source_spans") or record.get("spans") or []
-            ids = (record.get("unit_id"), record.get("fact_id"),
-                   record.get("candidate_id"), record.get("source_id"),
-                   record.get("evidence_unit_id"))
+            ids = (
+                record.get("unit_id"),
+                record.get("fact_id"),
+                record.get("candidate_id"),
+                record.get("source_id"),
+                record.get("evidence_unit_id"),
+            )
             record_kind = record.get("unit_kind") or record.get("record_kind") or record.get("fact_type")
             if identity and identity not in ids:
                 continue
@@ -58,8 +63,10 @@ def exact_lookup(
             if kind and record_kind != kind:
                 continue
             if contains:
-                text = " ".join(str(record.get(field) or "") for field in
-                                ("text", "evidence_text", "label_candidate", "title", "row_text", "heading"))
+                text = " ".join(
+                    str(record.get(field) or "")
+                    for field in ("text", "evidence_text", "label_candidate", "title", "row_text", "heading")
+                )
                 if contains.casefold() not in text.casefold():
                     continue
             out.append({**record, "corpus_version": version})
@@ -78,14 +85,23 @@ def main() -> None:
     parser.add_argument("--kind")
     parser.add_argument("--contains")
     parser.add_argument("--evidence-only", action="store_true")
-    parser.add_argument("--include-candidates", action="store_true",help="Explicit offline candidate inspection only")
+    parser.add_argument(
+        "--include-candidates", action="store_true", help="Explicit offline candidate inspection only"
+    )
     parser.add_argument("--limit", type=int, default=20)
     args = parser.parse_args()
     root = args.root.resolve()
     index = args.index if args.index.is_absolute() else root / args.index
-    matches = exact_lookup(index, identity=args.identity, source_id=args.source_id,
-                           pdf_page=args.pdf_page, kind=args.kind, contains=args.contains,
-                           include_candidates=args.include_candidates and not args.evidence_only, limit=args.limit)
+    matches = exact_lookup(
+        index,
+        identity=args.identity,
+        source_id=args.source_id,
+        pdf_page=args.pdf_page,
+        kind=args.kind,
+        contains=args.contains,
+        include_candidates=args.include_candidates and not args.evidence_only,
+        limit=args.limit,
+    )
     print(json.dumps(matches, ensure_ascii=False, indent=2))
 
 

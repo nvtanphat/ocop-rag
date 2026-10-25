@@ -1,6 +1,8 @@
 """Verify distribution names remain descriptive and derived outputs stay out of source."""
+
 from pathlib import Path
 import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -12,15 +14,17 @@ def test_no_legacy_scripts_or_historical_docs():
 
 
 def test_no_generated_output_or_release_label_in_distributed_names():
+    source_paths = subprocess.check_output(
+        ["git", "ls-files", "-z"], cwd=ROOT
+    ).decode("utf-8").split("\0")
     for name in ("reports", "outputs", "data/processed", "data/runtime", "data/review", "data/private"):
-        assert not (ROOT / name).exists()
-    source_paths = (p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()
-                    and not any(part in ("__pycache__", ".pytest_cache", "node_modules", ".venv", ".git") for part in p.parts))
+        assert not any(path == name or path.startswith(name + "/") for path in source_paths)
     assert not [path for path in source_paths if re.search(r"(?i)(?:^|[/_-])v\d+(?=[./_-]|$)", path)]
 
 
 def test_manual_benchmark_does_not_reference_a_historical_release():
     import json
+
     cases = ROOT / "data/evaluations/ocop/manual_pdf_benchmark.jsonl"
     ids = [json.loads(line)["id"] for line in cases.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert len(ids) == len(set(ids)) == 126

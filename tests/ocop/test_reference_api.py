@@ -1,4 +1,5 @@
 """Verified public reference views reject stale, private and ungrounded records."""
+
 import hashlib
 import json
 
@@ -20,19 +21,28 @@ def reference_api(tmp_path, monkeypatch):
     sha = hashlib.sha256(pdf.read_bytes()).hexdigest()
     config = tmp_path / "configs"
     config.mkdir()
-    (config / "ocop_sources.json").write_text(json.dumps({"sources": [{
-        "source_id": "REFERENCE", "path": "data/raw/ocop/reference.pdf"}]}))
-    (config / "ocop_sources.lock.json").write_text(json.dumps({"sources": [{"source_id": "REFERENCE", "sha256": sha}]}))
+    (config / "ocop_sources.json").write_text(
+        json.dumps({"sources": [{"source_id": "REFERENCE", "path": "data/raw/ocop/reference.pdf"}]})
+    )
+    (config / "ocop_sources.lock.json").write_text(
+        json.dumps({"sources": [{"source_id": "REFERENCE", "sha256": sha}]})
+    )
     data = tmp_path / "data/processed/ocop"
     (data / "index").mkdir(parents=True)
     (data / "knowledge").mkdir()
     (data / "index/manifest.json").write_text('{"corpus_version":"active"}')
     span = {"pdf_page": 1, "bbox": [30, 40, 150, 70], "source_sha256": sha}
-    (data / "knowledge/evidence_units.jsonl").write_text(json.dumps({
-        "unit_id": "unit", "source_id": "REFERENCE", "spans": [span]}) + "\n")
-    record = {"id": "rule", "label": "Verified reference", "review_status": "verified",
-              "visibility": "public", "corpus_version": "active",
-              "citations": [{"source_id": "REFERENCE", "evidence_unit_id": "unit", **span}]}
+    (data / "knowledge/evidence_units.jsonl").write_text(
+        json.dumps({"unit_id": "unit", "source_id": "REFERENCE", "spans": [span]}) + "\n"
+    )
+    record = {
+        "id": "rule",
+        "label": "Verified reference",
+        "review_status": "verified",
+        "visibility": "public",
+        "corpus_version": "active",
+        "citations": [{"source_id": "REFERENCE", "evidence_unit_id": "unit", **span}],
+    }
     monkeypatch.setattr(ocop_routes, "ROOT", tmp_path)
     monkeypatch.setattr(ocop_routes, "DATA", data)
     monkeypatch.setattr(ocop_routes.OcopSystemPipeline, "status", lambda *a, **k: {"state": "ready"})
@@ -60,21 +70,34 @@ def test_verified_view_keeps_complete_provenance_and_exports_only_public_fields(
     assert item["citations"][0].items() >= record["citations"][0].items()
 
 
-@pytest.mark.parametrize("change", [
-    {"corpus_version": "stale"}, {"review_status": "needs_review"},
-    {"visibility": "private"}, {"tenant_id": "secret"}, {"dossier_id": "secret"},
-    {"citations": []}, {"citations": [{"source_id": "UNKNOWN"}]},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"corpus_version": "stale"},
+        {"review_status": "needs_review"},
+        {"visibility": "private"},
+        {"tenant_id": "secret"},
+        {"dossier_id": "secret"},
+        {"citations": []},
+        {"citations": [{"source_id": "UNKNOWN"}]},
+    ],
+)
 def test_invalid_or_private_reference_is_never_published(reference_api, change):
     client, data, record = reference_api
     (data / "knowledge/verified_criteria.jsonl").write_text(json.dumps({**record, **change}) + "\n")
     assert client.get("/api/ocop/criteria").json()["items"] == []
 
 
-@pytest.mark.parametrize("field,value", [
-    ("source_id", "PRIVATE"), ("source_sha256", "a" * 64),
-    ("pdf_page", 2), ("bbox", [30, 40, 160, 70]), ("evidence_unit_id", "missing"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("source_id", "PRIVATE"),
+        ("source_sha256", "a" * 64),
+        ("pdf_page", 2),
+        ("bbox", [30, 40, 160, 70]),
+        ("evidence_unit_id", "missing"),
+    ],
+)
 def test_citation_must_match_locked_pdf_and_evidence(reference_api, field, value):
     client, data, record = reference_api
     record["citations"][0][field] = value

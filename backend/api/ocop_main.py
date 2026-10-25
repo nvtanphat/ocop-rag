@@ -1,4 +1,5 @@
 """OCOP GraphRAG web API."""
+
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +13,12 @@ INDEX_FILE = ROOT / "frontend" / "dist" / "index.html"
 app = FastAPI(title="OCOP GraphRAG API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )

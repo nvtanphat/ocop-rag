@@ -1,4 +1,5 @@
 """Reviewed source registry — do not infer legal effects from filenames."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,6 +7,8 @@ import json
 from pathlib import Path
 
 from ocop_contracts.models import SourceDocument
+
+
 def sha256_file(path: Path) -> str:
     """SHA-256 of the original OCOP PDF bytes, read without altering source files."""
     digest = hashlib.sha256()
@@ -39,12 +42,14 @@ def snapshot(root: Path, sources: list[SourceDocument]) -> dict:
         digest = sha256_file(file)
         if source.file_sha256 is not None and source.file_sha256 != digest:
             raise ValueError(f"approved hash mismatch: {source.source_id}")
-        items.append({
-            "source_id": source.source_id,
-            "path": source.path,
-            "bytes": file.stat().st_size,
-            "sha256": digest,
-        })
+        items.append(
+            {
+                "source_id": source.source_id,
+                "path": source.path,
+                "bytes": file.stat().st_size,
+                "sha256": digest,
+            }
+        )
     # Fail closed on extra PDFs. Otherwise adding a source to raw/ without
     # registering it looks like a successful full-corpus audit but silently
     # leaves that source out of the knowledge base.
@@ -63,11 +68,20 @@ def snapshot(root: Path, sources: list[SourceDocument]) -> dict:
     items.sort(key=lambda item: item["source_id"])
     aggregate = hashlib.sha256()
     for item in items:
-        aggregate.update(json.dumps(item, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        aggregate.update(
+            json.dumps(item, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        )
         aggregate.update(b"\n")
-    return {"schema_version": 1, "algorithm": "sha256", "aggregate_sha256": aggregate.hexdigest(), "sources": items}
+    return {
+        "schema_version": 1,
+        "algorithm": "sha256",
+        "aggregate_sha256": aggregate.hexdigest(),
+        "sources": items,
+    }
 
 
 def compare_lock(current: dict, locked: dict) -> None:
     if current != locked:
-        raise RuntimeError("OCOP dataset snapshot differs from approved lock; run explicit lock-ocop after source review")
+        raise RuntimeError(
+            "OCOP dataset snapshot differs from approved lock; run explicit lock-ocop after source review"
+        )

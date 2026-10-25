@@ -1,4 +1,5 @@
 """Independent OCR command line; never invokes RAG extraction."""
+
 import argparse
 import json
 import os
@@ -13,12 +14,12 @@ from .review import create_dataset, export_markdown, import_markdown, recover_im
 
 
 def _write_run_state(dataset, state):
-    staging = dataset / 'run-state.json.tmp'
-    with staging.open('w', encoding='utf-8') as stream:
+    staging = dataset / "run-state.json.tmp"
+    with staging.open("w", encoding="utf-8") as stream:
         json.dump(state, stream, ensure_ascii=False, indent=2)
         stream.flush()
         os.fsync(stream.fileno())
-    staging.replace(dataset / 'run-state.json')
+    staging.replace(dataset / "run-state.json")
 
 
 def main():
@@ -43,34 +44,54 @@ def main():
     with process_lock(dataset / ".ocr.lock"):
         if args.command == "run":
             from .pdf_pipeline import run_pipeline, _parse_page
+
             if (dataset / "manifest.json").exists():
                 parser.error("dataset already published; choose a new --dataset to preserve review history")
             raw = dataset / "_raw"
-            state = {'status': 'running', 'pid': os.getpid(),
-                     'started_at': datetime.now(timezone.utc).isoformat(),
-                     'requested_pages': args.page, 'workers': args.workers, 'dpi': args.dpi}
+            state = {
+                "status": "running",
+                "pid": os.getpid(),
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "requested_pages": args.page,
+                "workers": args.workers,
+                "dpi": args.dpi,
+            }
             _write_run_state(dataset, state)
             try:
-                raw_manifest = run_pipeline(root, registry=registry, lock=lock, output=raw,
-                         cache_dir=args.cache or dataset / "_cache", dpi=args.dpi,
-                         ocr=not args.without_ocr,
-                         workers=args.workers,
-                         pages={_parse_page(p) for p in args.page} if args.page else None,
-                         apply_postcorrection=False)
+                raw_manifest = run_pipeline(
+                    root,
+                    registry=registry,
+                    lock=lock,
+                    output=raw,
+                    cache_dir=args.cache or dataset / "_cache",
+                    dpi=args.dpi,
+                    ocr=not args.without_ocr,
+                    workers=args.workers,
+                    pages={_parse_page(p) for p in args.page} if args.page else None,
+                    apply_postcorrection=False,
+                )
             except BaseException as exc:
-                _write_run_state(dataset, {**state, 'status': 'failed',
-                                         'error': f'{type(exc).__name__}: {exc}'})
+                _write_run_state(
+                    dataset, {**state, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+                )
                 raise
             if raw_manifest.get("errors"):
-                _write_run_state(dataset, {**state, 'status': 'failed',
-                                         'errors': raw_manifest['errors']})
-                print(json.dumps({"complete": False, "errors": raw_manifest["errors"],
-                                  "raw_manifest": str(raw / "manifest.json"),
-                                  "action": "rerun the same command to retry failed pages using the page cache"},
-                                 ensure_ascii=False, indent=2))
+                _write_run_state(dataset, {**state, "status": "failed", "errors": raw_manifest["errors"]})
+                print(
+                    json.dumps(
+                        {
+                            "complete": False,
+                            "errors": raw_manifest["errors"],
+                            "raw_manifest": str(raw / "manifest.json"),
+                            "action": "rerun the same command to retry failed pages using the page cache",
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
                 raise SystemExit(1)
             result = create_dataset(raw, dataset)
-            _write_run_state(dataset, {**state, 'status': 'published'})
+            _write_run_state(dataset, {**state, "status": "published"})
         elif args.command == "export":
             result = {"exported_pages": export_markdown(dataset, pdf_root=root, registry=registry, lock=lock)}
         elif args.command == "import":
@@ -79,23 +100,35 @@ def main():
             read_dataset(dataset, locked, require_complete=False)
             result = import_markdown(dataset)
         else:
-            if not (dataset / 'manifest.json').exists():
-                state_file = dataset / 'run-state.json'
-                state = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {}
+            if not (dataset / "manifest.json").exists():
+                state_file = dataset / "run-state.json"
+                state = json.loads(state_file.read_text(encoding="utf-8")) if state_file.exists() else {}
                 # Holding .ocr.lock proves no OCR publisher is currently running.
-                if state.get('status') == 'running':
-                    state['status'] = 'interrupted'
-                raw_file = dataset / '_raw/manifest.json'
-                raw = json.loads(raw_file.read_text(encoding='utf-8')) if raw_file.exists() else {}
-                print(json.dumps({'complete': False, 'run': state,
-                                  'errors': raw.get('errors', []),
-                                  'action': 'rerun the same command to resume using the page cache'},
-                                 ensure_ascii=False, indent=2))
+                if state.get("status") == "running":
+                    state["status"] = "interrupted"
+                raw_file = dataset / "_raw/manifest.json"
+                raw = json.loads(raw_file.read_text(encoding="utf-8")) if raw_file.exists() else {}
+                print(
+                    json.dumps(
+                        {
+                            "complete": False,
+                            "run": state,
+                            "errors": raw.get("errors", []),
+                            "action": "rerun the same command to resume using the page cache",
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
                 return
             _, locked = checked_sources(root, registry, lock)
             manifest, pages = read_dataset(dataset, locked, require_complete=False)
-            result = {"complete": manifest["complete"], "pages": len(pages),
-                      "da_duyet": manifest["da_duyet"], "dataset_digest": manifest["dataset_digest"]}
+            result = {
+                "complete": manifest["complete"],
+                "pages": len(pages),
+                "da_duyet": manifest["da_duyet"],
+                "dataset_digest": manifest["dataset_digest"],
+            }
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

@@ -1,4 +1,5 @@
 """Contracts for the fixed EasyOCR detector + VietOCR recognizer path."""
+
 from __future__ import annotations
 
 import re
@@ -19,8 +20,12 @@ def _page(width=500, height=700):
 
 
 def test_pixel_bbox_maps_to_pdf_points_and_rejects_invalid_geometry():
-    assert _pdf_bbox([200, 100, 500, 350], width_px=1000, height_px=1000,
-                     page=_page()) == [100.0, 70.0, 250.0, 245.0]
+    assert _pdf_bbox([200, 100, 500, 350], width_px=1000, height_px=1000, page=_page()) == [
+        100.0,
+        70.0,
+        250.0,
+        245.0,
+    ]
     with pytest.raises(ValueError, match="bbox"):
         _pdf_bbox([20, 10, float("nan"), 30], width_px=100, height_px=100, page=_page())
 
@@ -53,9 +58,7 @@ def test_easyocr_detection_regions_are_merged_and_recognized_by_vietocr(monkeypa
     monkeypatch.setattr("ocop_ocr.table_parser.raster_tables", lambda *a, **k: [])
 
     trace = {}
-    result, tables = run_easy_viet_ocr(
-        Image.new("RGB", (200, 100), "white"), _page(200, 100), trace=trace
-    )
+    result, tables = run_easy_viet_ocr(Image.new("RGB", (200, 100), "white"), _page(200, 100), trace=trace)
 
     assert len(recognizer.crops) == 1
     assert tables == []
@@ -78,10 +81,13 @@ def test_fragments_in_separate_score_columns_are_not_merged():
         {"bbox_px": [10, 20, 35, 40], "polygon": []},
         {"bbox_px": [40, 20, 55, 40], "polygon": []},
     ]
-    table = {"bbox": [0, 0, 100, 100], "cells": [
-        {"row": 0, "col": 0, "bbox": [0, 0, 39, 50]},
-        {"row": 0, "col": 1, "bbox": [39, 0, 100, 50]},
-    ]}
+    table = {
+        "bbox": [0, 0, 100, 100],
+        "cells": [
+            {"row": 0, "col": 0, "bbox": [0, 0, 39, 50]},
+            {"row": 0, "col": 1, "bbox": [39, 0, 100, 50]},
+        ],
+    }
     merged = _merge_line_fragments(regions, Image.new("RGB", (100, 100)), _page(100, 100), [table])
     assert len(merged) == 2
 
@@ -93,9 +99,12 @@ def test_fragments_with_a_large_gap_merge_inside_the_same_table_cell():
         {"bbox_px": [10, 10, 40, 20], "polygon": []},
         {"bbox_px": [57, 10, 80, 20], "polygon": []},
     ]
-    table = {"bbox": [0, 0, 100, 30], "cells": [
-        {"row": 0, "col": 0, "bbox": [0, 0, 100, 30]},
-    ]}
+    table = {
+        "bbox": [0, 0, 100, 30],
+        "cells": [
+            {"row": 0, "col": 0, "bbox": [0, 0, 100, 30]},
+        ],
+    }
 
     merged = _merge_line_fragments(regions, Image.new("RGB", (100, 40)), _page(100, 40), [table])
 
@@ -109,8 +118,7 @@ def test_repeated_asterisk_suffixes_detect_small_marker_glyphs(marker):
     from ocop_ocr.easy_viet_ocr import _repeated_asterisk_suffixes
 
     image = np.full((24, 120), 255, dtype=np.uint8)
-    cv2.putText(image, f"Text{marker}", (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, 0, 1, cv2.LINE_AA)
+    cv2.putText(image, f"Text{marker}", (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, 0, 1, cv2.LINE_AA)
 
     assert [text for text, _, _ in _repeated_asterisk_suffixes(image)] == [marker]
 
@@ -121,8 +129,7 @@ def test_repeated_matching_letter_glyphs_are_not_asterisk_markers(text):
     from ocop_ocr.easy_viet_ocr import _repeated_asterisk_suffixes
 
     image = np.full((24, 160), 255, dtype=np.uint8)
-    cv2.putText(image, text, (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, 0, 1, cv2.LINE_AA)
+    cv2.putText(image, text, (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, 0, 1, cv2.LINE_AA)
 
     assert _repeated_asterisk_suffixes(image) == []
 
@@ -147,19 +154,23 @@ def test_asterisk_image_candidate_must_follow_the_ocr_text_line(marker_bbox, tex
 def test_table_row_split_keeps_boundary_near_the_region_edge():
     from ocop_ocr.easy_viet_ocr import _split_at_table_rows
 
-    region = {"bbox_px": [50, 18, 60, 82],
-              "polygon": [[50, 18], [60, 18], [60, 82], [50, 82]]}
-    table = {"cells": [
-        {"row": 0, "col": 0, "bbox": [0, 0, 100, 30]},
-        {"row": 1, "col": 0, "bbox": [0, 30, 100, 50]},
-        {"row": 2, "col": 0, "bbox": [0, 50, 100, 70]},
-        {"row": 3, "col": 0, "bbox": [0, 70, 100, 100]},
-    ]}
+    region = {"bbox_px": [50, 18, 60, 82], "polygon": [[50, 18], [60, 18], [60, 82], [50, 82]]}
+    table = {
+        "cells": [
+            {"row": 0, "col": 0, "bbox": [0, 0, 100, 30]},
+            {"row": 1, "col": 0, "bbox": [0, 30, 100, 50]},
+            {"row": 2, "col": 0, "bbox": [0, 50, 100, 70]},
+            {"row": 3, "col": 0, "bbox": [0, 70, 100, 100]},
+        ]
+    }
 
     regions = _split_at_table_rows([region], Image.new("RGB", (100, 100)), _page(100, 100), [table])
 
     assert [item["bbox_px"] for item in regions] == [
-        [50, 18, 60, 30], [50, 30, 60, 50], [50, 50, 60, 70], [50, 70, 60, 82],
+        [50, 18, 60, 30],
+        [50, 30, 60, 50],
+        [50, 50, 60, 70],
+        [50, 70, 60, 82],
     ]
 
 
@@ -177,10 +188,13 @@ def test_single_skewed_detection_keeps_polygon_for_recognition_crop():
 def test_skewed_detection_is_rectified_before_recognition():
     from ocop_ocr.easy_viet_ocr import _recognition_crop
 
-    crop = _recognition_crop(Image.new("RGB", (100, 100), "white"), {
-        "bbox_px": [20, 20, 76, 54],
-        "polygon": [[20, 34], [70, 20], [76, 40], [26, 54]],
-    })
+    crop = _recognition_crop(
+        Image.new("RGB", (100, 100), "white"),
+        {
+            "bbox_px": [20, 20, 76, 54],
+            "polygon": [[20, 34], [70, 20], [76, 40], [26, 54]],
+        },
+    )
 
     assert crop.width > crop.height
     assert crop.height < 34
@@ -191,8 +205,9 @@ def test_sparse_cell_retry_adds_only_unverified_numeric_candidates(monkeypatch):
 
     class Recognizer:
         def __init__(self):
-            self.predictions = iter([("1", 0.91), ("1", 0.89), ("1", 0.92),
-                                     ("1", 0.89), ("Q", 0.92), ("0", 0.88)])
+            self.predictions = iter(
+                [("1", 0.91), ("1", 0.89), ("1", 0.92), ("1", 0.89), ("Q", 0.92), ("0", 0.88)]
+            )
 
         def predict(self, crop, return_prob=False):
             assert return_prob is True
@@ -218,8 +233,11 @@ def test_sparse_cell_retry_adds_only_unverified_numeric_candidates(monkeypatch):
     assert cell["score_ocr_candidates"][0]["text"] == "1"
     assert q_misread["score_ocr_candidates"][0]["text"] == "0"
     assert q_misread["score_ocr_candidates"][0]["method"] == "vietocr_vgg_transformer_2x_direct_cell_crop"
-    assert all(candidate["candidate_only"] and candidate["review_status"] == "needs_review"
-               for target in (cell, blank, q_misread) for candidate in target["score_ocr_candidates"])
+    assert all(
+        candidate["candidate_only"] and candidate["review_status"] == "needs_review"
+        for target in (cell, blank, q_misread)
+        for candidate in target["score_ocr_candidates"]
+    )
 
 
 def test_sparse_cell_retry_checks_taller_scoring_rows(monkeypatch):
@@ -227,22 +245,23 @@ def test_sparse_cell_retry_checks_taller_scoring_rows(monkeypatch):
 
     class Recognizer:
         def __init__(self):
-            self.predictions=iter([("1",0.95)])
+            self.predictions = iter([("1", 0.95)])
 
-        def predict(self,crop,return_prob=False):
+        def predict(self, crop, return_prob=False):
             assert return_prob is True
             return next(self.predictions)
 
-    cell={"row":0,"col":1,"bbox":[140,100,200,144],"text":""}
-    table={"col_count":2,"bbox":[0,0,200,240],"cells":[cell]}
-    monkeypatch.setattr(adapter,"_detect_regions",lambda _reader,_rgb:[])
+    cell = {"row": 0, "col": 1, "bbox": [140, 100, 200, 144], "text": ""}
+    table = {"col_count": 2, "bbox": [0, 0, 200, 240], "cells": [cell]}
+    monkeypatch.setattr(adapter, "_detect_regions", lambda _reader, _rgb: [])
 
-    count=adapter._recover_sparse_cell_candidates(
-        Image.new("RGB",(300,300),"white"),_page(300,300),[table],object(),Recognizer())
+    count = adapter._recover_sparse_cell_candidates(
+        Image.new("RGB", (300, 300), "white"), _page(300, 300), [table], object(), Recognizer()
+    )
 
-    assert count==1
-    assert cell["score_ocr_candidates"][0]["text"]=="1"
-    assert cell["text"]==""
+    assert count == 1
+    assert cell["score_ocr_candidates"][0]["text"] == "1"
+    assert cell["text"] == ""
     assert cell["score_ocr_candidates"][0]["candidate_only"] is True
 
 
@@ -266,27 +285,29 @@ def test_sparse_cell_retry_uses_tight_ink_crop_when_tall_cell_reading_is_noise(m
     draw.line((164, 115, 168, 111), fill="black", width=3)
     monkeypatch.setattr(adapter, "_detect_regions", lambda _reader, _rgb: [])
 
-    count = adapter._recover_sparse_cell_candidates(
-        image, _page(300, 300), [table], object(), Recognizer()
-    )
+    count = adapter._recover_sparse_cell_candidates(image, _page(300, 300), [table], object(), Recognizer())
 
     assert count == 1
     assert cell["text"] == ""
-    assert cell["score_ocr_candidates"] == [{
-        "text": "1",
-        "bbox": [140, 100, 200, 144],
-        "method": "vietocr_vgg_transformer_2x_tight_ink_crop",
-        "confidence": 0.93,
-        "candidate_only": True,
-        "review_status": "needs_review",
-        "ocr_observations": [{
+    assert cell["score_ocr_candidates"] == [
+        {
             "text": "1",
+            "bbox": [140, 100, 200, 144],
             "method": "vietocr_vgg_transformer_2x_tight_ink_crop",
             "confidence": 0.93,
             "candidate_only": True,
             "review_status": "needs_review",
-        }],
-    }]
+            "ocr_observations": [
+                {
+                    "text": "1",
+                    "method": "vietocr_vgg_transformer_2x_tight_ink_crop",
+                    "confidence": 0.93,
+                    "candidate_only": True,
+                    "review_status": "needs_review",
+                }
+            ],
+        }
+    ]
 
 
 def test_sparse_cell_retry_keeps_one_candidate_for_majority_crop_reading(monkeypatch):
@@ -300,19 +321,21 @@ def test_sparse_cell_retry_keeps_one_candidate_for_majority_crop_reading(monkeyp
             assert return_prob is True
             return next(self.predictions)
 
-    cell = {"row": 0, "col": 1, "bbox": [140, 100, 200, 144], "text": "",
-            "ocr_raw_text": "raw score cell reading"}
+    cell = {
+        "row": 0,
+        "col": 1,
+        "bbox": [140, 100, 200, 144],
+        "text": "",
+        "ocr_raw_text": "raw score cell reading",
+    }
     table = {"col_count": 2, "bbox": [0, 0, 200, 240], "cells": [cell]}
     image = Image.new("RGB", (300, 300), "white")
-    region = {"bbox_px": [20, 20, 80, 80],
-              "polygon": [[20, 20], [80, 20], [80, 80], [20, 80]]}
+    region = {"bbox_px": [20, 20, 80, 80], "polygon": [[20, 20], [80, 20], [80, 80], [20, 80]]}
     monkeypatch.setattr(adapter, "_detect_regions", lambda _reader, _rgb: [region])
     monkeypatch.setattr(adapter, "_recognition_crop", lambda crop, _region: crop)
     monkeypatch.setattr(adapter, "_tight_score_cell_crop", lambda crop: crop)
 
-    count = adapter._recover_sparse_cell_candidates(
-        image, _page(300, 300), [table], object(), Recognizer()
-    )
+    count = adapter._recover_sparse_cell_candidates(image, _page(300, 300), [table], object(), Recognizer())
 
     assert count == 1
     assert cell["ocr_raw_text"] == "raw score cell reading"
@@ -322,12 +345,27 @@ def test_sparse_cell_retry_keeps_one_candidate_for_majority_crop_reading(monkeyp
     assert candidate["candidate_only"] is True
     assert candidate["review_status"] == "needs_review"
     assert candidate["ocr_observations"] == [
-        {"text": "3", "method": "easyocr_craft+vietocr_vgg_transformer_2x_cell_crop",
-         "confidence": 0.92, "candidate_only": True, "review_status": "needs_review"},
-        {"text": "3", "method": "vietocr_vgg_transformer_2x_direct_cell_crop",
-         "confidence": 0.91, "candidate_only": True, "review_status": "needs_review"},
-        {"text": "5", "method": "vietocr_vgg_transformer_2x_tight_ink_crop",
-         "confidence": 0.95, "candidate_only": True, "review_status": "needs_review"},
+        {
+            "text": "3",
+            "method": "easyocr_craft+vietocr_vgg_transformer_2x_cell_crop",
+            "confidence": 0.92,
+            "candidate_only": True,
+            "review_status": "needs_review",
+        },
+        {
+            "text": "3",
+            "method": "vietocr_vgg_transformer_2x_direct_cell_crop",
+            "confidence": 0.91,
+            "candidate_only": True,
+            "review_status": "needs_review",
+        },
+        {
+            "text": "5",
+            "method": "vietocr_vgg_transformer_2x_tight_ink_crop",
+            "confidence": 0.95,
+            "candidate_only": True,
+            "review_status": "needs_review",
+        },
     ]
 
 
@@ -345,15 +383,12 @@ def test_sparse_cell_retry_tie_prefers_localized_craft_crop(monkeypatch):
     cell = {"row": 0, "col": 1, "bbox": [140, 100, 200, 144], "text": ""}
     table = {"col_count": 2, "bbox": [0, 0, 200, 240], "cells": [cell]}
     image = Image.new("RGB", (300, 300), "white")
-    region = {"bbox_px": [20, 20, 80, 80],
-              "polygon": [[20, 20], [80, 20], [80, 80], [20, 80]]}
+    region = {"bbox_px": [20, 20, 80, 80], "polygon": [[20, 20], [80, 20], [80, 80], [20, 80]]}
     monkeypatch.setattr(adapter, "_detect_regions", lambda _reader, _rgb: [region])
     monkeypatch.setattr(adapter, "_recognition_crop", lambda crop, _region: crop)
     monkeypatch.setattr(adapter, "_tight_score_cell_crop", lambda crop: crop)
 
-    adapter._recover_sparse_cell_candidates(
-        image, _page(300, 300), [table], object(), Recognizer()
-    )
+    adapter._recover_sparse_cell_candidates(image, _page(300, 300), [table], object(), Recognizer())
 
     assert len(cell["score_ocr_candidates"]) == 1
     candidate = cell["score_ocr_candidates"][0]
@@ -408,14 +443,31 @@ def test_scan_page_uses_one_ocr_result_for_text_and_table_candidates(monkeypatch
     import fitz
     import ocop_ocr.pdf_pipeline as pipeline
 
-    result = OCRResult([{
-        "block_id": "ocr:easyocr_vietocr:0", "text": "Tiêu chí 3", "bbox": [10, 10, 80, 40],
-        "method": "easyocr_craft+vietocr_vgg_transformer", "order": 0, "confidence": 0.9,
-        "review_status": "needs_review", "candidate_only": True,
-    }], "easyocr_vietocr", ["ocr_candidates_require_source_verification"])
-    table = {"table_id": "table:raster:0", "method": "opencv_grid_candidate",
-             "bbox": [10, 60, 200, 300], "row_count": 1, "col_count": 2,
-             "cells": [], "review_status": "needs_review"}
+    result = OCRResult(
+        [
+            {
+                "block_id": "ocr:easyocr_vietocr:0",
+                "text": "Tiêu chí 3",
+                "bbox": [10, 10, 80, 40],
+                "method": "easyocr_craft+vietocr_vgg_transformer",
+                "order": 0,
+                "confidence": 0.9,
+                "review_status": "needs_review",
+                "candidate_only": True,
+            }
+        ],
+        "easyocr_vietocr",
+        ["ocr_candidates_require_source_verification"],
+    )
+    table = {
+        "table_id": "table:raster:0",
+        "method": "opencv_grid_candidate",
+        "bbox": [10, 60, 200, 300],
+        "row_count": 1,
+        "col_count": 2,
+        "cells": [],
+        "review_status": "needs_review",
+    }
     calls = []
 
     def fake(*args, **kwargs):
@@ -427,8 +479,14 @@ def test_scan_page_uses_one_ocr_result_for_text_and_table_candidates(monkeypatch
     with fitz.open() as document:
         page = document.new_page(width=500, height=700)
         page.insert_image(page.rect, stream=_white_png())
-        profile = {"pdf_page": 1, "page_class": "ocr_candidate", "needs_ocr_review": True,
-                   "largest_image_area_ratio": 1.0, "width_pt": 500.0, "height_pt": 700.0}
+        profile = {
+            "pdf_page": 1,
+            "page_class": "ocr_candidate",
+            "needs_ocr_review": True,
+            "largest_image_area_ratio": 1.0,
+            "width_pt": 500.0,
+            "height_pt": 700.0,
+        }
         artifact = pipeline.extract_page(page, profile, source_id="VN.TEST", trace=trace)
 
     assert len(calls) == 1
@@ -444,17 +502,28 @@ def test_scan_page_uses_one_ocr_result_for_text_and_table_candidates(monkeypatch
 
 def _white_png():
     import io
+
     stream = io.BytesIO()
     Image.new("RGB", (500, 700), "white").save(stream, format="PNG")
     return stream.getvalue()
 
 
 def test_quality_reports_blank_score_candidates_without_verifying_them():
-    quality = score_page_quality({"page_class": "ocr_candidate"}, [], [{
-        "bbox": [0, 0, 500, 300], "row_count": 1, "col_count": 2,
-        "cells": [{"row": 0, "col": 0, "text": "Criterion", "bbox": [0, 0, 390, 40]},
-                  {"row": 0, "col": 1, "text": "", "bbox": [390, 0, 500, 40]}],
-    }])
+    quality = score_page_quality(
+        {"page_class": "ocr_candidate"},
+        [],
+        [
+            {
+                "bbox": [0, 0, 500, 300],
+                "row_count": 1,
+                "col_count": 2,
+                "cells": [
+                    {"row": 0, "col": 0, "text": "Criterion", "bbox": [0, 0, 390, 40]},
+                    {"row": 0, "col": 1, "text": "", "bbox": [390, 0, 500, 40]},
+                ],
+            }
+        ],
+    )
     assert quality["potential_score_cells_blank"] == 1
     assert quality["requires_manual_score_validation"] is True
     assert quality["quality_is_not_legal_verification"] is True
@@ -463,10 +532,17 @@ def test_quality_reports_blank_score_candidates_without_verifying_them():
 def test_skipped_scan_is_flagged_for_human_verification(tmp_path):
     import fitz
     from ocop_ocr.pdf_pipeline import extract_page
+
     with fitz.open() as document:
         page = document.new_page()
-        profile = {"pdf_page": 1, "width_pt": page.rect.width, "height_pt": page.rect.height,
-                   "needs_ocr_review": True, "page_class": "ocr_candidate", "largest_image_area_ratio": 1.0}
+        profile = {
+            "pdf_page": 1,
+            "width_pt": page.rect.width,
+            "height_pt": page.rect.height,
+            "needs_ocr_review": True,
+            "page_class": "ocr_candidate",
+            "largest_image_area_ratio": 1.0,
+        }
         artifact = extract_page(page, profile, source_id="TEST", enable_ocr=False, enable_tables=False)
     assert artifact["needs_human_verification"] is True
     assert "ocr_required_but_not_executed" in artifact["ocr_attention"]
@@ -487,6 +563,7 @@ def test_new_parser_version_invalidates_old_ocr_caches(tmp_path):
 
 def test_extracted_text_joins_same_row_fragments_but_keeps_separate_lines():
     from ocop_contracts.layout import join_blocks_by_line as _join_blocks_by_line
+
     blocks = [
         {"text": "Công tác đánh", "bbox": [118.0, 46.5, 431.4, 70.5]},
         {"text": "giá, phân hạng sản", "bbox": [431.4, 46.5, 540.3, 70.5]},
@@ -530,7 +607,7 @@ def test_long_region_is_cut_mid_gap_and_crop_padding_at_the_cut_is_blank():
 
     canvas = np.full((60, 1400, 3), 255, dtype=np.uint8)
     for x in [*range(10, 690, 8), *range(710, 1390, 8)]:  # glyph-like vertical strokes, a gap at 690-710
-        canvas[20:40, x:x + 4] = 0
+        canvas[20:40, x : x + 4] = 0
     image = Image.fromarray(canvas)
     pieces = _split_long_regions([{"bbox_px": [0, 15, 1400, 45], "polygon": []}], image, maximum_ratio=25)
     assert len(pieces) == 2 and 695 <= pieces[0]["bbox_px"][2] <= 705
@@ -545,8 +622,9 @@ def test_table_rule_through_a_long_line_does_not_hide_the_word_gap():
 
     canvas = np.full((60, 1400, 3), 255, dtype=np.uint8)
     for x in [*range(10, 690, 8), *range(710, 1390, 8)]:
-        canvas[20:40, x:x + 4] = 0
+        canvas[20:40, x : x + 4] = 0
     canvas[29:31, :] = 0  # a ruling line crossing the whole crop
-    pieces = _split_long_regions([{"bbox_px": [0, 15, 1400, 45], "polygon": []}], Image.fromarray(canvas),
-                                 maximum_ratio=25)
+    pieces = _split_long_regions(
+        [{"bbox_px": [0, 15, 1400, 45], "polygon": []}], Image.fromarray(canvas), maximum_ratio=25
+    )
     assert len(pieces) == 2 and 695 <= pieces[0]["bbox_px"][2] <= 705 and pieces[0]["cut_edges"] == ["right"]

@@ -11,22 +11,29 @@ from ai_core.knowledge.ocop.extractor import extract_semantics
 from ai_core.processing.ocop.business_candidates import candidates
 
 
-@pytest.mark.parametrize(('statement', 'expected'), [
-    ('Bộ Y tế kiểm tra hồ sơ đối với các sản phẩm thực phẩm.', True),
-    ('Đối với hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.', False),
-    ('Nếu hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.', False),
-    ('Bộ Y tế công nhận đối với các sản phẩm thực phẩm.', False),
-    ('UBND cấp xã đề nghị Bộ Y tế kiểm tra hồ sơ đối với sản phẩm.', False),
-])
+@pytest.mark.parametrize(
+    ("statement", "expected"),
+    [
+        ("Bộ Y tế kiểm tra hồ sơ đối với các sản phẩm thực phẩm.", True),
+        ("Đối với hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.", False),
+        ("Nếu hồ sơ cần bổ sung, Bộ Y tế kiểm tra hồ sơ.", False),
+        ("Bộ Y tế công nhận đối với các sản phẩm thực phẩm.", False),
+        ("UBND cấp xã đề nghị Bộ Y tế kiểm tra hồ sơ đối với sản phẩm.", False),
+    ],
+)
 def test_responsibility_object_preposition_is_not_a_conditional_scope(statement, expected):
     from ai_core.graph.ocop.grounding import _entails
     from ai_core.knowledge.ocop.authorities import resolve
 
-    actor = {'properties': resolve('Bộ Y tế')}
-    step = {'label': statement, 'properties': {'statement_candidate': statement},
-            'evidence_unit_ids': ['unit']}
-    assert _entails({'relation_type': 'RESPONSIBLE_FOR'}, actor, step,
-                    {'unit': {'text': statement}}) is expected
+    actor = {"properties": resolve("Bộ Y tế")}
+    step = {
+        "label": statement,
+        "properties": {"statement_candidate": statement},
+        "evidence_unit_ids": ["unit"],
+    }
+    assert (
+        _entails({"relation_type": "RESPONSIBLE_FOR"}, actor, step, {"unit": {"text": statement}}) is expected
+    )
 
 
 def sheet_graph(tmp_path):
@@ -34,23 +41,31 @@ def sheet_graph(tmp_path):
     from tests.ocop.test_legal_structure import extract, REGISTRY
 
     units = fixture()
-    knowledge = tmp_path / 'knowledge'
+    knowledge = tmp_path / "knowledge"
     knowledge.mkdir()
-    (knowledge / 'manifest.json').write_text(json.dumps({
-        'complete': True, 'corpus_version': 'synthetic', 'document_registry': REGISTRY,
-    }), encoding='utf-8')
-    for name, rows in {'evidence_units': units, **extract(units)}.items():
-        (knowledge / f'{name}.jsonl').write_text(
-            ''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
-    graph = tmp_path / 'graph'
+    (knowledge / "manifest.json").write_text(
+        json.dumps(
+            {
+                "complete": True,
+                "corpus_version": "synthetic",
+                "document_registry": REGISTRY,
+            }
+        ),
+        encoding="utf-8",
+    )
+    for name, rows in {"evidence_units": units, **extract(units)}.items():
+        (knowledge / f"{name}.jsonl").write_text(
+            "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8"
+        )
+    graph = tmp_path / "graph"
     build_graph(knowledge, graph)
-    return list(records(graph / 'nodes.jsonl')), list(records(graph / 'edges.jsonl')), units
+    return list(records(graph / "nodes.jsonl")), list(records(graph / "edges.jsonl")), units
 
 
 def test_numbered_criterion_accepts_printed_comma_and_no_space(tmp_path):
     nodes, _, _ = sheet_graph(tmp_path)
-    for label in ('1.1, Tiêu chí', '3.1.Tiêu chí'):
-        assert next(n for n in nodes if n['label'] == label)['check'] == 'passed'
+    for label in ("1.1, Tiêu chí", "3.1.Tiêu chí"):
+        assert next(n for n in nodes if n["label"] == label)["check"] == "passed"
 
 
 def test_cross_page_option_requires_explicit_continuity_and_unbroken_scope(tmp_path):
@@ -58,27 +73,27 @@ def test_cross_page_option_requires_explicit_continuity_and_unbroken_scope(tmp_p
     from ai_core.graph.ocop.grounding import _entails
 
     nodes, edges, units = sheet_graph(tmp_path)
-    by_id = {n['node_id']: n for n in nodes}
-    option = next(n for n in nodes if n['label'] == 'Phương án cao')
-    edge = next(e for e in edges if e['relation_type'] == 'HAS_OPTION'
-                and e['target_entity_id'] == option['node_id'])
-    assert edge['check'] == 'passed'
-    source = by_id[edge['source_entity_id']]
-    target = option.get('machine_candidate', option)
-    source = source.get('machine_candidate', source)
-    units = {u['unit_id']: u for u in units}
+    by_id = {n["node_id"]: n for n in nodes}
+    option = next(n for n in nodes if n["label"] == "Phương án cao")
+    edge = next(
+        e for e in edges if e["relation_type"] == "HAS_OPTION" and e["target_entity_id"] == option["node_id"]
+    )
+    assert edge["check"] == "passed"
+    source = by_id[edge["source_entity_id"]]
+    target = option.get("machine_candidate", option)
+    source = source.get("machine_candidate", source)
+    units = {u["unit_id"]: u for u in units}
     assert _entails(edge, source, target, units)
     without_hint = deepcopy(units)
     for u in without_hint.values():
-        u['structured'].pop('table_continuity', None)
+        u["structured"].pop("table_continuity", None)
     assert not _entails(edge, source, target, without_hint)
     other_sheet = deepcopy(target)
-    other_sheet['properties']['sheet_number_candidate'] = '99'
+    other_sheet["properties"]["sheet_number_candidate"] = "99"
     assert not _entails(edge, source, other_sheet, units)
     intervening = deepcopy(units)
-    previous = next(u for u in intervening.values()
-                    if u['structured'].get('table_id') == 'table:3')
-    previous['structured']['cells'].append({'row': 6, 'col': 0, 'text': '1.2. Autre'})
+    previous = next(u for u in intervening.values() if u["structured"].get("table_id") == "table:3")
+    previous["structured"]["cells"].append({"row": 6, "col": 0, "text": "1.2. Autre"})
     assert not _entails(edge, source, target, intervening)
 
 
@@ -336,24 +351,33 @@ def test_builder_keeps_llm_origin_on_generated_evidence_edges(tmp_path):
 
 
 def test_explicit_registered_suspension_has_a_checked_predicate():
-    _, edges, _, _ = legal_graph('Điều 1. Tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.', 'SUSPENDS')
-    assert [e['relation_type'] for e in edges] == ['SUSPENDS']
+    _, edges, _, _ = legal_graph("Điều 1. Tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.", "SUSPENDS")
+    assert [e["relation_type"] for e in edges] == ["SUSPENDS"]
 
 
-@pytest.mark.parametrize('text', [
-    'Không tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.',
-    'Nếu tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg thì thông báo.',
-    '1. Tạm đình chỉ hiệu lực văn bản trước đây.\n2. Quyết định số 148/QĐ-TTg được nhắc đến.',
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Không tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg.",
+        "Nếu tạm đình chỉ hiệu lực Quyết định số 148/QĐ-TTg thì thông báo.",
+        "1. Tạm đình chỉ hiệu lực văn bản trước đây.\n2. Quyết định số 148/QĐ-TTg được nhắc đến.",
+    ],
+)
 def test_suspension_cannot_borrow_a_number_or_ignore_modality(text):
-    _, edges, _, _ = legal_graph(text, 'SUSPENDS')
+    _, edges, _, _ = legal_graph(text, "SUSPENDS")
     assert edges == []
 
 
 def test_list_item_inherits_its_list_header_but_not_a_sibling_items_condition():
     from ai_core.graph.ocop.grounding import _inherited_condition
-    sibling = '2. Chủ tịch UBND cấp tỉnh thực hiện:\na) Trong trường hợp cần thiết, thông báo hướng dẫn hồ sơ\n'
-    assert _inherited_condition(sibling, 'b) Chủ tịch UBND cấp tỉnh thành lập Hội đồng') == '2. Chủ tịch UBND cấp tỉnh thực hiện:'
-    conditional_header = '2. Nếu sản phẩm đạt 1 sao:\na) lập biên bản\n'
-    assert 'Nếu' in _inherited_condition(conditional_header, 'b) UBND cấp tỉnh thông báo')
-    assert 'Trường hợp' in _inherited_condition('Nội dung A. Trường hợp X, ', 'UBND tổ chức họp')
+
+    sibling = (
+        "2. Chủ tịch UBND cấp tỉnh thực hiện:\na) Trong trường hợp cần thiết, thông báo hướng dẫn hồ sơ\n"
+    )
+    assert (
+        _inherited_condition(sibling, "b) Chủ tịch UBND cấp tỉnh thành lập Hội đồng")
+        == "2. Chủ tịch UBND cấp tỉnh thực hiện:"
+    )
+    conditional_header = "2. Nếu sản phẩm đạt 1 sao:\na) lập biên bản\n"
+    assert "Nếu" in _inherited_condition(conditional_header, "b) UBND cấp tỉnh thông báo")
+    assert "Trường hợp" in _inherited_condition("Nội dung A. Trường hợp X, ", "UBND tổ chức họp")

@@ -1,4 +1,5 @@
 """Shared shape for machine-extracted OCR candidates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

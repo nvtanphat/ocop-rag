@@ -1,4 +1,5 @@
 """Public, corpus-bound verified reference records. Never exports arbitrary fields."""
+
 from __future__ import annotations
 
 import hashlib
@@ -40,7 +41,9 @@ def read_references(root: Path, kind: Literal["criteria", "products"], *, ready:
     """
     data = root / "data/processed/ocop"
     manifest = data / "index/manifest.json"
-    version = json.loads(manifest.read_text(encoding="utf-8")).get("corpus_version") if manifest.is_file() else None
+    version = (
+        json.loads(manifest.read_text(encoding="utf-8")).get("corpus_version") if manifest.is_file() else None
+    )
     result = ReferenceResponse(corpus_version=version, status="no_verified_data", items=[])
     path = data / "knowledge" / f"verified_{kind}.jsonl"
     if not ready or not version or not path.is_file():
@@ -51,9 +54,12 @@ def read_references(root: Path, kind: Literal["criteria", "products"], *, ready:
     hashes = {r["source_id"]: r["sha256"] for r in lock["sources"]}
     units = {r["unit_id"]: r for r in _records(data / "knowledge/evidence_units.jsonl")}
     for record in _records(path):
-        if (record.get("review_status") not in {"verified", "human_verified"}
-                or record.get("visibility") != "public" or record.get("corpus_version") != version
-                or any(record.get(k) for k in ("tenant_id", "dossier_id", "private"))):
+        if (
+            record.get("review_status") not in {"verified", "human_verified"}
+            or record.get("visibility") != "public"
+            or record.get("corpus_version") != version
+            or any(record.get(k) for k in ("tenant_id", "dossier_id", "private"))
+        ):
             continue
         try:
             item = ReferenceItem.model_validate(record)
@@ -73,10 +79,19 @@ def _records(path: Path) -> list[dict]:
 def _matches(root: Path, c: ReferenceCitation, sources: dict, hashes: dict, units: dict) -> bool:
     source = sources.get(c.source_id)
     unit = units.get(c.evidence_unit_id)
-    if not source or not unit or unit.get("source_id") != c.source_id or hashes.get(c.source_id) != c.source_sha256:
+    if (
+        not source
+        or not unit
+        or unit.get("source_id") != c.source_id
+        or hashes.get(c.source_id) != c.source_sha256
+    ):
         return False
-    if not any(s.get("pdf_page") == c.pdf_page and s.get("source_sha256") == c.source_sha256
-               and s.get("bbox") == list(c.bbox) for s in unit.get("spans", [])):
+    if not any(
+        s.get("pdf_page") == c.pdf_page
+        and s.get("source_sha256") == c.source_sha256
+        and s.get("bbox") == list(c.bbox)
+        for s in unit.get("spans", [])
+    ):
         return False
     pdf = (root / source["path"]).resolve()
     if not pdf.is_relative_to((root / "data/raw/ocop").resolve()) or pdf.suffix.lower() != ".pdf":

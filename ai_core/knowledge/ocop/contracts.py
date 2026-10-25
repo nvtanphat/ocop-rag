@@ -3,6 +3,7 @@
 An OCR extraction is a CANDIDATE, never a legal fact or executable scoring rule.
 IDs are stable and review is an explicit operation separate from extraction.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -14,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 def ambiguous_numbered_heading(text: str) -> bool:
     """Observed numbering behind stray OCR ink is a scope barrier, not a repair."""
-    return bool(re.match(r'^\s*[^\d\s]{1,3}\s+\d+(?:[.,]\d+){1,3}[.,)]?\s+\S',text))
+    return bool(re.match(r"^\s*[^\d\s]{1,3}\s+\d+(?:[.,]\d+){1,3}[.,)]?\s+\S", text))
 
 
 class Strict(BaseModel):
@@ -57,10 +58,13 @@ class EntityType(str, Enum):
 
 # Descriptive features only; numeric scoring and legal interpretation are not LLM features.
 ENTITY_ATTRIBUTE_KEYS = {
-    'Product': ('product_type', 'brand', 'packaging', 'raw_material', 'origin_area'),
-    'Organization': ('organization_form', 'address', 'representative'),
-    'Criterion': ('code',), 'EvidenceType': ('issuer', 'copies', 'format'),
-    'ProductGroup': ('code',), 'ProductSubgroup': ('code',), 'Condition': ('subject',),
+    "Product": ("product_type", "brand", "packaging", "raw_material", "origin_area"),
+    "Organization": ("organization_form", "address", "representative"),
+    "Criterion": ("code",),
+    "EvidenceType": ("issuer", "copies", "format"),
+    "ProductGroup": ("code",),
+    "ProductSubgroup": ("code",),
+    "Condition": ("subject",),
 }
 
 
@@ -76,7 +80,10 @@ RELATION_TYPES = {
     "RESPONSIBLE_FOR": (EntityType.AUTHORITY, EntityType.PROCEDURE_STEP),
     "APPLIES_IN": (EntityType.LOCAL_GUIDANCE, EntityType.ADMINISTRATIVE_AREA),
     "OWNED_BY": (EntityType.PRODUCT, EntityType.ORGANIZATION),
-    "BASED_ON": (frozenset({EntityType.RECOGNITION_DECISION, EntityType.SOURCE_DOCUMENT}), EntityType.SOURCE_DOCUMENT),
+    "BASED_ON": (
+        frozenset({EntityType.RECOGNITION_DECISION, EntityType.SOURCE_DOCUMENT}),
+        EntityType.SOURCE_DOCUMENT,
+    ),
     "AMENDS": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
     "REPLACES": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
     "SUSPENDS": (EntityType.SOURCE_DOCUMENT, EntityType.SOURCE_DOCUMENT),
@@ -87,7 +94,10 @@ RELATION_TYPES = {
     "HAS_SUBCRITERION": (EntityType.CRITERION, EntityType.CRITERION),
     "HAS_OPTION": (EntityType.CRITERION, EntityType.SCORE_OPTION),
     "HAS_CONDITION": (EntityType.CRITERION, EntityType.CONDITION),
-    "REQUIRES_EVIDENCE": (frozenset({EntityType.CRITERION,EntityType.PROCEDURE_STEP}), EntityType.EVIDENCE_TYPE),
+    "REQUIRES_EVIDENCE": (
+        frozenset({EntityType.CRITERION, EntityType.PROCEDURE_STEP}),
+        EntityType.EVIDENCE_TYPE,
+    ),
     "HAS_SUBGROUP": (EntityType.PRODUCT_GROUP, EntityType.PRODUCT_SUBGROUP),
 }
 
@@ -96,7 +106,7 @@ class EvidenceRef(Strict):
     source_id: str = Field(min_length=3)
     evidence_unit_id: str = Field(min_length=5)
     pdf_page: int = Field(ge=1)
-    source_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
+    source_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     table_id: str | None = None
     row: int | None = Field(default=None, ge=0)
     cell_id: str | None = None
@@ -113,10 +123,11 @@ class EvidenceRef(Strict):
 
 class AttributeClaim(Strict):
     """An observed feature with its own proof; alignment does not verify meaning."""
+
     attribute: str = Field(min_length=1)
     value: str = Field(min_length=1)
     evidence: list[EvidenceRef] = Field(min_length=1)
-    status: Literal['candidate'] = 'candidate'
+    status: Literal["candidate"] = "candidate"
     extraction_method: str = Field(min_length=1)
 
 
@@ -131,14 +142,15 @@ class BusinessEntity(Strict):
     extraction_method: str = "deterministic_from_structure"
     attribute_claims: list[AttributeClaim] = Field(default_factory=list)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def claims_have_entity_provenance(self):
         for claim in self.attribute_claims:
-            if (not claim.attribute.endswith('_candidate') or
-                claim.attribute.removesuffix('_candidate') not in ENTITY_ATTRIBUTE_KEYS.get(self.kind.value, ())):
-                raise ValueError('machine attribute claim must be a candidate')
+            if not claim.attribute.endswith("_candidate") or claim.attribute.removesuffix(
+                "_candidate"
+            ) not in ENTITY_ATTRIBUTE_KEYS.get(self.kind.value, ()):
+                raise ValueError("machine attribute claim must be a candidate")
             if any(ref not in self.evidence for ref in claim.evidence):
-                raise ValueError('attribute claim proof must be included in entity evidence')
+                raise ValueError("attribute claim proof must be included in entity evidence")
         return self
 
 
@@ -162,6 +174,7 @@ class BusinessRelation(Strict):
 
 class Condition(Strict):
     """Atomic test; never evaluate free-text conditions as Python or LLM code."""
+
     field: str = Field(min_length=1)
     operation: Literal["equals", "in", "exists", "gte", "lte"]
     value: str | int | float | bool | None = None
@@ -196,11 +209,15 @@ class BusinessRule(Strict):
 
 def contains_document_number(text: str, number: str) -> bool:
     """A whole legal number, never a suffix of another number or jurisdiction."""
-    return bool(re.search(r'(?<![\w/])' + re.escape(number) + r'(?![\w/-])', text, re.I))
+    return bool(re.search(r"(?<![\w/])" + re.escape(number) + r"(?![\w/-])", text, re.I))
 
 
-def validate_business_graph(entities: list[BusinessEntity], relations: list[BusinessRelation],
-                            *, source_registry: dict[str, dict] | None = None) -> None:
+def validate_business_graph(
+    entities: list[BusinessEntity],
+    relations: list[BusinessRelation],
+    *,
+    source_registry: dict[str, dict] | None = None,
+) -> None:
     """Fail closed for missing, mistyped, cross-source or ungrounded relations."""
     by_id = {x.entity_id: x for x in entities}
     if len(by_id) != len(entities):
@@ -209,12 +226,21 @@ def validate_business_graph(entities: list[BusinessEntity], relations: list[Busi
         foreign = {e.source_id for e in entity.evidence if e.source_id != entity.source_id}
         if not foreign:
             continue
-        number = (source_registry or {}).get(entity.source_id, {}).get('document_number')
-        if (entity.kind != EntityType.SOURCE_DOCUMENT or not number or
-            entity.attributes.get('registry_source_id') != entity.source_id or any(
-                not any(e.source_id == sid and contains_document_number(e.quote, number)
-                        for e in entity.evidence) for sid in foreign)):
-            raise ValueError('business entity evidence source mismatch; cross-document identity needs explicit resolution')
+        number = (source_registry or {}).get(entity.source_id, {}).get("document_number")
+        if (
+            entity.kind != EntityType.SOURCE_DOCUMENT
+            or not number
+            or entity.attributes.get("registry_source_id") != entity.source_id
+            or any(
+                not any(
+                    e.source_id == sid and contains_document_number(e.quote, number) for e in entity.evidence
+                )
+                for sid in foreign
+            )
+        ):
+            raise ValueError(
+                "business entity evidence source mismatch; cross-document identity needs explicit resolution"
+            )
     relation_ids = set()
     for r in relations:
         if r.relation_id in relation_ids:
@@ -223,17 +249,23 @@ def validate_business_graph(entities: list[BusinessEntity], relations: list[Busi
         src, dst = by_id.get(r.source_entity_id), by_id.get(r.target_entity_id)
         if src is None or dst is None:
             raise ValueError("business relation missing endpoint")
-        expected_src,expected_dst=RELATION_TYPES[r.relation_type]
-        if (src.kind not in (expected_src if isinstance(expected_src,frozenset) else {expected_src}) or
-            dst.kind not in (expected_dst if isinstance(expected_dst,frozenset) else {expected_dst})):
+        expected_src, expected_dst = RELATION_TYPES[r.relation_type]
+        if src.kind not in (
+            expected_src if isinstance(expected_src, frozenset) else {expected_src}
+        ) or dst.kind not in (expected_dst if isinstance(expected_dst, frozenset) else {expected_dst}):
             raise ValueError("business relation endpoint type mismatch")
         if src.source_id != dst.source_id:
-            registered = (source_registry or {}).get(dst.source_id, {}).get('document_number')
-            if (r.relation_type not in {'AMENDS','REPLACES','SUSPENDS','BASED_ON'} or
-                dst.kind != EntityType.SOURCE_DOCUMENT or not registered or
-                dst.attributes.get('registry_source_id') != dst.source_id or
-                not any(e.source_id == src.source_id and contains_document_number(e.quote,registered)
-                        for e in r.evidence)):
+            registered = (source_registry or {}).get(dst.source_id, {}).get("document_number")
+            if (
+                r.relation_type not in {"AMENDS", "REPLACES", "SUSPENDS", "BASED_ON"}
+                or dst.kind != EntityType.SOURCE_DOCUMENT
+                or not registered
+                or dst.attributes.get("registry_source_id") != dst.source_id
+                or not any(
+                    e.source_id == src.source_id and contains_document_number(e.quote, registered)
+                    for e in r.evidence
+                )
+            ):
                 raise ValueError("cross-document relation needs explicit resolution")
         shared = {(e.source_id, e.evidence_unit_id) for e in src.evidence}
         shared &= {(e.source_id, e.evidence_unit_id) for e in dst.evidence}

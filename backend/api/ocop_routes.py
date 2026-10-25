@@ -3,6 +3,7 @@
 Never mounts user dossiers or trusts client-supplied authentication. The
 reference library is explicitly allowlisted by configs/ocop_sources.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,7 @@ from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
 from backend.api.reference_data import ReferenceResponse, read_references
 
-ROOT = Path(os.environ.get('OCOP_ROOT',Path(__file__).resolve().parents[2])).resolve()
+ROOT = Path(os.environ.get("OCOP_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DATA = ROOT / "data" / "processed" / "ocop"
 router = APIRouter(prefix="/api/ocop", tags=["OCOP knowledge"])
 
@@ -38,9 +39,15 @@ class AskRequest(BaseModel):
 
 def service_unavailable(code: str, layer: str, exc: Exception) -> HTTPException:
     """503 with a fixed schema {code, layer, error_type, message}; never echoes the exception text (may hold secrets)."""
-    return HTTPException(status_code=503, detail={
-        'code': code, 'layer': layer, 'error_type': type(exc).__name__,
-        'message': 'Dịch vụ OCOP tạm thời chưa sẵn sàng; kiểm tra cấu hình hoặc hạ tầng rồi thử lại.'})
+    return HTTPException(
+        status_code=503,
+        detail={
+            "code": code,
+            "layer": layer,
+            "error_type": type(exc).__name__,
+            "message": "Dịch vụ OCOP tạm thời chưa sẵn sàng; kiểm tra cấu hình hoặc hạ tầng rồi thử lại.",
+        },
+    )
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -93,16 +100,19 @@ def health():
 def sources():
     pages = _json(DATA / "pages" / "manifest.json")
     by_id = {s["source_id"]: s for s in pages.get("sources", [])}
-    return [{
-        "source_id": s["source_id"],
-        "document_number": s.get("document_number"),
-        "source_kind": s.get("source_kind"),
-        "jurisdiction": s.get("jurisdiction"),
-        "source_verification": s.get("source_verification"),
-        "page_count": by_id.get(s["source_id"], {}).get("pages_processed", 0),
-        "ocr_pages": by_id.get(s["source_id"], {}).get("counts", {}).get("ocr_executed", 0),
-        "filename": Path(s["path"]).name,
-    } for s in _registry()]
+    return [
+        {
+            "source_id": s["source_id"],
+            "document_number": s.get("document_number"),
+            "source_kind": s.get("source_kind"),
+            "jurisdiction": s.get("jurisdiction"),
+            "source_verification": s.get("source_verification"),
+            "page_count": by_id.get(s["source_id"], {}).get("pages_processed", 0),
+            "ocr_pages": by_id.get(s["source_id"], {}).get("counts", {}).get("ocr_executed", 0),
+            "filename": Path(s["path"]).name,
+        }
+        for s in _registry()
+    ]
 
 
 def references(kind: Literal["criteria", "products"]) -> ReferenceResponse:
@@ -127,24 +137,42 @@ def products():
 def source_pdf(source_id: str):
     item = _source_entry(source_id)
     file = _file_for(item)
-    return FileResponse(file, media_type="application/pdf", content_disposition_type="inline", filename=file.name)
+    return FileResponse(
+        file, media_type="application/pdf", content_disposition_type="inline", filename=file.name
+    )
 
 
 @router.get("/sources/{source_id}/pages/{page}/evidence.png")
-def source_page_evidence(source_id: str, page: int, box: list[str] = Query(default=[]),
-                         context: list[str] = Query(default=[]), sha: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$"),
-                         dpi: int = Query(default=110), crop: bool = False):
+def source_page_evidence(
+    source_id: str,
+    page: int,
+    box: list[str] = Query(default=[]),
+    context: list[str] = Query(default=[]),
+    sha: str | None = Query(default=None, pattern=r"^[0-9a-f]{64}$"),
+    dpi: int = Query(default=110),
+    crop: bool = False,
+):
     """PDF page (or the evidence region) with cited boxes highlighted; see backend/api/evidence_image.py."""
     from fastapi.responses import Response
     from backend.api.evidence_image import EvidenceImageError, parse_boxes, render_evidence_png
+
     file = _file_for(_source_entry(source_id))
     try:
-        png = render_evidence_png(ROOT, file, source_id, page, evidence=parse_boxes(box), context=parse_boxes(context),
-                                  expected_sha=sha, dpi=dpi, crop=crop)
+        png = render_evidence_png(
+            ROOT,
+            file,
+            source_id,
+            page,
+            evidence=parse_boxes(box),
+            context=parse_boxes(context),
+            expected_sha=sha,
+            dpi=dpi,
+            crop=crop,
+        )
     except EvidenceImageError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (OSError, RuntimeError) as exc:
-        raise service_unavailable('render_failed', 'pdf', exc) from exc
+        raise service_unavailable("render_failed", "pdf", exc) from exc
     return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
 
 
@@ -152,7 +180,12 @@ def source_page_evidence(source_id: str, page: int, box: list[str] = Query(defau
 @lru_cache(maxsize=128)
 def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = "", allow_partial_debug: bool = False):
     # Never reuse an agent holding an obsolete index/graph after rebuild.
-    return OcopAgent(ROOT, llm=make_answer_client() if with_llm else None, retrieval_mode=retrieval_mode, allow_partial_debug=allow_partial_debug)
+    return OcopAgent(
+        ROOT,
+        llm=make_answer_client() if with_llm else None,
+        retrieval_mode=retrieval_mode,
+        allow_partial_debug=allow_partial_debug,
+    )
 
 
 @router.post("/query")
@@ -161,23 +194,29 @@ async def ask(request: AskRequest):
     if (DATA / ".promoting").exists():
         raise HTTPException(status_code=503, detail="Kho OCOP đang cập nhật, thử lại sau.")
     if not manifest:
-        raise HTTPException(status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run.")
+        raise HTTPException(
+            status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run."
+        )
     readiness = OcopSystemPipeline(ROOT).status(validate_sources=True)
     allow_partial = readiness["state"] != "ready" and bool(manifest.get("corpus_version"))
     if not allow_partial and readiness["state"] != "ready":
-        raise HTTPException(status_code=503, detail=(
-            "Corpus OCOP chưa đồng bộ/đúng phiên bản. "
-            "Chạy python tools/cli.py run --build-only."
-        ))
+        raise HTTPException(
+            status_code=503,
+            detail=("Corpus OCOP chưa đồng bộ/đúng phiên bản. Chạy python tools/cli.py run --build-only."),
+        )
     # Public search only. No client-provided tenant_id or dossier privileges.
     try:
-        use_llm = request.use_llm and understand(request.query)[0].action != 'respond'
+        use_llm = request.use_llm and understand(request.query)[0].action != "respond"
         agent = _agent(use_llm, request.retrieval_mode, manifest.get("corpus_version", ""), allow_partial)
     except (RuntimeError, ValueError, OSError) as exc:
-        raise service_unavailable('llm_unavailable' if request.use_llm else 'agent_unavailable', 'configuration', exc) from exc
+        raise service_unavailable(
+            "llm_unavailable" if request.use_llm else "agent_unavailable", "configuration", exc
+        ) from exc
     try:
-        answer = await run_in_threadpool(agent.ask, request.query, session=default_store.get(request.session_id))
+        answer = await run_in_threadpool(
+            agent.ask, request.query, session=default_store.get(request.session_id)
+        )
         default_store.save(request.session_id, request.query, answer)
         return answer.model_dump(mode="json")
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
-        raise service_unavailable('query_failed', 'retrieval', exc) from exc
+        raise service_unavailable("query_failed", "retrieval", exc) from exc

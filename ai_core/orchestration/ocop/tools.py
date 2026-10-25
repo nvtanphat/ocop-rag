@@ -1,4 +1,5 @@
 """Allowlisted domain tools mapped directly to indexing and graph adapters."""
+
 from __future__ import annotations
 from pathlib import Path
 import json
@@ -21,178 +22,258 @@ from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 def _jurisdiction_key(value: str) -> str:
     """Compare explicit locality labels, never infer locality from an arbitrary phrase."""
-    return re.sub(r'[^a-z0-9]', '', normalize(value))
+    return re.sub(r"[^a-z0-9]", "", normalize(value))
 
 
 def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | None) -> bool:
     """OCR guesses cannot satisfy restrictive, user-specified award filters."""
-    if row.get('review_status') != 'verified':
+    if row.get("review_status") != "verified":
         return False
     if region:
-        asked=_jurisdiction_key(region)
-        labels=[row.get(k) for k in ('jurisdiction','province','region','locality') if row.get(k)]
+        asked = _jurisdiction_key(region)
+        labels = [row.get(k) for k in ("jurisdiction", "province", "region", "locality") if row.get(k)]
         # Source identifiers often contain a *full* provincial token: VN.GIALAI.QD.
-        tokens=re.split(r'[^A-Za-z0-9]+',normalize(str(row.get('source_id') or '')))
+        tokens = re.split(r"[^A-Za-z0-9]+", normalize(str(row.get("source_id") or "")))
         # Explicit metadata wins over filename tokens. Contradictory verified
         # locality labels are not resolved by guessing which label is correct.
         if labels:
-            if not all(_jurisdiction_key(str(label))==asked for label in labels):
+            if not all(_jurisdiction_key(str(label)) == asked for label in labels):
                 return False
         elif asked not in {_jurisdiction_key(token) for token in tokens}:
             return False
     if stars is not None:
-        values=[row.get(k) for k in ('star_rating','rating_stars','stars') if row.get(k) is not None]
-        body=normalize(str(row.get('row_text') or row.get('label_candidate') or ''))
-        stated={int(m.group(1)) for m in re.finditer(r'(?<!\d)('+level_class(certified=True)+r')\s*sao\b',body)}
+        values = [row.get(k) for k in ("star_rating", "rating_stars", "stars") if row.get(k) is not None]
+        body = normalize(str(row.get("row_text") or row.get("label_candidate") or ""))
+        stated = {
+            int(m.group(1))
+            for m in re.finditer(r"(?<!\d)(" + level_class(certified=True) + r")\s*sao\b", body)
+        }
         if values:
-            if any(str(v).strip()!=str(stars) for v in values):return False
-            if stated and stated!={stars}:return False
+            if any(str(v).strip() != str(stars) for v in values):
+                return False
+            if stated and stated != {stars}:
+                return False
         else:
             # Allowed only for an individually human-verified row, with explicit
             # "N sao" on that row itself (not a PDF/source title or document date).
-            if stated!={stars}:return False
+            if stated != {stars}:
+                return False
     return True
 
-def graph_seeds(checked_nodes: list[dict], query: str, product_name: str | None,
-                source_filter: str | None) -> list[str]:
+
+def graph_seeds(
+    checked_nodes: list[dict], query: str, product_name: str | None, source_filter: str | None
+) -> list[str]:
     """Grounded traversal seeds: a resolved document, Product/Organization labels quoted in the
     question, and Product labels containing a product name the user literally wrote.
 
     A product slot only counts when its text occurs in the question itself, so a model-proposed
     slot can never become an alias."""
-    qnorm=' '+normalize(query).replace('?',' ').replace('.',' ')+' '
-    asked=normalize(product_name or '')
-    asked=asked if len(asked)>=3 and ' '+asked+' ' in qnorm else ''
-    seeds=[]
+    qnorm = " " + normalize(query).replace("?", " ").replace(".", " ") + " "
+    asked = normalize(product_name or "")
+    asked = asked if len(asked) >= 3 and " " + asked + " " in qnorm else ""
+    seeds = []
     for n in checked_nodes:
-        if source_filter and n['source_id']!=source_filter:
+        if source_filter and n["source_id"] != source_filter:
             continue
-        label=' '+normalize(n['label'])+' '
-        if ((source_filter and n['node_type']=='SourceDocument') or
-                (n['node_type'] in {'Product','Organization'} and len(label.strip())>=4 and label in qnorm) or
-                (asked and n['node_type']=='Product' and ' '+asked+' ' in label)):
-            seeds.append(n['node_id'])
+        label = " " + normalize(n["label"]) + " "
+        if (
+            (source_filter and n["node_type"] == "SourceDocument")
+            or (n["node_type"] in {"Product", "Organization"} and len(label.strip()) >= 4 and label in qnorm)
+            or (asked and n["node_type"] == "Product" and " " + asked + " " in label)
+        ):
+            seeds.append(n["node_id"])
     return seeds
 
 
-PART_SCOPE_SLOTS=frozenset({'document_code','document_codes','region','article_id','pdf_page'})
-BAD_DOCUMENT_STATUSES=frozenset({'document_not_found_or_ambiguous','no_results','unknown'})
+PART_SCOPE_SLOTS = frozenset({"document_code", "document_codes", "region", "article_id", "pdf_page"})
+BAD_DOCUMENT_STATUSES = frozenset({"document_not_found_or_ambiguous", "no_results", "unknown"})
 
 
 class ToolRegistry:
-    def __init__(self,root:Path):
-        self.root=Path(root)
-        self.index_dir=self.root/"data/processed/ocop/index"
-        self.graph_dir=self.root/"data/processed/ocop/graph"
+    def __init__(self, root: Path):
+        self.root = Path(root)
+        self.index_dir = self.root / "data/processed/ocop/index"
+        self.graph_dir = self.root / "data/processed/ocop/graph"
 
     def _graph_failure(self):
-        return {'results':[], 'layer':'graph', 'reason':'checked_graph_snapshot_unavailable',
-                'status':'graph_integrity_failed' if (self.graph_dir/'manifest.json').is_file() else 'graph_not_built'}
+        return {
+            "results": [],
+            "layer": "graph",
+            "reason": "checked_graph_snapshot_unavailable",
+            "status": "graph_integrity_failed"
+            if (self.graph_dir / "manifest.json").is_file()
+            else "graph_not_built",
+        }
 
     def _framework_source(self, year: str | None = None) -> str | None:
         """Registry source of kind `ocop_framework` for a document year, or the newest one when no year is given."""
-        path = self.root / 'configs/ocop_sources.json'
+        path = self.root / "configs/ocop_sources.json"
         if not path.is_file():
             return None
         found = []
-        for src in json.loads(path.read_text(encoding='utf-8')).get('sources', []):
-            if src.get('source_kind') != 'ocop_framework':
+        for src in json.loads(path.read_text(encoding="utf-8")).get("sources", []):
+            if src.get("source_kind") != "ocop_framework":
                 continue
-            years = re.findall(r'(?<!\d)(20\d{2})(?!\d)', str(src.get('document_number') or src['source_id']))
-            found.append((max(years) if years else '', str(src.get('effective_from') or ''), src['source_id']))
+            years = re.findall(r"(?<!\d)(20\d{2})(?!\d)", str(src.get("document_number") or src["source_id"]))
+            found.append(
+                (max(years) if years else "", str(src.get("effective_from") or ""), src["source_id"])
+            )
         if year is not None:
             found = [x for x in found if x[0] == str(year)]
         return max(found)[2] if found else None
 
-    def _registry_source_for_number(self, code:str) -> str|None:
+    def _registry_source_for_number(self, code: str) -> str | None:
         """Registry source whose document number starts with the given number segments ("26/2026" -> "26/2026/QĐ-TTg";
         "148" never matches "1489/..."). Ambiguity returns None."""
-        path=self.root/'configs/ocop_sources.json'
-        if not path.is_file():return None
-        wanted=[s for s in re.split(r'[/.\-\s]+',normalize(code)) if s]
-        found=[]
-        for src in json.loads(path.read_text(encoding='utf-8')).get('sources',[]):
-            have=[s for s in re.split(r'[/.\-\s]+',normalize(str(src.get('document_number') or ''))) if s]
-            if have[:len(wanted)]==wanted:found.append(src['source_id'])
-        return found[0] if len(found)==1 else None
+        path = self.root / "configs/ocop_sources.json"
+        if not path.is_file():
+            return None
+        wanted = [s for s in re.split(r"[/.\-\s]+", normalize(code)) if s]
+        found = []
+        for src in json.loads(path.read_text(encoding="utf-8")).get("sources", []):
+            have = [s for s in re.split(r"[/.\-\s]+", normalize(str(src.get("document_number") or ""))) if s]
+            if have[: len(wanted)] == wanted:
+                found.append(src["source_id"])
+        return found[0] if len(found) == 1 else None
 
-    def _resolve_source_id(self, code:str|None) -> str|None:
+    def _resolve_source_id(self, code: str | None) -> str | None:
         """Resolve document code to a unique corpus source; ambiguous -> unfiltered.
 
         The evidence filter runs before BM25/Qdrant ranking, never after top-K.
         """
-        if not code:return None
-        tokens=re.findall(r"\d+",str(code))
-        if not tokens:return None
-        by_number=self._registry_source_for_number(str(code))
-        if by_number:return by_number
-        path=self.index_dir/"chunks.jsonl"
-        if not path.is_file():return None
-        matches=set()
+        if not code:
+            return None
+        tokens = re.findall(r"\d+", str(code))
+        if not tokens:
+            return None
+        by_number = self._registry_source_for_number(str(code))
+        if by_number:
+            return by_number
+        path = self.index_dir / "chunks.jsonl"
+        if not path.is_file():
+            return None
+        matches = set()
         for row in records(path):
-            sid=str(row["source_id"])
-            if all(re.search(r"(?<!\d)"+re.escape(token)+r"(?!\d)",sid) for token in tokens):
+            sid = str(row["source_id"])
+            if all(re.search(r"(?<!\d)" + re.escape(token) + r"(?!\d)", sid) for token in tokens):
                 matches.add(sid)
-        return next(iter(matches)) if len(matches)==1 else None
+        return next(iter(matches)) if len(matches) == 1 else None
 
-    def _per_document(self,name:str,query:str,slots:dict,context:dict,auth,codes:list)->dict:
+    def _per_document(self, name: str, query: str, slots: dict, context: dict, auth, codes: list) -> dict:
         """A comparison names several documents: look each one up on its own and keep the rows of every one.
 
         A document that is not in the index is reported (`unresolved_documents`), never replaced by another."""
-        results,unresolved,statuses=[],[],[]
+        results, unresolved, statuses = [], [], []
         for code in codes[:5]:
-            one=self.dispatch(name,query=query,slots={**slots,'document_code':code,'document_codes':None},context=context,auth=auth)
-            rows=one.get('results',[]) if isinstance(one,dict) else []
-            statuses.append(one.get('status') if isinstance(one,dict) else None)
-            if rows:results.extend({**row,'document_code':code} for row in rows)
-            else:unresolved.append(code)
-        merged={'results':results,'unresolved_documents':unresolved}
-        if results:merged['status']=next((x for x in statuses if x and x not in BAD_DOCUMENT_STATUSES),'ok')
-        else:merged['status']=next((x for x in statuses if x),'no_results')
+            one = self.dispatch(
+                name,
+                query=query,
+                slots={**slots, "document_code": code, "document_codes": None},
+                context=context,
+                auth=auth,
+            )
+            rows = one.get("results", []) if isinstance(one, dict) else []
+            statuses.append(one.get("status") if isinstance(one, dict) else None)
+            if rows:
+                results.extend({**row, "document_code": code} for row in rows)
+            else:
+                unresolved.append(code)
+        merged = {"results": results, "unresolved_documents": unresolved}
+        if results:
+            merged["status"] = next((x for x in statuses if x and x not in BAD_DOCUMENT_STATUSES), "ok")
+        else:
+            merged["status"] = next((x for x in statuses if x), "no_results")
         return merged
 
-    def _search_with_parts(self,query:str,slots:dict,context:dict,auth)->dict:
+    def _search_with_parts(self, query: str, slots: dict, context: dict, auth) -> dict:
         """The whole question first, then each part of a compound question; part hits only add candidates."""
         from ai_core.retrieval.ocop.decompose import sub_queries
-        whole=self.dispatch('search_regulations',query=query,slots=slots,context={**context,'_part':True},auth=auth)
-        seen={self._hit_key(row) for row in whole.get('results',[])}
-        extra=[]
-        earlier=[]  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
+
+        whole = self.dispatch(
+            "search_regulations", query=query, slots=slots, context={**context, "_part": True}, auth=auth
+        )
+        seen = {self._hit_key(row) for row in whole.get("results", [])}
+        extra = []
+        earlier = []  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
         for part in sub_queries(query):
-            scope=self._anaphoric_source(part,earlier,(slots.get('product_name'),slots.get('organization_name')),mode=context.get('retrieval_mode','sparse')) if not slots.get('document_code') else None
-            found=self.search_part(part,slots,{**context,**({'_scope_source':scope} if scope else {})},auth)
-            earlier.extend(found.get('results',[])[:4])
-            for row in found.get('results',[])[:4]:
+            scope = (
+                self._anaphoric_source(
+                    part,
+                    earlier,
+                    (slots.get("product_name"), slots.get("organization_name")),
+                    mode=context.get("retrieval_mode", "sparse"),
+                )
+                if not slots.get("document_code")
+                else None
+            )
+            found = self.search_part(
+                part, slots, {**context, **({"_scope_source": scope} if scope else {})}, auth
+            )
+            earlier.extend(found.get("results", [])[:4])
+            for row in found.get("results", [])[:4]:
                 if self._hit_key(row) not in seen:
-                    seen.add(self._hit_key(row));extra.append({**row,'query_part':part})
-        if not extra:return whole
-        merged={**whole,'results':[*whole.get('results',[]),*extra]}
-        if not whole.get('results'):merged.pop('status',None)  # part hits are real evidence even if the whole found none
+                    seen.add(self._hit_key(row))
+                    extra.append({**row, "query_part": part})
+        if not extra:
+            return whole
+        merged = {**whole, "results": [*whole.get("results", []), *extra]}
+        if not whole.get("results"):
+            merged.pop("status", None)  # part hits are real evidence even if the whole found none
         return merged
 
-    def chunks_by_reference(self,refs:list[dict],*,exclude:set|None=None,limit:int=6)->list[dict]:
+    def chunks_by_reference(
+        self, refs: list[dict], *, exclude: set | None = None, limit: int = 6
+    ) -> list[dict]:
         """Index chunks for remembered evidence references (by chunk id, else by evidence unit), as search-shaped rows."""
-        path=self.index_dir/"chunks.jsonl"
-        if not refs or not path.is_file():return []
+        path = self.index_dir / "chunks.jsonl"
+        if not refs or not path.is_file():
+            return []
         # graph rows carry a "graph-evidence:" id that is not an index chunk: those are re-read through their evidence unit
-        by_chunk={r['chunk_id'] for r in refs if r.get('chunk_id') and not r['chunk_id'].startswith('graph-evidence:')}
-        by_unit={(r['source_id'],r['evidence_unit_id']) for r in refs
-                 if (not r.get('chunk_id') or r['chunk_id'].startswith('graph-evidence:')) and r.get('evidence_unit_id')}
-        out=[]
+        by_chunk = {
+            r["chunk_id"]
+            for r in refs
+            if r.get("chunk_id") and not r["chunk_id"].startswith("graph-evidence:")
+        }
+        by_unit = {
+            (r["source_id"], r["evidence_unit_id"])
+            for r in refs
+            if (not r.get("chunk_id") or r["chunk_id"].startswith("graph-evidence:"))
+            and r.get("evidence_unit_id")
+        }
+        out = []
         for ch in records(path):
-            if len(out)>=limit:break
-            if ch['chunk_id'] in (exclude or ()):continue
-            if ch['chunk_id'] in by_chunk or (ch['source_id'],ch['evidence_unit_id']) in by_unit:
-                out.append({"chunk_id":ch['chunk_id'],"evidence_unit_id":ch['evidence_unit_id'],"source_id":ch['source_id'],
-                    "pdf_page":ch['spans'][0]['pdf_page'],"source_spans":ch['spans'],"review_status":ch['review_status'],
-                    "corpus_version":ch['corpus_version'],"score":0.0,"text":ch['text_for_bm25'],
-                    "raw_text":ch.get('raw_text',ch['text_for_bm25']),"context":ch.get('context',{}),
-                    "row_ids":ch.get('row_ids',[]),"table_headers":ch.get('table_headers',[]),
-                    "char_start":ch.get('char_start'),"char_end":ch.get('char_end'),
-                    "ranking_reason":"memory_evidence","from_memory":True})
+            if len(out) >= limit:
+                break
+            if ch["chunk_id"] in (exclude or ()):
+                continue
+            if ch["chunk_id"] in by_chunk or (ch["source_id"], ch["evidence_unit_id"]) in by_unit:
+                out.append(
+                    {
+                        "chunk_id": ch["chunk_id"],
+                        "evidence_unit_id": ch["evidence_unit_id"],
+                        "source_id": ch["source_id"],
+                        "pdf_page": ch["spans"][0]["pdf_page"],
+                        "source_spans": ch["spans"],
+                        "review_status": ch["review_status"],
+                        "corpus_version": ch["corpus_version"],
+                        "score": 0.0,
+                        "text": ch["text_for_bm25"],
+                        "raw_text": ch.get("raw_text", ch["text_for_bm25"]),
+                        "context": ch.get("context", {}),
+                        "row_ids": ch.get("row_ids", []),
+                        "table_headers": ch.get("table_headers", []),
+                        "char_start": ch.get("char_start"),
+                        "char_end": ch.get("char_end"),
+                        "ranking_reason": "memory_evidence",
+                        "from_memory": True,
+                    }
+                )
         return out
 
-    def _anaphoric_source(self,part:str,earlier:list[dict],anchors:tuple=(),*,mode:str='sparse')->str|None:
+    def _anaphoric_source(
+        self, part: str, earlier: list[dict], anchors: tuple = (), *, mode: str = "sparse"
+    ) -> str | None:
         """Source a part like "văn bản đó do cơ quan nào ban hành" points back to.
 
         "That document" is the one that holds the thing the question names (a product, an organisation): the entity is
@@ -200,542 +281,986 @@ class ToolRegistry:
         that dominates the rows of the parts before it. Without a clear single source the part is searched unscoped."""
         from collections import Counter
         from ai_core.orchestration.ocop import memory
-        from ai_core.orchestration.ocop.language import fold,get_language
-        noun=memory._noun_pattern(get_language(),'document')
-        if not re.search(r'(?:'+noun+r')\s+'+memory.DEMONSTRATIVE+r'\b',fold(part)):return None
-        wanted=[fold(a) for a in anchors if a]
+        from ai_core.orchestration.ocop.language import fold, get_language
+
+        noun = memory._noun_pattern(get_language(), "document")
+        if not re.search(r"(?:" + noun + r")\s+" + memory.DEMONSTRATIVE + r"\b", fold(part)):
+            return None
+        wanted = [fold(a) for a in anchors if a]
         if wanted:
             try:
-                rows=search(self.index_dir,' '.join(a for a in anchors if a),mode=mode,top_k=8)
-            except (RuntimeError,ValueError,OSError):
+                rows = search(self.index_dir, " ".join(a for a in anchors if a), mode=mode, top_k=8)
+            except (RuntimeError, ValueError, OSError):
                 return None
-            rows=[r for r in rows if any(a in fold(str(r.get('raw_text') or r.get('text') or '')) for a in wanted)]
+            rows = [
+                r
+                for r in rows
+                if any(a in fold(str(r.get("raw_text") or r.get("text") or "")) for a in wanted)
+            ]
         else:
-            rows=[r for r in earlier if r.get('source_id')]
-        top=Counter(r['source_id'] for r in rows).most_common(1)
-        return top[0][0] if top and top[0][1]/len(rows)>=0.6 else None
+            rows = [r for r in earlier if r.get("source_id")]
+        top = Counter(r["source_id"] for r in rows).most_common(1)
+        return top[0][0] if top and top[0][1] / len(rows) >= 0.6 else None
 
-    def search_part(self,part:str,slots:dict,context:dict,auth)->dict:
+    def search_part(self, part: str, slots: dict, context: dict, auth) -> dict:
         """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
         must not filter the local-deadline part by the other part's document."""
         from ai_core.orchestration.ocop.router import extract_slots
-        own=extract_slots(part)
-        part_slots={**{k:v for k,v in slots.items() if k not in PART_SCOPE_SLOTS},
-                    **{k:v for k,v in own.items() if k in PART_SCOPE_SLOTS}}
-        return self.dispatch('search_regulations',query=part,slots=part_slots,context={**context,'_part':True},auth=auth)
+
+        own = extract_slots(part)
+        part_slots = {
+            **{k: v for k, v in slots.items() if k not in PART_SCOPE_SLOTS},
+            **{k: v for k, v in own.items() if k in PART_SCOPE_SLOTS},
+        }
+        return self.dispatch(
+            "search_regulations", query=part, slots=part_slots, context={**context, "_part": True}, auth=auth
+        )
 
     @staticmethod
-    def _hit_key(row:dict):
-        return row.get('chunk_id') or (row.get('source_id'),row.get('evidence_unit_id'),str(row.get('text'))[:80])
+    def _hit_key(row: dict):
+        return row.get("chunk_id") or (
+            row.get("source_id"),
+            row.get("evidence_unit_id"),
+            str(row.get("text"))[:80],
+        )
 
     @traced("ocop.agent.tool_dispatch")
-    def dispatch(self,name:str,*,query:str,slots:dict,context:dict|None=None,auth:AuthContext|None=None)->dict:
-        context=context or {}
+    def dispatch(
+        self,
+        name: str,
+        *,
+        query: str,
+        slots: dict,
+        context: dict | None = None,
+        auth: AuthContext | None = None,
+    ) -> dict:
+        context = context or {}
         from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
-        if name not in TOOL_REGISTRY:raise ValueError('Unknown or unauthorized OCOP tool: '+name)
-        if TOOL_REGISTRY[name].requires_auth and not isinstance(auth,AuthContext):
-            raise PermissionError('This private OCOP tool requires trusted server authentication')
-        codes=slots.get('document_codes')
-        if name in ('search_regulations','lookup_legal_unit') and isinstance(codes,list) and len(codes)>1:
-            return self._per_document(name,query,slots,context,auth,codes)
-        if name=="search_regulations" and not context.get('_part'):
-            return self._search_with_parts(query,slots,context,auth)
-        if name=="search_regulations":
-            mode=context.get("retrieval_mode","sparse")
-            doc=slots.get("document_code")
-            source_filter=self._resolve_source_id(doc) if doc else None
-            if slots.get('sheet_number'):
+
+        if name not in TOOL_REGISTRY:
+            raise ValueError("Unknown or unauthorized OCOP tool: " + name)
+        if TOOL_REGISTRY[name].requires_auth and not isinstance(auth, AuthContext):
+            raise PermissionError("This private OCOP tool requires trusted server authentication")
+        codes = slots.get("document_codes")
+        if name in ("search_regulations", "lookup_legal_unit") and isinstance(codes, list) and len(codes) > 1:
+            return self._per_document(name, query, slots, context, auth, codes)
+        if name == "search_regulations" and not context.get("_part"):
+            return self._search_with_parts(query, slots, context, auth)
+        if name == "search_regulations":
+            mode = context.get("retrieval_mode", "sparse")
+            doc = slots.get("document_code")
+            source_filter = self._resolve_source_id(doc) if doc else None
+            if slots.get("sheet_number"):
                 from ai_core.graph.ocop.integrity import validate_graph_snapshot
+
                 try:
-                    gm=validate_graph_snapshot(self.graph_dir,allow_partial=context.get('allow_partial_debug') is True)
-                    im=json.loads((self.index_dir/'manifest.json').read_text(encoding='utf8'))
+                    gm = validate_graph_snapshot(
+                        self.graph_dir, allow_partial=context.get("allow_partial_debug") is True
+                    )
+                    im = json.loads((self.index_dir / "manifest.json").read_text(encoding="utf8"))
                     from ai_core.graph.ocop.integrity import graph_index_mismatch
-                    if graph_index_mismatch(gm,im):
-                        raise ValueError('sheet graph/index version mismatch')
-                    path=self.graph_dir/'snapshots'/gm['graph_version']
-                    validate_graph_snapshot(path,allow_partial=context.get('allow_partial_debug') is True)
-                    nodes={n['node_id']:n for n in records(path/'nodes.jsonl') if n.get('check') in {'passed','human_verified'}}
-                    seeds=[n for n in nodes.values() if n['node_type']=='CriterionSheet' and
-                           str(n.get('properties',{}).get('sheet_number'))==str(slots['sheet_number']) and
-                           (not doc or source_filter and n['source_id']==source_filter)]
-                    if len(seeds)!=1:raise ValueError('sheet not unique')
-                    ids={seeds[0]['node_id']};edges=[e for e in records(path/'edges.jsonl') if
-                        e.get('check') in {'passed','human_verified'} and e['relation_type'] in
-                        {'HAS_CRITERION','HAS_SUBCRITERION','HAS_OPTION'} and
-                        e['source_entity_id'] in nodes and e['target_entity_id'] in nodes]
+
+                    if graph_index_mismatch(gm, im):
+                        raise ValueError("sheet graph/index version mismatch")
+                    path = self.graph_dir / "snapshots" / gm["graph_version"]
+                    validate_graph_snapshot(path, allow_partial=context.get("allow_partial_debug") is True)
+                    nodes = {
+                        n["node_id"]: n
+                        for n in records(path / "nodes.jsonl")
+                        if n.get("check") in {"passed", "human_verified"}
+                    }
+                    seeds = [
+                        n
+                        for n in nodes.values()
+                        if n["node_type"] == "CriterionSheet"
+                        and str(n.get("properties", {}).get("sheet_number")) == str(slots["sheet_number"])
+                        and (not doc or source_filter and n["source_id"] == source_filter)
+                    ]
+                    if len(seeds) != 1:
+                        raise ValueError("sheet not unique")
+                    ids = {seeds[0]["node_id"]}
+                    edges = [
+                        e
+                        for e in records(path / "edges.jsonl")
+                        if e.get("check") in {"passed", "human_verified"}
+                        and e["relation_type"] in {"HAS_CRITERION", "HAS_SUBCRITERION", "HAS_OPTION"}
+                        and e["source_entity_id"] in nodes
+                        and e["target_entity_id"] in nodes
+                    ]
                     while True:
-                        children={e['target_entity_id'] for e in edges if e['source_entity_id'] in ids}
-                        if children<=ids:break
+                        children = {e["target_entity_id"] for e in edges if e["source_entity_id"] in ids}
+                        if children <= ids:
+                            break
                         ids.update(children)
-                    units={uid for identity in ids-{seeds[0]['node_id']} for uid in nodes[identity].get('evidence_unit_ids',[])}
+                    units = {
+                        uid
+                        for identity in ids - {seeds[0]["node_id"]}
+                        for uid in nodes[identity].get("evidence_unit_ids", [])
+                    }
                     # Apply checked sheet membership before top-K; filtering
                     # forty document-wide hits can lose the entire sheet.
-                    scoped=search(self.index_dir,query,source_id=seeds[0]['source_id'],mode=mode,
-                                  top_k=32,evidence_unit_ids=units,rerank=bool(context.get('rerank',False)))
-                    graph=GraphEvidence(self.graph_dir,self.index_dir,
-                                        allow_partial_debug=context.get('allow_partial_debug') is True)
+                    scoped = search(
+                        self.index_dir,
+                        query,
+                        source_id=seeds[0]["source_id"],
+                        mode=mode,
+                        top_k=32,
+                        evidence_unit_ids=units,
+                        rerank=bool(context.get("rerank", False)),
+                    )
+                    graph = GraphEvidence(
+                        self.graph_dir,
+                        self.index_dir,
+                        allow_partial_debug=context.get("allow_partial_debug") is True,
+                    )
                     for facet in criterion_facets(query):
-                        matches=[identity for identity in ids if re.match(
-                            r'^'+re.escape(facet)+r'(?!\d)',nodes[identity]['label'])]
-                        descendants,links=graph.descendants(matches,{'HAS_OPTION','HAS_CONDITION'})
+                        matches = [
+                            identity
+                            for identity in ids
+                            if re.match(r"^" + re.escape(facet) + r"(?!\d)", nodes[identity]["label"])
+                        ]
+                        descendants, links = graph.descendants(matches, {"HAS_OPTION", "HAS_CONDITION"})
                         for row in graph.node_rows([nodes[i] for i in sorted(descendants)]):
-                            row.setdefault('context',{})['criterion_codes']=[facet]
-                            row['graph_edge_ids']=[edge['edge_id'] for edge in links]
+                            row.setdefault("context", {})["criterion_codes"] = [facet]
+                            row["graph_edge_ids"] = [edge["edge_id"] for edge in links]
                             scoped.append(row)
-                    return {'results':order_evidence(query,scoped),
-                            'status':'checked_sheet_text' if scoped else 'sheet_scope_unavailable',
-                            'graph_trace':{'graph_version':gm['graph_version'],
-                                'seed_ids':[seeds[0]['node_id']],
-                                'node_checks':{identity:nodes[identity]['check'] for identity in sorted(ids)},
-                                'edge_checks':{edge['edge_id']:edge['check'] for edge in edges if
-                                    edge['source_entity_id'] in ids and edge['target_entity_id'] in ids}}}
-                except (ValueError,KeyError,OSError):
-                    return {'results':[], 'status':'sheet_scope_unavailable'}
-            region=slots.get('region')
-            q=normalize(query)
+                    return {
+                        "results": order_evidence(query, scoped),
+                        "status": "checked_sheet_text" if scoped else "sheet_scope_unavailable",
+                        "graph_trace": {
+                            "graph_version": gm["graph_version"],
+                            "seed_ids": [seeds[0]["node_id"]],
+                            "node_checks": {identity: nodes[identity]["check"] for identity in sorted(ids)},
+                            "edge_checks": {
+                                edge["edge_id"]: edge["check"]
+                                for edge in edges
+                                if edge["source_entity_id"] in ids and edge["target_entity_id"] in ids
+                            },
+                        },
+                    }
+                except (ValueError, KeyError, OSError):
+                    return {"results": [], "status": "sheet_scope_unavailable"}
+            region = slots.get("region")
+            q = normalize(query)
             # Local deadlines are jurisdiction-specific: never answer with a
             # national document or an unrelated province when multiple guidance
             # files happen to exist. Enforce the source allowlist before ranking.
-            local_deadline=bool(region and any(term in q for term in (
-                'han nop','truoc ngay','han cuoi','thoi han nop','han dang ky',
-                'thoi han dang ky')))
+            local_deadline = bool(
+                region
+                and any(
+                    term in q
+                    for term in (
+                        "han nop",
+                        "truoc ngay",
+                        "han cuoi",
+                        "thoi han nop",
+                        "han dang ky",
+                        "thoi han dang ky",
+                    )
+                )
+            )
             if local_deadline:
-                sources_path=self.root/'configs/ocop_sources.json'
-                sources=[]
+                sources_path = self.root / "configs/ocop_sources.json"
+                sources = []
                 if sources_path.is_file():
-                    sources=json.loads(sources_path.read_text(encoding='utf-8')).get('sources',[])
-                local=list(dict.fromkeys(str(src['source_id']) for src in sources
-                    if src.get('source_kind')=='local_guidance' and
-                    _jurisdiction_key(str(region)) in {
-                        _jurisdiction_key(str(src.get('jurisdiction') or '')),
-                        _jurisdiction_key(re.split(r'\s+-\s+', str(src.get('jurisdiction') or ''))[-1])}
-                    and src.get('source_id')))
+                    sources = json.loads(sources_path.read_text(encoding="utf-8")).get("sources", [])
+                local = list(
+                    dict.fromkeys(
+                        str(src["source_id"])
+                        for src in sources
+                        if src.get("source_kind") == "local_guidance"
+                        and _jurisdiction_key(str(region))
+                        in {
+                            _jurisdiction_key(str(src.get("jurisdiction") or "")),
+                            _jurisdiction_key(re.split(r"\s+-\s+", str(src.get("jurisdiction") or ""))[-1]),
+                        }
+                        and src.get("source_id")
+                    )
+                )
                 if not local:
-                    return {'results':[], 'status':'local_guidance_not_in_corpus',
-                            'reason':'no_local_submission_window_source'}
+                    return {
+                        "results": [],
+                        "status": "local_guidance_not_in_corpus",
+                        "reason": "no_local_submission_window_source",
+                    }
                 if doc and source_filter not in local:
-                    return {'results':[], 'status':'local_guidance_document_scope_mismatch',
-                            'reason':'requested_document_not_a_local_guidance_source'}
-                selected=[source_filter] if doc else local
-                hits=[];seen=set()
+                    return {
+                        "results": [],
+                        "status": "local_guidance_document_scope_mismatch",
+                        "reason": "requested_document_not_a_local_guidance_source",
+                    }
+                selected = [source_filter] if doc else local
+                hits = []
+                seen = set()
                 for allowed_source in selected:
-                    for hit in search(self.index_dir,query,mode=mode,top_k=8,
-                                      source_id=allowed_source,
-                                      rerank=bool(context.get('rerank',False))):
+                    for hit in search(
+                        self.index_dir,
+                        query,
+                        mode=mode,
+                        top_k=8,
+                        source_id=allowed_source,
+                        rerank=bool(context.get("rerank", False)),
+                    ):
                         # Defend even if a search adapter violates its filter.
-                        if hit.get('source_id')!=allowed_source:continue
-                        key=hit.get('chunk_id') or hit.get('evidence_unit_id') or (
-                            allowed_source,str(hit.get('pdf_page')),str(hit.get('text')))
-                        if key in seen:continue
-                        seen.add(key);hits.append(hit)
-                return {'results':hits[:12], 'status':'local_guidance_scoped'}
+                        if hit.get("source_id") != allowed_source:
+                            continue
+                        key = (
+                            hit.get("chunk_id")
+                            or hit.get("evidence_unit_id")
+                            or (allowed_source, str(hit.get("pdf_page")), str(hit.get("text")))
+                        )
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        hits.append(hit)
+                return {"results": hits[:12], "status": "local_guidance_scoped"}
             # A question explicitly about *a local document* is not answered
             # from another province simply because BM25 ranks its wording high.
             # This is intentionally narrower than "rules applicable in Huế":
             # national legislation may legitimately apply there.
-            local_document_query=bool(region and not doc and any(phrase in q for phrase in (
-                'van ban o ', 'van ban cua ', 'tai lieu o ', 'tai lieu cua ',
-                'quyet dinh cua ', 'quyet dinh o ', 'van ban dia phuong',
-            )))
+            local_document_query = bool(
+                region
+                and not doc
+                and any(
+                    phrase in q
+                    for phrase in (
+                        "van ban o ",
+                        "van ban cua ",
+                        "tai lieu o ",
+                        "tai lieu cua ",
+                        "quyet dinh cua ",
+                        "quyet dinh o ",
+                        "van ban dia phuong",
+                    )
+                )
+            )
             if local_document_query:
-                registry=self.root/'configs/ocop_sources.json'
-                entries=json.loads(registry.read_text(encoding='utf-8')).get('sources',[]) if registry.is_file() else []
-                region_key=_jurisdiction_key(str(region))
-                local_ids=[str(src['source_id']) for src in entries
-                    if _jurisdiction_key(str(src.get('jurisdiction') or '')) in
-                      (region_key,'tinh'+region_key,'thanhpho'+region_key)]
+                registry = self.root / "configs/ocop_sources.json"
+                entries = (
+                    json.loads(registry.read_text(encoding="utf-8")).get("sources", [])
+                    if registry.is_file()
+                    else []
+                )
+                region_key = _jurisdiction_key(str(region))
+                local_ids = [
+                    str(src["source_id"])
+                    for src in entries
+                    if _jurisdiction_key(str(src.get("jurisdiction") or ""))
+                    in (region_key, "tinh" + region_key, "thanhpho" + region_key)
+                ]
                 if not local_ids:
-                    return {'results':[], 'status':'local_document_not_in_corpus'}
-                hits=[];seen=set()
+                    return {"results": [], "status": "local_document_not_in_corpus"}
+                hits = []
+                seen = set()
                 for allowed_source in local_ids:
-                    for hit in search(self.index_dir,query,mode=mode,top_k=8,
-                                      source_id=allowed_source,
-                                      rerank=bool(context.get('rerank',False))):
-                        if hit.get('source_id')!=allowed_source:continue
-                        key=hit.get('chunk_id')
-                        if key in seen:continue
-                        seen.add(key);hits.append(hit)
-                hits.sort(key=lambda row:-float(row.get('score') or 0))
-                return {'results':hits[:8],'status':'local_document_scoped'}
+                    for hit in search(
+                        self.index_dir,
+                        query,
+                        mode=mode,
+                        top_k=8,
+                        source_id=allowed_source,
+                        rerank=bool(context.get("rerank", False)),
+                    ):
+                        if hit.get("source_id") != allowed_source:
+                            continue
+                        key = hit.get("chunk_id")
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        hits.append(hit)
+                hits.sort(key=lambda row: -float(row.get("score") or 0))
+                return {"results": hits[:8], "status": "local_document_scoped"}
             # Business intent alone does not pin a document version or scope.
             # Broad queries rank across the checked corpus; only an explicit
             # document_code, locality policy above, or verified structured tool
             # may constrain the source set.
             if doc and not source_filter:
-                return {"results":[],"status":"document_not_found_or_ambiguous"}
-            return {"results":search(self.index_dir,query,mode=mode,top_k=8,source_id=source_filter or context.get('_scope_source'),
-                                      rerank=bool(context.get("rerank",False)),with_continuations=True)}
-        if name=="lookup_legal_unit":
-            code=slots.get('document_code')
-            source=self._resolve_source_id(code) if code else None
-            if code and not source:return {'results':[], 'status':'document_not_found_or_ambiguous'}
-            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
-            except (OSError,ValueError,KeyError):
+                return {"results": [], "status": "document_not_found_or_ambiguous"}
+            return {
+                "results": search(
+                    self.index_dir,
+                    query,
+                    mode=mode,
+                    top_k=8,
+                    source_id=source_filter or context.get("_scope_source"),
+                    rerank=bool(context.get("rerank", False)),
+                    with_continuations=True,
+                )
+            }
+        if name == "lookup_legal_unit":
+            code = slots.get("document_code")
+            source = self._resolve_source_id(code) if code else None
+            if code and not source:
+                return {"results": [], "status": "document_not_found_or_ambiguous"}
+            try:
+                graph = GraphEvidence(
+                    self.graph_dir,
+                    self.index_dir,
+                    allow_partial_debug=context.get("allow_partial_debug") is True,
+                )
+            except (OSError, ValueError, KeyError):
                 return self._graph_failure()
-            if (not slots.get('article_id') and not slots.get('pdf_page') and
-                    get_language().hit(normalize(query),'authority')):
+            if (
+                not slots.get("article_id")
+                and not slots.get("pdf_page")
+                and get_language().hit(normalize(query), "authority")
+            ):
                 # "Who recognises N-star products?" is answered by the legal unit naming that
                 # authority, not by text that merely contains the word "thẩm quyền".
-                return {'results':graph.authority(star_rating=slots.get('star_rating'),source_id=source),
-                        'status':'checked_graph_authority_units'}
-            rows=graph.legal(source_id=source,article=slots.get('article_id'),
-                             pdf_page=slots.get('pdf_page'),query=query)
-            if rows and slots.get('article_id') and not slots.get('pdf_page') and (self.index_dir/'chunks.jsonl').is_file():
-                allowed={row['evidence_unit_id'] for row in rows}
-                hits=search(self.index_dir,query,source_id=source,evidence_unit_ids=allowed,
-                            mode=context.get('retrieval_mode','sparse'),top_k=32,
-                            rerank=bool(context.get('rerank',False)))
+                return {
+                    "results": graph.authority(star_rating=slots.get("star_rating"), source_id=source),
+                    "status": "checked_graph_authority_units",
+                }
+            rows = graph.legal(
+                source_id=source, article=slots.get("article_id"), pdf_page=slots.get("pdf_page"), query=query
+            )
+            if (
+                rows
+                and slots.get("article_id")
+                and not slots.get("pdf_page")
+                and (self.index_dir / "chunks.jsonl").is_file()
+            ):
+                allowed = {row["evidence_unit_id"] for row in rows}
+                hits = search(
+                    self.index_dir,
+                    query,
+                    source_id=source,
+                    evidence_unit_ids=allowed,
+                    mode=context.get("retrieval_mode", "sparse"),
+                    top_k=32,
+                    rerank=bool(context.get("rerank", False)),
+                )
                 for hit in hits:
-                    unit=graph.units[hit['evidence_unit_id']]
-                    hit.update({'graph_node_ids':[unit['node_id']],'check':unit['check']})
-                rows=hits+rows
-            return {'results':rows,'status':('exact_pdf_page' if rows else 'requested_pdf_page_not_indexed')
-                    if slots.get('pdf_page') else 'checked_graph_legal_units'}
-        if name=="lookup_evidence_requirements":
-            if slots.get('years') and not slots.get('document_code'):
-                return {'results':[], 'status':'assessment_year_scope_unverified',
-                        'reason':'historical_evidence_requirements_need_verified_version'}
+                    unit = graph.units[hit["evidence_unit_id"]]
+                    hit.update({"graph_node_ids": [unit["node_id"]], "check": unit["check"]})
+                rows = hits + rows
+            return {
+                "results": rows,
+                "status": ("exact_pdf_page" if rows else "requested_pdf_page_not_indexed")
+                if slots.get("pdf_page")
+                else "checked_graph_legal_units",
+            }
+        if name == "lookup_evidence_requirements":
+            if slots.get("years") and not slots.get("document_code"):
+                return {
+                    "results": [],
+                    "status": "assessment_year_scope_unverified",
+                    "reason": "historical_evidence_requirements_need_verified_version",
+                }
             # Structured records are authoritative only when individually
             # verified. OCR candidates remain clearly flagged. Linking a
             # product name alone is insufficient to assert mandatory paperwork.
-            doc=slots.get('document_code')
-            source_filter=self._resolve_source_id(doc) if doc else None
+            doc = slots.get("document_code")
+            source_filter = self._resolve_source_id(doc) if doc else None
             if doc and not source_filter:
-                return {'results':[], 'status':'document_not_found_or_ambiguous'}
-            if not source_filter and len(slots.get('years',[]))==1 and \
-                not context.get('sector_compliance',False):
-                source_filter=self._framework_source(str(slots['years'][0]))
-            linked_criterion=slots.get('criterion_id')
+                return {"results": [], "status": "document_not_found_or_ambiguous"}
+            if (
+                not source_filter
+                and len(slots.get("years", [])) == 1
+                and not context.get("sector_compliance", False)
+            ):
+                source_filter = self._framework_source(str(slots["years"][0]))
+            linked_criterion = slots.get("criterion_id")
             try:
-                graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
-            except (OSError,ValueError,KeyError):
+                graph = GraphEvidence(
+                    self.graph_dir,
+                    self.index_dir,
+                    allow_partial_debug=context.get("allow_partial_debug") is True,
+                )
+            except (OSError, ValueError, KeyError):
                 return self._graph_failure()
-            requirement_nodes=[n for n in graph.nodes.values() if n['node_type']=='EvidenceType']
+            requirement_nodes = [n for n in graph.nodes.values() if n["node_type"] == "EvidenceType"]
             if linked_criterion:
-                parents={n['node_id'] for n in graph.nodes.values() if n['node_type']=='Criterion' and
-                         re.match(r'^'+re.escape(str(linked_criterion))+r'(?!\d)',n['label'])}
-                required={edge['target_entity_id'] for edge in graph.edges if
-                          edge['source_entity_id'] in parents and edge['relation_type']=='REQUIRES_EVIDENCE'}
-                requirement_nodes=[n for n in requirement_nodes if n['node_id'] in required]
-            rows=graph.node_rows(requirement_nodes)
-            if source_filter:rows=[x for x in rows if x.get('source_id')==source_filter]
+                parents = {
+                    n["node_id"]
+                    for n in graph.nodes.values()
+                    if n["node_type"] == "Criterion"
+                    and re.match(r"^" + re.escape(str(linked_criterion)) + r"(?!\d)", n["label"])
+                }
+                required = {
+                    edge["target_entity_id"]
+                    for edge in graph.edges
+                    if edge["source_entity_id"] in parents and edge["relation_type"] == "REQUIRES_EVIDENCE"
+                }
+                requirement_nodes = [n for n in requirement_nodes if n["node_id"] in required]
+            rows = graph.node_rows(requirement_nodes)
+            if source_filter:
+                rows = [x for x in rows if x.get("source_id") == source_filter]
             if rows:
-                return {'results':rows[:12], 'status':'checked_graph_requirements',
-                        'verified':all(x.get('review_status')=='verified' for x in rows[:12])}
+                return {
+                    "results": rows[:12],
+                    "status": "checked_graph_requirements",
+                    "verified": all(x.get("review_status") == "verified" for x in rows[:12]),
+                }
             # Source-backed text retrieval is an explicit fallback, never a
             # fabricated structured requirement and never a verified rule.
-            keyword='minh chứng giấy tờ tiêu chí '+query
-            return {'results':search(self.index_dir,keyword,source_id=source_filter,
-                mode=context.get('retrieval_mode','sparse'),top_k=16,evidence_unit_ids=set(graph.units),
-                rerank=bool(context.get('rerank',False))),
-                'status':'text_evidence_fallback','verified':False}
-        if name=='lookup_form' and slots.get('years') and not slots.get('document_code'):
-            return {'results':[], 'status':'assessment_year_scope_unverified',
-                    'reason':'historical_form_template_requires_document_version'}
-        if name=='lookup_form' and not (slots.get('form_id') or slots.get('form_ids')):
-            return {'results':[], 'status':'form_identifier_not_specified',
-                    'reason':'use_regulation_search_for_unspecified_form'}
-        if name in ("lookup_form","lookup_criterion","lookup_product_subgroup","lookup_recognition"):
-            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
-            except (OSError,ValueError,KeyError):
+            keyword = "minh chứng giấy tờ tiêu chí " + query
+            return {
+                "results": search(
+                    self.index_dir,
+                    keyword,
+                    source_id=source_filter,
+                    mode=context.get("retrieval_mode", "sparse"),
+                    top_k=16,
+                    evidence_unit_ids=set(graph.units),
+                    rerank=bool(context.get("rerank", False)),
+                ),
+                "status": "text_evidence_fallback",
+                "verified": False,
+            }
+        if name == "lookup_form" and slots.get("years") and not slots.get("document_code"):
+            return {
+                "results": [],
+                "status": "assessment_year_scope_unverified",
+                "reason": "historical_form_template_requires_document_version",
+            }
+        if name == "lookup_form" and not (slots.get("form_id") or slots.get("form_ids")):
+            return {
+                "results": [],
+                "status": "form_identifier_not_specified",
+                "reason": "use_regulation_search_for_unspecified_form",
+            }
+        if name in ("lookup_form", "lookup_criterion", "lookup_product_subgroup", "lookup_recognition"):
+            try:
+                graph = GraphEvidence(
+                    self.graph_dir,
+                    self.index_dir,
+                    allow_partial_debug=context.get("allow_partial_debug") is True,
+                )
+            except (OSError, ValueError, KeyError):
                 return self._graph_failure()
-            mapping={"lookup_form":{'FormTemplate'},"lookup_criterion":{'Criterion','Subcriterion'},
-                     "lookup_product_subgroup":{'ProductSubgroup','ProductGroup'},
-                     "lookup_recognition":{'RecognitionRecord'}}
-            nodes=[n for n in graph.nodes.values() if n['node_type'] in mapping[name]]
-            if name=='lookup_recognition' and slots.get('product_name'):
-                asked=normalize(str(slots['product_name']))
-                products={n['node_id'] for n in graph.nodes.values() if n['node_type']=='Product' and
-                          asked in normalize(n['label'])}
-                record_ids={edge['source_entity_id'] for edge in graph.edges if
-                            edge['relation_type']=='RECOGNIZES' and edge['target_entity_id'] in products}
-                nodes=[n for n in nodes if n['node_id'] in record_ids]
-            if name=='lookup_criterion' and slots.get('sheet_number'):
-                doc=slots.get('document_code')
-                source=self._resolve_source_id(doc) if doc else None
-                sheets=[n['node_id'] for n in graph.nodes.values() if n['node_type']=='CriterionSheet' and
-                        str(n.get('properties',{}).get('sheet_number'))==str(slots['sheet_number']) and
-                        (not doc or source and n['source_id']==source)]
-                if len(sheets)!=1:return {'results':[], 'status':'sheet_scope_unavailable'}
-                scope,_=graph.descendants(sheets,{'HAS_CRITERION','HAS_SUBCRITERION'})
-                nodes=[n for n in nodes if n['node_id'] in scope]
-            rows=graph.node_rows(nodes)
-            if name=='lookup_recognition' and slots.get('product_name'):
+            mapping = {
+                "lookup_form": {"FormTemplate"},
+                "lookup_criterion": {"Criterion", "Subcriterion"},
+                "lookup_product_subgroup": {"ProductSubgroup", "ProductGroup"},
+                "lookup_recognition": {"RecognitionRecord"},
+            }
+            nodes = [n for n in graph.nodes.values() if n["node_type"] in mapping[name]]
+            if name == "lookup_recognition" and slots.get("product_name"):
+                asked = normalize(str(slots["product_name"]))
+                products = {
+                    n["node_id"]
+                    for n in graph.nodes.values()
+                    if n["node_type"] == "Product" and asked in normalize(n["label"])
+                }
+                record_ids = {
+                    edge["source_entity_id"]
+                    for edge in graph.edges
+                    if edge["relation_type"] == "RECOGNIZES" and edge["target_entity_id"] in products
+                }
+                nodes = [n for n in nodes if n["node_id"] in record_ids]
+            if name == "lookup_criterion" and slots.get("sheet_number"):
+                doc = slots.get("document_code")
+                source = self._resolve_source_id(doc) if doc else None
+                sheets = [
+                    n["node_id"]
+                    for n in graph.nodes.values()
+                    if n["node_type"] == "CriterionSheet"
+                    and str(n.get("properties", {}).get("sheet_number")) == str(slots["sheet_number"])
+                    and (not doc or source and n["source_id"] == source)
+                ]
+                if len(sheets) != 1:
+                    return {"results": [], "status": "sheet_scope_unavailable"}
+                scope, _ = graph.descendants(sheets, {"HAS_CRITERION", "HAS_SUBCRITERION"})
+                nodes = [n for n in nodes if n["node_id"] in scope]
+            rows = graph.node_rows(nodes)
+            if name == "lookup_recognition" and slots.get("product_name"):
                 for row in rows:
-                    links=[edge for edge in graph.edges if edge['relation_type']=='RECOGNIZES' and
-                           edge['source_entity_id'] in row['graph_node_ids'] and edge['target_entity_id'] in products]
-                    row['graph_edge_ids']=[edge['edge_id'] for edge in links]
-                    row['graph_node_ids']+=list(dict.fromkeys(edge['target_entity_id'] for edge in links))
+                    links = [
+                        edge
+                        for edge in graph.edges
+                        if edge["relation_type"] == "RECOGNIZES"
+                        and edge["source_entity_id"] in row["graph_node_ids"]
+                        and edge["target_entity_id"] in products
+                    ]
+                    row["graph_edge_ids"] = [edge["edge_id"] for edge in links]
+                    row["graph_node_ids"] += list(dict.fromkeys(edge["target_entity_id"] for edge in links))
             # Candidate type lookup returns all matching candidates, marked needs_review.
-            needle=(slots.get("form_id") or (slots.get('form_ids') or [None])[0]) if name=="lookup_form" else slots.get("product_name")
-            if name=='lookup_recognition':needle=None  # Keep all source cells of the matched record, including its owner.
-            requested_criterion=slots.get("criterion_id") if name=="lookup_criterion" else None
-            document_code=slots.get("document_code")
+            needle = (
+                (slots.get("form_id") or (slots.get("form_ids") or [None])[0])
+                if name == "lookup_form"
+                else slots.get("product_name")
+            )
+            if name == "lookup_recognition":
+                needle = None  # Keep all source cells of the matched record, including its owner.
+            requested_criterion = slots.get("criterion_id") if name == "lookup_criterion" else None
+            document_code = slots.get("document_code")
             if document_code:
-                numbers=re.findall(r"\d+",str(document_code))
-                rows=[r for r in rows if all(re.search(r"(?<!\d)"+re.escape(n)+r"(?!\d)",
-                     str(r.get("source_id", ""))) for n in numbers)]
-            if name=='lookup_recognition' and (slots.get('region') or slots.get('star_rating')):
-                rows=[r for r in rows if _verified_recognition_scope(
-                    r,region=slots.get('region'),stars=slots.get('star_rating'))]
+                numbers = re.findall(r"\d+", str(document_code))
+                rows = [
+                    r
+                    for r in rows
+                    if all(
+                        re.search(r"(?<!\d)" + re.escape(n) + r"(?!\d)", str(r.get("source_id", "")))
+                        for n in numbers
+                    )
+                ]
+            if name == "lookup_recognition" and (slots.get("region") or slots.get("star_rating")):
+                rows = [
+                    r
+                    for r in rows
+                    if _verified_recognition_scope(
+                        r, region=slots.get("region"), stars=slots.get("star_rating")
+                    )
+                ]
                 if not rows:
-                    return {'results':[], 'status':'recognition_scope_unverified',
-                            'reason':'no_verified_rows_match_region_and_star_constraints'}
+                    return {
+                        "results": [],
+                        "status": "recognition_scope_unverified",
+                        "reason": "no_verified_rows_match_region_and_star_constraints",
+                    }
             if needle:
                 if name == "lookup_form":
-                    requested_numbers=slots.get('form_ids') or [needle]
-                    if not all(re.fullmatch(r'[1-9]\d?',str(n)) for n in requested_numbers):
-                        return {'results':[], 'status':'invalid_form_id'}
-                    requested_forms={str(int(n)) for n in requested_numbers}
-                    rows=[r for r in rows if str(r.get('form_number') or '').strip().isdigit()
-                          and str(int(str(r['form_number']).strip())) in requested_forms]
-                    if len(requested_forms)>1:
+                    requested_numbers = slots.get("form_ids") or [needle]
+                    if not all(re.fullmatch(r"[1-9]\d?", str(n)) for n in requested_numbers):
+                        return {"results": [], "status": "invalid_form_id"}
+                    requested_forms = {str(int(n)) for n in requested_numbers}
+                    rows = [
+                        r
+                        for r in rows
+                        if str(r.get("form_number") or "").strip().isdigit()
+                        and str(int(str(r["form_number"]).strip())) in requested_forms
+                    ]
+                    if len(requested_forms) > 1:
                         # Do not silently answer a two-form comparison from one
                         # row, nor treat OCR-only form candidates as confirmed.
-                        verified_forms={str(int(str(row['form_number']).strip())) for row in rows
-                            if row.get('review_status')=='verified' and
-                            row.get('source_id') and (row.get('source_spans') or row.get('spans'))}
-                        missing=sorted(requested_forms-verified_forms,key=int)
+                        verified_forms = {
+                            str(int(str(row["form_number"]).strip()))
+                            for row in rows
+                            if row.get("review_status") == "verified"
+                            and row.get("source_id")
+                            and (row.get("source_spans") or row.get("spans"))
+                        }
+                        missing = sorted(requested_forms - verified_forms, key=int)
                         if missing:
-                            return {'results':rows[:15], 'status':'incomplete_form_ids',
-                                    'missing_form_ids':missing,'verified':False}
-                        by_source:dict[str,dict[str,dict]]={}
+                            return {
+                                "results": rows[:15],
+                                "status": "incomplete_form_ids",
+                                "missing_form_ids": missing,
+                                "verified": False,
+                            }
+                        by_source: dict[str, dict[str, dict]] = {}
                         for row in rows:
-                            if row.get('review_status')!='verified' or not row.get('source_id') or not (
-                                row.get('source_spans') or row.get('spans')):
+                            if (
+                                row.get("review_status") != "verified"
+                                or not row.get("source_id")
+                                or not (row.get("source_spans") or row.get("spans"))
+                            ):
                                 continue
-                            form=str(int(str(row['form_number']).strip()))
-                            by_source.setdefault(str(row['source_id']),{}).setdefault(form,row)
-                        complete=[sid for sid,forms in by_source.items()
-                                  if requested_forms.issubset(forms)]
+                            form = str(int(str(row["form_number"]).strip()))
+                            by_source.setdefault(str(row["source_id"]), {}).setdefault(form, row)
+                        complete = [
+                            sid for sid, forms in by_source.items() if requested_forms.issubset(forms)
+                        ]
                         if not complete:
-                            return {'results':[], 'status':'form_source_scope_unverified',
-                                    'reason':'form_ids_only_verified_across_different_documents'}
-                        if len(complete)>1:
-                            return {'results':[], 'status':'form_version_ambiguous',
-                                    'reason':'multiple_document_versions_contain_requested_forms'}
+                            return {
+                                "results": [],
+                                "status": "form_source_scope_unverified",
+                                "reason": "form_ids_only_verified_across_different_documents",
+                            }
+                        if len(complete) > 1:
+                            return {
+                                "results": [],
+                                "status": "form_version_ambiguous",
+                                "reason": "multiple_document_versions_contain_requested_forms",
+                            }
                         # Include at least one verified unit per requested form,
                         # regardless of OCR duplicates ordering or output limit.
-                        selected=by_source[complete[0]]
-                        rows=[selected[form] for form in sorted(requested_forms,key=int)]
+                        selected = by_source[complete[0]]
+                        rows = [selected[form] for form in sorted(requested_forms, key=int)]
                 else:
-                    rows=[r for r in rows if str(needle).casefold() in (
-                          str(r.get("title", ""))+" "+str(r.get("label_candidate", ""))+
-                          " "+str(r.get("heading", ""))+" "+str(r.get("row_text", ""))+
-                          " "+str(r.get('text',''))).casefold()]
+                    rows = [
+                        r
+                        for r in rows
+                        if str(needle).casefold()
+                        in (
+                            str(r.get("title", ""))
+                            + " "
+                            + str(r.get("label_candidate", ""))
+                            + " "
+                            + str(r.get("heading", ""))
+                            + " "
+                            + str(r.get("row_text", ""))
+                            + " "
+                            + str(r.get("text", ""))
+                        ).casefold()
+                    ]
             if requested_criterion:
                 import re as _re
+
                 # Only match an explicit criterion code at the beginning of a
                 # labeled criterion. Never infer IDs from arbitrary score digits.
-                pattern=_re.compile(r"^(?:tiêu chí\s*)?"+_re.escape(str(requested_criterion))+r"(?=\s|[.):-]|$)",_re.I)
-                rows=[r for r in rows if str(r.get("criterion_id") or r.get("criterion_code") or "")==str(requested_criterion) or
-                      pattern.search(str(r.get("label_candidate","")).strip())]
-            if not rows and name in ("lookup_criterion","lookup_product_subgroup"):
+                pattern = _re.compile(
+                    r"^(?:tiêu chí\s*)?" + _re.escape(str(requested_criterion)) + r"(?=\s|[.):-]|$)", _re.I
+                )
+                rows = [
+                    r
+                    for r in rows
+                    if str(r.get("criterion_id") or r.get("criterion_code") or "") == str(requested_criterion)
+                    or pattern.search(str(r.get("label_candidate", "")).strip())
+                ]
+            if not rows and name in ("lookup_criterion", "lookup_product_subgroup"):
                 # Missing historical-year structured matches cannot silently
                 # fall back to a later framework's text and imply applicability.
-                if slots.get('years') and not document_code:
-                    return {'results':[], 'status':'assessment_year_scope_unverified',
-                            'reason':'versioned_taxonomy_or_criteria_not_verified_for_requested_year'}
+                if slots.get("years") and not document_code:
+                    return {
+                        "results": [],
+                        "status": "assessment_year_scope_unverified",
+                        "reason": "versioned_taxonomy_or_criteria_not_verified_for_requested_year",
+                    }
                 # OCR table labels often do not repeat the product-group name.
                 # Search grounded source spans rather than fabricating a
                 # structured criterion match. Caller sees the fallback mode.
-                source_filter=self._resolve_source_id(document_code) if document_code else None
+                source_filter = self._resolve_source_id(document_code) if document_code else None
                 if document_code and not source_filter:
-                    return {"results":[],"status":"document_not_found_or_ambiguous"}
+                    return {"results": [], "status": "document_not_found_or_ambiguous"}
                 # For OCOP taxonomy, a broad unfiltered lexical match can
                 # accidentally select a food-safety table instead of the OCOP
                 # taxonomy annex. Prefer the registry's framework document for
                 # an unpinned query (the newest one, or the one of the asked
                 # year); a year with no framework document stays unpinned
                 # rather than silently applying another version's criteria.
-                years=[str(y) for y in slots.get('years',[])]
-                if name=='lookup_product_subgroup' and not source_filter and len(years)<=1:
-                    source_filter=self._framework_source(years[0] if years else None)
-                return {"results":search(self.index_dir,query,source_id=source_filter,
-                                          mode=context.get("retrieval_mode","sparse"),top_k=16,
-                                          evidence_unit_ids=set(graph.units)),
-                        "verified":False,"status":"text_evidence_fallback",
-                        "fallback":"source_filtered_text_search"}
+                years = [str(y) for y in slots.get("years", [])]
+                if name == "lookup_product_subgroup" and not source_filter and len(years) <= 1:
+                    source_filter = self._framework_source(years[0] if years else None)
+                return {
+                    "results": search(
+                        self.index_dir,
+                        query,
+                        source_id=source_filter,
+                        mode=context.get("retrieval_mode", "sparse"),
+                        top_k=16,
+                        evidence_unit_ids=set(graph.units),
+                    ),
+                    "verified": False,
+                    "status": "text_evidence_fallback",
+                    "fallback": "source_filtered_text_search",
+                }
             # A decision's issuance year is NOT its recognition-event year.
             # A criterion sheet's document year is NOT its assessment year.
             # No filename-based inference is permitted for these scopes.
-            years=slots.get('years') or []
-            scoped_year=None
-            if name=='lookup_recognition':
-                scoped_year=slots.get('recognition_year')
-                if len(years)>1 and not document_code:
-                    return {'results':[], 'status':'recognition_year_scope_unverified',
-                            'reason':'multiple_event_years_need_verified_recognition_records'}
-                if scoped_year is None and len(years)==1 and not document_code:
-                    scoped_year=years[0]
-                year_fields=('recognition_event_year','recognition_year')
-            elif name=='lookup_criterion':
-                scoped_year=slots.get('assessment_year')
+            years = slots.get("years") or []
+            scoped_year = None
+            if name == "lookup_recognition":
+                scoped_year = slots.get("recognition_year")
+                if len(years) > 1 and not document_code:
+                    return {
+                        "results": [],
+                        "status": "recognition_year_scope_unverified",
+                        "reason": "multiple_event_years_need_verified_recognition_records",
+                    }
+                if scoped_year is None and len(years) == 1 and not document_code:
+                    scoped_year = years[0]
+                year_fields = ("recognition_event_year", "recognition_year")
+            elif name == "lookup_criterion":
+                scoped_year = slots.get("assessment_year")
                 if not document_code and years:
-                    if len(years)>1:
-                        return {'results':[], 'status':'assessment_year_scope_unverified',
-                                'reason':'comparison_requires_verified_version_rules'}
-                    scoped_year=scoped_year or years[0]
-                year_fields=('assessment_year',)
+                    if len(years) > 1:
+                        return {
+                            "results": [],
+                            "status": "assessment_year_scope_unverified",
+                            "reason": "comparison_requires_verified_version_rules",
+                        }
+                    scoped_year = scoped_year or years[0]
+                year_fields = ("assessment_year",)
             else:
-                year_fields=()
+                year_fields = ()
             if scoped_year is not None:
                 # An explicit event year constrains even a pinned decision.
                 # OCR candidates lacking a verified event-year cannot satisfy
                 # this explicit request. A bounded text recovery may still
                 # provide *background evidence*, never a verified award/score.
-                rows=[r for r in rows if r.get('review_status')=='verified' and
-                      any(str(r.get(field) or '')==str(scoped_year) for field in year_fields)]
+                rows = [
+                    r
+                    for r in rows
+                    if r.get("review_status") == "verified"
+                    and any(str(r.get(field) or "") == str(scoped_year) for field in year_fields)
+                ]
                 if not rows:
-                    return {'results':[],
-                            'status':('recognition_year_scope_unverified' if name=='lookup_recognition'
-                                      else 'assessment_year_scope_unverified'),
-                            'reason':'no_verified_records_with_requested_event_year'}
-            if name=="lookup_criterion" and not document_code and not scoped_year:
-                current=self._framework_source()
-                rows.sort(key=lambda r:(str(r.get("source_id",""))!=current,
-                                        str(r.get("source_id","")), int(r.get("pdf_page") or 0)))
-            return {"results":rows[:15],"verified":False}
-        if name=="search_graph":
+                    return {
+                        "results": [],
+                        "status": (
+                            "recognition_year_scope_unverified"
+                            if name == "lookup_recognition"
+                            else "assessment_year_scope_unverified"
+                        ),
+                        "reason": "no_verified_records_with_requested_event_year",
+                    }
+            if name == "lookup_criterion" and not document_code and not scoped_year:
+                current = self._framework_source()
+                rows.sort(
+                    key=lambda r: (
+                        str(r.get("source_id", "")) != current,
+                        str(r.get("source_id", "")),
+                        int(r.get("pdf_page") or 0),
+                    )
+                )
+            return {"results": rows[:15], "verified": False}
+        if name == "search_graph":
             # Check *all* files before linking evidence IDs or traversing edges.
             # A partly generated graph must behave like an unavailable index.
-            if not all((self.graph_dir/f).is_file() for f in
-                       ('manifest.json','nodes.jsonl','edges.jsonl')):
-                return {'results':[], 'note':'graph_not_built', 'status':'graph_not_built'}
+            if not all(
+                (self.graph_dir / f).is_file() for f in ("manifest.json", "nodes.jsonl", "edges.jsonl")
+            ):
+                return {"results": [], "note": "graph_not_built", "status": "graph_not_built"}
             from ai_core.graph.ocop.integrity import validate_graph_snapshot
+
             try:
-                graph_manifest=validate_graph_snapshot(self.graph_dir,
-                    allow_partial=context.get('allow_partial_debug') is True)
-                index_manifest_file=self.index_dir/"manifest.json"
+                graph_manifest = validate_graph_snapshot(
+                    self.graph_dir, allow_partial=context.get("allow_partial_debug") is True
+                )
+                index_manifest_file = self.index_dir / "manifest.json"
                 if index_manifest_file.is_file():
-                    index_manifest=json.loads(index_manifest_file.read_text(encoding="utf-8"))
+                    index_manifest = json.loads(index_manifest_file.read_text(encoding="utf-8"))
                     # Chunk/index version is a derived hash of chunk settings,
                     # deliberately distinct from the knowledge source version.
                     # Compare the shared upstream knowledge version instead.
                     from ai_core.graph.ocop.integrity import graph_index_mismatch
-                    if graph_index_mismatch(graph_manifest,index_manifest):
-                        return {"results":[],"status":"graph_index_version_mismatch"}
+
+                    if graph_index_mismatch(graph_manifest, index_manifest):
+                        return {"results": [], "status": "graph_index_version_mismatch"}
             except (ValueError, OSError, KeyError):
-                return {"results":[],"status":"graph_integrity_failed"}
-            seed=slots.get("graph_seed_ids") or context.get("graph_seed_ids") or []
+                return {"results": [], "status": "graph_integrity_failed"}
+            seed = slots.get("graph_seed_ids") or context.get("graph_seed_ids") or []
             from ai_core.graph.ocop.builder import SCHEMA_REVISION
-            if not graph_manifest.get('checks') or graph_manifest.get('schema_revision') != SCHEMA_REVISION:
-                return {'results': [], 'status': 'graph_requires_grounding_rebuild'}
-            graph_path = self.graph_dir/'snapshots'/graph_manifest['graph_version']
+
+            if not graph_manifest.get("checks") or graph_manifest.get("schema_revision") != SCHEMA_REVISION:
+                return {"results": [], "status": "graph_requires_grounding_rebuild"}
+            graph_path = self.graph_dir / "snapshots" / graph_manifest["graph_version"]
             if not graph_path.is_dir():
-                return {'results': [], 'status': 'graph_integrity_failed'}
+                return {"results": [], "status": "graph_integrity_failed"}
             try:
-                source_graph=GraphEvidence(self.graph_dir,self.index_dir,
-                                          allow_partial_debug=context.get('allow_partial_debug') is True)
-            except (OSError,ValueError,KeyError):
-                return {'results':[], 'status':'graph_integrity_failed'}
-            checked_nodes=[n for n in records(graph_path/'nodes.jsonl')
-                           if n.get('check') in {'passed','human_verified'}]
+                source_graph = GraphEvidence(
+                    self.graph_dir,
+                    self.index_dir,
+                    allow_partial_debug=context.get("allow_partial_debug") is True,
+                )
+            except (OSError, ValueError, KeyError):
+                return {"results": [], "status": "graph_integrity_failed"}
+            checked_nodes = [
+                n
+                for n in records(graph_path / "nodes.jsonl")
+                if n.get("check") in {"passed", "human_verified"}
+            ]
             if not seed:
-                seed=graph_seeds(checked_nodes,query,slots.get('product_name'),
-                                 self._resolve_source_id(slots.get('document_code')))
+                seed = graph_seeds(
+                    checked_nodes,
+                    query,
+                    slots.get("product_name"),
+                    self._resolve_source_id(slots.get("document_code")),
+                )
             if not seed and context.get("retrieved_evidence_ids"):
-                source_ids=list(context["retrieved_evidence_ids"])
+                source_ids = list(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
-                seed=list(dict.fromkeys(n['node_id'] for uid in source_ids for n in checked_nodes
-                      if n.get('node_type')=='EvidenceUnit' and uid in n.get('evidence_unit_ids',[])))[:6]
-            semantic=("HAS_ARTICLE","HAS_CLAUSE","HAS_POINT","MINIMUM_FOR","HAS_CRITERION_CANDIDATE","HAS_CRITERION","HAS_SUBCRITERION","HAS_OPTION","HAS_CONDITION",
-                "REQUIRES_EVIDENCE","RECOGNIZES","OWNED_BY","BASED_ON","AMENDS","REPLACES",
-                "SUSPENDS","HAS_FIELD","RESPONSIBLE_FOR","APPLIES_IN","DEFINES_GROUP","USES_SHEET","HAS_SUBGROUP","HAS_RECORD","DECLARED_BY","SUPPORTED_BY")
-            requested=[]
-            folded=normalize(query)
-            for phrase,predicate in (('thay the','REPLACES'),('sua doi','AMENDS'),
-                                     ('can cu van ban','BASED_ON'),('dinh chi hieu luc','SUSPENDS')):
-                if phrase in folded:requested.append(predicate)
-            if requested and slots.get('document_code'):
-                semantic=tuple(requested)
-            graph=traverse(graph_path,list(seed),hops=get_settings().agent.graph_hops,relations=list(semantic),
-                           verified_only=False,
-                             limit=get_settings().agent.graph_node_limit,direction="both",allow_partial_debug=context.get('allow_partial_debug') is True)
+                seed = list(
+                    dict.fromkeys(
+                        n["node_id"]
+                        for uid in source_ids
+                        for n in checked_nodes
+                        if n.get("node_type") == "EvidenceUnit" and uid in n.get("evidence_unit_ids", [])
+                    )
+                )[:6]
+            semantic = (
+                "HAS_ARTICLE",
+                "HAS_CLAUSE",
+                "HAS_POINT",
+                "MINIMUM_FOR",
+                "HAS_CRITERION_CANDIDATE",
+                "HAS_CRITERION",
+                "HAS_SUBCRITERION",
+                "HAS_OPTION",
+                "HAS_CONDITION",
+                "REQUIRES_EVIDENCE",
+                "RECOGNIZES",
+                "OWNED_BY",
+                "BASED_ON",
+                "AMENDS",
+                "REPLACES",
+                "SUSPENDS",
+                "HAS_FIELD",
+                "RESPONSIBLE_FOR",
+                "APPLIES_IN",
+                "DEFINES_GROUP",
+                "USES_SHEET",
+                "HAS_SUBGROUP",
+                "HAS_RECORD",
+                "DECLARED_BY",
+                "SUPPORTED_BY",
+            )
+            requested = []
+            folded = normalize(query)
+            for phrase, predicate in (
+                ("thay the", "REPLACES"),
+                ("sua doi", "AMENDS"),
+                ("can cu van ban", "BASED_ON"),
+                ("dinh chi hieu luc", "SUSPENDS"),
+            ):
+                if phrase in folded:
+                    requested.append(predicate)
+            if requested and slots.get("document_code"):
+                semantic = tuple(requested)
+            graph = traverse(
+                graph_path,
+                list(seed),
+                hops=get_settings().agent.graph_hops,
+                relations=list(semantic),
+                verified_only=False,
+                limit=get_settings().agent.graph_node_limit,
+                direction="both",
+                allow_partial_debug=context.get("allow_partial_debug") is True,
+            )
             # Only checked assertions enter generation. Source text is linked as
             # provenance, never reintroduced wholesale as an accepted relation.
-            by_node={n['node_id']:n for n in graph['nodes']}
-            facts=[]
-            preferred={'OWNED_BY':0,'RECOGNIZES':1,'DECLARED_BY':2,'HAS_RECORD':3}
-            ranked=sorted(graph['edges'], key=lambda e:(e['relation_type']=='SUPPORTED_BY',
-                e['source_entity_id'] not in seed and e['target_entity_id'] not in seed,preferred.get(e['relation_type'],4),
-                e['edge_id']))
+            by_node = {n["node_id"]: n for n in graph["nodes"]}
+            facts = []
+            preferred = {"OWNED_BY": 0, "RECOGNIZES": 1, "DECLARED_BY": 2, "HAS_RECORD": 3}
+            ranked = sorted(
+                graph["edges"],
+                key=lambda e: (
+                    e["relation_type"] == "SUPPORTED_BY",
+                    e["source_entity_id"] not in seed and e["target_entity_id"] not in seed,
+                    preferred.get(e["relation_type"], 4),
+                    e["edge_id"],
+                ),
+            )
             for edge in ranked:
-                source,target=by_node[edge['source_entity_id']],by_node[edge['target_entity_id']]
-                refs=edge['citations']
-                facts.append({'chunk_id':'graph:'+edge['edge_id'],
-                    'evidence_unit_id':edge['evidence_unit_id'],'source_id':edge['source_id'],
-                    'text':source['label']+' ['+edge['relation_type']+'] '+target['label'],
-                    'source_spans':refs,'review_status':'machine_extracted',
-                    'validation':edge['validation'], 'graph_edge_id':edge['edge_id'],
-                    'check':edge['check'], 'graph_node_ids':[source['node_id'],target['node_id']],
-                    'corpus_version':graph_manifest['source_knowledge_version']})
-                for proof in source_graph.evidence(refs,node_ids=[source['node_id'],target['node_id']],
-                                                    edge_ids=[edge['edge_id']],check=edge['check'],
-                                                    review_status=edge['review_status']):
-                    proof['graph_edge_id']=edge['edge_id']
+                source, target = by_node[edge["source_entity_id"]], by_node[edge["target_entity_id"]]
+                refs = edge["citations"]
+                facts.append(
+                    {
+                        "chunk_id": "graph:" + edge["edge_id"],
+                        "evidence_unit_id": edge["evidence_unit_id"],
+                        "source_id": edge["source_id"],
+                        "text": source["label"] + " [" + edge["relation_type"] + "] " + target["label"],
+                        "source_spans": refs,
+                        "review_status": "machine_extracted",
+                        "validation": edge["validation"],
+                        "graph_edge_id": edge["edge_id"],
+                        "check": edge["check"],
+                        "graph_node_ids": [source["node_id"], target["node_id"]],
+                        "corpus_version": graph_manifest["source_knowledge_version"],
+                    }
+                )
+                for proof in source_graph.evidence(
+                    refs,
+                    node_ids=[source["node_id"], target["node_id"]],
+                    edge_ids=[edge["edge_id"]],
+                    check=edge["check"],
+                    review_status=edge["review_status"],
+                ):
+                    proof["graph_edge_id"] = edge["edge_id"]
                     facts.append(proof)
-                if len(facts)>=get_settings().agent.graph_max_facts:break
-            graph['results']=facts
-            graph['status']='checked_source_graph'
+                if len(facts) >= get_settings().agent.graph_max_facts:
+                    break
+            graph["results"] = facts
+            graph["status"] = "checked_source_graph"
             return graph
-        if name=="resolve_temporal_applicability":
-            when=context.get("as_of_date")
-            if not when:return {"status":"unknown","reason":"exact_as_of_date_required","results":[]}
-            try: on=date.fromisoformat(str(when))
-            except (TypeError,ValueError):return {"status":"unknown","reason":"invalid_as_of_date","results":[]}
+        if name == "resolve_temporal_applicability":
+            when = context.get("as_of_date")
+            if not when:
+                return {"status": "unknown", "reason": "exact_as_of_date_required", "results": []}
+            try:
+                on = date.fromisoformat(str(when))
+            except (TypeError, ValueError):
+                return {"status": "unknown", "reason": "invalid_as_of_date", "results": []}
             # A parser-extracted date is never enough to determine legal
             # applicability: only hand-verified, version-matching rules count.
-            verified=self.root/"data/processed/ocop/knowledge/verified_temporal_rules.jsonl"
+            verified = self.root / "data/processed/ocop/knowledge/verified_temporal_rules.jsonl"
             if not verified.is_file():
-                return {"status":"unknown","reason":"no_verified_temporal_rules","results":[]}
-            manifest=self.index_dir/"manifest.json"
-            version=json.loads(manifest.read_text(encoding="utf-8")).get("corpus_version") if manifest.is_file() else None
+                return {"status": "unknown", "reason": "no_verified_temporal_rules", "results": []}
+            manifest = self.index_dir / "manifest.json"
+            version = (
+                json.loads(manifest.read_text(encoding="utf-8")).get("corpus_version")
+                if manifest.is_file()
+                else None
+            )
             if not version:
-                return {'status':'unknown','reason':'active_corpus_version_missing','results':[]}
-            source_id=self._resolve_source_id(slots.get("document_code")) if slots.get("document_code") else None
-            found=[]
+                return {"status": "unknown", "reason": "active_corpus_version_missing", "results": []}
+            source_id = (
+                self._resolve_source_id(slots.get("document_code")) if slots.get("document_code") else None
+            )
+            found = []
             with verified.open(encoding="utf-8") as stream:
                 for line in stream:
-                    if not line.strip():continue
-                    rule=json.loads(line)
-                    if rule.get("review_status")!="verified" or not rule.get("evidence_unit_id") or rule.get("corpus_version")!=version:
+                    if not line.strip():
                         continue
-                    if source_id and rule.get("source_id")!=source_id:continue
-                    if not source_id and slots.get("document_code"):continue
-                    event_year=slots.get('assessment_year')
-                    try:event_year=int(event_year) if event_year is not None else None
-                    except (TypeError,ValueError):event_year=None
-                    verdict=resolve_event_applicability(rule,as_of_date=on,
-                        event_year=event_year,region=slots.get('region'),corpus_version=version)
-                    backing=exact_lookup(self.index_dir,identity=rule['evidence_unit_id'],
-                                         limit=1,include_candidates=False)
+                    rule = json.loads(line)
+                    if (
+                        rule.get("review_status") != "verified"
+                        or not rule.get("evidence_unit_id")
+                        or rule.get("corpus_version") != version
+                    ):
+                        continue
+                    if source_id and rule.get("source_id") != source_id:
+                        continue
+                    if not source_id and slots.get("document_code"):
+                        continue
+                    event_year = slots.get("assessment_year")
+                    try:
+                        event_year = int(event_year) if event_year is not None else None
+                    except (TypeError, ValueError):
+                        event_year = None
+                    verdict = resolve_event_applicability(
+                        rule,
+                        as_of_date=on,
+                        event_year=event_year,
+                        region=slots.get("region"),
+                        corpus_version=version,
+                    )
+                    backing = exact_lookup(
+                        self.index_dir, identity=rule["evidence_unit_id"], limit=1, include_candidates=False
+                    )
                     # 'verified' without its matching corpus source is not a
                     # trustworthy, citable legal conclusion.
                     if not backing or not any(
-                        row.get('source_id')==rule.get('source_id') and
-                        (row.get('source_spans') or row.get('spans')) for row in backing):
-                        verdict={'status':'unknown','reason':'verified_rule_missing_matching_source_evidence'}
-                    found.append({"rule_id":rule.get("rule_id"),"source_id":rule.get("source_id"),
-                                  "evidence_unit_id":rule["evidence_unit_id"],"verdict":verdict,
-                                  "review_status":"verified","corpus_version":version,
-                                  "source_spans":backing[0].get('source_spans') or backing[0].get('spans')
-                                                 if backing else [],
-                                  "text":backing[0].get('text') if backing else ''})
+                        row.get("source_id") == rule.get("source_id")
+                        and (row.get("source_spans") or row.get("spans"))
+                        for row in backing
+                    ):
+                        verdict = {
+                            "status": "unknown",
+                            "reason": "verified_rule_missing_matching_source_evidence",
+                        }
+                    found.append(
+                        {
+                            "rule_id": rule.get("rule_id"),
+                            "source_id": rule.get("source_id"),
+                            "evidence_unit_id": rule["evidence_unit_id"],
+                            "verdict": verdict,
+                            "review_status": "verified",
+                            "corpus_version": version,
+                            "source_spans": backing[0].get("source_spans") or backing[0].get("spans")
+                            if backing
+                            else [],
+                            "text": backing[0].get("text") if backing else "",
+                        }
+                    )
             # Approval of the record is distinct from a resolved applicability
             # verdict. One unknown rule makes the scoped legal answer unresolved.
-            verdicts=[r['verdict'].get('status') for r in found]
-            resolved=bool(found) and all(v in ('applicable','not_applicable') for v in verdicts)
-            return {'status':'checked_verified_rules' if resolved else 'unknown',
-                    'applicability_status':('applicable' if 'applicable' in verdicts else
-                        'not_applicable' if resolved else 'unknown'),
-                    'reason':None if resolved else ('unresolved_applicability_verdict' if found
-                        else 'no_applicable_verified_rules'), 'results':found}
-        if name=="open_source_span":
-            identity=slots.get("evidence_unit_id")
-            if not identity:return {"results":[]}
-            try:graph=GraphEvidence(self.graph_dir,self.index_dir,allow_partial_debug=context.get('allow_partial_debug') is True)
-            except (OSError,ValueError,KeyError):return self._graph_failure()
-            node=graph.units.get(identity)
-            return {'results':graph.node_rows([node]) if node else []}
-        raise ValueError("Unknown or unauthorized OCOP tool: "+name)
+            verdicts = [r["verdict"].get("status") for r in found]
+            resolved = bool(found) and all(v in ("applicable", "not_applicable") for v in verdicts)
+            return {
+                "status": "checked_verified_rules" if resolved else "unknown",
+                "applicability_status": (
+                    "applicable" if "applicable" in verdicts else "not_applicable" if resolved else "unknown"
+                ),
+                "reason": None
+                if resolved
+                else ("unresolved_applicability_verdict" if found else "no_applicable_verified_rules"),
+                "results": found,
+            }
+        if name == "open_source_span":
+            identity = slots.get("evidence_unit_id")
+            if not identity:
+                return {"results": []}
+            try:
+                graph = GraphEvidence(
+                    self.graph_dir,
+                    self.index_dir,
+                    allow_partial_debug=context.get("allow_partial_debug") is True,
+                )
+            except (OSError, ValueError, KeyError):
+                return self._graph_failure()
+            node = graph.units.get(identity)
+            return {"results": graph.node_rows([node]) if node else []}
+        raise ValueError("Unknown or unauthorized OCOP tool: " + name)

@@ -1,4 +1,5 @@
 """OCR dataset and Markdown edits preserve source-owned geometry."""
+
 import json
 
 import pytest
@@ -11,17 +12,46 @@ from ocop_ocr.review import create_dataset, export_markdown, import_markdown
 def dataset(tmp_path):
     raw = tmp_path / "raw"
     raw.mkdir()
-    page = {"source_id": "TEST", "source_sha256": "a" * 64, "pdf_page": 1,
-            "width_pt": 595, "height_pt": 842, "extracted_text": "Old text",
-            "blocks": [{"text": "Old text", "bbox": [1, 2, 30, 40]}],
-            "tables": [{"table_id": "t1", "bbox": [1, 50, 100, 100], "row_count": 1, "col_count": 2,
-                        "cells": [{"row": 0, "col": 0, "text": "Criterion", "bbox": [1, 50, 80, 100]},
-                                  {"row": 0, "col": 1, "text": "", "bbox": [80, 50, 100, 100]}]}],
-            "review_status": "needs_review"}
+    page = {
+        "source_id": "TEST",
+        "source_sha256": "a" * 64,
+        "pdf_page": 1,
+        "width_pt": 595,
+        "height_pt": 842,
+        "extracted_text": "Old text",
+        "blocks": [{"text": "Old text", "bbox": [1, 2, 30, 40]}],
+        "tables": [
+            {
+                "table_id": "t1",
+                "bbox": [1, 50, 100, 100],
+                "row_count": 1,
+                "col_count": 2,
+                "cells": [
+                    {"row": 0, "col": 0, "text": "Criterion", "bbox": [1, 50, 80, 100]},
+                    {"row": 0, "col": 1, "text": "", "bbox": [80, 50, 100, 100]},
+                ],
+            }
+        ],
+        "review_status": "needs_review",
+    }
     (raw / "one.jsonl").write_text(json.dumps(page) + "\n", encoding="utf-8")
-    (raw / "manifest.json").write_text(json.dumps({"complete": True, "parser_version": "test",
-        "sources": [{"source_id": "TEST", "source_sha256": "a" * 64,
-                     "artifact": "one.jsonl", "page_count_expected": 1}]}), encoding="utf-8")
+    (raw / "manifest.json").write_text(
+        json.dumps(
+            {
+                "complete": True,
+                "parser_version": "test",
+                "sources": [
+                    {
+                        "source_id": "TEST",
+                        "source_sha256": "a" * 64,
+                        "artifact": "one.jsonl",
+                        "page_count_expected": 1,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     output = tmp_path / "dataset"
     create_dataset(raw, output)
     export_markdown(output)
@@ -66,7 +96,9 @@ def test_table_cell_edit_keeps_original_geometry_and_blank_text(dataset):
 def test_added_column_is_rejected_before_any_write(dataset):
     root, _ = dataset
     file = root / "review/TEST/p001.md"
-    file.write_text(file.read_text(encoding="utf-8").replace("<!-- blank -->", "10 | extra"), encoding="utf-8")
+    file.write_text(
+        file.read_text(encoding="utf-8").replace("<!-- blank -->", "10 | extra"), encoding="utf-8"
+    )
     before = (root / "pages/TEST.jsonl").read_bytes()
     with pytest.raises(ValueError, match="row/column"):
         import_markdown(root)
@@ -76,9 +108,10 @@ def test_added_column_is_rejected_before_any_write(dataset):
 
 def test_marking_text_reviewed_does_not_verify_domain_facts(dataset):
     from ai_core.processing.ocop.knowledge_extract import page_units
+
     root, locked = dataset
     file = root / "review/TEST/p001.md"
-    file.write_text(file.read_text(encoding="utf-8").replace('"chua_duyet"', 'da_duyet'), encoding="utf-8")
+    file.write_text(file.read_text(encoding="utf-8").replace('"chua_duyet"', "da_duyet"), encoding="utf-8")
     import_markdown(root)
     manifest, pages = read_dataset(root, locked)
     assert manifest["da_duyet"] == 1
@@ -111,12 +144,15 @@ def test_changed_ocr_hash_rejects_edits(dataset):
 
 def test_interrupted_import_recovers_without_duplicate_ledger_entries(dataset, monkeypatch):
     from ocop_ocr import review
+
     root, locked = dataset
     file = root / "review/TEST/p001.md"
     file.write_text(file.read_text(encoding="utf-8").replace("Old text", "Recovered"), encoding="utf-8")
     real_write = review._jsonl
+
     def fail_write(*args, **kwargs):
         raise OSError("simulated disk interruption after ledger append")
+
     monkeypatch.setattr(review, "_jsonl", fail_write)
     with pytest.raises(OSError, match="interruption"):
         import_markdown(root)

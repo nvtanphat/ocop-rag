@@ -4,6 +4,7 @@ Identity does not depend on model output or database sequence counters. The
 stable logical path is kept separate from the exact content fingerprint so a
 source revision can be detected without silently merging two corpus versions.
 """
+
 from __future__ import annotations
 
 import hashlib

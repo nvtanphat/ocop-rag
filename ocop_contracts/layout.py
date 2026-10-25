@@ -1,4 +1,5 @@
 """Conservative reading order and table indicators, never rearrange legal facts silently."""
+
 from __future__ import annotations
 
 import math
@@ -43,9 +44,9 @@ def _by_region_lines(positioned: list[tuple]) -> list[tuple]:
                 # Tall OCR boxes from neighbouring printed lines can overlap
                 # vertically. Text fragments on one line must still occupy
                 # separate horizontal ranges (allow two points of box noise).
-                horizontal_conflict = (item[1].get('layout_region', {}).get('label') == 'text'
-                    and any(min(box[2], other[2][2])-max(box[0],other[2][0])>2
-                            for other in lines[-1]))
+                horizontal_conflict = item[1].get("layout_region", {}).get("label") == "text" and any(
+                    min(box[2], other[2][2]) - max(box[0], other[2][0]) > 2 for other in lines[-1]
+                )
                 if overlap >= 0.5 * min(box[3] - box[1], first[3] - first[1]) and not horizontal_conflict:
                     lines[-1].append(item)
                     continue
@@ -55,9 +56,10 @@ def _by_region_lines(positioned: list[tuple]) -> list[tuple]:
     return ordered
 
 
-def layout_page(blocks: list[dict], width_pt: float, height_pt: float, *,
-                preserve_order: bool = False) -> tuple[list[dict],list[str]]:
-    warnings=[]
+def layout_page(
+    blocks: list[dict], width_pt: float, height_pt: float, *, preserve_order: bool = False
+) -> tuple[list[dict], list[str]]:
+    warnings = []
     positioned = []
     unpositioned = []
     for index, block in enumerate(blocks):
@@ -70,15 +72,24 @@ def layout_page(blocks: list[dict], width_pt: float, height_pt: float, *,
         warnings.append("blocks_without_valid_bbox")
 
     if preserve_order:
-        ordered = [block for _, block in sorted(
-            [*[(index, block) for index, block, _ in positioned], *unpositioned],
-            key=lambda item: (_source_order(item[1], item[0]), item[0]),
-        )]
+        ordered = [
+            block
+            for _, block in sorted(
+                [*[(index, block) for index, block, _ in positioned], *unpositioned],
+                key=lambda item: (_source_order(item[1], item[0]), item[0]),
+            )
+        ]
         positioned_ordered = [item for item in positioned]
     else:
-        positioned.sort(key=lambda item: (
-            _region_order(item[1]), round(item[2][1] / 7), item[2][0], _source_order(item[1], item[0]), item[0]
-        ))
+        positioned.sort(
+            key=lambda item: (
+                _region_order(item[1]),
+                round(item[2][1] / 7),
+                item[2][0],
+                _source_order(item[1], item[0]),
+                item[0],
+            )
+        )
         # OCR blocks tagged with a layout region are read region by region (see layout_regions), and
         # inside a region by printed line, so a fragment a few points off its line is not pushed after it.
         if any(_region_order(block) >= 0 for _, block, _ in positioned):
@@ -87,18 +98,19 @@ def layout_page(blocks: list[dict], width_pt: float, height_pt: float, *,
         ordered = [block for _, block, _ in positioned] + [block for _, block in unpositioned]
         positioned_ordered = positioned
 
-    if any(box[0] < -0.5 or box[1] < -0.5 or
-           box[2] > width_pt + 0.5 or box[3] > height_pt + 0.5
-           for _, _, box in positioned_ordered):
+    if any(
+        box[0] < -0.5 or box[1] < -0.5 or box[2] > width_pt + 0.5 or box[3] > height_pt + 0.5
+        for _, _, box in positioned_ordered
+    ):
         warnings.append("out_of_page_bbox")
     # Two-column pages need review, not aggressive left-right reorder.
-    left=[block for _, block, box in positioned_ordered if box[2] < width_pt*0.48]
-    right=[block for _, block, box in positioned_ordered if box[0] > width_pt*0.52]
-    if len(left)>=6 and len(right)>=6:
+    left = [block for _, block, box in positioned_ordered if box[2] < width_pt * 0.48]
+    right = [block for _, block, box in positioned_ordered if box[0] > width_pt * 0.52]
+    if len(left) >= 6 and len(right) >= 6:
         warnings.append("possible_multi_column_order")
     for i, b in enumerate(ordered):
         b["reading_order"] = i
-    return ordered,warnings
+    return ordered, warnings
 
 
 def _same_row(previous: dict, block: dict) -> bool:
@@ -109,7 +121,7 @@ def _same_row(previous: dict, block: dict) -> bool:
         return False
     (_, py0, px1, py1), (x0, y0, _, y1) = previous_box, box
     height = min(py1 - py0, y1 - y0)
-    return min(py1, y1) - max(py0, y0) >= .8 * height and px1 - 2 <= x0 <= px1 + 2 * height
+    return min(py1, y1) - max(py0, y0) >= 0.8 * height and px1 - 2 <= x0 <= px1 + 2 * height
 
 
 def group_blocks_by_line(blocks: list[dict]) -> list[list[dict]]:
@@ -126,5 +138,7 @@ def group_blocks_by_line(blocks: list[dict]) -> list[list[dict]]:
 
 
 def join_blocks_by_line(blocks: list[dict]) -> str:
-    return "\n".join(" ".join(b["text"].strip() for b in line) if len(line) > 1 else line[0]["text"]
-                     for line in group_blocks_by_line(blocks))
+    return "\n".join(
+        " ".join(b["text"].strip() for b in line) if len(line) > 1 else line[0]["text"]
+        for line in group_blocks_by_line(blocks)
+    )

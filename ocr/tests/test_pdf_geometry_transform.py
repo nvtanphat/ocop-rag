@@ -1,4 +1,5 @@
 """Source geometry coordinate transformations using actual PDF parsing, without model mocks."""
+
 from pathlib import Path
 
 import fitz
@@ -57,8 +58,9 @@ def test_rotated_native_text_matches_rendered_page(tmp_path: Path, rotation: int
         document.save(path)
     profile = profile_pdf(path, "VN.TEST.ROTATED")[0]
     with fitz.open(path) as document:
-        artifact = extract_page(document[0], profile, source_id="VN.TEST.ROTATED",
-                                enable_ocr=False, enable_tables=False)
+        artifact = extract_page(
+            document[0], profile, source_id="VN.TEST.ROTATED", enable_ocr=False, enable_tables=False
+        )
     assert len(artifact["blocks"]) == len(original)
     for block, box in zip(sorted(artifact["blocks"], key=lambda item: item["order"]), expected):
         assert block["bbox"] == pytest.approx(box, abs=0.02)
@@ -92,7 +94,7 @@ def _word_spaced_table(gap: float):
     page = document.new_page(width=400, height=300)
     _grid(page, (40, 190, 340), (60, 120, 180))
     x = 50
-    for word in ("Cong", "ty", "Trach", "nhiem"):       # positioned words, no space glyphs between them
+    for word in ("Cong", "ty", "Trach", "nhiem"):  # positioned words, no space glyphs between them
         page.insert_text((x, 90), word, fontsize=11)
         x += fitz.get_text_length(word, fontsize=11) + gap
     page.insert_text((200, 90), "San pham A")
@@ -110,7 +112,7 @@ def test_native_cell_text_restores_word_spaces_from_glyph_positions():
 
 
 def test_native_cell_text_does_not_invent_spaces_inside_words():
-    document, page = _word_spaced_table(0.2)           # tight spacing: one word, kerning only
+    document, page = _word_spaced_table(0.2)  # tight spacing: one word, kerning only
     with document:
         cells = native_tables(page)[0]["cells"]
     assert cells[0]["text"].replace(" ", "") == "CongtyTrachnhiem" and "Cong ty" not in cells[0]["text"]
@@ -118,6 +120,7 @@ def test_native_cell_text_does_not_invent_spaces_inside_words():
 
 def test_native_cell_text_keeps_the_extractor_text_when_the_clip_disagrees():
     from ocop_ocr.table_parser import _cell_text
+
     document, page = _word_spaced_table(3.2)
     with document:
         assert _cell_text(page, (0, 0, 400, 300), "different characters") == "different characters"

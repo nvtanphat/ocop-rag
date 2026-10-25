@@ -1,4 +1,5 @@
 """Page-native text with stable PDF-point coordinates (no OCR, no legal rewriting)."""
+
 from __future__ import annotations
 
 
@@ -19,12 +20,14 @@ def extract_native(page) -> list[dict]:
             # Page.rect coordinates. Keep all extraction anchors in that frame.
             rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
             bbox = [round(float(v), 2) for v in rect]
-            result.append({
-                "block_id": f"native:{block_index}:{line_index}",
-                "text": text,
-                "bbox": bbox,
-                "method": "native",
-                "confidence": None,
-                "order": len(result),
-            })
+            result.append(
+                {
+                    "block_id": f"native:{block_index}:{line_index}",
+                    "text": text,
+                    "bbox": bbox,
+                    "method": "native",
+                    "confidence": None,
+                    "order": len(result),
+                }
+            )
     return result

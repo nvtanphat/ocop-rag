@@ -1,4 +1,3 @@
-@import './ocop.css';
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -11,8 +10,8 @@ html, body {
   height: 100%;
   background: #cfe3d4;
   overflow: hidden;
-  font-family: var(--ui);
-  color: var(--ink);
+  font-family: system-ui, sans-serif;
+  color: #163c36;
   -webkit-font-smoothing: antialiased;
 }
 

@@ -1,4 +1,5 @@
 """Read-only source integration checks against the actual bundled source PDFs."""
+
 from __future__ import annotations
 
 import json

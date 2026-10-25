@@ -70,10 +70,18 @@ def test_page_units_keep_raw_page_text_but_remove_furniture_from_content_units()
     root = units[0]
     assert "20\nCÔNG BÁO/Số 375 + 376/Ngày 15-02-2018" in root["text"]
     assert root["structured"]["page_furniture"] == [
-        {"line_index": 0, "text": "20", "reason": "page_number_adjacent_to_repeated_margin_text",
-         "bbox": [64.0, 52.0, 82.0, 68.0]},
-        {"line_index": 1, "text": "CÔNG BÁO/Số 375 + 376/Ngày 15-02-2018",
-         "reason": "repeated_margin_text", "bbox": [170.0, 52.0, 430.0, 68.0]},
+        {
+            "line_index": 0,
+            "text": "20",
+            "reason": "page_number_adjacent_to_repeated_margin_text",
+            "bbox": [64.0, 52.0, 82.0, 68.0],
+        },
+        {
+            "line_index": 1,
+            "text": "CÔNG BÁO/Số 375 + 376/Ngày 15-02-2018",
+            "reason": "repeated_margin_text",
+            "bbox": [170.0, 52.0, 430.0, 68.0],
+        },
     ]
     assert root["spans"][0]["bbox"] == [0.0, 0.0, 595.0, 842.0]
     assert root["spans"][0]["source_sha256"] == SOURCE_SHA256

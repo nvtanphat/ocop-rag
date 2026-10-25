@@ -1,4 +1,5 @@
 """Read-only PDF page profiling. PDF will add OCR/layout/table parsing."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +27,7 @@ def profile_pdf(path: Path, source_id: str, *, min_native_chars: int = 120) -> l
             largest_image_area_ratio = 0.0
             for entry in page_images:
                 for rect in page.get_image_rects(entry[0]):
-                    coverage = ((rect * page.rotation_matrix) & page.rect)
+                    coverage = (rect * page.rotation_matrix) & page.rect
                     largest_image_area_ratio = max(
                         largest_image_area_ratio,
                         (coverage.width * coverage.height) / page_area,
@@ -41,16 +42,18 @@ def profile_pdf(path: Path, source_id: str, *, min_native_chars: int = 120) -> l
                 kind = "mixed_or_native_with_images"
             else:
                 kind = "native_text"
-            pages.append({
-                "source_id": source_id,
-                "pdf_page": idx + 1,
-                "width_pt": round(page.rect.width, 2),
-                "height_pt": round(page.rect.height, 2),
-                "rotation_degrees": page.rotation,
-                "native_chars": native_chars,
-                "embedded_image_count": image_count,
-                "largest_image_area_ratio": round(largest_image_area_ratio, 4),
-                "page_class": kind,
-                "needs_ocr_review": kind in ("ocr_candidate", "sparse_or_blank"),
-            })
+            pages.append(
+                {
+                    "source_id": source_id,
+                    "pdf_page": idx + 1,
+                    "width_pt": round(page.rect.width, 2),
+                    "height_pt": round(page.rect.height, 2),
+                    "rotation_degrees": page.rotation,
+                    "native_chars": native_chars,
+                    "embedded_image_count": image_count,
+                    "largest_image_area_ratio": round(largest_image_area_ratio, 4),
+                    "page_class": kind,
+                    "needs_ocr_review": kind in ("ocr_candidate", "sparse_or_blank"),
+                }
+            )
     return pages

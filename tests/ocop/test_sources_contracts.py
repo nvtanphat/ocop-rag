@@ -1,4 +1,5 @@
 """Source-contract tests: business contracts, hashes, page profiling, source isolation."""
+
 from __future__ import annotations
 
 import json
@@ -71,7 +72,9 @@ def test_unsafe_path_rejected(bad):
 
 def test_date_conflict_rejected():
     with pytest.raises(ValidationError):
-        SourceDocument.model_validate({**source_record(), "effective_from": "2027-01-01", "effective_to": "2026-01-01"})
+        SourceDocument.model_validate(
+            {**source_record(), "effective_from": "2027-01-01", "effective_to": "2026-01-01"}
+        )
 
 
 def test_source_span_bbox_rejected():
@@ -81,7 +84,9 @@ def test_source_span_bbox_rejected():
 
 def test_evidence_unit_requires_pdf_provenance():
     with pytest.raises(ValidationError):
-        EvidenceUnit(unit_id="e1", source_id="s", unit_kind="criterion", text="abc", spans=[], extractor_version="p1")
+        EvidenceUnit(
+            unit_id="e1", source_id="s", unit_kind="criterion", text="abc", spans=[], extractor_version="p1"
+        )
 
 
 def test_native_pdf_profiler(pdf_root: Path):
@@ -152,9 +157,17 @@ def test_unregistered_pdf_rejected_by_snapshot(pdf_root: Path):
 
 def test_registry_rejects_case_insensitive_path_collision(tmp_path: Path):
     path = tmp_path / "registry.json"
-    path.write_text(json.dumps({"schema_version": 1, "sources": [
-        source_record(path="data/raw/ocop/FILE.pdf", sid="VN.TEST.A"),
-        source_record(path="data/raw/ocop/file.pdf", sid="VN.TEST.B"),
-    ]}), encoding="utf-8")
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "sources": [
+                    source_record(path="data/raw/ocop/FILE.pdf", sid="VN.TEST.A"),
+                    source_record(path="data/raw/ocop/file.pdf", sid="VN.TEST.B"),
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     with pytest.raises(ValueError, match="duplicate"):
         load_registry(path)

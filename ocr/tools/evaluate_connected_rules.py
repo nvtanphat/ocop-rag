@@ -9,7 +9,9 @@ from ocop_ocr.raster_preprocess import prepare_raster
 
 def evaluate_table_rules(root: Path, base: Path, selection: list[tuple[str, int]]):
     """Evaluate raster tables and score column detection across sample pages."""
-    sources, _ = checked_sources(root, root / "configs/ocop_sources.json", root / "configs/ocop_sources.lock.json")
+    sources, _ = checked_sources(
+        root, root / "configs/ocop_sources.json", root / "configs/ocop_sources.lock.json"
+    )
     sources = {s.source_id: s for s in sources}
     results = []
     for sid, number in selection:
@@ -18,16 +20,23 @@ def evaluate_table_rules(root: Path, base: Path, selection: list[tuple[str, int]
             pix = page.get_pixmap(dpi=300, alpha=False)
             prepared = prepare_raster(Image.frombytes("RGB", [pix.width, pix.height], pix.samples))
             tables = table_parser.raster_tables(prepared.image, page, [])
-            results.append({
-                "source_id": sid,
-                "pdf_page": number,
-                "tables": [{
-                    "rows": t["row_count"],
-                    "columns": t["col_count"],
-                    "bbox": t["bbox"],
-                    "score_column_boxes": [c["bbox"] for c in t["cells"] if c["col"] == t["col_count"] - 1]
-                } for t in tables]
-            })
+            results.append(
+                {
+                    "source_id": sid,
+                    "pdf_page": number,
+                    "tables": [
+                        {
+                            "rows": t["row_count"],
+                            "columns": t["col_count"],
+                            "bbox": t["bbox"],
+                            "score_column_boxes": [
+                                c["bbox"] for c in t["cells"] if c["col"] == t["col_count"] - 1
+                            ],
+                        }
+                        for t in tables
+                    ],
+                }
+            )
     return results
 
 

@@ -1,4 +1,5 @@
 """Recoverable chunk limits and explicit terminal omissions through proposer API."""
+
 import json
 
 import pytest
@@ -12,11 +13,13 @@ def test_truncated_maximum_response_splits_chunk_and_resumes_from_cache(tmp_path
     class Client:
         model = "test"
         calls = 0
+
         def chat(self, system, user, **kwargs):
             self.calls += 1
             if len(user) > 100:
                 raise ModelOutputTruncated("response truncated")
             return json.dumps({"entities": [], "relations": [], "rules": []})
+
     client = Client()
     units = [unit("DOC.CURRENT", 1, "Nội dung nguồn pháp luật. " * 12)]
     result = propose(units, client, cache_dir=tmp_path)
@@ -32,11 +35,13 @@ def test_terminal_omission_is_cached_and_not_counted_as_transport_failure(tmp_pa
     class Client:
         model = "test"
         calls = 0
+
         def chat(self, *args, **kwargs):
             self.calls += 1
             if response == "filtered":
                 raise RuntimeError("Configured OpenAI-compatible response filtered")
             return response
+
     client = Client()
     units = [unit("DOC.CURRENT", 1, "Nội dung nguồn được giữ lại để truy vết.")]
     result = propose(units, client, cache_dir=tmp_path)

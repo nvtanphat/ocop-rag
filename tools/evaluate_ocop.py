@@ -10,8 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from ai_core.evaluation.ocop.harness import evaluate_retrieval, evaluate_agent, release_gate
-from ai_core.evaluation.ocop.faults import evaluate_faults
+from ai_core.evaluation.ocop.harness import evaluate_retrieval, evaluate_agent, release_gate  # noqa: E402 - standalone entrypoint establishes the repository import path
+from ai_core.evaluation.ocop.faults import evaluate_faults  # noqa: E402 - standalone entrypoint establishes the repository import path
 
 
 def main():

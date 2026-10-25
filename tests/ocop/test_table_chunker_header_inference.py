@@ -2,8 +2,13 @@ from ai_core.retrieval.ocop.structure_chunker import plan_chunks
 
 
 def _cell(row, col, text, **extra):
-    return {"row": row, "col": col, "text": text,
-            "bbox": [col * 100, row * 20, (col + 1) * 100, (row + 1) * 20], **extra}
+    return {
+        "row": row,
+        "col": col,
+        "text": text,
+        "bbox": [col * 100, row * 20, (col + 1) * 100, (row + 1) * 20],
+        **extra,
+    }
 
 
 def _table(cells):
@@ -13,19 +18,26 @@ def _table(cells):
         "unit_kind": "table",
         "review_status": "needs_review",
         "text": "table rows",
-        "spans": [{"pdf_page": 3, "bbox": [0, 0, 400, 200],
-                   "source_sha256": "a" * 64, "table_id": "table:test"}],
+        "spans": [
+            {"pdf_page": 3, "bbox": [0, 0, 400, 200], "source_sha256": "a" * 64, "table_id": "table:test"}
+        ],
         "structured": {"table_id": "table:test", "cells": cells},
     }
 
 
 def test_infers_wrapped_table_header_from_multiple_header_cells():
-    unit = _table([
-        _cell(0, 0, "TT"), _cell(0, 1, "Tên sản\nphẩm"),
-        _cell(0, 2, "Tên chủ thể"), _cell(0, 3, "Phân hạng"),
-        _cell(1, 0, "1"), _cell(1, 1, "Mứt Atiso đỏ"),
-        _cell(1, 2, "Công ty Hichagol"), _cell(1, 3, "4 sao"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "TT"),
+            _cell(0, 1, "Tên sản\nphẩm"),
+            _cell(0, 2, "Tên chủ thể"),
+            _cell(0, 3, "Phân hạng"),
+            _cell(1, 0, "1"),
+            _cell(1, 1, "Mứt Atiso đỏ"),
+            _cell(1, 2, "Công ty Hichagol"),
+            _cell(1, 3, "4 sao"),
+        ]
+    )
 
     chunks = plan_chunks(unit)
 
@@ -38,12 +50,16 @@ def test_infers_wrapped_table_header_from_multiple_header_cells():
 
 
 def test_infers_common_tt_and_measurement_headers():
-    unit = _table([
-        _cell(0, 0, "TT"), _cell(0, 1, "Đơn vị đo"),
-        _cell(0, 2, "Cách thể hiện"),
-        _cell(1, 0, "1"), _cell(1, 1, "Khối lượng"),
-        _cell(1, 2, "Kilôgam, gam"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "TT"),
+            _cell(0, 1, "Đơn vị đo"),
+            _cell(0, 2, "Cách thể hiện"),
+            _cell(1, 0, "1"),
+            _cell(1, 1, "Khối lượng"),
+            _cell(1, 2, "Kilôgam, gam"),
+        ]
+    )
 
     chunks = plan_chunks(unit)
 
@@ -54,25 +70,33 @@ def test_infers_common_tt_and_measurement_headers():
 
 
 def test_infers_tt_header_when_other_cells_have_column_labels():
-    unit = _table([
-        _cell(0, 0, "TT"), _cell(0, 1, "Nội dung"),
-        _cell(0, 2, "Kiểm tra thường"),
-        _cell(1, 0, "1"), _cell(1, 1, "Mặt hàng"),
-        _cell(1, 2, "Đạt"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "TT"),
+            _cell(0, 1, "Nội dung"),
+            _cell(0, 2, "Kiểm tra thường"),
+            _cell(1, 0, "1"),
+            _cell(1, 1, "Mặt hàng"),
+            _cell(1, 2, "Đạt"),
+        ]
+    )
 
     assert plan_chunks(unit)[0].header_inferred is True
 
 
 def test_finds_header_after_a_form_preface_row():
-    unit = _table([
-        _cell(0, 0, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"),
-        _cell(0, 1, "Số: ........ ngày ....."),
-        _cell(1, 0, "STT"), _cell(1, 1, "Tên sản phẩm"),
-        _cell(1, 2, "Số, ký hiệu của giấy tiếp nhận"),
-        _cell(2, 0, "1"), _cell(2, 1, "Mứt Atiso đỏ"),
-        _cell(2, 2, "Số 123"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"),
+            _cell(0, 1, "Số: ........ ngày ....."),
+            _cell(1, 0, "STT"),
+            _cell(1, 1, "Tên sản phẩm"),
+            _cell(1, 2, "Số, ký hiệu của giấy tiếp nhận"),
+            _cell(2, 0, "1"),
+            _cell(2, 1, "Mứt Atiso đỏ"),
+            _cell(2, 2, "Số 123"),
+        ]
+    )
 
     chunks = plan_chunks(unit)
 
@@ -83,14 +107,20 @@ def test_finds_header_after_a_form_preface_row():
 
 
 def test_finds_form_header_when_ocr_splits_a_header_cell():
-    unit = _table([
-        _cell(0, 0, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"),
-        _cell(0, 1, "Số: ........ ngày ....."),
-        _cell(1, 0, "STT"), _cell(1, 1, "Tên sả"), _cell(1, 2, "n"),
-        _cell(1, 3, "Số, ký hiệu của giấy tiếp nhận"),
-        _cell(2, 0, "1"), _cell(2, 1, "Mứt Atiso đỏ"),
-        _cell(2, 2, ""), _cell(2, 3, "Số 123"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"),
+            _cell(0, 1, "Số: ........ ngày ....."),
+            _cell(1, 0, "STT"),
+            _cell(1, 1, "Tên sả"),
+            _cell(1, 2, "n"),
+            _cell(1, 3, "Số, ký hiệu của giấy tiếp nhận"),
+            _cell(2, 0, "1"),
+            _cell(2, 1, "Mứt Atiso đỏ"),
+            _cell(2, 2, ""),
+            _cell(2, 3, "Số 123"),
+        ]
+    )
 
     chunks = plan_chunks(unit)
 
@@ -100,19 +130,27 @@ def test_finds_form_header_when_ocr_splits_a_header_cell():
 
 
 def test_table_chunk_ends_before_a_new_merged_row_group():
-    unit = _table([
-        _cell(0, 0, "STT", is_header=True),
-        _cell(0, 1, "Tổ chức/cá nhân", is_header=True),
-        _cell(0, 2, "Sản phẩm", is_header=True),
-        _cell(1, 0, "1"), _cell(1, 1, "Công ty Quang Hải", rowspan=4),
-        _cell(1, 2, "Nước mắm A"),
-        _cell(2, 0, "2"), _cell(2, 2, "Nước mắm B"),
-        _cell(3, 0, "3"), _cell(3, 2, "Nước mắm C"),
-        _cell(4, 0, "4"), _cell(4, 2, "Nước mắm D"),
-        _cell(5, 0, "5"), _cell(5, 1, "Công ty Song Hải", rowspan=2),
-        _cell(5, 2, "Nước mắm E"),
-        _cell(6, 0, "6"), _cell(6, 2, "Nước mắm F"),
-    ])
+    unit = _table(
+        [
+            _cell(0, 0, "STT", is_header=True),
+            _cell(0, 1, "Tổ chức/cá nhân", is_header=True),
+            _cell(0, 2, "Sản phẩm", is_header=True),
+            _cell(1, 0, "1"),
+            _cell(1, 1, "Công ty Quang Hải", rowspan=4),
+            _cell(1, 2, "Nước mắm A"),
+            _cell(2, 0, "2"),
+            _cell(2, 2, "Nước mắm B"),
+            _cell(3, 0, "3"),
+            _cell(3, 2, "Nước mắm C"),
+            _cell(4, 0, "4"),
+            _cell(4, 2, "Nước mắm D"),
+            _cell(5, 0, "5"),
+            _cell(5, 1, "Công ty Song Hải", rowspan=2),
+            _cell(5, 2, "Nước mắm E"),
+            _cell(6, 0, "6"),
+            _cell(6, 2, "Nước mắm F"),
+        ]
+    )
 
     chunks = plan_chunks(unit)
 
@@ -132,8 +170,9 @@ def test_legal_prose_chunk_starts_next_clause_without_cross_clause_overlap():
         "source_id": "VN.TEST.LAW",
         "unit_kind": "article",
         "text": f"Điều 22. Thủ tục\n1. {clause_one}.\n2. {clause_two}.",
-        "spans": [{"pdf_page": 18, "bbox": [0, 0, 500, 700],
-                   "source_sha256": "b" * 64, "block_id": "native:0"}],
+        "spans": [
+            {"pdf_page": 18, "bbox": [0, 0, 500, 700], "source_sha256": "b" * 64, "block_id": "native:0"}
+        ],
     }
 
     chunks = plan_chunks(unit, token_budget=64, counter=lambda text: len(text.split()))

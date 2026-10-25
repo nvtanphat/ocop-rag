@@ -1,4 +1,5 @@
 """Fail-closed reader for the durable OCR → RAG dataset boundary."""
+
 from __future__ import annotations
 
 import hashlib
@@ -14,8 +15,9 @@ DEFAULT_DATASET = Path("D:/AgentAI/OCOP-RAG/ocr-dataset")
 
 
 def digest_json(value) -> str:
-    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
-                                    separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+    ).hexdigest()
 
 
 def dataset_file(root: Path, relative: str) -> Path:
@@ -53,8 +55,12 @@ def read_dataset(root: Path, locked: dict, *, require_complete: bool = True) -> 
             page = json.loads(line)
             PageArtifact.model_validate({k: v for k, v in page.items() if k in PageArtifact.model_fields})
             key = (sid, page["pdf_page"])
-            if (page["source_id"] != sid or page.get("source_sha256") != approved[sid]
-                    or key in seen_pages or page.get("quarantined")):
+            if (
+                page["source_id"] != sid
+                or page.get("source_sha256") != approved[sid]
+                or key in seen_pages
+                or page.get("quarantined")
+            ):
                 raise ValueError(f"invalid OCR page provenance: {key}")
             seen_pages.add(key)
             source_pages.append(page["pdf_page"])

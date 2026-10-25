@@ -1,4 +1,5 @@
 """Explicit dependency checks for strict full-end-to-end mode; never download models."""
+
 from __future__ import annotations
 
 import json

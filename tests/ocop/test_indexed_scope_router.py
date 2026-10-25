@@ -1,4 +1,5 @@
 """Regression checks for corpus-backed scope recovery and the tool budget."""
+
 from __future__ import annotations
 
 import json
@@ -17,29 +18,36 @@ from ai_core.orchestration.ocop.verification import verify_claims
 
 def _write_jsonl(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
-                    encoding="utf-8")
+    path.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
 
 
 def _index(root, texts):
     index_dir = root / "data/processed/ocop/index"
-    chunks = [{
-        "chunk_id": f"chunk-{i}",
-        "evidence_unit_id": f"evidence-{i}",
-        "source_id": "VN.TEST.SOURCE",
-        "text_for_bm25": text,
-        "review_status": "needs_review",
-        "corpus_version": "scope-fixture",
-        "spans": [{"pdf_page": 1, "bbox": [1, 2, 3, 4], "source_sha256": "a" * 64}],
-    } for i, text in enumerate(texts)]
+    chunks = [
+        {
+            "chunk_id": f"chunk-{i}",
+            "evidence_unit_id": f"evidence-{i}",
+            "source_id": "VN.TEST.SOURCE",
+            "text_for_bm25": text,
+            "review_status": "needs_review",
+            "corpus_version": "scope-fixture",
+            "spans": [{"pdf_page": 1, "bbox": [1, 2, 3, 4], "source_sha256": "a" * 64}],
+        }
+        for i, text in enumerate(texts)
+    ]
     _write_jsonl(index_dir / "chunks.jsonl", chunks)
     bm25 = create_bm25(chunks, index_dir / "bm25.json.gz")
-    (index_dir / "manifest.json").write_text(json.dumps({
-        "corpus_version": "scope-fixture",
-        "counts": {"chunks": len(chunks)},
-        "bm25": bm25,
-        "dense": {"enabled": False},
-    }), encoding="utf-8")
+    (index_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "corpus_version": "scope-fixture",
+                "counts": {"chunks": len(chunks)},
+                "bm25": bm25,
+                "dense": {"enabled": False},
+            }
+        ),
+        encoding="utf-8",
+    )
     return index_dir
 
 
@@ -73,8 +81,7 @@ def test_explicitly_off_topic_question_stays_blocked_even_if_callback_scores_hig
 
 
 @pytest.mark.parametrize("business_intent", ["PROCEDURE_FORM", "CRITERIA_LOOKUP", "OCOP_OVERVIEW"])
-def test_general_text_search_does_not_implicitly_pin_decision_version(
-        tmp_path, monkeypatch, business_intent):
+def test_general_text_search_does_not_implicitly_pin_decision_version(tmp_path, monkeypatch, business_intent):
     seen = {}
 
     def capture_search(index_dir, query, **kwargs):
@@ -83,8 +90,12 @@ def test_general_text_search_does_not_implicitly_pin_decision_version(
 
     monkeypatch.setattr("ai_core.orchestration.ocop.tools.search", capture_search)
     registry = ToolRegistry(tmp_path)
-    registry.dispatch("search_regulations", query="thủ tục đăng ký xuất khẩu", slots={},
-                      context={"business_intent": business_intent})
+    registry.dispatch(
+        "search_regulations",
+        query="thủ tục đăng ký xuất khẩu",
+        slots={},
+        context={"business_intent": business_intent},
+    )
 
     assert seen["query"] == "thủ tục đăng ký xuất khẩu"
     assert seen["kwargs"]["source_id"] is None
@@ -105,17 +116,25 @@ def test_distinct_chunks_of_one_evidence_unit_keep_exact_citations():
         "text": "Danh sách cơ sở sản xuất, kinh doanh đăng ký xuất khẩu.",
         "source_spans": [{"pdf_page": 18, "bbox": [10, 100, 100, 120], "source_sha256": "a" * 64}],
     }
-    response = assemble("thủ tục đăng ký xuất khẩu", [{
-        "tool": "search_regulations", "output": {"results": [first, sibling]},
-    }])
+    response = assemble(
+        "thủ tục đăng ký xuất khẩu",
+        [
+            {
+                "tool": "search_regulations",
+                "output": {"results": [first, sibling]},
+            }
+        ],
+    )
 
     assert [item["chunk_id"] for item in response["citations"]] == [
-        "chunk-article-start", "chunk-article-end",
+        "chunk-article-start",
+        "chunk-article-end",
     ]
     assert all(item["evidence_unit_id"] == "evidence-article-22" for item in response["citations"])
     verified = verify_claims(
         "Cơ quan nước xuất khẩu gửi hồ sơ đăng ký [S1]",
-        [response["citations"][0]], [first, sibling],
+        [response["citations"][0]],
+        [first, sibling],
     )
     assert verified["status"] == "verified"
 
@@ -134,9 +153,16 @@ def test_citation_marker_alone_cannot_support_a_new_committee_claim():
         def chat(self, system, prompt, *, max_tokens):
             return "Hội đồng gồm đại diện Sở Nông nghiệp và Ủy ban cấp tỉnh [S1]."
 
-    response = assemble("Ai tham gia Hội đồng đánh giá?", [{
-        "tool": "search_regulations", "output": {"results": [row]},
-    }], llm=UnsupportedAnswer())
+    response = assemble(
+        "Ai tham gia Hội đồng đánh giá?",
+        [
+            {
+                "tool": "search_regulations",
+                "output": {"results": [row]},
+            }
+        ],
+        llm=UnsupportedAnswer(),
+    )
 
     assert response["status"] == "citation_verification_failed"
     assert "Chỉ cung cấp bản trích xuất" in response["answer"]
@@ -144,10 +170,18 @@ def test_citation_marker_alone_cannot_support_a_new_committee_claim():
 
 def test_planner_enforces_five_registered_tool_calls():
     assert MAX_TOOLS == 5
-    route = Route(intent=Intent.MULTIHOP_REASONING, strategy="hybrid", required_tools=[
-        "search_regulations", "search_graph", "lookup_legal_unit", "lookup_criterion",
-        "lookup_form", "lookup_recognition",
-    ])
+    route = Route(
+        intent=Intent.MULTIHOP_REASONING,
+        strategy="hybrid",
+        required_tools=[
+            "search_regulations",
+            "search_graph",
+            "lookup_legal_unit",
+            "lookup_criterion",
+            "lookup_form",
+            "lookup_recognition",
+        ],
+    )
 
     with pytest.raises(ValueError, match="tool budget"):
         build_plan(route)
@@ -160,4 +194,3 @@ def test_router_clarifies_instead_of_planning_more_than_five_calls():
     assert route.needs_clarification
     assert "tool_budget_exceeded" in route.reason_codes
     assert build_plan(route).names == ()
-

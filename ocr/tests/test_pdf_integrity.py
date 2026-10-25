@@ -1,4 +1,5 @@
 """Regressions for source-safe PDF anchors and cache integrity."""
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,12 @@ def test_pdf_block_anchor_rejects_nonfinite_geometry():
 
 
 def test_pixel_bbox_clamps_small_overflow_to_page():
-    assert _pdf_bbox((-2, -1, 101, 102), width_px=100, height_px=100,
-                     page=fakepage()) == [0.0, 0.0, 200.0, 200.0]
+    assert _pdf_bbox((-2, -1, 101, 102), width_px=100, height_px=100, page=fakepage()) == [
+        0.0,
+        0.0,
+        200.0,
+        200.0,
+    ]
 
 
 def test_cache_invalidates_provenance_mismatch(tmp_path, monkeypatch):
@@ -37,14 +42,38 @@ def test_cache_invalidates_provenance_mismatch(tmp_path, monkeypatch):
 
     profile = {"pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0, "page_class": "native_text"}
     location = tmp_path / "cache.json"
-    write_json(location, {"source_id": "WRONG", "pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0,
-                          "extracted_text": "forged", "review_status": "machine_extracted",
-                          "blocks": [], "tables": [], "ocr_engine": None})
+    write_json(
+        location,
+        {
+            "source_id": "WRONG",
+            "pdf_page": 1,
+            "width_pt": 200.0,
+            "height_pt": 200.0,
+            "extracted_text": "forged",
+            "review_status": "machine_extracted",
+            "blocks": [],
+            "tables": [],
+            "ocr_engine": None,
+        },
+    )
     calls = []
-    monkeypatch.setattr(pipeline, "extract_page", lambda *a, **k: calls.append(True) or {
-        "source_id": "EXPECTED", "pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0,
-        "extracted_text": "real", "review_status": "machine_extracted", "blocks": [],
-        "tables": [], "ocr_engine": None, "profile": profile})
+    monkeypatch.setattr(
+        pipeline,
+        "extract_page",
+        lambda *a, **k: calls.append(True)
+        or {
+            "source_id": "EXPECTED",
+            "pdf_page": 1,
+            "width_pt": 200.0,
+            "height_pt": 200.0,
+            "extracted_text": "real",
+            "review_status": "machine_extracted",
+            "blocks": [],
+            "tables": [],
+            "ocr_engine": None,
+            "profile": profile,
+        },
+    )
     path = tmp_path / "demo.pdf"
     with fitz.open() as document:
         document.new_page(width=200, height=200)
@@ -60,10 +89,23 @@ def test_cache_invalidates_tampered_content_and_page_geometry(tmp_path, monkeypa
 
     profile = {"pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0, "page_class": "native_text"}
     calls = []
-    monkeypatch.setattr(pipeline, "extract_page", lambda *a, **k: calls.append(1) or {
-        "source_id": "EXPECTED", "pdf_page": 1, "width_pt": 200.0, "height_pt": 200.0,
-        "extracted_text": "source text", "review_status": "machine_extracted", "blocks": [],
-        "tables": [], "ocr_engine": None, "profile": profile})
+    monkeypatch.setattr(
+        pipeline,
+        "extract_page",
+        lambda *a, **k: calls.append(1)
+        or {
+            "source_id": "EXPECTED",
+            "pdf_page": 1,
+            "width_pt": 200.0,
+            "height_pt": 200.0,
+            "extracted_text": "source text",
+            "review_status": "machine_extracted",
+            "blocks": [],
+            "tables": [],
+            "ocr_engine": None,
+            "profile": profile,
+        },
+    )
     path = tmp_path / "demo.pdf"
     with fitz.open() as document:
         document.new_page(width=200, height=200)
@@ -96,14 +138,23 @@ def test_corrupt_profile_cache_forces_reprofiling(tmp_path, monkeypatch):
         page = document.new_page(width=200, height=200)
         page.insert_text((20, 40), "Sample legal text " * 13)
         document.save(source)
-    source_document = SourceDocument(source_id="VN.TEST.PROFILE", path="data/raw/ocop/demo.pdf",
-                                     source_kind="ocop_framework")
+    source_document = SourceDocument(
+        source_id="VN.TEST.PROFILE", path="data/raw/ocop/demo.pdf", source_kind="ocop_framework"
+    )
     registry = root / "sources.json"
-    registry.write_text(json.dumps({"schema_version": 1, "sources": [source_document.model_dump(mode="json")]}))
+    registry.write_text(
+        json.dumps({"schema_version": 1, "sources": [source_document.model_dump(mode="json")]})
+    )
     lock = root / "lock.json"
     lock.write_text(json.dumps(snapshot(root, [source_document])))
-    options = {"registry": registry, "lock": lock, "output": root / "out",
-               "cache_dir": root / "cache", "ocr": False, "tables": False}
+    options = {
+        "registry": registry,
+        "lock": lock,
+        "output": root / "out",
+        "cache_dir": root / "cache",
+        "ocr": False,
+        "tables": False,
+    }
     calls = []
     real_profile = pipeline.profile_pdf
 

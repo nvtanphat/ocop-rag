@@ -17,7 +17,11 @@ from ai_core.knowledge.ocop.authorities import find_authorities, resolve
 from ai_core.knowledge.ocop.procedures import _subjects, _scope_header, ACTION, collective_authorities
 from ai_core.processing.ocop.business_candidates import _row_text
 from ai_core.knowledge.ocop.shapes import PARENT_SHAPES
-from ai_core.knowledge.ocop.contracts import ENTITY_ATTRIBUTE_KEYS, contains_document_number, ambiguous_numbered_heading
+from ai_core.knowledge.ocop.contracts import (
+    ENTITY_ATTRIBUTE_KEYS,
+    contains_document_number,
+    ambiguous_numbered_heading,
+)
 
 
 _LLM_PROVENANCE_KEYS = {"extraction_method", "llm_enriched_attributes"}
@@ -30,13 +34,18 @@ def usable(row):
 
 def public_record(row):
     """Consumers never receive the unchecked originals retained for reviewers."""
-    return {key: value for key, value in row.items()
-            if key not in {"machine_candidate", "attribute_candidates", "human_review"}}
+    return {
+        key: value
+        for key, value in row.items()
+        if key not in {"machine_candidate", "attribute_candidates", "human_review"}
+    }
 
 
 def _origin(row):
     method = row.get("properties", {}).get("extraction_method", "")
     return "llm:" + method.split(":", 1)[1] if method.startswith("llm_candidate:") else "deterministic"
+
+
 _DOCUMENT_CUES = {
     "REPLACES": r"thay\s+thế|hết\s+hiệu\s+lực",
     "AMENDS": r"sửa\s+đổi|bổ\s+sung",
@@ -105,84 +114,100 @@ def _quotes(row):
 
 
 def _procedure_actor_labels(node, units):
-    props=node.get('properties', {})
-    statement=props.get('statement_candidate') or node['label']
-    subjects=_subjects(statement)
+    props = node.get("properties", {})
+    statement = props.get("statement_candidate") or node["label"]
+    subjects = _subjects(statement)
     if subjects:
         return [m[0] for m in subjects]
-    body=re.sub(r'^\s*(?:\d+[.)]|[a-zđ][.)])\s*', '', statement, flags=re.I)
-    body=re.sub(r'^(?:Chủ\s+động|Thường\s+xuyên)\s+', '', body, flags=re.I)
-    context=props.get('context_statement_candidate') or ''
+    body = re.sub(r"^\s*(?:\d+[.)]|[a-zđ][.)])\s*", "", statement, flags=re.I)
+    body = re.sub(r"^(?:Chủ\s+động|Thường\s+xuyên)\s+", "", body, flags=re.I)
+    context = props.get("context_statement_candidate") or ""
     if not ACTION.match(body) or statement not in context:
         return []
-    header=_scope_header(context).strip()
-    if not any(context in units.get(uid, {}).get('text', '') for uid in node.get('evidence_unit_ids', [])):
+    header = _scope_header(context).strip()
+    if not any(context in units.get(uid, {}).get("text", "") for uid in node.get("evidence_unit_ids", [])):
         return []
-    if not any(header == c.get('quote', '').strip() for c in node.get('citations', [])):
+    if not any(header == c.get("quote", "").strip() for c in node.get("citations", [])):
         return []
-    collective=collective_authorities(header)
+    collective = collective_authorities(header)
     if collective:
         return collective
-    return [m[0] for m in _subjects(header) if re.fullmatch(r'\s*:\s*',header[m.end():])]
+    return [m[0] for m in _subjects(header) if re.fullmatch(r"\s*:\s*", header[m.end() :])]
 
 
 def _number(node):
     found = re.match(r"\s*(\d+(?:[.,]\d+)*)[.,)]?\s*(?=[^\W\d_])", node["label"])
-    return found[1].replace(',', '.') if found else None
+    return found[1].replace(",", ".") if found else None
 
 
 def _criterion_letter(node):
-    match=re.match(r'\s*([a-zđ])\)\s+\S',node['label'],re.I)
-    return (match[1].casefold() if match and node.get('properties', {}).get('criterion_letter')
-            == match[1].casefold() else None)
+    match = re.match(r"\s*([a-zđ])\)\s+\S", node["label"], re.I)
+    return (
+        match[1].casefold()
+        if match and node.get("properties", {}).get("criterion_letter") == match[1].casefold()
+        else None
+    )
 
 
 def _option_parent_supported(source, target, units, *, stop_at_letters=True):
     """Check row scope locally, or across one explicitly linked table boundary."""
-    a, b = source['properties'], target['properties']
-    if a.get('row') is None or b.get('row') is None:
+    a, b = source["properties"], target["properties"]
+    if a.get("row") is None or b.get("row") is None:
         return False
+
     def table_unit(node, props):
-        for ref in node.get('citations', []):
-            unit = units.get(ref.get('evidence_unit_id'), {})
-            if (ref.get('row') == props['row']
-                    and unit.get('structured', {}).get('table_id') == props.get('table_id')):
-                return unit, ref.get('pdf_page')
+        for ref in node.get("citations", []):
+            unit = units.get(ref.get("evidence_unit_id"), {})
+            if ref.get("row") == props["row"] and unit.get("structured", {}).get("table_id") == props.get(
+                "table_id"
+            ):
+                return unit, ref.get("pdf_page")
         return {}, None
 
     previous, page = table_unit(source, a)
     current, next_page = table_unit(target, b)
     if not previous or not current:
         return False
-    if previous['unit_id'] == current['unit_id']:
-        if a['row'] >= b['row']:
+    if previous["unit_id"] == current["unit_id"]:
+        if a["row"] >= b["row"]:
             return False
-        ranges = [(current, a['row'], b['row'])]
+        ranges = [(current, a["row"], b["row"])]
     else:
-        if (page is None or next_page != page + 1
-                or source['source_id'] != target['source_id']
-                or a.get('sheet_number_candidate') is None
-                or a.get('sheet_number_candidate') != b.get('sheet_number_candidate')):
+        if (
+            page is None
+            or next_page != page + 1
+            or source["source_id"] != target["source_id"]
+            or a.get("sheet_number_candidate") is None
+            or a.get("sheet_number_candidate") != b.get("sheet_number_candidate")
+        ):
             return False
-        hints = current.get('structured', {}).get('table_continuity', [])
-        if not any(h.get('from_pdf_page') == page and h.get('to_pdf_page') == next_page
-                   and h.get('from_table_id') == a.get('table_id')
-                   and h.get('to_table_id') == b.get('table_id') for h in hints):
+        hints = current.get("structured", {}).get("table_continuity", [])
+        if not any(
+            h.get("from_pdf_page") == page
+            and h.get("to_pdf_page") == next_page
+            and h.get("from_table_id") == a.get("table_id")
+            and h.get("to_table_id") == b.get("table_id")
+            for h in hints
+        ):
             return False
-        ranges = [(previous, a['row'], math.inf), (current, -1, b['row'])]
+        ranges = [(previous, a["row"], math.inf), (current, -1, b["row"])]
     for unit, start, end in ranges:
-        for cell in unit.get('structured', {}).get('cells', []):
-            text = str(cell.get('text') or '')
-            if start < int(cell.get('row', -1)) < end and (
-                    _number({'label': text}) or ambiguous_numbered_heading(text)
-                    or re.match(r'\s*phần\s+[abc]\b', text, re.I)
-                    or stop_at_letters and re.match(r'\s*[a-zđ]\)\s+\S',text,re.I)):
+        for cell in unit.get("structured", {}).get("cells", []):
+            text = str(cell.get("text") or "")
+            if start < int(cell.get("row", -1)) < end and (
+                _number({"label": text})
+                or ambiguous_numbered_heading(text)
+                or re.match(r"\s*phần\s+[abc]\b", text, re.I)
+                or stop_at_letters
+                and re.match(r"\s*[a-zđ]\)\s+\S", text, re.I)
+            ):
                 return False
     return True
 
 
 def _recognition_role(node, units, role):
     from ai_core.processing.ocop.business_candidates import recognition_layout_for_unit
+
     for ref in node.get("citations", []):
         unit = units.get(ref.get("evidence_unit_id"), {})
         rows = _row_text(unit.get("structured", {}).get("cells", []))
@@ -200,6 +225,7 @@ def _recognition_role(node, units, role):
 
 def _record_rows(node, units):
     from ai_core.processing.ocop.business_candidates import recognition_layout_for_unit
+
     for ref in node.get("citations", []):
         if ref.get("row") is None or ref.get("cell_id"):
             continue
@@ -240,7 +266,10 @@ def _entity_typed(node, units):
         )
     if kind == "Organization":
         return bool(
-            re.match(r"(?:htx|hợp tác xã|công ty|doanh nghiệp|hộ kinh doanh|hộ sản xuất|cơ sở|tổ hợp tác)\s+\S+", norm(label))
+            re.match(
+                r"(?:htx|hợp tác xã|công ty|doanh nghiệp|hộ kinh doanh|hộ sản xuất|cơ sở|tổ hợp tác)\s+\S+",
+                norm(label),
+            )
         )
     if kind == "Product":
         literal = re.escape(norm(label))
@@ -347,16 +376,16 @@ def _inherited_condition(prefix, statement):
     A lettered list item (``b) ...``) inherits the header of its list, never the body of its sibling ``a) ...``: a
     condition inside item a) says nothing about item b). Other statements inherit the last clause before them.
     """
-    if re.match(r'\s*[a-zđ][.)]\s', statement, re.I):
+    if re.match(r"\s*[a-zđ][.)]\s", statement, re.I):
         lines = prefix.splitlines()
-        start = next((i for i in range(len(lines) - 1, -1, -1) if re.match(r'\s*\d+[.)]\s', lines[i])), 0)
+        start = next((i for i in range(len(lines) - 1, -1, -1) if re.match(r"\s*\d+[.)]\s", lines[i])), 0)
         header = []
         for line in lines[start:]:
-            if re.match(r'\s*[a-zđ][.)]\s', line, re.I):
+            if re.match(r"\s*[a-zđ][.)]\s", line, re.I):
                 break
             header.append(line)
-        return ' '.join(header)
-    return re.split(r'[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+', prefix, flags=re.I)[-1]
+        return " ".join(header)
+    return re.split(r"[;.!?]|\n\s*(?:\d+|[a-zđ])[.)]\s+", prefix, flags=re.I)[-1]
 
 
 def _entails(edge, source, target, units):
@@ -406,8 +435,12 @@ def _entails(edge, source, target, units):
             and a.get("sheet_number_candidate") == b.get("sheet_number_candidate")
         )
         if _criterion_letter(target):
-            return bool(same_scope and parent and '.' not in parent
-                        and _option_parent_supported(source,target,units,stop_at_letters=False))
+            return bool(
+                same_scope
+                and parent
+                and "." not in parent
+                and _option_parent_supported(source, target, units, stop_at_letters=False)
+            )
         return bool(
             same_scope
             and child
@@ -449,22 +482,26 @@ def _entails(edge, source, target, units):
         scoped = r"^\s*(?:(?:\d+|[a-zđ])[.)]\s*)?đối\s+với\b"
         if re.search(conditional, statement, re.I) or re.search(scoped, statement, re.I):
             return False
-        if re.search(r'đối\s+với', statement, re.I):
+        if re.search(r"đối\s+với", statement, re.I):
             # Only relax object phrases for an explicit, single inspection actor.
             # Recognition/withdrawal scopes and embedded actors still abstain.
             subjects = _subjects(statement)
             if len(subjects) != 1 or not re.fullmatch(
-                    r'\s*(?:(?:\d+|[a-zđ])[.)]\s*)?', statement[:subjects[0].start()], re.I):
+                r"\s*(?:(?:\d+|[a-zđ])[.)]\s*)?", statement[: subjects[0].start()], re.I
+            ):
                 return False
-            if not re.match(r'\s*:?\s*(?:kiểm\s+tra|theo\s+dõi|giám\s+sát|xử\s+lý)\b',
-                            statement[subjects[0].end():], re.I):
+            if not re.match(
+                r"\s*:?\s*(?:kiểm\s+tra|theo\s+dõi|giám\s+sát|xử\s+lý)\b",
+                statement[subjects[0].end() :],
+                re.I,
+            ):
                 return False
         # A split action can inherit a condition earlier in the same source
         # sentence. Do not discard it just because another actor starts a slice.
-        for uid in target.get('evidence_unit_ids', []):
-            text = units.get(uid, {}).get('text', '')
+        for uid in target.get("evidence_unit_ids", []):
+            text = units.get(uid, {}).get("text", "")
             if statement in text:
-                prefix = text[:text.index(statement)]
+                prefix = text[: text.index(statement)]
                 local_prefix = _inherited_condition(prefix, statement)
                 if re.search(conditional, local_prefix, re.I) or re.search(scoped, local_prefix, re.I):
                     return False
@@ -482,7 +519,7 @@ def _entails(edge, source, target, units):
             # A semicolon inside a conditional parenthesis must not detach
             # "thì phải có" from its condition. Recognize the observed OCR
             # tone error "trưởng hợp" for abstention, without editing evidence.
-            if _UNCERTAIN.search(text) or re.search(r'\btrư[ờở]ng\s+hợp\b',text):
+            if _UNCERTAIN.search(text) or re.search(r"\btrư[ờở]ng\s+hợp\b", text):
                 continue
             for sentence in re.split(r"[;.!?]", text):
                 label = norm(target["label"])
@@ -621,8 +658,10 @@ def _node_exclusion_reason(node, units, registry):
             (canonical := resolve(label))
             and canonical["canonical_id"] == node.get("properties", {}).get("canonical_id")
             for c in node.get("citations", [])
-            for label in ([m[0] for m in find_authorities(c.get("quote", ""))]
-                          + collective_authorities(c.get("quote", "")))
+            for label in (
+                [m[0] for m in find_authorities(c.get("quote", ""))]
+                + collective_authorities(c.get("quote", ""))
+            )
         ):
             reason = "authority_alias_not_grounded"
     elif kind != "EvidenceUnit" and not _literal(node):
@@ -647,8 +686,13 @@ def _add_supported_attributes(view, node, peers, exclude):
             claims.append(accepted_claim)
             view["properties"][accepted_claim["attribute"]] = claim["value"]
         else:
-            view.setdefault("attribute_checks", []).append({"attribute": claim["attribute"],
-                "check": "failed", "check_reason": "attribute_association_not_proven_or_conflicting"})
+            view.setdefault("attribute_checks", []).append(
+                {
+                    "attribute": claim["attribute"],
+                    "check": "failed",
+                    "check_reason": "attribute_association_not_proven_or_conflicting",
+                }
+            )
             exclude(
                 "attribute",
                 node["node_id"] + ":" + claim["attribute"],
@@ -687,7 +731,8 @@ def check_graph(nodes, edges, units, *, registry=None):
         identity, kind = node["node_id"], node["node_type"]
         human = node.get("check") == "human_verified"
         reason = node.get("construction_error") or (
-            None if human and _has_citations(node) else _node_exclusion_reason(node, units, registry))
+            None if human and _has_citations(node) else _node_exclusion_reason(node, units, registry)
+        )
         if reason:
             exclude("node", identity, reason)
             continue
@@ -710,14 +755,18 @@ def check_graph(nodes, edges, units, *, registry=None):
         _add_supported_attributes(view, node, nodes, exclude)
         if human:
             view["properties"] = deepcopy(node.get("properties", {}))
-        if kind == 'EvidenceUnit' and len(node.get('evidence_unit_ids',[])) == 1:
+        if kind == "EvidenceUnit" and len(node.get("evidence_unit_ids", [])) == 1:
             # Copy the backing transcription, never candidate business attributes.
             # Runtime lookup no longer needs a parallel candidates/evidence store.
-            backing=units.get(node['evidence_unit_ids'][0],{})
-            view['properties'].update({'evidence_text':backing.get('text',''),
-                'source_spans':deepcopy(backing.get('spans',[])),
-                'structured':deepcopy(backing.get('structured') or {}),
-                'source_order':node.get('properties',{}).get('source_order',0)})
+            backing = units.get(node["evidence_unit_ids"][0], {})
+            view["properties"].update(
+                {
+                    "evidence_text": backing.get("text", ""),
+                    "source_spans": deepcopy(backing.get("spans", [])),
+                    "structured": deepcopy(backing.get("structured") or {}),
+                    "source_order": node.get("properties", {}).get("source_order", 0),
+                }
+            )
         view["validation"] = {
             "status": "source_grounded",
             "method": "literal_entity_or_registered_identity",
@@ -783,6 +832,7 @@ def check_graph(nodes, edges, units, *, registry=None):
     out_edges = _prune_invalid_parents(accepted, out_edges, exclude)
     checked_edges = {row["edge_id"]: row for row in out_edges}
     reasons = {(r["record_type"], r["record_id"]): r["reason"] for r in exclusions}
+
     def annotate(original, accepted_row, kind, identity):
         row = deepcopy(accepted_row if accepted_row is not None else original)
         row.pop("construction_error", None)
@@ -799,6 +849,7 @@ def check_graph(nodes, edges, units, *, registry=None):
         if original.get("human_review"):
             row["human_review"] = deepcopy(original["human_review"])
         return row
+
     checked_nodes = [annotate(n, accepted.get(n["node_id"]), "node", n["node_id"]) for n in nodes]
     checked_relations = [annotate(e, checked_edges.get(e["edge_id"]), "edge", e["edge_id"]) for e in edges]
     summary = {"policy": "source_predicate_and_ledger_checks", "nodes": {}, "edges": {}}

@@ -3,6 +3,7 @@
 It keeps only conversational scope (slots, intent, capabilities) and a masked copy of the last question;
 never authority, tenant or dossier content.
 """
+
 from __future__ import annotations
 
 import copy
@@ -16,7 +17,7 @@ from ai_core.orchestration.ocop.privacy import redact
 
 TTL_SECONDS = 3600.0
 MAX_SESSIONS = 512
-UNANSWERED_INTENTS = frozenset({'CLARIFY', 'OUT_OF_SCOPE'})
+UNANSWERED_INTENTS = frozenset({"CLARIFY", "OUT_OF_SCOPE"})
 
 
 class SessionStore:
@@ -43,30 +44,44 @@ class SessionStore:
             prior = self._items.get(session_id, (0.0, {}))[1]
             if self._clock() - self._items.get(session_id, (0.0, {}))[0] > self._ttl:
                 prior = {}
-            if response.intent.value == 'CONVERSATION':
+            if response.intent.value == "CONVERSATION":
                 # Social traffic refreshes TTL but cannot age evidence, overwrite
                 # the active query, or consume a pending clarification.
                 state = copy.deepcopy(prior)
-                state['dialogue'] = {'acts': list(getattr(getattr(response.route, 'dialogue', None), 'acts', []))}
+                state["dialogue"] = {
+                    "acts": list(getattr(getattr(response.route, "dialogue", None), "acts", []))
+                }
                 self._items[session_id] = (self._clock(), state)
                 self._items.move_to_end(session_id)
                 while len(self._items) > self._limit:
                     self._items.popitem(last=False)
                 return
-            answered = not (getattr(response.route, 'needs_clarification', False) or response.intent.value in UNANSWERED_INTENTS)
+            answered = not (
+                getattr(response.route, "needs_clarification", False)
+                or response.intent.value in UNANSWERED_INTENTS
+            )
             if answered:
-                state = {'last_query': redact(getattr(response, 'standalone_query', None) or query), 'slots': dict(response.route.slots), 'intent': response.intent.value,
-                         'capabilities': list(response.route.capabilities),
-                         'memory': memory.update(
-                             prior.get('memory'), slots=response.route.slots,
-                             standalone=redact(getattr(response, 'standalone_query', None) or query),
-                             citations=list(getattr(response, 'citations', None) or []),
-                             corpus_version=getattr(response, 'corpus_version', None))}
+                state = {
+                    "last_query": redact(getattr(response, "standalone_query", None) or query),
+                    "slots": dict(response.route.slots),
+                    "intent": response.intent.value,
+                    "capabilities": list(response.route.capabilities),
+                    "memory": memory.update(
+                        prior.get("memory"),
+                        slots=response.route.slots,
+                        standalone=redact(getattr(response, "standalone_query", None) or query),
+                        citations=list(getattr(response, "citations", None) or []),
+                        corpus_version=getattr(response, "corpus_version", None),
+                    ),
+                }
             else:
                 # A turn that only asked for clarification (or was out of scope) did not establish a topic: keep the scope the
                 # conversation had, remember what is still unresolved.
-                state = {k: v for k, v in prior.items() if k != 'unresolved'}
-                state['unresolved'] = {'question': redact(query), 'missing_slots': list(getattr(response.route, 'missing_slots', []))}
+                state = {k: v for k, v in prior.items() if k != "unresolved"}
+                state["unresolved"] = {
+                    "question": redact(query),
+                    "missing_slots": list(getattr(response.route, "missing_slots", [])),
+                }
             self._items[session_id] = (self._clock(), state)
             self._items.move_to_end(session_id)
             while len(self._items) > self._limit:

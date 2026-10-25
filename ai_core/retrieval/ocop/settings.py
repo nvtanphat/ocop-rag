@@ -1,4 +1,5 @@
 """Retrieval/context parameters from configs/ocop_retrieval.yaml (defaults documented in docs/CONFIGURATION.md)."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -11,7 +12,7 @@ _ROOT = Path(__file__).resolve().parents[3]
 
 
 class ContextSettings(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     prompt_token_budget: int = Field(5200, ge=512)
     output_reserve_tokens: int = Field(1024, ge=128)
     excerpt_max_chars: int = Field(1500, ge=200)
@@ -24,7 +25,7 @@ class ContextSettings(BaseModel):
 
 
 class RetrievalSettings(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     top_k: int = Field(8, ge=1)
     candidate_pool_min: int = Field(40, ge=1)
     rrf_k: int = Field(60, ge=1)
@@ -39,7 +40,7 @@ class RetrievalSettings(BaseModel):
 
 
 class AgentSettings(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     max_tool_calls: int = Field(5, ge=1, le=8)
     grader_min_relevance: float = Field(0.13, ge=0, le=1)
     scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
@@ -50,7 +51,7 @@ class AgentSettings(BaseModel):
 
 
 class Settings(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     schema_version: int = 1
     context: ContextSettings = ContextSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
@@ -59,13 +60,13 @@ class Settings(BaseModel):
 
 @lru_cache(maxsize=4)
 def _load(path: str, mtime: int) -> Settings:
-    return Settings.model_validate(yaml.safe_load(Path(path).read_text(encoding='utf-8')) or {})
+    return Settings.model_validate(yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {})
 
 
 def get_settings(root: Path | None = None) -> Settings:
     base = Path(root).resolve() if root else _ROOT
     for parent in [base, *base.parents, _ROOT]:
-        candidate = parent / 'configs' / 'ocop_retrieval.yaml'
+        candidate = parent / "configs" / "ocop_retrieval.yaml"
         if candidate.is_file():
             return _load(str(candidate), candidate.stat().st_mtime_ns)
     return Settings()

@@ -1,4 +1,5 @@
 """Single local scan OCR path: EasyOCR CRAFT detection + VietOCR recognition."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -31,7 +32,11 @@ def _model_dir() -> Path:
 
 def _vietocr_weights() -> Path:
     configured = os.getenv("OCOP_VIETOCR_WEIGHTS")
-    path = Path(configured).expanduser() if configured else Path.home() / ".cache" / "ocop" / "vietocr" / "vgg_transformer.pth"
+    path = (
+        Path(configured).expanduser()
+        if configured
+        else Path.home() / ".cache" / "ocop" / "vietocr" / "vgg_transformer.pth"
+    )
     if not path.is_file():
         raise RuntimeError(
             "vietocr_weights_missing:set_OCOP_VIETOCR_WEIGHTS_to_local_vgg_transformer_checkpoint"
@@ -49,6 +54,7 @@ def _detector_path() -> Path:
 @lru_cache(maxsize=2)
 def _load_detector(directory: str, digest: str):
     import torch
+
     torch.set_num_threads(2)
     import easyocr
 
@@ -82,6 +88,7 @@ def _vietocr_config() -> dict:
 @lru_cache(maxsize=2)
 def _load_predictor(config_json: str, weights_digest: str):
     import torch
+
     torch.set_num_threads(2)
     from vietocr.tool.predictor import Predictor
 
@@ -184,19 +191,19 @@ def _pdf_bbox(bbox, *, width_px: int, height_px: int, page) -> list[float]:
 def _detect_regions(reader, rgb: np.ndarray, *, diagnostics: dict | None = None) -> list[dict]:
     with inference_slot():
         horizontal, free = reader.detect(
-        rgb,
-        min_size=12,
-        text_threshold=0.60,
-        low_text=0.35,
-        link_threshold=0.35,
-        canvas_size=3000,
-        mag_ratio=1.25,
-        slope_ths=0.12,
-        ycenter_ths=0.5,
-        height_ths=0.5,
-        width_ths=0.5,
-        add_margin=0.12,
-    )
+            rgb,
+            min_size=12,
+            text_threshold=0.60,
+            low_text=0.35,
+            link_threshold=0.35,
+            canvas_size=3000,
+            mag_ratio=1.25,
+            slope_ths=0.12,
+            ycenter_ths=0.5,
+            height_ths=0.5,
+            width_ths=0.5,
+            add_margin=0.12,
+        )
     if len(horizontal) != 1 or len(free) != 1:
         raise RuntimeError("easyocr_detection_batch_mismatch")
     if diagnostics is not None:
@@ -217,8 +224,9 @@ def _detect_regions(reader, rgb: np.ndarray, *, diagnostics: dict | None = None)
         except ValueError:
             continue
         regions.append({"polygon": polygon, "bbox_px": bbox})
-    return sorted(regions, key=lambda region: ((region["bbox_px"][1] + region["bbox_px"][3]) / 2,
-                                                region["bbox_px"][0]))
+    return sorted(
+        regions, key=lambda region: ((region["bbox_px"][1] + region["bbox_px"][3]) / 2, region["bbox_px"][0])
+    )
 
 
 def _page_box(region: dict, image: Image.Image, page) -> list[float]:
@@ -233,9 +241,11 @@ def _table_owner(box: list[float], tables: list[dict]) -> tuple | None:
         bbox = table.get("bbox")
         if not bbox or not (bbox[0] <= cx <= bbox[2] and bbox[1] <= cy <= bbox[3]):
             continue
-        owners = [cell for cell in table.get("cells", [])
-                  if cell["bbox"][0] <= cx <= cell["bbox"][2]
-                  and cell["bbox"][1] <= cy <= cell["bbox"][3]]
+        owners = [
+            cell
+            for cell in table.get("cells", [])
+            if cell["bbox"][0] <= cx <= cell["bbox"][2] and cell["bbox"][1] <= cy <= cell["bbox"][3]
+        ]
         if len(owners) == 1:
             cell = owners[0]
             return table_index, cell.get("row"), cell.get("col")
@@ -256,28 +266,41 @@ def _split_at_table_rows(regions: list[dict], image: Image.Image, page, tables: 
         for table in tables:
             for cell in table.get("cells", []):
                 left, top, right, bottom = cell["bbox"]
-                if (left <= page_box[0] + 1 and right >= page_box[2] - 1
-                        and page_box[1] + height_pt * TABLE_ROW_SPLIT_EDGE_FRACTION < bottom
-                        < page_box[3] - height_pt * TABLE_ROW_SPLIT_EDGE_FRACTION):
+                if (
+                    left <= page_box[0] + 1
+                    and right >= page_box[2] - 1
+                    and page_box[1] + height_pt * TABLE_ROW_SPLIT_EDGE_FRACTION
+                    < bottom
+                    < page_box[3] - height_pt * TABLE_ROW_SPLIT_EDGE_FRACTION
+                ):
                     cuts.add(int(round(bottom / page.rect.height * image.height)))
-        cuts = sorted(y for y in cuts
-                      if y0 + (y1 - y0) * TABLE_ROW_SPLIT_EDGE_FRACTION < y
-                      < y1 - (y1 - y0) * TABLE_ROW_SPLIT_EDGE_FRACTION)
+        cuts = sorted(
+            y
+            for y in cuts
+            if y0 + (y1 - y0) * TABLE_ROW_SPLIT_EDGE_FRACTION
+            < y
+            < y1 - (y1 - y0) * TABLE_ROW_SPLIT_EDGE_FRACTION
+        )
         if not cuts or (x1 - x0) > 1.8 * (y1 - y0):
             result.append(region)
             continue
         boundaries = [int(math.floor(y0)), *cuts, int(math.ceil(y1))]
         for top, bottom in zip(boundaries, boundaries[1:]):
             if bottom - top >= 0.35 * (y1 - y0) / (len(boundaries) - 1):
-                result.append({"bbox_px": [x0, top, x1, bottom],
-                               "polygon": [[x0, top], [x1, top], [x1, bottom], [x0, bottom]]})
+                result.append(
+                    {
+                        "bbox_px": [x0, top, x1, bottom],
+                        "polygon": [[x0, top], [x1, top], [x1, bottom], [x0, bottom]],
+                    }
+                )
     return result
 
 
 def _line_groups(regions: list[dict]) -> list[list[dict]]:
     lines: list[list[dict]] = []
-    for region in sorted(regions, key=lambda item: ((item["bbox_px"][1] + item["bbox_px"][3]) / 2,
-                                                     item["bbox_px"][0])):
+    for region in sorted(
+        regions, key=lambda item: ((item["bbox_px"][1] + item["bbox_px"][3]) / 2, item["bbox_px"][0])
+    ):
         _, top, _, bottom = region["bbox_px"]
         center, height = (top + bottom) / 2, bottom - top
         matches = []
@@ -321,11 +344,8 @@ def _merge_line_fragments(regions: list[dict], image: Image.Image, page, tables:
             boxes = [item["bbox_px"] for item in cluster]
             x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
             x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
-            polygon = cluster[0]["polygon"] if len(cluster) == 1 else [
-                [x0, y0], [x1, y0], [x1, y1], [x0, y1]
-            ]
-            output.append({"bbox_px": [x0, y0, x1, y1],
-                           "polygon": polygon})
+            polygon = cluster[0]["polygon"] if len(cluster) == 1 else [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+            output.append({"bbox_px": [x0, y0, x1, y1], "polygon": polygon})
     return output
 
 
@@ -334,8 +354,10 @@ def _is_axis_aligned(region: dict) -> bool:
     if points.shape != (4, 2):
         return False
     x0, y0, x1, y1 = region["bbox_px"]
-    return bool(np.allclose(sorted(points[:, 0]), [x0, x0, x1, x1], atol=1.5)
-                and np.allclose(sorted(points[:, 1]), [y0, y0, y1, y1], atol=1.5))
+    return bool(
+        np.allclose(sorted(points[:, 0]), [x0, x0, x1, x1], atol=1.5)
+        and np.allclose(sorted(points[:, 1]), [y0, y0, y1, y1], atol=1.5)
+    )
 
 
 def _text_ink_maps(gray: np.ndarray, line_height: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -344,8 +366,12 @@ def _text_ink_maps(gray: np.ndarray, line_height: float) -> tuple[np.ndarray, np
 
     _, ink = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     rule_length = max(40, int(2 * line_height))
-    horizontal = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (rule_length, 1)))
-    vertical = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, rule_length)))
+    horizontal = cv2.morphologyEx(
+        ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (rule_length, 1))
+    )
+    vertical = cv2.morphologyEx(
+        ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, rule_length))
+    )
     text_ink = cv2.subtract(ink, cv2.dilate(cv2.bitwise_or(horizontal, vertical), np.ones((3, 3), np.uint8)))
     return text_ink, cv2.dilate(vertical, np.ones((1, 3), np.uint8)), horizontal
 
@@ -375,7 +401,7 @@ def _tighten_line_boxes(regions: list[dict], image: Image.Image) -> list[dict]:
         runs: list[list[int]] = []
         for row in active:
             # a table rule between two rows of ink is a hard line break, however narrow the gap
-            if runs and row - runs[-1][1] <= 3 and not on_rule[runs[-1][1]:row].any():
+            if runs and row - runs[-1][1] <= 3 and not on_rule[runs[-1][1] : row].any():
                 runs[-1][1] = int(row)
             else:
                 runs.append([int(row), int(row)])
@@ -383,7 +409,7 @@ def _tighten_line_boxes(regions: list[dict], image: Image.Image) -> list[dict]:
         if not substantial:
             output.append(region)
             continue
-        keep = max(substantial, key=lambda run: int(rows[run[0]:run[1] + 1].sum()))
+        keep = max(substantial, key=lambda run: int(rows[run[0] : run[1] + 1].sum()))
         covered = True
         for run in substantial:
             if run is keep:
@@ -393,7 +419,8 @@ def _tighten_line_boxes(regions: list[dict], image: Image.Image) -> list[dict]:
                 other_index != index
                 and min(other["bbox_px"][3], bottom) - max(other["bbox_px"][1], top) >= 0.6 * (bottom - top)
                 and min(other["bbox_px"][2], x1) - max(other["bbox_px"][0], x0) >= 0.1 * (x1 - x0)
-                for other_index, other in enumerate(regions))
+                for other_index, other in enumerate(regions)
+            )
         if not covered:
             output.append(region)
             continue
@@ -411,8 +438,13 @@ def _tighten_line_boxes(regions: list[dict], image: Image.Image) -> list[dict]:
         if (new_y0, new_y1) == (y0, y1):
             output.append(region)
             continue
-        output.append({**region, "bbox_px": [x0, new_y0, x1, new_y1],
-                       "polygon": [[x0, new_y0], [x1, new_y0], [x1, new_y1], [x0, new_y1]]})
+        output.append(
+            {
+                **region,
+                "bbox_px": [x0, new_y0, x1, new_y1],
+                "polygon": [[x0, new_y0], [x1, new_y0], [x1, new_y1], [x0, new_y1]],
+            }
+        )
     return output
 
 
@@ -452,7 +484,9 @@ def _extend_line_ends(regions: list[dict], image: Image.Image, maximum_gap_ratio
             elif ox1 <= x0 + 1:
                 left_limit = max(left_limit, int(ox1) + 1)
         text_columns = np.count_nonzero(text_ink[band_top:band_bottom], axis=0) > 0
-        blocked = np.count_nonzero(rule_columns[band_top:band_bottom], axis=0) >= 0.5 * (band_bottom - band_top)
+        blocked = np.count_nonzero(rule_columns[band_top:band_bottom], axis=0) >= 0.5 * (
+            band_bottom - band_top
+        )
         maximum_gap = max(6, int(maximum_gap_ratio * height))
 
         def scan(start: int, step: int, limit: int) -> int:
@@ -484,9 +518,18 @@ def _extend_line_ends(regions: list[dict], image: Image.Image, maximum_gap_ratio
         if (new_x0, new_x1) == (x0, x1):
             output.append(region)
             continue
-        output.append({**region, "bbox_px": [new_x0, region["bbox_px"][1], new_x1, region["bbox_px"][3]],
-                       "polygon": [[new_x0, region["bbox_px"][1]], [new_x1, region["bbox_px"][1]],
-                                   [new_x1, region["bbox_px"][3]], [new_x0, region["bbox_px"][3]]]})
+        output.append(
+            {
+                **region,
+                "bbox_px": [new_x0, region["bbox_px"][1], new_x1, region["bbox_px"][3]],
+                "polygon": [
+                    [new_x0, region["bbox_px"][1]],
+                    [new_x1, region["bbox_px"][1]],
+                    [new_x1, region["bbox_px"][3]],
+                    [new_x0, region["bbox_px"][3]],
+                ],
+            }
+        )
     return output
 
 
@@ -504,8 +547,9 @@ def _without_table_rules(image: Image.Image, regions: list[dict]) -> Image.Image
     horizontal = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (length, 1)))
     if not vertical.any() and not horizontal.any():
         return image
-    mask = ((cv2.dilate(vertical, np.ones((1, 3), np.uint8)) > 0)
-            | (cv2.dilate(horizontal, np.ones((3, 1), np.uint8)) > 0))
+    mask = (cv2.dilate(vertical, np.ones((1, 3), np.uint8)) > 0) | (
+        cv2.dilate(horizontal, np.ones((3, 1), np.uint8)) > 0
+    )
     cleaned = np.asarray(image.convert("RGB")).copy()
     cleaned[mask] = 255
     return Image.fromarray(cleaned)
@@ -527,18 +571,19 @@ def _split_long_regions(regions: list[dict], image: Image.Image, maximum_ratio: 
         _, ink = cv2.threshold(crop, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
         # Table rules and underlines crossing the line crop leave no blank column between words, forcing
         # a cut through a glyph; no letter stroke is this long, so remove such strokes before projecting.
-        rules = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(
-            cv2.MORPH_RECT, (max(3, int(1.5 * height)), 1)))
+        rules = cv2.morphologyEx(
+            ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (max(3, int(1.5 * height)), 1))
+        )
         ink = cv2.subtract(ink, rules)
         margin = max(1, height // 10)
-        projection = np.count_nonzero(ink[margin:max(margin + 1, height - margin)], axis=0)
+        projection = np.count_nonzero(ink[margin : max(margin + 1, height - margin)], axis=0)
         blank = projection == 0
         cuts = []
         start = 0
         while width - start > max_width:
             lower = start + int(max_width * 0.55)
             upper = min(width - 1, start + max_width)
-            candidates = np.flatnonzero(blank[lower:upper + 1]) + lower
+            candidates = np.flatnonzero(blank[lower : upper + 1]) + lower
             if len(candidates):
                 runs = np.split(candidates, np.where(np.diff(candidates) > 1)[0] + 1)
                 safe = [run for run in runs if len(run) >= max(2, height // 14)]
@@ -549,7 +594,7 @@ def _split_long_regions(regions: list[dict], image: Image.Image, maximum_ratio: 
                 widest = max(safe, key=lambda run: (len(run), int(run[-1])))
                 cut = int(widest[len(widest) // 2])
             else:
-                cut = int(np.argmin(projection[lower:upper + 1]) + lower)
+                cut = int(np.argmin(projection[lower : upper + 1]) + lower)
             if cut <= start:
                 break
             cuts.append((cut, bool(safe)))
@@ -560,10 +605,15 @@ def _split_long_regions(regions: list[dict], image: Image.Image, maximum_ratio: 
                 box = [x0 + left, y0, x0 + right, y1]
                 # Only a cut in a blank gap gets blank padding; a cut through a glyph keeps the overlap,
                 # which lets both pieces still see the split letter.
-                output.append({"bbox_px": box,
-                               "polygon": [[box[0], box[1]], [box[2], box[1]],
-                                           [box[2], box[3]], [box[0], box[3]]],
-                               "cut_edges": [side for side, gap in (("left", left_gap), ("right", right_gap)) if gap]})
+                output.append(
+                    {
+                        "bbox_px": box,
+                        "polygon": [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]],
+                        "cut_edges": [
+                            side for side, gap in (("left", left_gap), ("right", right_gap)) if gap
+                        ],
+                    }
+                )
     return output
 
 
@@ -582,10 +632,8 @@ def _looks_like_asterisk(mask: np.ndarray) -> bool:
 
     if mask.ndim != 2 or min(mask.shape) < 4:
         return False
-    normalized = cv2.resize((mask > 0).astype(np.uint8), (9, 9),
-                            interpolation=cv2.INTER_NEAREST) > 0
-    quadrants = (normalized[:4, :4], normalized[:4, 5:],
-                 normalized[5:, :4], normalized[5:, 5:])
+    normalized = cv2.resize((mask > 0).astype(np.uint8), (9, 9), interpolation=cv2.INTER_NEAREST) > 0
+    quadrants = (normalized[:4, :4], normalized[:4, 5:], normalized[5:, :4], normalized[5:, 5:])
     return (
         all(np.count_nonzero(quadrant) for quadrant in quadrants)
         and np.count_nonzero(normalized[3:6, 3:6]) >= 2
@@ -614,7 +662,7 @@ def _repeated_asterisk_suffixes(gray_crop: np.ndarray) -> list[tuple[str, float,
     for x, y, width, height, area in stats[1:count]:
         if height < 4 or width < 3 or area < 7 or not 0.35 <= width / height <= 2.0:
             continue
-        mask = ink[y:y + height, x:x + width]
+        mask = ink[y : y + height, x : x + width]
         if _looks_like_asterisk(mask):
             components.append((int(x), int(y), int(width), int(height), mask))
     if len(components) < 3:
@@ -624,11 +672,16 @@ def _repeated_asterisk_suffixes(gray_crop: np.ndarray) -> list[tuple[str, float,
     # tall at 300 DPI) must not set the expected star height of the line that carries the stars.
     lines: list[list[tuple]] = []
     for component in sorted(components, key=lambda item: item[1] + item[3] / 2):
-        owner = next((
-            line for line in lines
-            if min(max(item[1] + item[3] for item in line), component[1] + component[3])
-            - max(min(item[1] for item in line), component[1]) >= 0.5 * component[3]
-        ), None)
+        owner = next(
+            (
+                line
+                for line in lines
+                if min(max(item[1] + item[3] for item in line), component[1] + component[3])
+                - max(min(item[1] for item in line), component[1])
+                >= 0.5 * component[3]
+            ),
+            None,
+        )
         if owner is None:
             lines.append([component])
         else:
@@ -637,9 +690,15 @@ def _repeated_asterisk_suffixes(gray_crop: np.ndarray) -> list[tuple[str, float,
     suffixes = []
     for line in lines:
         median_height = float(np.median([component[3] for component in line]))
-        line = sorted((component for component in line
-                       if 0.42 * median_height <= component[3] <= 1.40 * median_height
-                       and component[2] >= 0.30 * median_height), key=lambda item: item[0])
+        line = sorted(
+            (
+                component
+                for component in line
+                if 0.42 * median_height <= component[3] <= 1.40 * median_height
+                and component[2] >= 0.30 * median_height
+            ),
+            key=lambda item: item[0],
+        )
         suffix = []
         for component in reversed(line):
             if suffix:
@@ -658,9 +717,12 @@ def _repeated_asterisk_suffixes(gray_crop: np.ndarray) -> list[tuple[str, float,
             suffix.append(component)
         if len(suffix) >= 3:
             center_y = float(np.median([item[1] + item[3] / 2 for item in suffix]))
-            bbox = [min(item[0] for item in suffix), min(item[1] for item in suffix),
-                    max(item[0] + item[2] for item in suffix),
-                    max(item[1] + item[3] for item in suffix)]
+            bbox = [
+                min(item[0] for item in suffix),
+                min(item[1] for item in suffix),
+                max(item[0] + item[2] for item in suffix),
+                max(item[1] + item[3] for item in suffix),
+            ]
             suffixes.append(("*" * len(suffix), center_y, bbox))
     return sorted(suffixes, key=lambda item: item[1])
 
@@ -679,8 +741,10 @@ def _marker_follows_ocr_text(marker_bbox: list[float], cell_bbox: list[float], b
         x0, y0, x1, y1 = [float(value) for value in box]
         center_y = (y0 + y1) / 2
         if (
-            x1 <= cell_x0 or x0 >= cell_x1
-            or center_y < cell_y0 or center_y > cell_y1
+            x1 <= cell_x0
+            or x0 >= cell_x1
+            or center_y < cell_y0
+            or center_y > cell_y1
             or abs(center_y - marker_center_y) > max(4.0, (y1 - y0) * 0.5)
         ):
             continue
@@ -729,16 +793,18 @@ def _recover_image_marker_candidates(image: Image.Image, page, tables: list[dict
                 if not _marker_follows_ocr_text(marker_bbox, box, blocks):
                     continue
                 candidates = cell.setdefault("image_marker_candidates", [])
-                candidates.append({
-                    "text": text,
-                    "bbox": list(box),
-                    "marker_bbox": marker_bbox,
-                    "table_id": table.get("table_id"),
-                    "cell_id": f"{table.get('table_id')}:{cell.get('row')}:{cell.get('col')}",
-                    "method": "opencv_repeated_asterisk_suffix",
-                    "candidate_only": True,
-                    "review_status": "needs_review",
-                })
+                candidates.append(
+                    {
+                        "text": text,
+                        "bbox": list(box),
+                        "marker_bbox": marker_bbox,
+                        "table_id": table.get("table_id"),
+                        "cell_id": f"{table.get('table_id')}:{cell.get('row')}:{cell.get('col')}",
+                        "method": "opencv_repeated_asterisk_suffix",
+                        "candidate_only": True,
+                        "review_status": "needs_review",
+                    }
+                )
                 added += 1
     return added
 
@@ -753,9 +819,13 @@ def _is_hollow_square(component: np.ndarray) -> bool:
     if box_h < 6 or box_w < 6 or not 0.75 <= box_w / box_h <= 1.35:
         return False
     band = max(2, min(box_h, box_w) // 6)
-    sides = (component[:band].any(axis=0), component[-band:].any(axis=0),
-             component[:, :band].any(axis=1), component[:, -band:].any(axis=1))
-    interior = component[box_h // 4:box_h - box_h // 4, box_w // 4:box_w - box_w // 4]
+    sides = (
+        component[:band].any(axis=0),
+        component[-band:].any(axis=0),
+        component[:, :band].any(axis=1),
+        component[:, -band:].any(axis=1),
+    )
+    interior = component[box_h // 4 : box_h - box_h // 4, box_w // 4 : box_w - box_w // 4]
     return bool(all(side.mean() >= 0.8 for side in sides) and interior.size and interior.mean() <= 0.05)
 
 
@@ -774,21 +844,25 @@ def _blank_leading_checkbox(crop: Image.Image) -> Image.Image:
     _, ink = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     count, labels, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
     # Skip table rules and slivers of neighbouring rows: they are long or touch the crop's top/bottom edge.
-    candidates = [i for i in range(1, count)
-                  if stats[i, cv2.CC_STAT_AREA] >= 6 and 8 <= stats[i, cv2.CC_STAT_WIDTH] < 0.15 * width
-                  and stats[i, cv2.CC_STAT_HEIGHT] >= 8
-                  and stats[i, cv2.CC_STAT_TOP] > 0
-                  and stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] < height]
+    candidates = [
+        i
+        for i in range(1, count)
+        if stats[i, cv2.CC_STAT_AREA] >= 6
+        and 8 <= stats[i, cv2.CC_STAT_WIDTH] < 0.15 * width
+        and stats[i, cv2.CC_STAT_HEIGHT] >= 8
+        and stats[i, cv2.CC_STAT_TOP] > 0
+        and stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] < height
+    ]
     if not candidates:
         return crop
     first = min(candidates, key=lambda i: stats[i, cv2.CC_STAT_LEFT])
     left, top, box_w, box_h, area = (int(v) for v in stats[first])
     if left > 0.2 * width or not (0.18 * height <= box_h <= 0.95 * height):
         return crop
-    if not _is_hollow_square(labels[top:top + box_h, left:left + box_w] == first):
+    if not _is_hollow_square(labels[top : top + box_h, left : left + box_w] == first):
         return crop
     cleared = np.asarray(crop.convert("RGB")).copy()
-    cleared[:, :left + box_w + 2] = 255
+    cleared[:, : left + box_w + 2] = 255
     return Image.fromarray(cleared)
 
 
@@ -804,7 +878,7 @@ def _is_checkbox_glyph(crop: Image.Image) -> bool:
     rows, columns = np.nonzero(ink)
     if not len(rows):
         return False
-    return _is_hollow_square(ink[rows.min():rows.max() + 1, columns.min():columns.max() + 1] > 0)
+    return _is_hollow_square(ink[rows.min() : rows.max() + 1, columns.min() : columns.max() + 1] > 0)
 
 
 def _recognition_crop(image: Image.Image, region: dict, rgb: np.ndarray | None = None) -> Image.Image:
@@ -821,8 +895,10 @@ def _recognition_crop(image: Image.Image, region: dict, rgb: np.ndarray | None =
     ordered = np.roll(ordered, -start, axis=0)
 
     bounds = [points[:, 0].min(), points[:, 1].min(), points[:, 0].max(), points[:, 1].max()]
-    axis_aligned = np.array([[bounds[0], bounds[1]], [bounds[2], bounds[1]],
-                             [bounds[2], bounds[3]], [bounds[0], bounds[3]]], dtype=np.float32)
+    axis_aligned = np.array(
+        [[bounds[0], bounds[1]], [bounds[2], bounds[1]], [bounds[2], bounds[3]], [bounds[0], bounds[3]]],
+        dtype=np.float32,
+    )
     if np.allclose(ordered, axis_aligned, atol=0.01):
         pad = max(1, int((y1 - y0) * 0.06))
         left, right = max(0, x0 - pad), min(image.width, x1 + pad)
@@ -832,9 +908,9 @@ def _recognition_crop(image: Image.Image, region: dict, rgb: np.ndarray | None =
             # Padding beyond an artificial cut would show the neighbouring piece's glyphs.
             pixels = np.asarray(crop).copy()
             if "left" in edges:
-                pixels[:, :x0 - left] = 255
+                pixels[:, : x0 - left] = 255
             if "right" in edges:
-                pixels[:, pixels.shape[1] - (right - x1):] = 255
+                pixels[:, pixels.shape[1] - (right - x1) :] = 255
             crop = Image.fromarray(pixels)
         return crop
 
@@ -844,19 +920,27 @@ def _recognition_crop(image: Image.Image, region: dict, rgb: np.ndarray | None =
     right_height = float(np.linalg.norm(ordered[2] - ordered[1]))
     width, height = int(round(max(top_width, bottom_width))), int(round(max(left_height, right_height)))
     if width < 2 or height < 2:
-        return image.convert("RGB").crop((max(0, x0), max(0, y0), min(image.width, x1), min(image.height, y1)))
+        return image.convert("RGB").crop(
+            (max(0, x0), max(0, y0), min(image.width, x1), min(image.height, y1))
+        )
 
     import cv2
 
-    destination = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]],
-                           dtype=np.float32)
+    destination = np.array(
+        [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], dtype=np.float32
+    )
     transform = cv2.getPerspectiveTransform(ordered, destination)
     source = rgb if rgb is not None else np.asarray(image.convert("RGB"))
-    rectified = cv2.warpPerspective(source, transform, (width, height), flags=cv2.INTER_CUBIC,
-                                    borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+    rectified = cv2.warpPerspective(
+        source,
+        transform,
+        (width, height),
+        flags=cv2.INTER_CUBIC,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(255, 255, 255),
+    )
     pad = max(2, int(height * 0.06))
-    rectified = cv2.copyMakeBorder(rectified, pad, pad, pad, pad, cv2.BORDER_CONSTANT,
-                                   value=(255, 255, 255))
+    rectified = cv2.copyMakeBorder(rectified, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     return Image.fromarray(rectified)
 
 
@@ -871,11 +955,13 @@ def _tight_score_cell_crop(crop: Image.Image) -> Image.Image | None:
 
     _, ink = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     horizontal = cv2.morphologyEx(
-        ink, cv2.MORPH_OPEN,
+        ink,
+        cv2.MORPH_OPEN,
         cv2.getStructuringElement(cv2.MORPH_RECT, (max(5, int(width * 0.35)), 1)),
     )
     vertical = cv2.morphologyEx(
-        ink, cv2.MORPH_OPEN,
+        ink,
+        cv2.MORPH_OPEN,
         cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(5, int(height * 0.35)))),
     )
     ink = cv2.subtract(ink, cv2.max(horizontal, vertical))
@@ -883,9 +969,16 @@ def _tight_score_cell_crop(crop: Image.Image) -> Image.Image | None:
     components = []
     minimum_area = max(4, int(height * width * 0.0005))
     for x, y, box_width, box_height, area in stats[1:count]:
-        if (area < minimum_area or box_width < 2 or box_width > 0.5 * width
-                or box_height < max(5, 0.12 * height)
-                or x <= 0 or y <= 0 or x + box_width >= width or y + box_height >= height):
+        if (
+            area < minimum_area
+            or box_width < 2
+            or box_width > 0.5 * width
+            or box_height < max(5, 0.12 * height)
+            or x <= 0
+            or y <= 0
+            or x + box_width >= width
+            or y + box_height >= height
+        ):
             continue
         components.append((int(x), int(y), int(box_width), int(box_height)))
     if not components:
@@ -894,16 +987,23 @@ def _tight_score_cell_crop(crop: Image.Image) -> Image.Image | None:
     # Numeric cell content is usually one centered glyph or a short, horizontally grouped value.
     # Group similarly tall components so values such as "10" stay together while isolated specks drop out.
     median_height = float(np.median([component[3] for component in components]))
-    components = [component for component in components
-                  if 0.55 * median_height <= component[3] <= 1.8 * median_height]
+    components = [
+        component for component in components if 0.55 * median_height <= component[3] <= 1.8 * median_height
+    ]
     groups: list[list[tuple[int, int, int, int]]] = []
     for component in sorted(components, key=lambda item: item[0]):
         x, y, box_width, box_height = component
         center_y = y + box_height / 2
-        group = next((items for items in groups
-                      if abs(np.median([item[1] + item[3] / 2 for item in items]) - center_y)
-                      <= 0.45 * median_height
-                      and x - max(item[0] + item[2] for item in items) <= 0.8 * median_height), None)
+        group = next(
+            (
+                items
+                for items in groups
+                if abs(np.median([item[1] + item[3] / 2 for item in items]) - center_y)
+                <= 0.45 * median_height
+                and x - max(item[0] + item[2] for item in items) <= 0.8 * median_height
+            ),
+            None,
+        )
         if group is None:
             groups.append([component])
         else:
@@ -912,16 +1012,25 @@ def _tight_score_cell_crop(crop: Image.Image) -> Image.Image | None:
         return None
 
     center_x = width / 2
-    selected = min(groups, key=lambda items: abs(
-        (min(item[0] for item in items) + max(item[0] + item[2] for item in items)) / 2 - center_x
-    ))
+    selected = min(
+        groups,
+        key=lambda items: abs(
+            (min(item[0] for item in items) + max(item[0] + item[2] for item in items)) / 2 - center_x
+        ),
+    )
     left = min(item[0] for item in selected)
     top = min(item[1] for item in selected)
     right = max(item[0] + item[2] for item in selected)
     bottom = max(item[1] + item[3] for item in selected)
     padding = max(2, round(float(np.median([item[3] for item in selected])) * 0.25))
-    return crop.crop((max(0, left - padding), max(0, top - padding),
-                      min(width, right + padding), min(height, bottom + padding)))
+    return crop.crop(
+        (
+            max(0, left - padding),
+            max(0, top - padding),
+            min(width, right + padding),
+            min(height, bottom + padding),
+        )
+    )
 
 
 def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict], detector, predictor) -> int:
@@ -934,16 +1043,27 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
     for table in tables:
         columns = table.get("col_count")
         table_box = table.get("bbox")
-        if (not isinstance(columns, int) or columns < 2 or not isinstance(table_box, list)
-                or len(table_box) != 4 or table_box[2] <= table_box[0]):
+        if (
+            not isinstance(columns, int)
+            or columns < 2
+            or not isinstance(table_box, list)
+            or len(table_box) != 4
+            or table_box[2] <= table_box[0]
+        ):
             continue
-        score_cell_heights=[]
-        for candidate_cell in table.get("cells",[]):
-            candidate_box=candidate_cell.get("bbox")
-            if (candidate_cell.get("col")==columns-1 and isinstance(candidate_box,list)
-                    and len(candidate_box)==4 and candidate_box[3]>candidate_box[1]):
-                score_cell_heights.append(float(candidate_box[3])-float(candidate_box[1]))
-        max_cell_height=max(36.0,3.0*float(np.median(score_cell_heights))) if score_cell_heights else 36.0
+        score_cell_heights = []
+        for candidate_cell in table.get("cells", []):
+            candidate_box = candidate_cell.get("bbox")
+            if (
+                candidate_cell.get("col") == columns - 1
+                and isinstance(candidate_box, list)
+                and len(candidate_box) == 4
+                and candidate_box[3] > candidate_box[1]
+            ):
+                score_cell_heights.append(float(candidate_box[3]) - float(candidate_box[1]))
+        max_cell_height = (
+            max(36.0, 3.0 * float(np.median(score_cell_heights))) if score_cell_heights else 36.0
+        )
         for cell in table.get("cells", []):
             if cell.get("col") != columns - 1:
                 continue
@@ -956,7 +1076,7 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
             if not isinstance(box, list) or len(box) != 4:
                 continue
             x0, y0, x1, y1 = [float(value) for value in box]
-            if ((x1 - x0) > 0.35 * (table_box[2] - table_box[0]) or y1 - y0 > max_cell_height):
+            if (x1 - x0) > 0.35 * (table_box[2] - table_box[0]) or y1 - y0 > max_cell_height:
                 continue
             px0 = max(0, int(round(x0 / page.rect.width * image.width)) + inset_x)
             py0 = max(0, int(round(y0 / page.rect.height * image.height)) + inset_y)
@@ -979,10 +1099,18 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
                     text, confidence = "", None
                 candidate_text = "".join(text.split()) if isinstance(text, str) else ""
                 candidate_confidence = _confidence(confidence)
-                if (re.fullmatch(r"\d{1,2}", candidate_text) and candidate_confidence is not None
-                        and candidate_confidence >= 0.55):
-                    predictions.append((candidate_text, candidate_confidence,
-                                        "easyocr_craft+vietocr_vgg_transformer_2x_cell_crop"))
+                if (
+                    re.fullmatch(r"\d{1,2}", candidate_text)
+                    and candidate_confidence is not None
+                    and candidate_confidence >= 0.55
+                ):
+                    predictions.append(
+                        (
+                            candidate_text,
+                            candidate_confidence,
+                            "easyocr_craft+vietocr_vgg_transformer_2x_cell_crop",
+                        )
+                    )
 
             # A tight score-cell crop is an independent view, including when
             # the page OCR left the cell empty. It can retain a numeral missed
@@ -993,10 +1121,14 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
                 text, confidence = "", None
             candidate_text = "".join(text.split()) if isinstance(text, str) else ""
             candidate_confidence = _confidence(confidence)
-            if (re.fullmatch(r"\d{1,2}", candidate_text) and candidate_confidence is not None
-                    and candidate_confidence >= 0.55):
-                predictions.append((candidate_text, candidate_confidence,
-                                    "vietocr_vgg_transformer_2x_direct_cell_crop"))
+            if (
+                re.fullmatch(r"\d{1,2}", candidate_text)
+                and candidate_confidence is not None
+                and candidate_confidence >= 0.55
+            ):
+                predictions.append(
+                    (candidate_text, candidate_confidence, "vietocr_vgg_transformer_2x_direct_cell_crop")
+                )
 
             # A tall row can make a centered one-digit score look like noise to the line recognizer.
             # Retry a padded ink crop, but keep the reading in candidate metadata until reviewed.
@@ -1008,10 +1140,14 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
                     text, confidence = "", None
                 candidate_text = "".join(text.split()) if isinstance(text, str) else ""
                 candidate_confidence = _confidence(confidence)
-                if (re.fullmatch(r"\d{1,2}", candidate_text) and candidate_confidence is not None
-                        and candidate_confidence >= 0.55):
-                    predictions.append((candidate_text, candidate_confidence,
-                                        "vietocr_vgg_transformer_2x_tight_ink_crop"))
+                if (
+                    re.fullmatch(r"\d{1,2}", candidate_text)
+                    and candidate_confidence is not None
+                    and candidate_confidence >= 0.55
+                ):
+                    predictions.append(
+                        (candidate_text, candidate_confidence, "vietocr_vgg_transformer_2x_tight_ink_crop")
+                    )
 
             if not predictions:
                 continue
@@ -1041,8 +1177,7 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
             )
             candidate_text, supporting = ordered_readings[0]
             confidence = round(float(np.mean([reading[1] for reading in supporting])), 4)
-            method = (supporting[0][2] if len(supporting) == 1
-                      else "vietocr_multi_crop_consensus")
+            method = supporting[0][2] if len(supporting) == 1 else "vietocr_multi_crop_consensus"
             candidate = {
                 "text": candidate_text,
                 "bbox": list(box),
@@ -1051,9 +1186,13 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
                 "candidate_only": True,
                 "review_status": "needs_review",
                 "ocr_observations": [
-                    {"text": reading_text, "method": reading_method,
-                     "confidence": reading_confidence, "candidate_only": True,
-                     "review_status": "needs_review"}
+                    {
+                        "text": reading_text,
+                        "method": reading_method,
+                        "confidence": reading_confidence,
+                        "candidate_only": True,
+                        "review_status": "needs_review",
+                    }
                     for reading_text, reading_confidence, reading_method in predictions
                 ],
             }
@@ -1065,21 +1204,27 @@ def _recover_sparse_cell_candidates(image: Image.Image, page, tables: list[dict]
                 "vietocr_vgg_transformer_2x_tight_ink_crop",
                 "vietocr_multi_crop_consensus",
             }
-            if any(candidate.get("candidate_only") is not True
-                   or candidate.get("review_status") != "needs_review"
-                   for candidate in existing):
+            if any(
+                candidate.get("candidate_only") is not True
+                or candidate.get("review_status") != "needs_review"
+                for candidate in existing
+            ):
                 # Never replace a value that has already been explicitly reviewed.
                 continue
-            retained = [candidate for candidate in existing
-                        if candidate.get("method") not in retry_methods]
+            retained = [candidate for candidate in existing if candidate.get("method") not in retry_methods]
             retained.append(candidate)
             cell["score_ocr_candidates"] = retained
             added += 1
     return added
 
 
-def _speckle_regions(readings: list[tuple[int, float | None]], *, minimum_regions: int = 8,
-                     height_ratio: float = 0.3, confidence_limit: float = 0.6) -> set[int]:
+def _speckle_regions(
+    readings: list[tuple[int, float | None]],
+    *,
+    minimum_regions: int = 8,
+    height_ratio: float = 0.3,
+    confidence_limit: float = 0.6,
+) -> set[int]:
     """Indices of tiny, low-confidence crops: scan speckle that VietOCR reads as nonsense.
 
     Measured on QD148 p25 and QD26 p29 (median crop height 84 px): such crops were 12-20 px tall at
@@ -1089,8 +1234,11 @@ def _speckle_regions(readings: list[tuple[int, float | None]], *, minimum_region
         return set()
     heights = sorted(height for height, _ in readings)
     median = heights[len(heights) // 2]
-    return {index for index, (height, confidence) in enumerate(readings)
-            if confidence is not None and confidence < confidence_limit and height < height_ratio * median}
+    return {
+        index
+        for index, (height, confidence) in enumerate(readings)
+        if confidence is not None and confidence < confidence_limit and height < height_ratio * median
+    }
 
 
 ALTERNATIVE_PROBABILITY = 0.01
@@ -1105,7 +1253,11 @@ def _recognize(predictor, crop: Image.Image) -> tuple[str, float, list[dict]]:
     top-5 posteriors it discards become `alternatives`: one entry per output character where the model
     gave a second character at least ALTERNATIVE_PROBABILITY, listing the characters it weighed there.
     """
-    model, vocab, config = getattr(predictor, "model", None), getattr(predictor, "vocab", None), getattr(predictor, "config", None)
+    model, vocab, config = (
+        getattr(predictor, "model", None),
+        getattr(predictor, "vocab", None),
+        getattr(predictor, "config", None),
+    )
     if model is None or vocab is None or not isinstance(config, dict):
         text, confidence = predictor.predict(crop, return_prob=True)
         return text, confidence, []
@@ -1114,7 +1266,9 @@ def _recognize(predictor, crop: Image.Image) -> tuple[str, float, list[dict]]:
     from vietocr.tool.translate import process_input
 
     dataset = config["dataset"]
-    image = process_input(crop, dataset["image_height"], dataset["image_min_width"], dataset["image_max_width"])
+    image = process_input(
+        crop, dataset["image_height"], dataset["image_min_width"], dataset["image_max_width"]
+    )
     image = image.to(config["device"])
     model.eval()
     ids, probabilities, alternatives = [], [], []
@@ -1122,7 +1276,9 @@ def _recognize(predictor, crop: Image.Image) -> tuple[str, float, list[dict]]:
         memory = model.transformer.forward_encoder(model.cnn(image))
         sentence = [vocab.go]
         while len(sentence) <= 129 and sentence[-1] != vocab.eos:
-            output, memory = model.transformer.forward_decoder(torch.LongTensor([[t] for t in sentence]), memory)
+            output, memory = model.transformer.forward_decoder(
+                torch.LongTensor([[t] for t in sentence]), memory
+            )
             values, indices = torch.topk(softmax(output, dim=-1)[0, -1], 5)
             best = int(indices[0])
             sentence.append(best)
@@ -1130,8 +1286,11 @@ def _recognize(predictor, crop: Image.Image) -> tuple[str, float, list[dict]]:
                 position = len(ids)
                 ids.append(best)
                 probabilities.append(float(values[0]))
-                considered = [[vocab.i2c[int(k)], round(float(v), 4)]
-                              for v, k in zip(values, indices) if int(k) > 3 and float(v) >= ALTERNATIVE_PROBABILITY]
+                considered = [
+                    [vocab.i2c[int(k)], round(float(v), 4)]
+                    for v, k in zip(values, indices)
+                    if int(k) > 3 and float(v) >= ALTERNATIVE_PROBABILITY
+                ]
                 if len(considered) > 1:
                     alternatives.append({"i": position, "alts": considered})
         if BEAM_SEARCH_BELOW is not None and probabilities and min(probabilities) < BEAM_SEARCH_BELOW:
@@ -1139,8 +1298,14 @@ def _recognize(predictor, crop: Image.Image) -> tuple[str, float, list[dict]]:
             # better-scoring whole line. Only lines with an unsure character pay its cost.
             from vietocr.tool.translate import beamsearch
 
-            beam = beamsearch(model.transformer.forward_encoder(model.cnn(image)), model, image.device,
-                              beam_size=BEAM_SIZE, sos_token=vocab.go, eos_token=vocab.eos)
+            beam = beamsearch(
+                model.transformer.forward_encoder(model.cnn(image)),
+                model,
+                image.device,
+                beam_size=BEAM_SIZE,
+                sos_token=vocab.go,
+                eos_token=vocab.eos,
+            )
             beam_ids = [int(i) for i in beam[1:] if int(i) > 3]
             # VietOCR's beam sums log-probabilities with no length normalisation, so it favours stopping early
             # ("Công ty TNHH" for the whole line); use it only to re-read characters in place.
@@ -1170,15 +1335,22 @@ def _confidence(value) -> float | None:
     return round(result, 4) if 0 <= result <= 1 else None
 
 
-def _is_low_confidence_short_fragment(text: str, confidence: float | None, *,
-                                      height: float, median_height: float) -> bool:
+def _is_low_confidence_short_fragment(
+    text: str, confidence: float | None, *, height: float, median_height: float
+) -> bool:
     """Separate tiny, low-confidence ASCII speckle from page text, retaining it as a candidate."""
     if confidence is None:
         return False
     token = "".join(text.split())
-    if (confidence < 0.8 and median_height > 0 and height < 0.5 * median_height
-            and re.fullmatch(r"[A-Za-z0-9-]*[A-Za-z]{3,}[A-Za-z0-9-]*", token)):
-        return True  # half-height Latin-only text in a Vietnamese page: stamp or signature residue ("SUMMERS")
+    if (
+        confidence < 0.8
+        and median_height > 0
+        and height < 0.5 * median_height
+        and re.fullmatch(r"[A-Za-z0-9-]*[A-Za-z]{3,}[A-Za-z0-9-]*", token)
+    ):
+        return (
+            True  # half-height Latin-only text in a Vietnamese page: stamp or signature residue ("SUMMERS")
+        )
     if confidence >= 0.55:
         return False
     if token and median_height > 0 and height < 0.6 * median_height and confidence < 0.5:
@@ -1190,10 +1362,10 @@ def _is_low_confidence_short_fragment(text: str, confidence: float | None, *,
 
 def _strip_leading_checkbox_token(text: str) -> tuple[str, str | None]:
     """Remove a short lowercase OCR token emitted for a detected leading square checkbox."""
-    parts=text.strip().split(maxsplit=1)
-    if len(parts)==2 and len(parts[0])<=2 and not parts[0][0].isupper():
-        return parts[1],parts[0]
-    return text,None
+    parts = text.strip().split(maxsplit=1)
+    if len(parts) == 2 and len(parts[0]) <= 2 and not parts[0][0].isupper():
+        return parts[1], parts[0]
+    return text, None
 
 
 def run_easy_viet_ocr(
@@ -1240,25 +1412,33 @@ def run_easy_viet_ocr(
             continue
         if _is_checkbox_glyph(crop):
             if trace is not None:
-                raw_recognitions.append({"region_index": region_index, "bbox_px": list(region["bbox_px"]),
-                                         "raw_text": None, "dropped_as": "checkbox_glyph"})
+                raw_recognitions.append(
+                    {
+                        "region_index": region_index,
+                        "bbox_px": list(region["bbox_px"]),
+                        "raw_text": None,
+                        "dropped_as": "checkbox_glyph",
+                    }
+                )
             continue
-        raw_crop=crop
+        raw_crop = crop
         crop = _blank_leading_checkbox(crop)
-        checkbox_removed=crop is not raw_crop
+        checkbox_removed = crop is not raw_crop
         try:
             text, confidence, alternatives = _recognize(predictor, crop)
         except Exception as exc:
             warnings.append("vietocr_region_recognition_failed")
             if trace is not None:
-                raw_recognitions.append({
-                    "region_index": region_index,
-                    "bbox_px": list(region["bbox_px"]),
-                    "crop_size_px": [crop.width, crop.height],
-                    "raw_text": None,
-                    "confidence": None,
-                    "error": f"{type(exc).__name__}:{str(exc)[:240]}",
-                })
+                raw_recognitions.append(
+                    {
+                        "region_index": region_index,
+                        "bbox_px": list(region["bbox_px"]),
+                        "crop_size_px": [crop.width, crop.height],
+                        "raw_text": None,
+                        "confidence": None,
+                        "error": f"{type(exc).__name__}:{str(exc)[:240]}",
+                    }
+                )
             continue
         raw_entry = {
             "region_index": region_index,
@@ -1274,68 +1454,90 @@ def run_easy_viet_ocr(
             raw_recognitions.append(raw_entry)
         if not isinstance(text, str) or not text.strip():
             continue
-        raw_text=text.strip()
-        checkbox_noise=None
+        raw_text = text.strip()
+        checkbox_noise = None
         if checkbox_removed:
-            text,checkbox_noise=_strip_leading_checkbox_token(raw_text)
+            text, checkbox_noise = _strip_leading_checkbox_token(raw_text)
         if checkbox_noise:
-            raw_entry["normalizations"]=[{"kind":"remove_leading_checkbox_token","token":checkbox_noise}]
-        recognized.append((region_index, region, crop.height, text, confidence, raw_entry,
-                           alternatives, checkbox_noise))
-    speckle = _speckle_regions([(height, _confidence(confidence))
-                                for _, _, height, _, confidence, _, _, _ in recognized])
+            raw_entry["normalizations"] = [{"kind": "remove_leading_checkbox_token", "token": checkbox_noise}]
+        recognized.append(
+            (region_index, region, crop.height, text, confidence, raw_entry, alternatives, checkbox_noise)
+        )
+    speckle = _speckle_regions(
+        [(height, _confidence(confidence)) for _, _, height, _, confidence, _, _, _ in recognized]
+    )
     if speckle:
         warnings.append(f"speckle_regions_dropped:{len(speckle)}")
     median_region_height = float(np.median([item[2] for item in recognized])) if recognized else 0.0
     noise_candidates = []
-    for position, (region_index, region, _, text, confidence, raw_entry, alternatives,
-                   checkbox_noise) in enumerate(recognized):
+    for position, (
+        region_index,
+        region,
+        _,
+        text,
+        confidence,
+        raw_entry,
+        alternatives,
+        checkbox_noise,
+    ) in enumerate(recognized):
         if position in speckle:
             raw_entry["dropped_as"] = "speckle_region"
             continue
         bbox = _pdf_bbox(region["bbox_px"], width_px=image.width, height_px=image.height, page=page)
-        polygon = [[round(float(x) / image.width * page.rect.width, 2),
-                    round(float(y) / image.height * page.rect.height, 2)]
-                   for x, y in region["polygon"]]
+        polygon = [
+            [
+                round(float(x) / image.width * page.rect.width, 2),
+                round(float(y) / image.height * page.rect.height, 2),
+            ]
+            for x, y in region["polygon"]
+        ]
         if checkbox_noise:
-            noise_candidates.append({
-                "block_id": f"ocr:{ENGINE}:checkbox:{region_index}",
-                "text": checkbox_noise,
-                "ocr_raw_text": raw_entry["raw_text"],
-                "bbox": bbox,
-                "polygon": polygon,
-                "confidence": _confidence(confidence),
-                "confidence_is_calibrated": False,
-                "method": "easyocr_craft+vietocr_vgg_transformer",
-                "candidate_only": True,
-                "review_status": "needs_review",
-                "reason": "short_prefix_recognized_in_leading_checkbox_region",
-            })
+            noise_candidates.append(
+                {
+                    "block_id": f"ocr:{ENGINE}:checkbox:{region_index}",
+                    "text": checkbox_noise,
+                    "ocr_raw_text": raw_entry["raw_text"],
+                    "bbox": bbox,
+                    "polygon": polygon,
+                    "confidence": _confidence(confidence),
+                    "confidence_is_calibrated": False,
+                    "method": "easyocr_craft+vietocr_vgg_transformer",
+                    "candidate_only": True,
+                    "review_status": "needs_review",
+                    "reason": "short_prefix_recognized_in_leading_checkbox_region",
+                }
+            )
         confidence_value = _confidence(confidence)
         if _is_low_confidence_short_fragment(
-                text, confidence_value, height=raw_entry["crop_size_px"][1],
-                median_height=median_region_height):
+            text, confidence_value, height=raw_entry["crop_size_px"][1], median_height=median_region_height
+        ):
             raw_entry["dropped_as"] = "low_confidence_short_fragment_candidate"
-            noise_candidates.append({
-                "block_id": f"ocr:{ENGINE}:noise:{region_index}",
-                "text": text.strip(),
-                "ocr_raw_text": text.strip(),
-                "bbox": bbox,
-                "polygon": polygon,
-                "confidence": confidence_value,
-                "confidence_is_calibrated": False,
-                "method": "easyocr_craft+vietocr_vgg_transformer",
-                "candidate_only": True,
-                "review_status": "needs_review",
-                "reason": "low_confidence_short_ascii_fragment",
-            })
+            noise_candidates.append(
+                {
+                    "block_id": f"ocr:{ENGINE}:noise:{region_index}",
+                    "text": text.strip(),
+                    "ocr_raw_text": text.strip(),
+                    "bbox": bbox,
+                    "polygon": polygon,
+                    "confidence": confidence_value,
+                    "confidence_is_calibrated": False,
+                    "method": "easyocr_craft+vietocr_vgg_transformer",
+                    "candidate_only": True,
+                    "review_status": "needs_review",
+                    "reason": "low_confidence_short_ascii_fragment",
+                }
+            )
             continue
         raw_entry["block_id"] = f"ocr:{ENGINE}:{len(blocks)}"
         bbox = _pdf_bbox(region["bbox_px"], width_px=image.width, height_px=image.height, page=page)
-        polygon = [[round(float(x) / image.width * page.rect.width, 2),
-                    round(float(y) / image.height * page.rect.height, 2)]
-                   for x, y in region["polygon"]]
-        block={
+        polygon = [
+            [
+                round(float(x) / image.width * page.rect.width, 2),
+                round(float(y) / image.height * page.rect.height, 2),
+            ]
+            for x, y in region["polygon"]
+        ]
+        block = {
             "block_id": f"ocr:{ENGINE}:{len(blocks)}",
             "text": text.strip(),
             "bbox": bbox,
@@ -1348,15 +1550,19 @@ def run_easy_viet_ocr(
             "order": len(blocks),
         }
         if checkbox_noise:
-            block["ocr_raw_text"]=raw_entry["raw_text"]
-            block["ocr_normalizations"]=[{"kind":"remove_leading_checkbox_token",
-                                          "token":checkbox_noise}]
+            block["ocr_raw_text"] = raw_entry["raw_text"]
+            block["ocr_normalizations"] = [{"kind": "remove_leading_checkbox_token", "token": checkbox_noise}]
         blocks.append(block)
     layout, layout_warning = detect_regions(rgb)
     if layout_warning:
         warnings.append(layout_warning)
-    page_regions = [{**region, "bbox": _pdf_bbox(region["bbox_px"], width_px=image.width,
-                                                 height_px=image.height, page=page)} for region in layout]
+    page_regions = [
+        {
+            **region,
+            "bbox": _pdf_bbox(region["bbox_px"], width_px=image.width, height_px=image.height, page=page),
+        }
+        for region in layout
+    ]
     if trace is not None:
         trace["layout_regions"] = deepcopy(page_regions)
     assign_regions(blocks, page_regions)

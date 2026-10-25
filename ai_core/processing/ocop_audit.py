@@ -5,6 +5,7 @@ Usage:
   python tools/cli.py lock-ocop
   python tools/cli.py audit-ocop -- --output outputs/ocop/audit.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,16 +31,18 @@ def audit(root: Path, registry_file: Path, lock_file: Path, *, verify_lock: bool
     for source in sources:
         page_profiles = profile_pdf(root / source.path, source.source_id)
         pages.extend(page_profiles)
-        report_sources.append({
-            "source_id": source.source_id,
-            "source_kind": source.source_kind.value,
-            "document_number": source.document_number,
-            "metadata_review": source.metadata_review.value,
-            "source_verification": source.source_verification,
-            "pages": len(page_profiles),
-            "native_text_pages": sum(p["native_chars"] >= 120 for p in page_profiles),
-            "needs_ocr_review_pages": sum(p["needs_ocr_review"] for p in page_profiles),
-        })
+        report_sources.append(
+            {
+                "source_id": source.source_id,
+                "source_kind": source.source_kind.value,
+                "document_number": source.document_number,
+                "metadata_review": source.metadata_review.value,
+                "source_verification": source.source_verification,
+                "pages": len(page_profiles),
+                "native_text_pages": sum(p["native_chars"] >= 120 for p in page_profiles),
+                "needs_ocr_review_pages": sum(p["needs_ocr_review"] for p in page_profiles),
+            }
+        )
     counts = Counter(p["page_class"] for p in pages)
     return {
         "status": "audited_not_ingested",
@@ -76,9 +79,11 @@ def main() -> None:
     result = audit(root, registry_file, lock_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Audited {result['source_count']} PDFs / {result['page_count']} pages, "
-          f"OCR review candidates: {result['pages_needing_ocr_review']}. "
-          f"Report: {output_file}")
+    print(
+        f"Audited {result['source_count']} PDFs / {result['page_count']} pages, "
+        f"OCR review candidates: {result['pages_needing_ocr_review']}. "
+        f"Report: {output_file}"
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """OCOP GraphRAG CLI: PDF audit, extraction, indexing, graph building and querying.
 
-Usage: python tools/cli.py <command> [-- arguments] 
+Usage: python tools/cli.py <command> [-- arguments]
 """
 
 from __future__ import annotations
@@ -63,7 +63,6 @@ _MODULE_COMMANDS: dict[str, tuple[str, str]] = {
         "ai_core.processing.ocop_audit",
         "Lock approved OCOP PDF hashes (explicit source change only)",
     ),
-
 }
 
 # command name -> (path to a standalone script not living in a package, description)

@@ -6,6 +6,7 @@ block is assigned to the detected layout region that contains it, and regions ar
 The model is loaded only from local files; when it is absent the OCR path runs unchanged and the
 page records `layout_model_unavailable`.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -23,7 +24,11 @@ MIN_SCORE = 0.5
 
 def model_dir() -> Path:
     configured = os.getenv("OCOP_LAYOUT_MODEL_DIR")
-    return Path(configured).expanduser() if configured else Path.home() / ".paddlex" / "official_models" / MODEL_NAME
+    return (
+        Path(configured).expanduser()
+        if configured
+        else Path.home() / ".paddlex" / "official_models" / MODEL_NAME
+    )
 
 
 def layout_signature() -> dict | None:
@@ -31,20 +36,31 @@ def layout_signature() -> dict | None:
     if not params.is_file():
         return None
     from importlib.metadata import PackageNotFoundError, version
+
     try:
         paddle_version = version("paddleocr")
     except PackageNotFoundError:
         return None  # the optional 'layout' extra is not installed: the model cannot run
-    return {"model": MODEL_NAME, "params_sha256": sha256_file(params), "paddleocr": paddle_version,
-            "adapter_sha256": sha256_file(Path(__file__)), "min_score": MIN_SCORE}
+    return {
+        "model": MODEL_NAME,
+        "params_sha256": sha256_file(params),
+        "paddleocr": paddle_version,
+        "adapter_sha256": sha256_file(Path(__file__)),
+        "min_score": MIN_SCORE,
+    }
 
 
 @lru_cache(maxsize=1)
 def _model(directory: str):
     # paddleocr imports transformers, whose TensorFlow branch breaks on some installs.
-    for key, value in (("USE_TF", "0"), ("TRANSFORMERS_NO_TF", "1"), ("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")):
+    for key, value in (
+        ("USE_TF", "0"),
+        ("TRANSFORMERS_NO_TF", "1"),
+        ("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True"),
+    ):
         os.environ.setdefault(key, value)
     from paddleocr import LayoutDetection
+
     # oneDNN is disabled: Paddle 3 on Windows fails on this model's attributes with it enabled.
     return LayoutDetection(model_name=MODEL_NAME, model_dir=directory, enable_mkldnn=False)
 
@@ -58,9 +74,15 @@ def detect_regions(rgb: np.ndarray) -> tuple[list[dict], str | None]:
             result = _model(str(model_dir())).predict(np.ascontiguousarray(rgb[:, :, ::-1]))[0]
     except Exception as exc:  # optional stage: OCR must not fail because layout did
         return [], f"layout_model_failed:{type(exc).__name__}"
-    return [{"label": str(box["label"]), "score": round(float(box["score"]), 3),
-             "bbox_px": [float(v) for v in box["coordinate"]]}
-            for box in result["boxes"] if float(box["score"]) >= MIN_SCORE], None
+    return [
+        {
+            "label": str(box["label"]),
+            "score": round(float(box["score"]), 3),
+            "bbox_px": [float(v) for v in box["coordinate"]],
+        }
+        for box in result["boxes"]
+        if float(box["score"]) >= MIN_SCORE
+    ], None
 
 
 def _area(box) -> float:
@@ -98,7 +120,7 @@ def assign_regions(blocks: list[dict], regions: list[dict]) -> int:
         box = block.get("bbox")
         if not box or _area(box) <= 0:
             continue
-        covering = [g for g in groups[:len(regions)] if _intersection(box, g["bbox"]) >= 0.5 * _area(box)]
+        covering = [g for g in groups[: len(regions)] if _intersection(box, g["bbox"]) >= 0.5 * _area(box)]
         if covering:
             min(covering, key=lambda g: _area(g["bbox"]))["members"].append(block)
             placed += 1

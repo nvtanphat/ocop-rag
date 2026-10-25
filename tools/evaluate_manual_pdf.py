@@ -17,9 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ai_core.orchestration.ocop.workflow import OcopAgent
-from ai_core.system.pipeline import OcopSystemPipeline
-from ocop_contracts.registry import sha256_file
+from ai_core.orchestration.ocop.workflow import OcopAgent  # noqa: E402 - standalone entrypoint establishes the repository import path
+from ai_core.system.pipeline import OcopSystemPipeline  # noqa: E402 - standalone entrypoint establishes the repository import path
+from ocop_contracts.registry import sha256_file  # noqa: E402 - standalone entrypoint establishes the repository import path
 
 DATASET = Path("data/evaluations/ocop/manual_pdf_benchmark.jsonl")
 SOURCES = Path("data/evaluations/ocop/manual_pdf_sources.json")

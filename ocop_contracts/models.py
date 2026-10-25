@@ -1,4 +1,5 @@
 """OCOP knowledge contracts for evidence, criteria and document provenance."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -145,7 +146,6 @@ class RetrievalChunk(StrictModel):
     estimated_tokens: int = Field(default=0, ge=0)
     token_count_method: str = "conservative_unicode_estimate"
     over_budget: bool = False
-
 
 
 def cell_display_text(cell: dict) -> str:
