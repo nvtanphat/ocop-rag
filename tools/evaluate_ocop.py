@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from ai_core.evaluation.ocop.harness import evaluate_retrieval, evaluate_agent, release_gate  # noqa: E402 - standalone entrypoint establishes the repository import path
+from ai_core.evaluation.ocop.claims import evaluate_claim_grounding  # noqa: E402 - standalone entrypoint establishes the repository import path
 from ai_core.evaluation.ocop.faults import evaluate_faults  # noqa: E402 - standalone entrypoint establishes the repository import path
 
 
@@ -29,6 +30,12 @@ def main():
     ap.add_argument("--out-dir", type=Path, default=Path("reports/evaluation"))
     ap.add_argument("--with-agent", action="store_true")
     ap.add_argument("--with-faults", action="store_true")
+    ap.add_argument(
+        "--claims-questions",
+        type=Path,
+        help="question set for claim-grounding evaluation over human-reviewed evidence (needs a real LLM)",
+    )
+    ap.add_argument("--claims-limit", type=int)
     ap.add_argument("--baseline", type=Path)
     ap.add_argument("--strict", action="store_true")
     args = ap.parse_args()
@@ -41,6 +48,14 @@ def main():
     if args.with_agent:
         report["trajectory"] = evaluate_agent(
             root, root / "data/evaluations/ocop/agent_trajectory_curated.jsonl", output_dir=out
+        )
+    if args.claims_questions:
+        questions_path = args.claims_questions if args.claims_questions.is_absolute() else root / args.claims_questions
+        report["claim_grounding_evaluation"] = evaluate_claim_grounding(
+            root,
+            json.loads(questions_path.read_text(encoding="utf-8")),
+            limit=args.claims_limit,
+            output_dir=out,
         )
     if args.with_faults:
         report["fault_injection"] = evaluate_faults(root)

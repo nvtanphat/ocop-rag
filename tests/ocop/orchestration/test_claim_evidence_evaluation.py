@@ -212,3 +212,67 @@ def test_release_admission_denies_missing_manifest(tmp_path):
     result = validate_latest(tmp_path, corpus_version="v1")
     assert result["status"] == "blocked"
     assert "no_evaluation_run_manifest" in result["failures"]
+
+
+def _complete_report():
+    ok = {"status": "completed", "evaluated": 10, "recall_at_10": 0.9}
+    return {
+        "expert_verified_cases": 3,
+        "results": {"sparse": ok, "dense": ok, "hybrid": ok},
+        "trajectory": {"evaluated": 4, "tool_recall": 1.0, "forbidden_calls": 0, "errors": 0},
+        "claim_grounding_evaluation": {"eligible_questions": 4, "publish_rate": 0.75, "errors": 0},
+        "fault_injection": {"failed_count": 0},
+    }
+
+
+def test_complete_report_passes_production_gate():
+    assert release_gate(_complete_report())["status"] == "pass"
+
+
+def test_evaluate_agent_aggregates_errors_and_gate_blocks(tmp_path):
+    from ai_core.evaluation.ocop.harness import evaluate_agent
+
+    dataset = tmp_path / "trajectory.jsonl"
+    dataset.write_text(
+        json.dumps(
+            {"case_id": "T1", "query": "q", "label_status": "expert_verified", "expected_tools": ["lookup"]}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    class Broken:
+        def __init__(self, root):
+            pass
+
+        def ask(self, query):
+            raise RuntimeError("tool failed")
+
+    trajectory = evaluate_agent(tmp_path, dataset, agent_factory=Broken)
+    assert trajectory["errors"] == 1
+    report = _complete_report() | {"trajectory": trajectory}
+    failures = release_gate(report)["failures"]
+    assert "agent_errors" in failures
+    assert "tool_recall_below_threshold" in failures
+
+
+def test_gate_requires_measured_claim_grounding_above_threshold():
+    missing = _complete_report()
+    del missing["claim_grounding_evaluation"]
+    assert "claim_grounding_not_measured" in release_gate(missing)["failures"]
+    unmeasured = _complete_report() | {"claim_grounding_evaluation": {"eligible_questions": 0}}
+    assert "claim_grounding_not_measured" in release_gate(unmeasured)["failures"]
+    weak = _complete_report() | {"claim_grounding_evaluation": {"eligible_questions": 4, "publish_rate": 0.25}}
+    assert "claim_grounding_below_threshold" in release_gate(weak)["failures"]
+
+
+def test_gate_blocks_tool_and_claim_regression_against_baseline():
+    baseline = _complete_report() | {"dataset_sha256": "x"}
+    candidate = _complete_report() | {
+        "dataset_sha256": "x",
+        "trajectory": {"evaluated": 4, "tool_recall": 0.92, "forbidden_calls": 0, "errors": 0},
+        "claim_grounding_evaluation": {"eligible_questions": 4, "publish_rate": 0.6, "errors": 0},
+    }
+    failures = release_gate(candidate, baseline=baseline)["failures"]
+    assert "tool_recall_regression" in failures
+    assert "claim_grounding_regression" in failures

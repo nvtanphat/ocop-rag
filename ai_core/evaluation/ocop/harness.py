@@ -214,6 +214,7 @@ def evaluate_agent(root: Path, dataset: Path, *, agent_factory=None, output_dir:
         "tool_recall": sum(x["tool_recall"] for x in scored) / len(scored),
         "forbidden_calls": sum(len(x["forbidden_calls"]) for x in scored),
         "repeated_calls": sum(x["repeated_calls"] for x in scored),
+        "errors": sum(x["error"] is not None for x in scored),
         "cases": scored,
     }
     if output_dir:
@@ -224,12 +225,23 @@ def evaluate_agent(root: Path, dataset: Path, *, agent_factory=None, output_dir:
     return report
 
 
+# Thresholds a production release must meet; override per call, never by editing a report.
+GATE_DEFAULTS = {"min_tool_recall": 0.9, "max_agent_errors": 0, "min_claim_publish_rate": 0.5}
+
+
 def release_gate(
-    report: dict, *, baseline: dict | None = None, recall_tolerance: float = 0.03, production: bool = True
+    report: dict,
+    *,
+    baseline: dict | None = None,
+    recall_tolerance: float = 0.03,
+    production: bool = True,
+    thresholds: dict | None = None,
 ) -> dict:
-    """Fail closed for missing labels/dense measurement and forbidden actions."""
+    """Fail closed for missing labels/dense measurement, failed agent runs and forbidden actions."""
+    limits = GATE_DEFAULTS | (thresholds or {})
     failures = []
     retrieval = report.get("results", {})
+    claims = report.get("claim_grounding_evaluation")
     if production:
         if not report.get("expert_verified_cases", 0):
             failures.append("no_domain_expert_gold_labels")
@@ -238,7 +250,7 @@ def release_gate(
                 failures.append(required + ":integration_not_measured")
         if not report.get("trajectory"):
             failures.append("agent_trajectory_not_measured")
-        if not report.get("claim_grounding_evaluation"):
+        if not claims or not claims.get("eligible_questions"):
             failures.append("claim_grounding_not_measured")
     if baseline and baseline.get("dataset_sha256") != report.get("dataset_sha256"):
         failures.append("baseline_dataset_hash_mismatch")
@@ -256,10 +268,24 @@ def release_gate(
     if not retrieval:
         failures.append("no_retrieval_evaluation")
     traj = report.get("trajectory")
-    if traj and traj.get("forbidden_calls"):
-        failures.append("forbidden_tool_calls")
-    if traj and traj.get("errors"):
-        failures.append("agent_errors")
+    if traj:
+        if traj.get("forbidden_calls"):
+            failures.append("forbidden_tool_calls")
+        if traj.get("errors", 0) > limits["max_agent_errors"]:
+            failures.append("agent_errors")
+        if traj.get("tool_recall", 1.0) < limits["min_tool_recall"]:
+            failures.append("tool_recall_below_threshold")
+        old_recall = (baseline or {}).get("trajectory", {}).get("tool_recall")
+        if old_recall is not None and traj.get("tool_recall", 1.0) < old_recall - recall_tolerance:
+            failures.append("tool_recall_regression")
+    if claims and claims.get("eligible_questions"):
+        if claims.get("errors"):
+            failures.append("claim_grounding_errors")
+        if claims.get("publish_rate", 0.0) < limits["min_claim_publish_rate"]:
+            failures.append("claim_grounding_below_threshold")
+        old_rate = (baseline or {}).get("claim_grounding_evaluation", {}).get("publish_rate")
+        if old_rate is not None and claims.get("publish_rate", 0.0) < old_rate - recall_tolerance:
+            failures.append("claim_grounding_regression")
     faults = report.get("fault_injection")
     if production and not faults:
         failures.append("fault_injection_not_measured")

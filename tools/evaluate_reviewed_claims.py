@@ -20,31 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from ai_core.evaluation.ocop.claims import eligible, evaluate_claim_grounding, reviewed_pages  # noqa: E402 - repository import path is set above
 
-def reviewed_pages(root: Path) -> dict[str, set[int]]:
-    """source_id -> pages that carry at least one human_verified EvidenceUnit node."""
-    from ai_core.graph.ocop.builder import records
-
-    graph = root / "data/processed/ocop/graph"
-    manifest = json.loads((graph / "manifest.json").read_text(encoding="utf-8"))
-    pages: dict[str, set[int]] = {}
-    for node in records(graph / "snapshots" / manifest["graph_version"] / "nodes.jsonl"):
-        if node.get("node_type") == "EvidenceUnit" and node.get("check") == "human_verified":
-            for ref in node.get("citations", []):
-                if isinstance(ref.get("pdf_page"), int):
-                    pages.setdefault(node["source_id"], set()).add(ref["pdf_page"])
-    return pages
-
-
-def eligible(questions: list[dict], pages: dict[str, set[int]]) -> list[dict]:
-    return [
-        q
-        for q in questions
-        if q.get("pages")
-        and q.get("source_id")
-        and not q.get("turns")
-        and set(q["pages"]) <= pages.get(q["source_id"], set())
-    ]
+__all__ = ["eligible", "reviewed_pages", "main"]
 
 
 def main() -> None:
@@ -55,46 +33,18 @@ def main() -> None:
     ap.add_argument("--mode", choices=("sparse", "hybrid"), default="sparse")
     args = ap.parse_args()
     root = args.root.resolve()
-    pages = reviewed_pages(root)
-    chosen = eligible(json.loads(args.questions.read_text(encoding="utf-8")), pages)[: args.limit]
-    if not chosen:
+    questions = json.loads(args.questions.read_text(encoding="utf-8"))
+    if not eligible(questions, reviewed_pages(root)):
         print(
             "No question targets only human-reviewed evidence; nothing to evaluate.\n"
             "Review the EvidenceUnits of the target pages first: python tools/cli.py review queue --root <root> --render",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    from ai_core.orchestration.ocop.llm import make_answer_client
-    from ai_core.orchestration.ocop.workflow import OcopAgent
-
-    agent = OcopAgent(root, llm=make_answer_client(), retrieval_mode=args.mode, allow_partial_debug=True)
-    outcome = {"published": 0, "partial": 0, "blocked": 0}
-    for q in chosen:
-        response = agent.ask(q["query"]).model_dump(mode="json")
-        diagnostics = response.get("generation_diagnostics", {})
-        status = response["status"]
-        key = (
-            "published"
-            if status in ("generated_claims_verified", "generated_unverified_claims")
-            else "partial"
-            if status == "partial_claims_verified"
-            else "blocked"
-        )
-        outcome[key] += 1
-        print(
-            json.dumps(
-                {
-                    "id": q["id"],
-                    "status": status,
-                    "accepted": diagnostics.get("accepted"),
-                    "rejected": diagnostics.get("rejected"),
-                    "missing": diagnostics.get("missing_from_source"),
-                    "reasons": diagnostics.get("reasons"),
-                },
-                ensure_ascii=False,
-            )
-        )
-    print(json.dumps({"eligible_questions": len(chosen), **outcome}, ensure_ascii=False))
+    report = evaluate_claim_grounding(root, questions, mode=args.mode, limit=args.limit)
+    for case in report.pop("cases"):
+        print(json.dumps(case, ensure_ascii=False))
+    print(json.dumps(report, ensure_ascii=False))
 
 
 if __name__ == "__main__":
