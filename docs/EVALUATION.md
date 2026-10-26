@@ -27,6 +27,20 @@ python tools/evaluate_reviewed_claims.py --help
 
 `sparse` dùng BM25; `hybrid` thêm vector và RRF; `rerank` thêm cross-encoder. So sánh trên cùng corpus, graph/index version và câu hỏi đã khoá. Không gọi mạng/model trong pytest để thay thế một phép đo thực tế.
 
+## Cổng phát hành
+
+`tools/evaluate_ocop.py --with-agent --with-faults --claims-questions <tệp>` gộp truy xuất, quỹ đạo công cụ, đánh giá claim và lỗi giả lập vào một báo cáo rồi chạy `release_gate`; `--strict` thoát mã 2 khi bị chặn. Chế độ production chặn khi thiếu nhãn chuyên gia, thiếu một trong `sparse`/`dense`/`hybrid`, thiếu quỹ đạo, claim grounding, hoặc lỗi giả lập. Các ngưỡng mặc định (`GATE_DEFAULTS` trong `harness.py`, ghi đè qua `thresholds`):
+
+| Điều kiện | Ngưỡng |
+| --- | --- |
+| `tool_recall` của quỹ đạo | ≥ 0,9 |
+| Số ca Agent lỗi (`errors`) | 0 |
+| Tỉ lệ claim được công bố hoặc công bố một phần (`publish_rate`) | ≥ 0,5, trên ít nhất một câu hỏi đủ điều kiện |
+| Gọi công cụ bị cấm | 0 |
+| Hồi quy so với baseline | `recall_at_10`, `tool_recall`, `publish_rate` không giảm quá 0,03 |
+
+Đánh giá claim chỉ chạy trên câu hỏi có EvidenceUnit đã được người duyệt và cần LLM thật.
+
 ## Đọc kết quả
 
 - `intent_ok`, `tool_ok`: đúng tuyến và công cụ, không dùng tool cấm.

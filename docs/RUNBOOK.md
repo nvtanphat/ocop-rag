@@ -16,6 +16,15 @@ Docker cũng phục vụ cả hai từ một container:
 docker compose up --build -d backend
 ```
 
+Mặc định image chỉ phục vụ truy xuất sparse. Để phục vụ hybrid, dựng với `OCOP_PROFILE=hybrid` và chạy Qdrant cùng chỉ mục dense:
+
+```powershell
+$env:OCOP_PROFILE = "hybrid"
+docker compose --profile stores up --build -d
+```
+
+Kiểm tra `GET /api/ocop/health`: `retrieval_profile.ready` phải là `true`; nếu không, `retrieval_profile.missing` nêu dependency, chỉ mục hoặc kết nối Qdrant còn thiếu.
+
 PDF gốc được mount read-only. Dẫn xuất ở `data/processed` cần quyền ghi cho UID 10001 của container. Dataset OCR được mount read-only từ `OCOP_OCR_DATASET` hoặc `data/ocr-dataset`. Dừng bằng:
 
 ```powershell

@@ -10,7 +10,7 @@ Hệ thống có một corpus đang hoạt động. `ocop_main.py` phục vụ A
 - `ai_core/processing/ocop`: tạo EvidenceUnit và ứng viên tri thức. Mỗi span giữ trang, bbox và SHA nguồn; ứng viên OCR không được nâng thành dữ liệu verified tự động.
 - `ai_core/graph/ocop`: dựng `nodes.jsonl`, `edges.jsonl`, `manifest.json`, kiểm ontology/căn cứ, snapshot và quyết định review. Bản ghi thất bại không được dùng trong truy xuất công khai.
 - `ai_core/retrieval/ocop`: chunk theo cấu trúc, chuỗi cha, BM25, dense tùy chọn, RRF và rerank có ngân sách. Index giữ phiên bản tri thức và graph.
-- `ai_core/system/pipeline.py`: kiểm tính nhất quán, dựng dẫn xuất trong thư mục tạm rồi hoán đổi dưới khoá. Thất bại không được giả thành bản dựng thành công.
+- `ai_core/system/pipeline.py`: kiểm tính nhất quán, dựng dẫn xuất trong thư mục tạm rồi hoán đổi dưới khoá. Thất bại không được giả thành bản dựng thành công. Dựng, khoá và phát hành luôn băm lại byte của PDF; các endpoint `/health`, `/criteria`, `/products`, `/query` dùng lại mã băm khi kích thước và thời điểm sửa của tệp không đổi, và băm lại ngay khi một trong hai thay đổi.
 
 ## Hỏi đáp
 
@@ -30,7 +30,21 @@ Phiên chỉ lưu ngữ cảnh hội thoại đã giới hạn và che định d
 | GET | `/sources/{source_id}/pages/{page}/evidence.png` | Ảnh trang với `box`, `context`, `sha`, `dpi`, `crop` được kiểm |
 | GET | `/criteria` | Tiêu chí verified công khai theo corpus active |
 | GET | `/products` | Sản phẩm verified công khai theo corpus active |
+| GET | `/graph/subgraph` | Vùng lân cận đã qua kiểm tra của một nút hoặc của các thực thể mà một `evidence_unit_id` hỗ trợ |
 | POST | `/query` | `AskRequest` → `AgentResponse` |
+
+`/graph/subgraph` nhận `node_id` (lặp được) hoặc `evidence_unit_id`, `hops` (0–2) và `limit` (≤150). Nó dùng cùng bộ duyệt đồ thị với agent, nên chỉ trả nút/cạnh đạt kiểm tra, bỏ bản gốc chưa kiểm dành cho reviewer, và mỗi nút giữ trang, bbox, SHA-256 của bằng chứng. Thiếu đồ thị trả `no_graph`; không có nút khớp trả `no_seed`; đồ thị lệch phiên bản hoặc thiếu kiểm tra trả HTTP 503 thay vì dữ liệu cũ.
+
+## Hồ sơ truy xuất
+
+`OCOP_RETRIEVAL_PROFILE` quy định bản triển khai phục vụ gì:
+
+- `sparse` (mặc định): chỉ BM25. Yêu cầu `retrieval_mode` là `dense` hoặc `hybrid` bị từ chối bằng HTTP 422 thay vì âm thầm trả kết quả BM25.
+- `hybrid`: cần `sentence-transformers`, `qdrant-client`, chỉ mục dense đã dựng và Qdrant truy cập được. Thiếu bất kỳ mục nào, `/health` báo `not_ready` kèm danh sách `retrieval_profile.missing` và `/query` trả 503.
+
+## Phiên hội thoại
+
+Mặc định phiên nằm trong bộ nhớ một tiến trình (TTL 1 giờ, tối đa 512 phiên). Với nhiều worker trên một máy hoặc cần giữ phiên qua lần khởi động lại, đặt `OCOP_SESSION_STORE=sqlite`: mọi lần cập nhật là một giao dịch `BEGIN IMMEDIATE` nên các lượt đồng thời không ghi đè nhau. Nhiều máy cần kho mạng triển khai cùng giao diện `get/save`.
 
 Request hỏi đáp gồm `query`, `session_id`, `retrieval_mode`, `use_llm`; không nhận trường thừa. Response giữ nguyên citation, bao gồm `source_id`, `pdf_page`, `bbox`, `evidence_unit_id`, `source_sha256` và các span liên quan. HTTP 503 có thông báo hạ tầng được giới hạn để không lộ bí mật.
 
@@ -49,7 +63,7 @@ Giao diện React (Vite) là một ứng dụng một trang, bố cục fluid: n
 | `src/features/documents` | Danh mục nguồn từ `/sources`, nhóm theo loại, lọc theo phạm vi, dạng lưới/danh sách |
 | `src/features/references` | Tiêu chí và sản phẩm từ `/criteria`, `/products`, xuất CSV; dùng chung một view |
 | `src/features/pdf` | Ảnh trang từ `evidence.png` với đúng SHA và bbox, điều hướng trang, thu phóng, bật/tắt vùng trích dẫn, mở PDF gốc đúng trang |
-| `src/features/graph` | Liên kết câu hỏi → nguồn trích dẫn thực tế của một câu trả lời; không suy diễn quan hệ pháp lý |
+| `src/features/graph` | Tab "Dẫn chứng": liên kết câu hỏi → nguồn trích dẫn thực tế. Tab "Quan hệ tri thức": vùng lân cận từ `/graph/subgraph` quanh một đoạn bằng chứng hoặc nút, phân biệt nút đã được người duyệt với nút chỉ đạt kiểm tra tự động, mở được PDF tại vị trí của từng nút; không suy diễn quan hệ pháp lý |
 | `src/styles/workspace.css` | Stylesheet duy nhất của giao diện, gồm giao diện sáng/tối |
 
 Tài liệu, sản phẩm, tiêu chí, trang và vị trí citation đều đến từ API; FE chỉ giữ nhãn giao diện. Thiếu dữ liệu xác minh thì hiện trạng thái rỗng, không hiện điểm/sao. Truy vết công cụ lấy từ response thực tế.
