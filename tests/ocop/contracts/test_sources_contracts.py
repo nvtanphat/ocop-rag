@@ -171,3 +171,25 @@ def test_registry_rejects_case_insensitive_path_collision(tmp_path: Path):
     )
     with pytest.raises(ValueError, match="duplicate"):
         load_registry(path)
+
+
+def test_snapshot_reuse_rehashes_only_changed_files(pdf_root: Path, monkeypatch):
+    from ocop_contracts import registry
+
+    path = pdf_root / "registry.json"
+    path.write_text(json.dumps({"schema_version": 1, "sources": [source_record()]}), encoding="utf8")
+    records = load_registry(path)
+    reads = []
+    original = registry.sha256_file
+    monkeypatch.setattr(registry, "sha256_file", lambda p: reads.append(p) or original(p))
+    registry._sha256_for_stat.cache_clear()
+    first = snapshot(pdf_root, records, reuse_unchanged=True)
+    again = snapshot(pdf_root, records, reuse_unchanged=True)
+    assert first == again and len(reads) == 1
+    # Callers that build or lock sources always read the bytes.
+    snapshot(pdf_root, records)
+    assert len(reads) == 2
+    pdf = pdf_root / "data/raw/ocop/sample.pdf"
+    pdf.write_bytes(pdf.read_bytes() + b"\n%tampered")
+    changed = snapshot(pdf_root, records, reuse_unchanged=True)
+    assert changed["aggregate_sha256"] != first["aggregate_sha256"]

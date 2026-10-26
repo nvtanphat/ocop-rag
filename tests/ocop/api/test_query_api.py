@@ -82,17 +82,14 @@ def test_api_query_after_coherent_build_uses_agent(monkeypatch, tmp_path):
     )
     assert response.status_code == 200
     assert calls[0][0] == "Mẫu số 01"
-    assert (
-        client.post(
-            "/api/ocop/query",
-            json={
-                "query": "Mẫu số 01",
-                "retrieval_mode": "hybrid",
-                "use_llm": False,
-            },
-        ).status_code
-        == 200
-    )  # Checked BM25 fallback is allowed; partial corpus is still blocked.
+    # A sparse-only deployment refuses dense/hybrid instead of silently answering with BM25.
+    hybrid = {"query": "Mẫu số 01", "retrieval_mode": "hybrid", "use_llm": False}
+    assert client.post("/api/ocop/query", json=hybrid).status_code == 422
+    monkeypatch.setenv("OCOP_RETRIEVAL_PROFILE", "hybrid")
+    monkeypatch.setattr(
+        routes, "profile_status", lambda root: {"profile": "hybrid", "ready": True, "missing": []}
+    )
+    assert client.post("/api/ocop/query", json=hybrid).status_code == 200
 
 
 def test_user_cannot_pass_private_auth_context():

@@ -52,6 +52,7 @@ def test_health_identifies_corpus_and_backend_state(api_client):
     assert response.json() == {
         "status": "ready",
         "pipeline": {"state": "ready"},
+        "retrieval_profile": {"profile": "sparse", "ready": True, "missing": []},
         "sources_registered": 0,
         "pages": 0,
         "index_status": "missing",
@@ -70,5 +71,6 @@ def test_read_routes_have_no_unrelated_domain_endpoints(api_client):
         "/api/ocop/sources/{source_id}/pages/{page}/evidence.png",
         "/api/ocop/criteria",
         "/api/ocop/products",
+        "/api/ocop/graph/subgraph",
         "/api/ocop/query",
     }

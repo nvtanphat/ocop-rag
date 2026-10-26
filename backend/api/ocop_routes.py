@@ -22,6 +22,8 @@ from ai_core.orchestration.ocop.llm import make_answer_client
 from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
+from ai_core.system.profile import profile_status
+from backend.api.graph_subgraph import MAX_SEEDS, SubgraphResponse, read_subgraph
 from backend.api.reference_data import ReferenceResponse, read_references
 
 ROOT = Path(os.environ.get("OCOP_ROOT", Path(__file__).resolve().parents[2])).resolve()
@@ -83,10 +85,15 @@ def health():
     index = _json(DATA / "index" / "manifest.json")
     pages = _json(DATA / "pages" / "manifest.json")
     graph = _json(DATA / "graph" / "manifest.json")
-    system = OcopSystemPipeline(ROOT).status(validate_sources=True)
+    system = OcopSystemPipeline(ROOT).status(validate_sources=True, reuse_unchanged=True)
+    try:
+        profile = profile_status(ROOT)
+    except ValueError:
+        profile = {"profile": "invalid", "ready": False, "missing": ["invalid_profile"]}
     return {
-        "status": system["state"],
+        "status": system["state"] if profile["ready"] else "not_ready",
         "pipeline": system,
+        "retrieval_profile": profile,
         "sources_registered": len(_registry()),
         "pages": pages.get("counts", {}).get("pages", 0),
         "index_status": index.get("status", "missing"),
@@ -117,7 +124,7 @@ def sources():
 
 def references(kind: Literal["criteria", "products"]) -> ReferenceResponse:
     try:
-        ready = OcopSystemPipeline(ROOT).status(validate_sources=True)["state"] == "ready"
+        ready = OcopSystemPipeline(ROOT).status(validate_sources=True, reuse_unchanged=True)["state"] == "ready"
         return read_references(ROOT, kind, ready=ready)
     except (OSError, ValueError, KeyError, RuntimeError) as exc:
         raise service_unavailable("reference_unavailable", "reference", exc) from exc
@@ -131,6 +138,24 @@ def criteria():
 @router.get("/products", response_model=ReferenceResponse)
 def products():
     return references("products")
+
+
+@router.get("/graph/subgraph", response_model=SubgraphResponse)
+def graph_subgraph(
+    node_id: list[str] = Query(default=[], max_length=MAX_SEEDS),
+    evidence_unit_id: str | None = Query(default=None, max_length=128),
+    hops: int = Query(default=1, ge=0, le=2),
+    limit: int = Query(default=60, ge=1, le=150),
+):
+    """Checked neighbourhood of nodes or of the entities an evidence unit supports; public records only."""
+    if not node_id and not evidence_unit_id:
+        raise HTTPException(status_code=422, detail="Cần node_id hoặc evidence_unit_id.")
+    if any(len(item) > 128 for item in node_id):
+        raise HTTPException(status_code=422, detail="node_id không hợp lệ.")
+    try:
+        return read_subgraph(ROOT, node_ids=node_id, evidence_unit_id=evidence_unit_id, hops=hops, limit=limit)
+    except (OSError, ValueError, RuntimeError, KeyError) as exc:
+        raise service_unavailable("graph_unavailable", "graph", exc) from exc
 
 
 @router.get("/sources/{source_id}/pdf")
@@ -197,7 +222,18 @@ async def ask(request: AskRequest):
         raise HTTPException(
             status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run."
         )
-    readiness = OcopSystemPipeline(ROOT).status(validate_sources=True)
+    try:
+        profile = profile_status(ROOT)
+    except ValueError as exc:
+        raise service_unavailable("profile_invalid", "configuration", exc) from exc
+    if request.retrieval_mode != "sparse" and profile["profile"] == "sparse":
+        raise HTTPException(
+            status_code=422,
+            detail="Bản triển khai này chỉ phục vụ truy xuất sparse; cấu hình OCOP_RETRIEVAL_PROFILE=hybrid để dùng dense/hybrid.",
+        )
+    if not profile["ready"]:
+        raise service_unavailable("retrieval_profile_unready", "retrieval", RuntimeError(",".join(profile["missing"])))
+    readiness = OcopSystemPipeline(ROOT).status(validate_sources=True, reuse_unchanged=True)
     allow_partial = readiness["state"] != "ready" and bool(manifest.get("corpus_version"))
     if not allow_partial and readiness["state"] != "ready":
         raise HTTPException(

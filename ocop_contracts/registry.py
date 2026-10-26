@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 
 from ocop_contracts.models import SourceDocument
@@ -18,6 +19,20 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+@lru_cache(maxsize=256)
+def _sha256_for_stat(path: str, size: int, mtime_ns: int) -> str:
+    return sha256_file(Path(path))
+
+
+def sha256_file_cached(path: Path) -> str:
+    """SHA-256 reused while the file's size and mtime are unchanged; any change re-reads the bytes.
+
+    For request-time checks only. Build, lock and release paths hash the bytes every time.
+    """
+    stat = path.stat()
+    return _sha256_for_stat(str(path), stat.st_size, stat.st_mtime_ns)
+
+
 def load_registry(path: Path) -> list[SourceDocument]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("schema_version") != 1:
@@ -30,7 +45,7 @@ def load_registry(path: Path) -> list[SourceDocument]:
     return result
 
 
-def snapshot(root: Path, sources: list[SourceDocument]) -> dict:
+def snapshot(root: Path, sources: list[SourceDocument], *, reuse_unchanged: bool = False) -> dict:
     items = []
     root = root.resolve()
     for source in sources:
@@ -39,7 +54,7 @@ def snapshot(root: Path, sources: list[SourceDocument]) -> dict:
             raise ValueError("source path escapes project root")
         if not file.is_file():
             raise FileNotFoundError(f"missing approved source: {source.path}")
-        digest = sha256_file(file)
+        digest = sha256_file_cached(file) if reuse_unchanged else sha256_file(file)
         if source.file_sha256 is not None and source.file_sha256 != digest:
             raise ValueError(f"approved hash mismatch: {source.source_id}")
         items.append(

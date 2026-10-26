@@ -33,7 +33,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
     ):
         monkeypatch.delenv(key, raising=False)
     system = OcopSystemPipeline(tmp_path)
-    monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self: (12, "approved-snapshot"))
+    monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self, **kwargs: (12, "approved-snapshot"))
     calls = []
     from ai_core.graph.ocop.builder import build_graph as real_build_graph
 
@@ -210,7 +210,7 @@ def test_failed_rebuild_preserves_previous_corpus(tmp_path, monkeypatch):
 def test_changed_approved_source_forces_not_ready(tmp_path, monkeypatch):
     system, _ = fixture_pipeline(tmp_path, monkeypatch)
     system.ensure()
-    monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self: (12, "different-snapshot"))
+    monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self, **kwargs: (12, "different-snapshot"))
     assert system.status(validate_sources=True)["state"] == "not_ready"
 
 

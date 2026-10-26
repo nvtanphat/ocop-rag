@@ -122,15 +122,17 @@ class OcopSystemPipeline:
         self.data = self.root / "data" / "processed" / "ocop"
         self.status_file = self.data / "system_manifest.json"
 
-    def source_snapshot(self) -> tuple[int, str]:
+    def source_snapshot(self, *, reuse_unchanged: bool = False) -> tuple[int, str]:
         sources, lock = checked_sources(
             self.root,
             self.root / "configs" / "ocop_sources.json",
             self.root / "configs" / "ocop_sources.lock.json",
+            reuse_unchanged=reuse_unchanged,
         )
         return len(sources), lock["aggregate_sha256"]
 
-    def status(self, *, validate_sources: bool = False) -> dict[str, Any]:
+    def status(self, *, validate_sources: bool = False, reuse_unchanged: bool = False) -> dict[str, Any]:
+        """``reuse_unchanged`` skips re-hashing PDFs whose size and mtime are unchanged (request path only)."""
         page = _load_json(self.data / "pages" / "manifest.json")
         knowledge = _load_json(self.data / "knowledge" / "manifest.json")
         index = _load_json(self.data / "index" / "manifest.json")
@@ -138,7 +140,7 @@ class OcopSystemPipeline:
         manifest = _load_json(self.status_file)
         try:
             sources, snapshot = (
-                self.source_snapshot() if validate_sources else (None, page.get("input_snapshot_sha256"))
+                self.source_snapshot(reuse_unchanged=reuse_unchanged) if validate_sources else (None, page.get("input_snapshot_sha256"))
             )
             source_ok = True
         except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:
