@@ -1,8 +1,9 @@
 ﻿import { useState } from "react";
-import type { Citation, Source } from "../../api/client";
+import type { Citation, Source, SubgraphSeed } from "../../api/client";
 import { sourceTitle } from "../../app/sourceLabels";
 import { Icon } from "../../components/Icon";
 import type { Message } from "../chat/ChatView";
+import { KnowledgeGraph } from "./KnowledgeGraph";
 
 const COLUMNS = 3;
 const WIDTH = 460;
@@ -23,7 +24,9 @@ export function EvidenceGraph({
   onClose: () => void;
 }) {
   const citations = message?.answer?.citations || [];
+  const [tab, setTab] = useState<"evidence" | "knowledge">("evidence");
   const [selected, setSelected] = useState<number | null>(null);
+  const [seed, setSeed] = useState<SubgraphSeed | null>(null);
   const rows = Math.ceil(citations.length / COLUMNS);
   const height = Math.max(420, 190 + rows * 86);
   const question = { x: WIDTH / 2, y: 52 };
@@ -33,6 +36,13 @@ export function EvidenceGraph({
     return { x: WIDTH / 2 + (slot - (inRow - 1) / 2) * SPACING, y: 190 + Math.floor(index / COLUMNS) * 86 };
   };
   const chosen = selected === null ? null : citations[selected];
+  const firstEvidence = citations.find((citation) => citation.evidence_unit_id)?.evidence_unit_id;
+  const activeSeed: SubgraphSeed | null = seed ?? (firstEvidence ? { evidenceUnitId: firstEvidence } : null);
+  const explore = (citation: Citation) => {
+    if (!citation.evidence_unit_id) return;
+    setSeed({ evidenceUnitId: citation.evidence_unit_id });
+    setTab("knowledge");
+  };
 
   return (
     <section className="cv glass" id="gpanel" role="dialog" aria-label="Đồ thị dẫn chứng">
@@ -44,8 +54,11 @@ export function EvidenceGraph({
         </button>
       </div>
       <div className="gtabs">
-        <button type="button" className="on">
+        <button type="button" className={tab === "evidence" ? "on" : ""} onClick={() => setTab("evidence")}>
           Dẫn chứng câu trả lời
+        </button>
+        <button type="button" className={tab === "knowledge" ? "on" : ""} onClick={() => setTab("knowledge")}>
+          Quan hệ tri thức
         </button>
       </div>
       {!citations.length ? (
@@ -53,6 +66,15 @@ export function EvidenceGraph({
           <h3>Chưa có dẫn chứng để hiển thị</h3>
           <p>Đặt câu hỏi và chọn một câu trả lời có trích dẫn để xem liên kết tới nguồn.</p>
         </div>
+      ) : tab === "knowledge" ? (
+        activeSeed ? (
+          <KnowledgeGraph seed={activeSeed} onSeed={setSeed} onOpen={onOpen} />
+        ) : (
+          <div className="vstate">
+            <h3>Trích dẫn chưa gắn với đoạn bằng chứng</h3>
+            <p>Đồ thị tri thức được mở từ mã bằng chứng của trích dẫn.</p>
+          </div>
+        )
       ) : (
         <>
           <svg id="gsvg" viewBox={`0 0 ${WIDTH} ${height}`} preserveAspectRatio="xMidYMid meet">
@@ -101,14 +123,22 @@ export function EvidenceGraph({
             {chosen ? (
               <>
                 <b>
-                  [S{(selected as number) + 1}] {sourceTitle(sources.find((s) => s.source_id === chosen.source_id), chosen.source_id)}
+                  [S{(selected as number) + 1}]{" "}
+                  {sourceTitle(sources.find((s) => s.source_id === chosen.source_id), chosen.source_id)}
                 </b>
                 <div className="meta">
                   Trang {chosen.pdf_page} · {chosen.evidence_unit_id || "chưa có mã bằng chứng"}
                 </div>
-                <button type="button" onClick={() => onOpen(chosen)}>
-                  Mở PDF tại vị trí trích dẫn
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={() => onOpen(chosen)}>
+                    Mở PDF tại vị trí trích dẫn
+                  </button>
+                  {chosen.evidence_unit_id && (
+                    <button type="button" onClick={() => explore(chosen)}>
+                      Khám phá quan hệ tri thức
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               "Chọn một nguồn để xem chi tiết."

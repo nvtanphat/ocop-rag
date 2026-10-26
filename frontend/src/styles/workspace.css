@@ -523,3 +523,7 @@ html{zoom:.75}
 .msg.b table{display:block;max-width:100%;overflow-x:auto}
 #gsvg .nd .t1{font-size:11.5px}
 #gsvg .nd .t2{font-size:10px}
+#glegend span{display:inline-flex;align-items:center}
+#gsvg .nd.dim circle{opacity:.35}
+#gdet .meta{margin-top:2px}
+#gdet button{margin-right:0}

@@ -88,6 +88,41 @@ export interface ReferenceResponse {
   items: ReferenceItem[]
 }
 
+export interface SubgraphCitation {
+  source_id: string
+  pdf_page: number
+  bbox: Box | null
+  evidence_unit_id: string | null
+  source_sha256: string | null
+}
+export interface SubgraphNode {
+  node_id: string
+  node_type: string
+  label: string
+  check: string
+  review_status: string
+  source_id: string | null
+  evidence_unit_ids: string[]
+  citations: SubgraphCitation[]
+}
+export interface SubgraphEdge {
+  edge_id: string
+  relation_type: string
+  source: string
+  target: string
+  check: string
+  review_status: string
+}
+export interface Subgraph {
+  status: 'ok' | 'no_seed' | 'no_graph'
+  graph_version: string | null
+  seed_ids: string[]
+  nodes: SubgraphNode[]
+  edges: SubgraphEdge[]
+  truncated: boolean
+}
+export type SubgraphSeed = { evidenceUnitId: string } | { nodeId: string }
+
 export class ApiError extends Error {
   constructor(message: string, public readonly status?: number) { super(message) }
 }
@@ -120,6 +155,12 @@ export const api = {
   ask: (body: AskRequest) => request<AskResult>('/query', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   }),
+  subgraph: (seed: SubgraphSeed, hops = 1, limit = 50) => {
+    const params = new URLSearchParams({ hops: String(hops), limit: String(limit) })
+    if ('evidenceUnitId' in seed) params.set('evidence_unit_id', seed.evidenceUnitId)
+    else params.set('node_id', seed.nodeId)
+    return request<Subgraph>(`/graph/subgraph?${params}`)
+  },
   pdf: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf#page=${page}`,
   evidence: (citation: Citation, page = citation.pdf_page, highlight = true) => {
     const params = new URLSearchParams()
