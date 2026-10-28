@@ -32,6 +32,11 @@ def main() -> None:
     run = sub.add_parser("run", help="OCR dataset -> evidence -> retrieval/graph -> API or answer")
     run.add_argument("--root", type=Path, default=ROOT)
     run.add_argument("--ocr-dataset", type=Path, help="Complete source-locked OCR dataset directory")
+    run.add_argument(
+        "--reviewed-text",
+        type=Path,
+        help="Whole-document reviewed Markdown to import into --ocr-dataset before building (idempotent)",
+    )
     run.add_argument("--query", help="Answer one question after preparing the corpus")
     run.add_argument("--build-only", action="store_true", help="Prepare corpus without starting the API")
     run.add_argument(
@@ -175,6 +180,14 @@ def main() -> None:
                     os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"),
                     os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"),
                 )
+        if args.reviewed_text:
+            if not args.ocr_dataset:
+                cli.error("--reviewed-text requires --ocr-dataset")
+            sys.path.insert(0, str(ROOT / "ocr"))
+            from ocop_ocr.reviewed_text import import_reviewed_text
+
+            summary = import_reviewed_text(args.ocr_dataset.resolve(), args.reviewed_text.resolve())
+            print(json.dumps({"import_text": summary.get("import_text_summary", "unchanged")}, ensure_ascii=False))
         prepared = system.ensure(
             PipelineOptions(
                 ocr_dataset=args.ocr_dataset,

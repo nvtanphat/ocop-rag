@@ -95,7 +95,8 @@ def test_table_chunking_preserves_rows_and_repeats_table_context():
     unit["text"] = body
     rows = split_units(unit, max_words=50, overlap=5)
     assert len(rows) > 1
-    assert all("Bảng từ VN.TEST.QD.2026" in row for row in rows)
+    assert all(row.startswith("Văn bản VN.TEST.QD.2026, trang") and "\n" in row for row in rows)
+    assert all(row.split("\n", 1)[0].endswith(". Bảng") for row in rows)
     assert all(any(f"Tiêu chí {i} | {i % 4}" in row for row in rows) for i in range(30))
 
 
@@ -127,3 +128,4 @@ def test_exact_lookup_joins_candidates_to_evidence(tmp_path):
     assert len(facts) == 1
     assert facts[0]["record_kind"] == "form_candidates"
     assert facts[0]["source_spans"][0]["pdf_page"] == 8
+

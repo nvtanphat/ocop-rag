@@ -13,6 +13,7 @@ import json
 import logging
 import math
 import os
+import sys
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
@@ -413,6 +414,51 @@ def _worker_page(job, *, warmup_job=None):
     return _page_job(job, before_ocr=warmup)
 
 
+class _Progress:
+    """One log line per finished page plus ``progress.json`` so a run can be watched from another process."""
+
+    RECENT = 12
+
+    def __init__(self, output: Path, planned: int):
+        self.output, self.planned, self.done = Path(output), planned, 0
+        self.started = self.last = time.monotonic()
+        self.recent: list[float] = []
+
+    def page_done(self, source_id: str, page: int, art: dict) -> None:
+        now = time.monotonic()
+        self.recent = (self.recent + [now - self.last])[-self.RECENT :]
+        self.last = now
+        self.done += 1
+        per_page = sum(self.recent) / len(self.recent)
+        remaining = round(per_page * (self.planned - self.done))
+        engine = art.get("ocr_engine") or "native"
+        state = {
+            "done": self.done,
+            "planned": self.planned,
+            "source_id": source_id,
+            "pdf_page": page,
+            "engine": engine,
+            "seconds_per_page_recent": round(per_page, 2),
+            "elapsed_seconds": round(now - self.started),
+            "eta_seconds": remaining,
+        }
+        print(
+            f"[ocr] {self.done}/{self.planned} {source_id} p{page} ({engine}) "
+            f"{per_page:.1f}s/page elapsed={_hms(now - self.started)} eta={_hms(remaining)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        try:
+            write_json(self.output / "progress.json", state)
+        except OSError:
+            pass  # progress is advisory; never fail a page because it could not be written
+
+
+def _hms(seconds: float) -> str:
+    seconds = int(seconds)
+    return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+
+
 def run_pipeline(
     root: Path, *, registry: Path, lock: Path, output: Path, cache_dir: Path, workers: int = 1, **options
 ) -> dict:
@@ -615,6 +661,15 @@ def _run_pipeline(
         missing = selected_pages - available
         if missing:
             raise ValueError(f"PDF page selection is out of range: {sorted(missing)}")
+    progress = _Progress(
+        output,
+        sum(
+            len(found)
+            if selected_pages is None
+            else sum((source_id, item["pdf_page"]) in selected_pages for item in found)
+            for source_id, found in profiles_by_source.items()
+        ),
+    )
     inspected = 0
     warmup_job = None
     if executor is not None and ocr:
@@ -707,6 +762,7 @@ def _run_pipeline(
                         # Applied after the page cache, which keeps the raw OCR transcription.
                         art = postcorrect_artifact(art, postcorrection)
                     _record_page(fh, art, source_counts)
+                    progress.page_done(source.source_id, art["pdf_page"], art)
                     if prev_art is not None:
                         continuations.extend(possible_continuations(prev_art, art))
                     prev_art = art

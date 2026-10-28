@@ -157,6 +157,10 @@ def _markdown(page: dict) -> tuple[list[str], dict[int, str]]:
     for index, table in enumerate(page.get("tables", [])):
         lines.extend(["", f"## Bảng {index + 1}", ""])
         count = table["col_count"]
+        if not count or not table.get("cells"):
+            # A table area found without ruled columns has no cells to edit; keep it visible but read-only.
+            lines.append("_Vùng bảng ứng viên: chưa suy ra được cột nên không có ô để sửa. Đối chiếu bằng ảnh trang._")
+            continue
         lines.append("| Hàng | " + " | ".join(f"Cột {c + 1}" for c in range(count)) + " |")
         lines.append("| --- | " + " | ".join("---" for _ in range(count)) + " |")
         cells = {(c["row"], c["col"]): (i, c) for i, c in enumerate(table["cells"])}

@@ -28,10 +28,12 @@ def main():
             stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description="OCOP OCR -> dataset -> Markdown review")
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("run", "export", "import", "status"):
+    for name in ("run", "export", "import", "import-text", "status"):
         command = commands.add_parser(name)
         command.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
         command.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[2])
+        if name == "import-text":
+            command.add_argument("--markdown", type=Path, required=True)
         if name == "run":
             command.add_argument("--cache", "--cache-dir", dest="cache", type=Path)
             command.add_argument("--dpi", type=int, default=300)
@@ -94,6 +96,13 @@ def main():
             _write_run_state(dataset, {**state, "status": "published"})
         elif args.command == "export":
             result = {"exported_pages": export_markdown(dataset, pdf_root=root, registry=registry, lock=lock)}
+        elif args.command == "import-text":
+            from .reviewed_text import import_reviewed_text
+
+            recover_import(dataset)
+            _, locked = checked_sources(root, registry, lock)
+            read_dataset(dataset, locked, require_complete=False)
+            result = import_reviewed_text(dataset, args.markdown.resolve())
         elif args.command == "import":
             recover_import(dataset)
             _, locked = checked_sources(root, registry, lock)

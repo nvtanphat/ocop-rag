@@ -97,18 +97,12 @@ def _legal_heading(unit: dict, source: str) -> str | None:
 
 
 def _base(unit: dict, meta: dict | None = None) -> str:
+    # Embedding context should read like a citation, not like internal ids.
     span = (unit.get("spans") or [{"pdf_page": "?"}])[0]
-    data = [
-        f"Nguồn: {unit['source_id']}",
-        f"trang PDF: {span['pdf_page']}",
-        f"loại: {unit.get('unit_kind', 'unknown')}",
-    ]
     meta = meta or {}
-    if meta.get("document_number"):
-        data.append(f"văn bản: {meta['document_number']}")
-    if meta.get("jurisdiction"):
-        data.append(f"địa bàn: {meta['jurisdiction']}")
-    return "; ".join(data) + ". "
+    document = meta.get("document_number") or unit["source_id"]
+    where = f" ({meta['jurisdiction']})" if meta.get("jurisdiction") else ""
+    return f"Văn bản {document}{where}, trang {span['pdf_page']}. "
 
 
 def _plan_prose(
@@ -284,10 +278,8 @@ def _plan_table(
     if not rows:
         return []
     table = unit.get("structured") or {}
-    table_id = table.get("table_id") or (unit.get("spans") or [{}])[0].get("table_id")
     base = _base(unit, meta)
-    legacy = f"Bảng từ {unit['source_id']}, trang {unit['spans'][0]['pdf_page']}"
-    preface = base + legacy + (f"; mã bảng: {table_id}" if table_id else "") + "\n"
+    preface = base + "Bảng\n"  # internal table ids carry no meaning for the embedding
     header = "\n".join(headers)
     header_cells = [c for c in table.get("cells", []) or [] if c.get("is_header") or c.get("header")]
     if not header_cells and inferred and table.get("cells"):
@@ -389,6 +381,10 @@ def plan_chunks(
     text = str(unit.get("text") or "")
     if not text.strip() or text.lstrip().startswith("[Phát hiện vùng bảng trên trang PDF"):
         return []
+    if unit.get("unit_kind") not in ("table", "criterion_table_candidate") and not re.search(
+        r"[^\W\d_]{3}", text
+    ) or text.strip() == "(trang không có chữ)":
+        return []  # page numbers, stray marks and blank-page placeholders carry no retrievable meaning
     unit = {**unit, "text": text}
     count = counter or estimated_tokens
     if unit.get("unit_kind") in ("table", "criterion_table_candidate"):

@@ -212,6 +212,10 @@ def _segments_with_line_indices(text: str):
 def _line_blocks(page: dict) -> list[list[dict]] | None:
     """Blocks behind each page text line, or None when the text stream does not agree."""
     text = page.get("extracted_text", "")
+    aligned = page.get("line_blocks")
+    if isinstance(aligned, list) and len(aligned) == len(text.splitlines()):
+        # Reviewed text no longer equals the OCR block stream; the import aligned every line to its source blocks.
+        return aligned
     source_blocks = [
         block
         for block in page.get("blocks", [])

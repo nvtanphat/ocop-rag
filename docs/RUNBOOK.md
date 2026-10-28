@@ -49,6 +49,18 @@ python tools/cli.py run --ocr-dataset data/ocr-dataset --no-semantic-extract --b
 
 Lệnh này đọc dataset OCR độc lập, không thực hiện OCR. Muốn dựng lại mọi dẫn xuất, thêm `--refresh`; source PDF không được sửa. Sau khi code extraction/graph/retrieval đổi, fingerprint thay đổi nên phải dựng lại; không sửa manifest để bỏ qua kiểm phiên bản.
 
+### Dựng lại từ văn bản OCR đã duyệt
+
+Văn bản đã duyệt nằm trong một Markdown duy nhất (`data/ocr-review/ocop-ocr-reviewed.md`, mỗi trang một mục `## <source_id> — trang N`, bảng ngay dưới `**Bảng N**`). Một lệnh nạp vào dataset rồi dựng lại; nạp lặp lại với cùng file không đổi gì:
+
+```powershell
+python tools/cli.py run --ocr-dataset data/ocr-dataset --reviewed-text data/ocr-review/ocop-ocr-reviewed.md --dense --build-only
+```
+
+Bước nạp thay `extracted_text` và ô bảng bằng chữ đã duyệt, giữ chữ OCR gốc (`ocr_extracted_text`, `ocr_text`), `ocr_hash` và bbox, ghép từng dòng đã duyệt với khối OCR nguồn (`line_blocks`) để mọi trích dẫn giữ bbox, và ghi mỗi trang đổi chữ vào `review/corrections.jsonl`. Trang không khớp tập trang của dataset làm lệnh dừng. Bước extraction LLM dùng cache theo nội dung đoạn, nên chỉ đoạn có chữ đổi mới gọi lại API. Sửa dòng md rồi chạy lại đúng lệnh trên là đủ.
+
+Quyết định duyệt node/cạnh nằm ở `data/review/ocop_review_decisions.jsonl`, gắn với `content_hash`; sau khi dựng lại, quyết định cũ còn hiệu lực với mục có hash không đổi, mục có chữ hoặc bbox đổi quay về chưa duyệt.
+
 Kiểm trạng thái và danh mục lệnh:
 
 ```powershell
