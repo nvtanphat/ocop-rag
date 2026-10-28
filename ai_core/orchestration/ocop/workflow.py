@@ -117,7 +117,12 @@ class OcopAgent:
             carried = memory.plural_referents(effective, safe_session.get("memory"), updates)
             if (safe_session.get("memory") or {}).get("standalone"):
                 effective, method = memory.rewrite(
-                    effective, safe_session["memory"], choice.slots, updates, carried=carried
+                    effective,
+                    safe_session["memory"],
+                    choice.slots,
+                    updates,
+                    carried=carried,
+                    previous_slots=safe_session.get("slots"),
                 )
                 if carried:
                     method += "+compare"
@@ -233,6 +238,7 @@ class OcopAgent:
             "not_ready",
             "unknown",
             "recognition_scope_unverified",
+            "entity_not_found",
             "assessment_year_scope_unverified",
             "recognition_year_scope_unverified",
             "text_evidence_fallback",
@@ -798,6 +804,21 @@ class OcopAgent:
                         "citations": [],
                     }
                 }
+        missing_entity = [
+            name
+            for item in outputs
+            if (item.get("output") or {}).get("status") == "entity_not_found"
+            for name in (item.get("output") or {}).get("entity") or []
+        ]
+        if missing_entity:
+            return {
+                "answer": {
+                    "answer": "Không tìm thấy sản phẩm “" + "”, “".join(dict.fromkeys(missing_entity)) + "” trong các quyết định "
+                    "công nhận đã lập chỉ mục. Hãy kiểm tra lại tên sản phẩm hoặc hỏi theo số hiệu quyết định.",
+                    "status": "entity_not_found",
+                    "citations": [],
+                }
+            }
         if any(
             (item.get("output") or {}).get("status") == "recognition_scope_unverified" for item in outputs
         ):

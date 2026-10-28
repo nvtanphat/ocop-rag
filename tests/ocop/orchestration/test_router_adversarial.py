@@ -115,6 +115,47 @@ def test_scoring_sheet_question_without_catalog_hit_is_in_scope():
     assert route_query("Mật ong rừng được chấm theo phiếu nào?").intent != Intent.OUT_OF_SCOPE
 
 
+def test_asking_the_rating_of_a_named_product_is_a_recognition_lookup():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    catalog = EntityCatalog({"entities": {"product": [{"label": "Gạo giống HANA", "source_ids": []}]}})
+    route = route_query("Gạo giống HANA được mấy sao?", catalog=catalog)
+    assert route.intent == Intent.RECOGNITION_LOOKUP and "lookup_recognition" in build_plan(route).names
+    # thresholds that define a rating are criteria, not a product's record
+    assert route_query("Tiêu chí để đạt mấy sao?", catalog=catalog).intent == Intent.CRITERIA_LOOKUP
+
+
+def test_a_code_word_names_the_one_product_that_carries_it():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    labels = ["Gạo ruộng rươi giống HANA", "Gạo ruộng rươi ST25", "Gạo ruộng rươi Nếp nhung"]
+    catalog = EntityCatalog({"entities": {"product": [{"label": x, "source_ids": []} for x in labels]}})
+    assert route_query("Còn ST25 thì sao?", catalog=catalog).slots.get("product_name") == "Gạo ruộng rươi ST25"
+    assert route_query("HANA đạt mấy sao?", catalog=catalog).slots.get("product_name") == "Gạo ruộng rươi giống HANA"
+    # ordinary words are shared by several labels or are not codes at all
+    assert "product_name" not in route_query("Gạo ruộng rươi là gì?", catalog=catalog).slots
+    assert "product_name" not in route_query("Nếp nung thế nào?", catalog=catalog).slots
+
+
+def test_asking_how_long_a_certificate_lasts_is_not_a_version_applicability_question():
+    route = route_query("Giấy chứng nhận OCOP có hiệu lực bao lâu?")
+    assert route.intent != Intent.TEMPORAL_COMPARE and "resolve_temporal_applicability" not in build_plan(route).names
+    # a question about whether a rule is still valid keeps the applicability check
+    assert route_query("Quyết định 148 còn hiệu lực hay hết hiệu lực?").intent == Intent.TEMPORAL_COMPARE
+
+
+def test_a_question_phrase_is_not_a_product_name():
+    route = route_query("Quyết định 525 công nhận những sản phẩm mấy sao?")
+    assert "product_name" not in route.slots
+
+
+def test_a_locality_matches_its_source_tag_without_the_administrative_prefix():
+    from ai_core.orchestration.ocop.tools import _jurisdiction_key
+
+    assert _jurisdiction_key("Thành phố Huế") == _jurisdiction_key("Huế") == "hue"
+    assert _jurisdiction_key("Hải Phòng") == "haiphong"
+
+
 def test_existing_known_exact_document_still_passes():
     route = route_query("Điều 6 QĐ26/2026 quy định gì?")
     assert route.intent == Intent.EXACT_LOOKUP

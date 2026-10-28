@@ -34,6 +34,7 @@ RECOVERY_BLOCKING_STATUSES = frozenset(
         "recognition_year_scope_unverified",
         "assessment_year_scope_unverified",
         "recognition_scope_unverified",
+        "entity_not_found",
         "local_guidance_not_in_corpus",
         "incomplete_form_ids",
         "form_source_scope_unverified",

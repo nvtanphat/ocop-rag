@@ -70,6 +70,7 @@ FOLLOWUP_SCOPE_KEYS = frozenset(
         "years",
         "region",
         "product_name",
+        "product_names",
         "product_group",
         "criterion_id",
         "recognition_year",
@@ -89,6 +90,7 @@ TARGET_KEYS = frozenset(
         "criterion_id",
         "pdf_page",
         "product_name",
+        "product_names",
         "organization_name",
     }
 )
@@ -327,6 +329,8 @@ def extract_slots(
     products = outside_locators(catalog.find("product", text)) or outside_locators(catalog.find("product_group", text))
     if products:
         slots["product_name"] = max(products, key=lambda x: x.end - x.start).label
+    elif coded := outside_locators(catalog.find_by_code("product", text)):
+        slots["product_name"] = coded[0].label
     elif name := _product_from_marker(text, folded, p):
         slots["product_name"] = name
     if orgs := outside_locators(catalog.find("organization", text)):
@@ -362,10 +366,10 @@ def _merge_followup(prior: dict, updates: dict) -> dict:
             and len(value) <= 128
             or type(value) is int
             and 0 <= value <= 2100
-            or key in ("years", "form_ids")
+            or key in ("years", "form_ids", "product_names")
             and isinstance(value, list)
             and len(value) <= 8
-            and all(isinstance(x, str) and len(x) <= 12 for x in value)
+            and all(isinstance(x, str) and len(x) <= (128 if key == "product_names" else 12) for x in value)
         )
     }
     new_doc = updates.get("document_code")
@@ -405,6 +409,7 @@ class Facets:
         self.temporal = bool(
             (len(years) >= 2 and legal)
             or h("temporal_strong")
+            or (h("temporal_validity") and not h("temporal_fact"))
             or (
                 h("temporal_compare")
                 and (len(years) >= 2 or (years and compare_scope) or h("temporal_compare_old_new"))
@@ -719,6 +724,12 @@ def _route_business(
     if facets.recognition and not facets.normative_star:
         scores[Intent.RECOGNITION_LOOKUP] = 55
     if (slots.get("product_name") or slots.get("organization_name")) and producer:
+        scores[Intent.RECOGNITION_LOOKUP] = max(75, scores.get(Intent.RECOGNITION_LOOKUP, 0))
+    if (
+        (slots.get("product_name") or slots.get("organization_name"))
+        and lang.hit(q, "recognition_attribute")
+        and not (facets.criteria or facets.scoring_method or facets.normative_star)
+    ):
         scores[Intent.RECOGNITION_LOOKUP] = max(75, scores.get(Intent.RECOGNITION_LOOKUP, 0))
     if facets.rating_assertion and slots.get("star_rating") and not facets.scoring_method:
         scores[Intent.RECOGNITION_LOOKUP] = max(78, scores.get(Intent.RECOGNITION_LOOKUP, 0))

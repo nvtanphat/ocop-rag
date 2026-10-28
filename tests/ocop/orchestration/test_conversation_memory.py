@@ -115,6 +115,54 @@ def test_plural_reference_resolves_to_the_two_discussed_items_in_order():
     ) == {"form_ids": ["2", "1"], "form_id": "2"}
 
 
+def test_a_plural_product_reference_resolves_to_the_two_latest_products_or_asks_which():
+    from ai_core.orchestration.ocop import memory
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+    from ai_core.orchestration.ocop.router import route_query
+
+    labels = ["Gạo giống HANA", "Gạo ST25"]
+    catalog = EntityCatalog({"entities": {"product": [{"label": x, "source_ids": []} for x in labels]}})
+    state = None
+    for label in labels:
+        state = memory.update(
+            state, slots={"product_name": label}, standalone=f"{label} được mấy sao?", citations=[], corpus_version="v"
+        )
+    session = {"last_query": "Gạo ST25 được mấy sao?", "slots": {"product_name": "Gạo ST25"}, "memory": state}
+    route = route_query("Hai sản phẩm đó của hợp tác xã nào?", catalog=catalog, session=session)
+    assert route.slots["product_names"] == ["Gạo giống HANA", "Gạo ST25"]
+    lone = route_query("Hai sản phẩm đó của hợp tác xã nào?", catalog=catalog)
+    assert lone.needs_clarification and lone.missing_slots == ["referent_product"]
+
+
+def test_rewrite_swaps_another_product_into_the_previous_question():
+    from ai_core.orchestration.ocop import memory
+
+    state = memory.update(
+        None,
+        slots={"product_name": "Gạo ruộng rươi giống HANA"},
+        standalone="Gạo ruộng rươi giống HANA được mấy sao?",
+        citations=[],
+        corpus_version="v1",
+    )
+    text, method = memory.rewrite(
+        "Còn ST25 thì sao?",
+        state,
+        {"product_name": "Gạo ruộng rươi ST25"},
+        {"product_name": "Gạo ruộng rươi ST25"},
+        previous_slots={"product_name": "Gạo ruộng rươi giống HANA"},
+    )
+    assert text == "Gạo ruộng rươi ST25 được mấy sao?" and method == "substitute:product"
+    # a product named in words (not a code) is swapped in the same way, not kept as the whole question
+    text, method = memory.rewrite(
+        "Còn Hạt ngọc 9?",
+        state,
+        {"product_name": "Gạo ruộng rươi Hạt ngọc 9"},
+        {"product_name": "Gạo ruộng rươi Hạt ngọc 9"},
+        previous_slots={"product_name": "Gạo ruộng rươi giống HANA"},
+    )
+    assert text == "Gạo ruộng rươi Hạt ngọc 9 được mấy sao?" and method == "substitute:product"
+
+
 def test_rewrite_swaps_the_new_thing_in_and_keeps_words_of_the_question():
     from ai_core.orchestration.ocop import memory
 

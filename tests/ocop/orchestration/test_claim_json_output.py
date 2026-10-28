@@ -111,6 +111,130 @@ def test_score_claim_needs_verified_text_support():
     assert out["status"] == "citation_verification_failed"
 
 
+RECOGNITION_ROW = (
+    "STT: 13; Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo giống HANA; Điểm đánh giá: 74,6; Xếp loại: 4 sao"
+)
+
+
+def _recognition_answer(claim, **kwargs):
+    model = Model({"claims": [{"text": claim, "sources": ["S1"]}], "missing": []})
+    source = {**row(RECOGNITION_ROW), "source_id": "VN.HAIPHONG.QD525.2026"}
+    return assemble("Gạo giống HANA được mấy sao, bao nhiêu điểm?", results(source), llm=model, **kwargs)
+
+
+def test_a_verified_table_row_supports_a_paraphrase_with_its_label_first_score():
+    # "74,6 điểm" is how people say what the cell "Điểm đánh giá: 74,6" holds; the row is verified, so it must publish.
+    out = _recognition_answer("Gạo giống HANA của Hợp tác xã Thụy Hương đạt 74,6 điểm và xếp loại 4 sao")
+    assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
+
+
+def test_the_decision_number_in_the_source_id_is_grounded_for_a_verified_row():
+    out = _recognition_answer("Gạo giống HANA của Hợp tác xã Thụy Hương xếp loại 4 sao, VN.HAIPHONG.QD525.2026")
+    assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
+
+
+def test_a_claim_combining_two_verified_rows_is_checked_against_both_together():
+    one = {**row("STT: 10; Sản phẩm: Gạo ST25; Tổ chức: Hợp tác xã Thụy Hương; Xếp loại: 4 sao"), "source_id": "D"}
+    two = {**row("STT: 11; Sản phẩm: Gạo Hạt ngọc 9; Tổ chức: Hợp tác xã Thụy Hương; Xếp loại: 4 sao", unit="u2")}
+    claim = "Gạo ST25 và Gạo Hạt ngọc 9 đều có Tổ chức là Hợp tác xã Thụy Hương"
+    model = Model({"claims": [{"text": claim, "sources": ["S1", "S2"]}], "missing": []})
+    out = assemble("Hai sản phẩm đó của hợp tác xã nào?", results(one, two), llm=model)
+    assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
+    invented = Model({"claims": [{"text": claim + " từ năm 2031", "sources": ["S1", "S2"]}], "missing": []})
+    bad = assemble("Hai sản phẩm đó của hợp tác xã nào?", results(one, two), llm=invented)
+    assert bad["status"] == "citation_verification_failed"
+
+
+def _quoted(claim, quote, status="verified"):
+    model = Model({"claims": [{"text": claim, "sources": ["S1"], "quote": quote}], "missing": []})
+    source = {**row("Điều 7. Trình tự đánh giá. 2. UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc", status=status)}
+    return assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=model)
+
+
+def test_every_structured_output_schema_lists_all_its_properties_as_required():
+    # Providers' strict structured-output mode rejects (HTTP 400) any object whose "required" omits a property.
+    from ai_core.orchestration.ocop.answer import CLAIMS_SCHEMA
+    from ai_core.orchestration.ocop.entailment import SCHEMA as ENTAILMENT_SCHEMA
+
+    def objects(node):
+        if isinstance(node, dict):
+            if node.get("type") == "object":
+                yield node
+            for value in node.values():
+                yield from objects(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from objects(value)
+
+    for schema in (CLAIMS_SCHEMA, ENTAILMENT_SCHEMA):
+        for obj in objects(schema):
+            assert set(obj["properties"]) == set(obj["required"]), obj
+
+
+def test_a_paraphrase_is_published_when_its_verbatim_quote_is_in_the_cited_excerpt():
+    # the paraphrase shares almost no wording with the source, so word overlap alone would reject it
+    out = _quoted(
+        "Cơ quan cấp xã được 15 ngày làm việc để xử lý hồ sơ",
+        "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc",
+    )
+    assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
+    assert out["claim_verification"]["claims"][0]["anchor_quote"].startswith("UBND cấp xã")
+
+
+def test_a_quote_that_is_not_in_the_excerpt_or_lacks_the_claims_numbers_proves_nothing():
+    invented = _quoted("Chính quyền cơ sở xử lý hồ sơ nhanh chóng", "UBND cấp xã có thể xử lý hồ sơ nhanh chóng ngay")
+    anchored_ok = _quoted(
+        "Chính quyền cơ sở xử lý hồ sơ nhanh chóng", "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc"
+    )
+    assert anchored_ok["status"] == "generated_claims_verified"  # a real quote is enough for a paraphrase without numbers
+    assert invented["status"] == "citation_verification_failed"
+    missing_number = _quoted("Cơ quan cấp xã được 30 ngày làm việc", "UBND cấp xã tiếp nhận và đánh giá hồ sơ")
+    assert missing_number["status"] == "citation_verification_failed"
+
+
+def test_a_claim_may_name_the_heading_label_above_the_quoted_sentence():
+    body = "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc"
+    source = {**row(body), "context": {"parent_chain": ["Điều 7. Trình tự đánh giá"]}}
+    model = Model(
+        {"claims": [{"text": "Điều 7 quy định cấp xã có 15 ngày làm việc để tiếp nhận hồ sơ", "sources": ["S1"], "quote": body}], "missing": []}
+    )
+    out = assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=model)
+    assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
+    wrong = Model(
+        {"claims": [{"text": "Điều 9 quy định cấp xã có 15 ngày làm việc để tiếp nhận hồ sơ", "sources": ["S1"], "quote": body}], "missing": []}
+    )
+    assert assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=wrong)["status"] == "citation_verification_failed"
+
+
+def test_a_quote_never_overrides_the_score_and_star_check():
+    out = _quoted("Hồ sơ đạt 90 điểm", "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc")
+    assert out["status"] == "citation_verification_failed"
+
+
+def test_names_taken_from_a_source_id_and_the_corpus_vocabulary_are_not_new_entities():
+    from ai_core.orchestration.ocop.entailment import anchored
+
+    excerpt = "Sản phẩm: Gạo ruộng rươi ST25; Xếp loại: 4 sao\nVN.HAIPHONG.QD525.2026"
+    quote = "Sản phẩm: Gạo ruộng rươi ST25; Xếp loại: 4 sao"
+    claim = "Gạo ruộng rươi ST25 xếp loại 4 sao theo Quyết định 525/2026 của Hải Phòng"
+    assert anchored(claim, quote, excerpt, asked="VN.HAIPHONG.QD525.2026")
+    assert not anchored(claim.replace("Hải Phòng", "Đà Nẵng"), quote, excerpt, asked="VN.HAIPHONG.QD525.2026")
+
+
+def test_an_uncited_unreviewed_source_does_not_label_an_answer_backed_by_verified_rows():
+    model = Model({"claims": [{"text": "Gạo giống HANA xếp loại 4 sao", "sources": ["S1"]}], "missing": []})
+    other = row("Gạo giống ST25 xếp loại 4 sao theo OCR", unit="u2", status="needs_review")
+    out = assemble("Gạo giống HANA mấy sao?", results(row(RECOGNITION_ROW), other), llm=model)
+    assert out["status"] == "generated_claims_verified" and "LƯU Ý" not in out["answer"]
+
+
+def test_a_wrong_score_for_a_verified_row_is_still_rejected():
+    for claim in ("Gạo giống HANA đạt 76,3 điểm", "Gạo giống HANA xếp loại 5 sao"):
+        out = _recognition_answer(claim)
+        assert out["status"] == "citation_verification_failed", claim
+        assert "unsupported_score_or_star_claims" in out["generation_diagnostics"]["reasons"]
+
+
 def test_generation_is_skipped_when_the_prompt_source_does_not_cover_the_question():
     model = Model({"claims": [], "missing": []})
     out = assemble(

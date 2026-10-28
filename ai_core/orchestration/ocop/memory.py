@@ -26,6 +26,7 @@ REFERENT_SLOTS = {
     "sheet": ("sheet_number",),
     "article": ("article_id",),
     "document": ("document_codes", "document_code"),
+    "product": ("product_names", "product_name"),
 }
 COMPARE_CUE = re.compile(r"\bso sanh\b|\bso voi\b|\bkhac voi\b|\bcung voi\b")
 PLURAL = r"(?:hai|2|ba|3|ca\s+hai|cac|nhung|ca\s+ba)"
@@ -116,7 +117,7 @@ def _noun_pattern(lang: Language, kind: str) -> str:
     if kind == "document":
         names = [n for names in lang.document_types.values() for n in names] + ["van ban"]
     else:
-        names = lang.structure_nouns.get({"form": "form", "sheet": "sheet", "article": "article"}[kind], [])
+        names = lang.structure_nouns.get(kind, [])
     return "|".join(
         r"\s+".join(re.escape(w) for w in fold(n).split()) for n in sorted(names, key=len, reverse=True)
     )
@@ -147,7 +148,7 @@ def dangling_reference(question: str, memory: Any, updates: dict, lang: Language
     lang = lang or get_language()
     referents = sanitize(memory)["referents"]
     folded = fold(question)
-    for kind in ("form", "sheet", "article", "document"):
+    for kind in REFERENT_SLOTS:
         noun = _noun_pattern(lang, kind)
         if (
             noun
@@ -167,7 +168,7 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
     lang = lang or get_language()
     referents = sanitize(memory)["referents"]
     folded = fold(question)
-    for kind in ("form", "sheet", "article", "document"):
+    for kind in REFERENT_SLOTS:
         pool = referents.get(kind, [])
         noun = _noun_pattern(lang, kind)
         if not noun:
@@ -186,7 +187,7 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
 
 def _as_slots(kind: str, values: list[str]) -> dict:
     key = REFERENT_SLOTS[kind][0]
-    if kind in ("form", "document"):
+    if len(REFERENT_SLOTS[kind]) == 2:  # kinds that hold several values at once (list slot + first value)
         out = {key: values}
         out[REFERENT_SLOTS[kind][1]] = values[0]
         return out
@@ -226,6 +227,7 @@ def rewrite(
     *,
     carried: dict | None = None,
     lang: Language | None = None,
+    previous_slots: dict | None = None,
 ) -> tuple[str, str]:
     """A follow-up as a standalone question: ``(text, method)``.
 
@@ -259,10 +261,14 @@ def rewrite(
         for n in lang.structure_nouns.get(kind, [])
         for w in lang.content_words(n)
     }
+    # The name of the product/organisation swapped in is the thing replaced, not a word of the question.
+    named = {
+        w for key in ("product_name", "organization_name") for w in lang.content_words(str(updates.get(key) or ""))
+    }
     own_words = [
         w
         for w in lang.content_words(stripped)
-        if w not in nouns and not re.fullmatch(r"[a-z]{0,3}\d+|hai|ba|nay|do|ay", w)
+        if w not in nouns and w not in named and not re.fullmatch(r"[a-z]{0,3}\d+|hai|ba|nay|do|ay", w)
     ]  # codes (qd148) are scope, not words
     if not own_words:
         # nothing but a reference: the previous standalone question, with whatever explicit thing the user swapped in
@@ -272,6 +278,12 @@ def rewrite(
             if new and pattern.search(text):
                 text = pattern.sub(" và ".join(_surface(lang, kind, v) for v in new), text, count=1)
                 replaced.append(kind)
+        # another product/organisation than the one the previous question named ("Còn ST25?" after a question on HANA)
+        for key in ("product_name", "organization_name"):
+            old, new = (previous_slots or {}).get(key), updates.get(key)
+            if old and new and old != new and old.casefold() in text.casefold():
+                text = re.sub(re.escape(old), lambda _: str(new), text, count=1, flags=re.I)
+                replaced.append("product" if key == "product_name" else "organization")
         # a new article/form/sheet the earlier question never referred to: ask about it afresh inside the carried scope
         fresh = [
             (kind, _values(resolved, kind))
@@ -301,9 +313,11 @@ def rewrite(
         if set(REFERENT_SLOTS[kind]) & explicit:
             continue
         scope += [_surface(lang, kind, v) for v in _values(slots, kind)]
-    for key, label in (("product_name", "sản phẩm"), ("organization_name", "chủ thể")):
-        if slots.get(key) and key not in explicit:
-            scope.append(f"{label} {slots[key]}")
+    products = _values(slots, "product")
+    if products and not set(REFERENT_SLOTS["product"]) & explicit:
+        scope.append("sản phẩm " + " và ".join(products))
+    if slots.get("organization_name") and "organization_name" not in explicit:
+        scope.append(f"chủ thể {slots['organization_name']}")
     if slots.get("region") and "region" not in explicit:
         scope.append(str(slots["region"]))
     scope = list(dict.fromkeys(scope))

@@ -119,6 +119,12 @@ def test_2026_decision_does_not_imply_2026_recognition_event(tmp_path):
     assert output["results"][0]["source_id"].endswith("2026")
 
 
+def test_a_named_product_missing_from_the_recognition_store_is_reported_not_guessed(tmp_path):
+    reg = _store(tmp_path)
+    output = reg.dispatch("lookup_recognition", query="Sản phẩm ZZZ có được công nhận không?", slots={"product_name": "ZZZ"})
+    assert output["results"] == [] and output["status"] == "entity_not_found" and output["entity"] == ["ZZZ"]
+
+
 def test_unknown_recognition_event_year_denied_not_inferred(tmp_path):
     reg = _store(tmp_path)
     output = reg.dispatch(

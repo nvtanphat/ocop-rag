@@ -22,7 +22,12 @@ from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 def _jurisdiction_key(value: str) -> str:
     """Compare explicit locality labels, never infer locality from an arbitrary phrase."""
-    return re.sub(r"[^a-z0-9]", "", normalize(value))
+    key = normalize(value)
+    prefixes = "|".join(
+        r"\s+".join(re.escape(w) for w in normalize(x).split()) for x in get_language().cues["administrative_prefix"]
+    )
+    key = re.sub(r"^(?:" + prefixes + r")\s+", "", key)
+    return re.sub(r"[^a-z0-9]", "", key)
 
 
 def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | None) -> bool:
@@ -736,13 +741,24 @@ class ToolRegistry:
                 "lookup_recognition": {"RecognitionRecord"},
             }
             nodes = [n for n in graph.nodes.values() if n["node_type"] in mapping[name]]
-            if name == "lookup_recognition" and slots.get("product_name"):
-                asked = normalize(str(slots["product_name"]))
+            asked_products = [
+                normalize(str(x))
+                for x in (slots.get("product_names") or [slots.get("product_name")])
+                if x
+            ]
+            if name == "lookup_recognition" and asked_products:
                 products = {
                     n["node_id"]
                     for n in graph.nodes.values()
-                    if n["node_type"] == "Product" and asked in normalize(n["label"])
+                    if n["node_type"] == "Product" and any(a in normalize(n["label"]) for a in asked_products)
                 }
+                if not products:
+                    # The named product is not in the recognition store: say so, never fall back to loosely related text.
+                    return {
+                        "results": [],
+                        "status": "entity_not_found",
+                        "entity": [str(x) for x in (slots.get("product_names") or [slots.get("product_name")]) if x],
+                    }
                 record_ids = {
                     edge["source_entity_id"]
                     for edge in graph.edges
@@ -764,7 +780,7 @@ class ToolRegistry:
                 scope, _ = graph.descendants(sheets, {"HAS_CRITERION", "HAS_SUBCRITERION"})
                 nodes = [n for n in nodes if n["node_id"] in scope]
             rows = graph.node_rows(nodes)
-            if name == "lookup_recognition" and slots.get("product_name"):
+            if name == "lookup_recognition" and asked_products:
                 for row in rows:
                     links = [
                         edge

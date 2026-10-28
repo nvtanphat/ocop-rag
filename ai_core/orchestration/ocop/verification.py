@@ -15,7 +15,9 @@ def check_source_markers(answer: str, citations: list[dict]) -> dict:
     status = (
         "missing_citations" if missing else ("markers_valid" if not invalid else "unknown_citation_markers")
     )
-    unverified = any(x.get("review_status") != "verified" for x in citations)
+    # Only the sources the answer actually cites decide whether it is labelled unreviewed.
+    used = [x for i, x in enumerate(citations, 1) if i in references] or citations
+    unverified = any(x.get("review_status") != "verified" for x in used)
     return {
         "status": status,
         "invalid_markers": invalid,
@@ -45,6 +47,16 @@ def _cited_rows(marker_ids: list[int], citations: list[dict], evidence_rows: lis
     return rows
 
 
+def _stated_in(assertion: str, verified: str) -> bool:
+    """A score/star assertion is in the verified text literally, or ("74,6 điểm") as the number of a score label ("Điểm đánh giá: 74,6")."""
+    if assertion in verified:
+        return True
+    number = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*điểm", assertion)
+    return bool(number) and bool(
+        re.search(r"điểm[^\d;|]{0,40}(?<!\d)" + re.escape(number[1]) + r"(?![\d.,]*\d)", verified)
+    )
+
+
 def _row_text(rows: list[dict]) -> str:
     text = " ".join(
         str(row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
@@ -72,7 +84,7 @@ def check_sensitive_claims(
         assertions = found(answer)
         verified = _row_text(evidence_rows)
         return {
-            "unsupported_score_or_star_claims": sorted(x for x in assertions if x not in verified),
+            "unsupported_score_or_star_claims": sorted(x for x in assertions if not _stated_in(x, verified)),
             "sensitive_claim_count": len(assertions),
         }
     assertions, unsupported = set(), set()
@@ -84,7 +96,7 @@ def check_sensitive_claims(
         verified = _row_text(
             _cited_rows([int(i) for i in MARKER.findall(sentence)], citations, evidence_rows)
         )
-        unsupported.update(x for x in stated if x not in verified)
+        unsupported.update(x for x in stated if not _stated_in(x, verified))
     return {"unsupported_score_or_star_claims": sorted(unsupported), "sensitive_claim_count": len(assertions)}
 
 
@@ -193,6 +205,8 @@ def verify_claims(
                 continue
             nums = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", prose))
             source_nums = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", source))
+            # The excerpt header the model was shown names the document ("QD525.2026"), so its numbers are grounded too.
+            source_nums |= set(re.findall(r"\d+", str(row.get("source_id") or "")))
             if nums - source_nums:
                 checked.append(("unsupported", "source_missing_claim_numbers"))
                 continue
@@ -313,7 +327,8 @@ def grounded_in_excerpt(
 ) -> tuple[bool, str]:
     """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
 
-    Used only for sources that no human has reviewed: such a claim may be shown, labelled as unreviewed, when
+    Used for a claim that is not a verbatim copy of its source (an unreviewed source, or a paraphrase of a verified one,
+    or one that combines several cited rows): such a claim may be shown, labelled as unreviewed when its source is, when
     (1) every number in it occurs in the excerpt (or in the question, or inside a range the excerpt states),
     (2) negation/exemption wording agrees with the excerpt,
     (3) enough of its content words occur in the excerpt (stricter for critical claims) and (4) its words are not

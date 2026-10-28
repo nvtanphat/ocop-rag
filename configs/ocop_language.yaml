@@ -41,6 +41,7 @@ structure_nouns:
   article: [điều]
   form: [mẫu số, mẫu]
   sheet: [phiếu]
+  product: [sản phẩm, mặt hàng]
   page: [trang pdf, trang]
   criterion: [tiêu chí, mục]
   # In a statute ("Chương II", "Luật ...") "Mục N" is a section of the chapter, not a scoring criterion.
@@ -74,7 +75,7 @@ entity_terminators: [thì, thuộc, là, theo, ở, được, có, cần, nên, 
   nhiêu, như thế nào, ra sao, ocop, liên quan, quy định, đăng ký, trên địa bàn, tại, và, hay, để, khi]
 # Words/phrases that cannot be a product name even after the marker.
 non_entity_phrases: [nào, gì, này, đó, kia, ocop, của tôi, công nhận, đạt sao, được công nhận, được chứng nhận, được
-  đánh giá, tôi, chúng tôi, mình]
+  đánh giá, tôi, chúng tôi, mình, mấy sao, bao nhiêu sao, mấy điểm, bao nhiêu điểm, hạng mấy]
 product_markers: [sản phẩm, có sản phẩm, với sản phẩm, mặt hàng]
 
 # Whole-question follow-up behaviour.
@@ -106,6 +107,10 @@ cues:
   recognition: [công nhận, đã đạt ocop, được chứng nhận ocop, sản phẩm đạt sao, danh sách sản phẩm ocop, liệt kê sản phẩm ocop]
   rating_assertion: [chắc chắn, chấm, kết luận, khẳng định, xác nhận, cho biết chắc]
   recognition_listing: [danh sách, liệt kê, các sản phẩm]
+  # Leading words of a locality name that the registry spells without ("Thành phố Huế" vs the source tag HUE).
+  administrative_prefix: [thành phố, tỉnh, thị xã, quận, huyện, tp]
+  # Asking for the rating a named product or producer received (not for the thresholds that define a rating).
+  recognition_attribute: [mấy sao, bao nhiêu sao, xếp loại gì, xếp hạng gì, hạng mấy]
   recognition_listing_negative: [danh sách, liệt kê, đã được công nhận, sản phẩm nào được công nhận, bao nhiêu sản phẩm]
   procedure: [mẫu, biểu mẫu, điền, đăng ký, thủ tục, hồ sơ lần đầu, hồ sơ ocop, hồ sơ gồm, cần nộp hồ sơ]
   procedure_own: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị]
@@ -113,7 +118,10 @@ cues:
   multihop: [liên quan đến, mối quan hệ, căn cứ vào những, đối chiếu, liên hệ với, dựa trên những, liên hệ giữa, yêu cầu minh chứng,
     minh chứng nào, đòi hỏi giấy tờ]
   temporal: [so sánh, chuyển tiếp, trước và sau, thay đổi theo năm, khác nhau, hiệu lực, năm nào áp dụng]
-  temporal_strong: [hiệu lực, chuyển tiếp, thời điểm áp dụng, năm nào áp dụng, thay đổi theo năm, theo thời điểm,
+  # "Hiệu lực" alone is a validity question only when it does not ask for a plain duration (how long it lasts).
+  temporal_validity: [hiệu lực]
+  temporal_fact: [bao lâu, thời hạn, mấy tháng, mấy năm, bao nhiêu tháng, bao nhiêu năm]
+  temporal_strong: [chuyển tiếp, thời điểm áp dụng, năm nào áp dụng, thay đổi theo năm, theo thời điểm,
     quy định năm, trước và sau khi, có còn áp dụng, hết hiệu lực]
   temporal_compare: [so sánh, khác nhau, khác biệt, đối chiếu, thay đổi]
   temporal_compare_scope: [phiên bản, quy định, tiêu chí]
@@ -194,3 +202,4 @@ messages:
     referent_sheet: các phiếu bạn muốn nói tới (số phiếu cụ thể)
     referent_article: các điều bạn muốn nói tới (số điều cụ thể)
     referent_document: các văn bản bạn muốn nói tới (số hiệu cụ thể)
+    referent_product: các sản phẩm bạn muốn nói tới (tên sản phẩm cụ thể)

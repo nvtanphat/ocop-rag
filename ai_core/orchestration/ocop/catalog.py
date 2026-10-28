@@ -196,6 +196,23 @@ class EntityCatalog:
                 )
         return sorted(found, key=lambda x: x.start)
 
+    def find_by_code(self, kind: str, query: str) -> list[Match]:
+        """Entities named by a code-like word alone ("ST25", "HANA" for "Gạo ruộng rươi ST25"): a word with a digit or in
+        capitals that occurs in exactly one label of `kind`. Ordinary words never qualify, nor does an ambiguous code."""
+        owners: dict[str, set[str]] = {}
+        for item in self._items.get(kind, []):
+            for word in re.findall(r"[\w]+", fold(item["label"])):
+                owners.setdefault(word, set()).add(item["label"])
+        found, seen = [], set()
+        for m in re.finditer(r"[\w]+", query):
+            word = m.group(0)
+            code_like = any(c.isdigit() for c in word) or (len(word) >= 3 and word.isupper())
+            labels = owners.get(fold(word), set()) if code_like else set()
+            if len(labels) == 1 and (label := next(iter(labels))) not in seen:
+                seen.add(label)
+                found.append(Match(kind, label, (), m.start(), m.end()))
+        return found
+
     def document_by_type_year(self, kind: str, year: str) -> str | None:
         """Number of the only catalogued document of this type and year (None when absent or ambiguous)."""
         found = [

@@ -63,11 +63,34 @@ def anchored(claim: str, quote: str, excerpt: str, asked: str = "") -> bool:
     negation = lambda s: bool(re.search(r"\b(?:không|chưa|miễn)\b", s, re.I))  # noqa: E731
     if re.search(r"\b(?:không|miễn)\b", claim, re.I) and not negation(quote):
         return False
+    from ai_core.orchestration.ocop.language import get_language
+
+    lang = get_language()
     present = set(re.findall(r"[a-z0-9]+", fold(excerpt)))
-    names = [
-        w for i, w in enumerate(re.findall(r"[\wÀ-ỹ./-]+", claim)) if i and w[0].isupper() and len(w) > 2
-    ]
-    return all(set(re.findall(r"[a-z0-9]+", fold(w))) <= present for w in names)
+    # The vocabulary of the corpus (document types, structure nouns) names no new entity: "Quyết định", "Điều".
+    known = {
+        t
+        for names_ in (*lang.document_types.values(), *lang.structure_nouns.values())
+        for n in names_
+        for t in re.findall(r"[a-z0-9]+", fold(n))
+    }
+    words = [w for i, w in enumerate(re.findall(r"[\wÀ-ỹ./-]+", claim)) if i and w[0].isupper() and len(w) > 2]
+    # Consecutive capitalised words are one name; a source id spells it as a single token ("Hải Phòng" / HAIPHONG).
+    runs, run = [], []
+    for i, w in enumerate(re.findall(r"[\wÀ-ỹ./-]+", claim)):
+        if i and w[0].isupper() and len(w) > 2:
+            run.append(w)
+        elif run:
+            runs.append(run)
+            run = []
+    if run:
+        runs.append(run)
+
+    def known_name(run: list[str]) -> bool:
+        tokens = [t for w in run for t in re.findall(r"[a-z0-9]+", fold(w))]
+        return set(tokens) <= present | known or "".join(tokens) in present
+
+    return all(known_name(r) for r in runs) if words else True
 
 
 def review(llm, items: list[dict], *, asked: str = "") -> dict[int, str]:
