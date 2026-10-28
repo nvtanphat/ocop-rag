@@ -10,6 +10,8 @@ import re
 import unicodedata
 
 from ai_core.retrieval.ocop.settings import get_settings
+from ai_core.orchestration.ocop.query_frames import identity_request, identity_coverage
+from ai_core.orchestration.ocop.planner import RECOVERY_BLOCKING_STATUSES
 
 STOPWORDS = frozenset(
     "cho tôi về là những các của và theo cần có với một trong được như nào gì hãy thì khi OCOP sản phẩm".casefold().split()
@@ -98,11 +100,13 @@ def grade_evidence(
         output = entry.get("output") or {}
         rows = rows_for(entry)
         graded = []
+        source_rows = []
         for row in rows:
             if not has_provenance(row):
                 continue
             tt = tokens(_text(row))
             relevance = len(relevant_query & tt) / len(relevant_query) if relevant_query else 0.0
+            scope = "unknown"
             if slots.get("document_code"):
                 # Wrong document must not be counted as applicable. Some tools
                 # already resolve the code into source_id; preserve source. A comparison names several documents.
@@ -116,13 +120,13 @@ def grade_evidence(
                     if re.findall(r"\d+", str(code))
                 ):
                     relevance = 0.0
+                    scope = "mismatch"
             region = slots.get("region")
             jurisdiction = str(row.get("jurisdiction") or "")
-            scope = "unknown"
             if region and jurisdiction and jurisdiction not in ("nationwide", "toàn quốc", str(region)):
                 scope = "mismatch"
                 relevance = 0.0
-            elif not region or jurisdiction:
+            elif scope != "mismatch" and (not region or jurisdiction):
                 scope = "not_contradicted"
             if relevance > 0 or not relevant_query:
                 scoped_rows.append(tt)
@@ -135,13 +139,24 @@ def grade_evidence(
                     "applicability": scope,
                 }
             )
-        hits = [v for v in graded if v["relevance"] >= min_relevance and v["applicability"] != "mismatch"]
+            source_rows.append(row)
+        requested = identity_request(query, name, slots)
+        identities = None
+        if requested and not output.get("fallback") and output.get("status", "ok") not in RECOVERY_BLOCKING_STATUSES:
+            eligible = [r for r, g in zip(source_rows, graded) if r.get("review_status") == "verified" and g["applicability"] == "not_contradicted"]
+            identities = identity_coverage(eligible, requested, name)
+            if identities:
+                for row, item in zip(source_rows, graded):
+                    key = (row.get("source_id"), tuple(sorted(row.get("graph_node_ids") or [])))
+                    if key in identities and row.get("review_status") == "verified" and item["applicability"] == "not_contradicted":
+                        item["structured_identity_match"] = True
+        hits = [v for v in graded if (v["relevance"] >= min_relevance or v.get("structured_identity_match")) and v["applicability"] != "mismatch"]
         # A structured business tool with a legitimate zero/unknown result is
         # *not* considered solved by a nearby generic search snippet.
         resolved = bool(hits) and (
             name not in STRUCTURED_TOOLS
             or (
-                output.get("status") not in ("unknown", "recognition_scope_unverified")
+                output.get("status") not in RECOVERY_BLOCKING_STATUSES | {"unknown"}
                 and (
                     name != "resolve_temporal_applicability"
                     or (
@@ -156,9 +171,10 @@ def grade_evidence(
                 )
                 and not output.get("fallback")
                 and all(x["review_status"] == "verified" for x in hits)
+                and identities != set()
             )
         )
-        if name in STRUCTURED_TOOLS and not resolved:
+        if name in STRUCTURED_TOOLS and not resolved and not entry.get("optional"):
             missing.append(name)
         capabilities.append(
             {
@@ -167,6 +183,8 @@ def grade_evidence(
                 "relevant_count": len(hits),
                 "structured_resolved": resolved,
                 "status": output.get("status", "ok"),
+                "optional": bool(entry.get("optional")),
+                "direct_lookup_complete": bool(identities) and resolved,
             }
         )
         scored.extend(graded)
@@ -174,7 +192,8 @@ def grade_evidence(
     missing.extend(sorted(expected - present))
     missing = list(dict.fromkeys(missing))
     relevant = sum(c["relevant_count"] for c in capabilities)
-    uncovered = uncovered_parts(query, scoped_rows) if relevant else []
+    direct_coverage = any(c["direct_lookup_complete"] for c in capabilities)
+    uncovered = uncovered_parts(query, scoped_rows) if relevant and not direct_coverage else []
     if not relevant:
         status = "none"
     elif missing or uncovered:
@@ -189,7 +208,7 @@ def grade_evidence(
         "evidence_grades": scored[:80],
         "relevant_evidence_count": relevant,
         "verified_business_resolution": all(
-            c["structured_resolved"] for c in capabilities if c["tool"] in STRUCTURED_TOOLS
+            c["structured_resolved"] for c in capabilities if c["tool"] in STRUCTURED_TOOLS and not c["optional"]
         )
         and not missing,
         "applicability_verdict": "unconfirmed"

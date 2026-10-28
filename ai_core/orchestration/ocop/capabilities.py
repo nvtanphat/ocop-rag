@@ -35,6 +35,8 @@ class ToolSpec:
     source_backed: bool = True
     description: str = ""
     public_description: str = ""
+    identity_slots: tuple[str, ...] = ()
+    identity_node_type: str = ""
 
 
 # Explicit allowlist shared by router, planner and dispatch. Tool specs describe
@@ -78,6 +80,9 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
     ),
     "lookup_recognition": ToolSpec(
         "lookup_recognition",
+        input_slots=("product_name", "product_names", "organization_name", "document_code", "document_codes", "region", "star_rating", "recognition_year", "years"),
+        identity_slots=("product_names", "product_name"),
+        identity_node_type="RecognitionRecord",
         produces=("evidence_unit_id",),
         description="Recognition decision candidates",
         public_description="tra quyết định công nhận",

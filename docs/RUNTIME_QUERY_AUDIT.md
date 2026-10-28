@@ -60,6 +60,62 @@ Hai lần cold-start API cuối bị lỗi native `torch_cpu.dll` khi tải rera
 
 Còn kiểm ở thành phần tiếp theo: truy xuất bổ sung cho câu recognition đơn giản; chọn đúng vai trò/cột trong câu trả lời; C1 thiếu một ý trong lượt baseline; C3 hỏi rõ văn bản chứa mẫu. Chưa thay chính sách câu trả lời cho các ca này.
 
-## 2–10. Chưa duyệt
+## 2. Planner và workflow — đạt cổng chấp nhận
 
-Tiếp tục theo đúng thứ tự từ thành phần 2. Chưa có kết luận đạt cho các thành phần này.
+Bất biến: chỉ thực thi tên trong registry; năm lượt tính theo số lần gọi thực tế; trạng thái chặn không được che bằng tìm kiếm chung; optional không làm thiếu công cụ bắt buộc; chỉ bỏ truy xuất bổ sung khi toàn bộ câu hỏi thuộc khung lookup đã biết và đủ tập thực thể đúng phạm vi nguồn.
+
+| ID | Tầng hỏng | Triệu chứng và nguyên nhân đo được |
+| --- | --- | --- |
+| pair_partial | Evidence grader / workflow | Lookup trả 14 đoạn gắn đúng hai RecognitionRecord. Các ô tên chỉ đạt overlap 0,125, thấp hơn ngưỡng 0,13; ô chủ thể đạt 0. Grader trước sửa kết luận không có bằng chứng, optional search luôn chạy. |
+| blocked-primary | Workflow | `entity_not_found` ở công cụ chính vẫn cho công cụ optional chạy, dù không được phép recovery từ trạng thái này. |
+| optional-gap | Evidence grader | Optional structured tool không có kết quả bị cộng vào `missing_tools`, làm hạ mức bao phủ của công cụ bắt buộc đã hoàn tất. |
+| call-budget | Planner | Bộ nhớ và mục bỏ qua bị tính như lần dispatch, chặn nhầm lượt gọi thứ năm. |
+| targeted-budget | Workflow recovery | Bốn lượt chính cộng hai lần `search_part` tạo sáu lần tìm, nhưng recovery chỉ ghi một mục kết quả. Test tái hiện trước sửa thất bại với hai lần tìm thay vì một. |
+
+Sửa cơ chế:
+
+- [capabilities.py](../ai_core/orchestration/ocop/capabilities.py) khai báo loại bản ghi và slots định danh của adapter; [query_frames.py:19](../ai_core/orchestration/ocop/query_frames.py#L19) kiểm toàn bộ từ nội dung theo [khung ngôn ngữ cấu hình:100](../configs/ocop_language.yaml#L100), không đoán loại câu theo tên sản phẩm. Tác vụ không được giải thích hết, có vị từ mới hoặc câu hỏi nguyên nhân vẫn giữ tìm kiếm bổ sung.
+- [evidence_grader.py:143](../ai_core/orchestration/ocop/evidence_grader.py#L143) và [query_frames.py:62](../ai_core/orchestration/ocop/query_frames.py#L62) nhận diện toàn bộ tập tên bằng giá trị ô chính xác trong nhóm provenance của bản ghi. Vẫn yêu cầu nguồn đúng, bằng chứng hợp lệ, không fallback và không có trạng thái chặn. Danh tính bản ghi chỉ chứng minh độ phủ truy xuất; không thay kiểm entailment của câu trả lời. [Kiểm phủ toàn câu tại dòng 195](../ai_core/orchestration/ocop/evidence_grader.py#L195) nhất quán với kiểm từng phần.
+- [workflow.py:312](../ai_core/orchestration/ocop/workflow.py#L312) bỏ optional khi công cụ chính bị chặn hoặc lookup đã đủ; ghi `not_needed` trong trace. [Dòng 894](../ai_core/orchestration/ocop/workflow.py#L894) giữ mục chủ động không dùng khỏi cảnh báo thiếu phần phụ.
+- [planner.py:23](../ai_core/orchestration/ocop/planner.py#L23) đếm dispatch thực tế; [recovery tại workflow.py:486](../ai_core/orchestration/ocop/workflow.py#L486) giới hạn số phần theo ngân sách còn lại và ghi `call_count`. Mục bộ nhớ và mục bỏ qua không tiêu lượt gọi.
+
+Tiền lệ: [Adaptive-RAG](https://aclanthology.org/2024.naacl-long.389/) điều chỉnh số bước truy xuất theo độ phức tạp; [CRAG](https://arxiv.org/abs/2401.15884) dùng đánh giá chất lượng truy xuất để quyết định hành động kế tiếp. Ở đây dùng hợp đồng bản ghi và khung ngôn ngữ có sẵn để quyết định bảo thủ, không thêm mô hình phân loại.
+
+Kiểm chứng hiện có: 15 test hồi quy offline đạt. Tắt riêng sửa grader: 4 test thất bại; tắt tối ưu thực thi: 2 thất bại; tắt sửa đếm ngân sách: 2 thất bại. Lỗi recovery nhiều phần, cảnh báo optional và tách hai tên thành hai yêu cầu đều đã có lượt test đỏ trước sửa, xanh sau sửa. Nhóm planner/recovery hiện đạt 31/31. Toàn bộ Python/OCR trên bản sửa hiện tại: 1.039 test đạt; lint đạt.
+
+Gọi thẳng lookup và grader sau sửa: vẫn 14 đoạn, giữ nguyên điểm lexical 0,125/0; 14 đoạn được nhận theo nhóm định danh, `sufficient_for_generation`. Một lượt API trung gian còn tìm thừa ở tên đầy đủ kết hợp tên viết tắt: grader nhận đủ định danh nhưng bước tách tại chữ `và` báo thiếu phần sau. Đã đồng nhất kiểm phủ toàn câu với kiểm phủ từng phần; câu có vị từ bổ sung vẫn không đạt khung lookup đầy đủ.
+
+| Bộ đo API riêng, LLM thật | Trước planner | Sau planner |
+| --- | --- | --- |
+| Đúng tập thực thể | 6/6 | 6/6 |
+| Đúng intent / có lookup bắt buộc | 6/6 / 6/6 | 6/6 / 6/6 |
+| Chỉ dùng lookup | 0/6 | 4/6 |
+| Bốn ca cặp sản phẩm: số lần tìm bổ sung | 4 | 0 |
+| Bốn ca cặp sản phẩm: median thời gian | 62,2 giây | 11,3 giây |
+
+Bốn thời gian sau lần lượt 13,0 / 10,8 / 10,0 / 11,8 giây. Đây là phép đo của cùng bốn ca, không suy rộng thành bảo đảm độ trễ. Hai ca ba sản phẩm vẫn cần tìm bổ sung: phép gọi lookup trực tiếp chỉ trả 14 đoạn của hai sản phẩm. Grader mới giữ trạng thái chưa đủ, không nhận nhầm tập ba tên đã hoàn tất; chuyển việc kiểm adapter sang thành phần 4. Chưa kết luận chất lượng đáp án từ việc có citation; vai trò chủ thể và cửa sổ nguồn tiếp tục kiểm ở các tầng tương ứng.
+
+| Bộ phát triển khóa, rerank + LLM stub | Trước planner | Sau planner |
+| --- | --- | --- |
+| `intent_ok` | 49/51 | 49/51 |
+| `tool_ok` | 50/51 | 50/51 |
+| `page_in_prompt` | 35/35 | 35/35 |
+| `top1_page_ok` | 28/35 | 28/35 |
+| `content_ok` / lỗi chạy | 35/35 / 0 | 35/35 / 0 |
+
+Median/max bộ khóa trước 17,58/136,23 giây; sau 16,21/146,21 giây. Không quy biến động thời gian một lượt thành mức cải thiện chung.
+
+Dấu vân tay và trạng thái sau sửa: `ocop-evidence-b531594eddc8`, ready, lineage_ok=true, neo4j_ready=true, 12.619 nút / 22.429 cạnh. Lượt đo API bị khởi động đồng thời với phép tắt sửa đã loại, không dùng chấm điểm. Bộ 26 câu chạy sau bộ riêng bị lỗi native `c10.dll` tại phép forward của reranker ở B2; lượt này không dùng tính tỉ lệ chất lượng. Bộ khóa đã chạy xong qua evaluator chính thức cùng trọng số/profile và biện pháp đọc tensor tạm đã nêu.
+
+| Bộ 26 câu API, LLM thật | Trước planner | Sau planner |
+| --- | --- | --- |
+| Phản hồi HTTP 200 | 26/26 | 26/26 |
+| Đúng tuyến | 26/26 | 26/26 |
+| Đúng công cụ / trần riêng từng câu | 26/26 | 26/26 |
+| Đáp án theo bộ chấm riêng | 25/26 | 25/26 |
+
+Lượt API sau hợp lệ dùng cùng số luồng 6, khởi tạo trước khi nạp mô hình theo [hướng dẫn PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), cùng trọng số, hybrid, rerank 24. B2 chạy riêng một lần rồi toàn bộ 26 câu: 27/27 HTTP 200, không có native crash. Đây là phép thử vận hành, chưa chứng minh riêng việc khởi tạo luồng là nguyên nhân chữa lỗi. Kiểm trace với `call_count`: cao nhất ba lượt, không vượt năm hoặc trần riêng của từng câu. C3 tiếp tục hỏi văn bản chứa mẫu; không đổi gold hoặc chính sách làm rõ. Cách khởi động chuẩn và đọc tensor bền vững tiếp tục xử lý ở tầng truy xuất/cấu hình; mã vận hành tạm không đưa vào repo.
+
+## 3–10. Chưa duyệt
+
+Tiếp tục từ thành phần 3. Chưa có kết luận đạt cho các thành phần này.

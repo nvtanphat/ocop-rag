@@ -15,7 +15,9 @@ from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
 from ai_core.orchestration.ocop import memory
-from ai_core.orchestration.ocop.planner import ToolPlan, build_plan, evidence_ids, recovery_safe
+from ai_core.orchestration.ocop.planner import (
+    ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
+)
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
 from ai_core.system.telemetry import traced
@@ -305,8 +307,28 @@ class OcopAgent:
 
         for task in ordered:
             name = task.name
-            if len(results) >= plan.max_calls:
+            if executed_tool_count(results) >= plan.max_calls:
                 break
+            if task.optional:
+                primary = [entry for entry in results if not entry.get("optional")]
+                blocked = any((entry.get("output") or {}).get("status") in RECOVERY_BLOCKING_STATUSES for entry in primary)
+                grade = grade_evidence(
+                    state.get("effective_query", state["query"]), primary,
+                    slots=route.slots, expected_tools=list(plan.required_names),
+                )
+                complete = (
+                    name == "search_regulations"
+                    and grade["status"] == "sufficient_for_generation"
+                    and any(g.get("direct_lookup_complete") for g in grade["tool_grades"])
+                )
+                if blocked or complete:
+                    output = {"results": [], "status": "not_needed"}
+                    results.append({"tool": name, "output": output, "optional": True, "skipped": True})
+                    finished[name] = output
+                    trace.append({"step": "tool", "name": name, "skipped": True, "optional": True,
+                                  "status": "not_needed", "reason": "required_tool_blocked" if blocked else "direct_lookup_complete",
+                                  "hits": 0, "latency_ms": 0.0})
+                    continue
             failed = [
                 dep
                 for dep in task.depends_on
@@ -461,15 +483,17 @@ class OcopAgent:
         started = monotonic()
         # Targeted: evidence already found for the covered parts stays; only the parts nothing speaks to are searched,
         # each scoped by what it names itself. Without uncovered parts (a missing structured tool) the question is rewritten.
-        parts = list(grade.get("uncovered_parts") or [])
+        parts = list(grade.get("uncovered_parts") or [])[:plan.max_calls - executed_tool_count(results)]
+        call_count = 0
         rewritten = bounded_rewrite(
             state.get("effective_query", state["query"]), grade.get("missing_tools", []), route.slots
         )
         try:
             if parts:
-                found = [
-                    self.tools.search_part(part, route.slots, context, state.get("auth")) for part in parts
-                ]
+                found = []
+                for part in parts:
+                    call_count += 1
+                    found.append(self.tools.search_part(part, route.slots, context, state.get("auth")))
                 rows = [
                     {**row, "query_part": part}
                     for part, one in zip(parts, found)
@@ -477,6 +501,7 @@ class OcopAgent:
                 ]
                 payload = {"results": rows, "status": "ok" if rows else "no_results"}
             else:
+                call_count = 1
                 payload = self.tools.dispatch(
                     "search_regulations",
                     query=rewritten,
@@ -493,13 +518,14 @@ class OcopAgent:
                 raise
             payload = {"results": [], "status": "tool_unavailable", "error_type": type(exc).__name__}
         payload = self._validate_output(payload)
-        results.append({"tool": "search_regulations", "output": payload, "recovery": True})
+        results.append({"tool": "search_regulations", "output": payload, "recovery": True, "call_count": call_count})
         trace.append(
             {
                 "step": "recovery",
                 "name": "search_regulations",
                 "reason": "uncovered_question_parts" if parts else "insufficient_or_irrelevant_evidence",
                 "parts": parts,
+                "call_count": call_count,
                 "status": payload.get("status", "ok"),
                 "hits": len(payload.get("results", [])),
                 "latency_ms": round((monotonic() - started) * 1000, 2),
@@ -782,9 +808,16 @@ class OcopAgent:
                 },
                 key=lambda x: (not x.isdigit(), int(x) if x.isdigit() else 0, x),
             )
+            candidates = list(
+                dict.fromkeys(
+                    doc for item in form_gap for doc in ((item.get("output") or {}).get("candidate_documents") or [])
+                )
+            )
             named = (
                 "Các mẫu còn thiếu hoặc chưa xác minh: " + ", ".join(missing)
                 if missing
+                else "Các mẫu này có trong nhiều văn bản (" + "; ".join(candidates) + "). Bạn muốn tra mẫu của văn bản nào?"
+                if candidates
                 else "Chưa xác định được phiên bản văn bản chung cho các mẫu"
             )
             # What the documents say *about* the forms is evidence; the forms' own content is not available. Report the
@@ -799,8 +832,9 @@ class OcopAgent:
             else:
                 return {
                     "answer": {
-                        "answer": "Chưa có đầy đủ biểu mẫu đã xác minh để đối chiếu. " + named,
-                        "status": "insufficient_form_scope",
+                        # Several documents carry the forms: ask which one, naming the candidates found in the corpus.
+                        "answer": named if candidates and not missing else "Chưa có đầy đủ biểu mẫu để đối chiếu. " + named,
+                        "status": "clarify" if candidates and not missing else "insufficient_form_scope",
                         "citations": [],
                     }
                 }
@@ -857,6 +891,7 @@ class OcopAgent:
             item["tool"]
             for item in outputs
             if item.get("optional")
+            and (item.get("output") or {}).get("status") != "not_needed"
             and (
                 item.get("skipped")
                 or (item.get("output") or {}).get("status") in BAD_RESULT_STATUSES

@@ -95,6 +95,12 @@ followup:
 
 # Cue lists by question facet.
 cues:
+  # Complete record questions can stop after a source-backed identity lookup.
+  # These are cue-family references, not copies of the phrases below.
+  direct_lookup:
+    lookup_recognition: [producer, recognition_attribute, recognition_score_attribute, recognition]
+  direct_lookup_exclusion: [tại sao, vì sao, bằng cách nào]
+  recognition_score_attribute: [bao nhiêu điểm, mấy điểm, điểm đánh giá, tổng điểm]
   # Words that join or contrast the parts of one question; each part is searched on its own as well.
   part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc]
   in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,

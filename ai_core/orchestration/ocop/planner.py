@@ -18,6 +18,10 @@ from ai_core.orchestration.ocop.capabilities import (
 )
 
 MAX_TOOLS = MAX_TOOL_CALLS
+
+
+def executed_tool_count(outputs: list[dict]) -> int:
+    return sum(entry.get("call_count", 1) for entry in outputs if not entry.get("skipped") and not entry.get("memory"))
 # A transport/contract failure is not a legitimate zero-hit lookup. Never
 # disguise these errors as a successful text recovery.
 RECOVERY_BLOCKING_STATUSES = frozenset(
@@ -46,7 +50,7 @@ RECOVERY_BLOCKING_STATUSES = frozenset(
 
 def recovery_safe(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
     """Only recover ordinary non-scoped misses, never failed services or policies."""
-    if not plan.text_recovery or len(outputs) >= plan.max_calls:
+    if not plan.text_recovery or executed_tool_count(outputs) >= plan.max_calls:
         return False
     if any(x.get("tool") == "search_regulations" for x in outputs):
         return False
