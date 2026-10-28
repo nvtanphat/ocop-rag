@@ -89,17 +89,13 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
                 ),
                 None,
             )
-            if not (number or same):
-                continue
-            row = {**record, "row": cell["row"], "table_id": u["structured"].get("table_id")}
-            try:
-                ev = ref(row, index)
-            except (KeyError, ValueError):
-                omitted["sheet_index_row_missing_evidence"] += 1
-                continue
             if number:
+                row = {**record, "row": cell["row"], "table_id": u["structured"].get("table_id")}
+                ev = ref(row, index)
                 sheet(sid, str(int(number)), label, row, ev)
             elif same:
+                row = {**record, "row": cell["row"], "table_id": u["structured"].get("table_id")}
+                ev = ref(row, index)
                 add(
                     EntityType.CRITERION_SHEET,
                     label,
@@ -219,11 +215,7 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
             link(relation, parent, child, ev, extra_evidence=anchors)
 
         for row in sorted(records, key=lambda r: int(r["row"])):
-            try:
-                ev = ref(row, index)
-            except (KeyError, ValueError):
-                omitted["score_row_missing_evidence"] += 1
-                continue
+            ev = ref(row, index)
             cid = identity(EntityType.CRITERION, sid, f"numbered:{row['candidate_id']}")
             oid = identity(EntityType.SCORE_OPTION, sid, f"score-option:{row['candidate_id']}")
             label = str(row.get("label_candidate") or "").split("|")[0].strip()
