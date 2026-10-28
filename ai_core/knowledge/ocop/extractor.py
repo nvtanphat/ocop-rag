@@ -71,13 +71,16 @@ def _ref(candidate: dict, evidence_index: dict[str, dict], text: str | None = No
                 raise ValueError("candidate row text not traceable to table cells")
         quote = reconstructed[:1200]
         rectangles = [c.get("bbox") for c in cells if c.get("bbox")]
-        if rectangles:
-            bbox = (
-                min(v[0] for v in rectangles),
-                min(v[1] for v in rectangles),
-                max(v[2] for v in rectangles),
-                max(v[3] for v in rectangles),
-            )
+        # A row without cell geometry cannot be cited; the page bbox in its place is a citation the graph check
+        # rejects, and one rejected row would take down every entity that shares this reference (its decision).
+        if not rectangles:
+            raise ValueError("table row has no source geometry")
+        bbox = (
+            min(v[0] for v in rectangles),
+            min(v[1] for v in rectangles),
+            max(v[2] for v in rectangles),
+            max(v[3] for v in rectangles),
+        )
     else:
         if quote and quote not in original:
             raise ValueError("quote not literally present in evidence source")

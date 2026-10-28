@@ -136,6 +136,19 @@ def test_header_grounded_recognition_inherited_owner_with_proof():
     assert all(any(e["cell_id"] == "table:native:0:r1:c1" for e in r["evidence"]) for r in links)
 
 
+def test_a_row_without_geometry_is_left_out_not_cited_by_the_page_bbox():
+    unit = _recognition_fixture()
+    for cell in unit["structured"]["cells"]:
+        if cell["row"] == 2:
+            cell["bbox"] = None
+    kind = {unit["source_id"]: "recognition_decision"}
+    result = extract_semantics([unit], kind, candidates([unit], kind))
+    records = [r for r in result["business_entities"] if r["kind"] == "RecognitionRecord"]
+    assert [r["attributes"]["row_number"] for r in records] == ["1"]
+    decision = next(r for r in result["business_entities"] if r["kind"] == "RecognitionDecision")
+    assert all(e["bbox"] != [0, 0, 400, 30] for e in decision["evidence"])
+
+
 def test_hue_recognition_layout_is_inferred_from_its_header():
     sid = "LOCAL.ANOTHER-REGION.DECISION"
     cells = []
