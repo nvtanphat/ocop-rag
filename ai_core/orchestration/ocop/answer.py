@@ -188,6 +188,12 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
         if first is not None and first not in chosen:
             chosen.append(first)
             covered |= found[first]
+    # A relation the graph tool proved is often worded unlike the question (a decision "thay thế" an older one says the old
+    # one "hết hiệu lực"), so term coverage scores it near zero; its best-ranked block keeps a place like a query part.
+    first = next((i for i, e in enumerate(entries) if e[1].get("graph_edge_id")), None)
+    if first is not None and first not in chosen:
+        chosen.append(first)
+        covered |= found[first]
     # reserved blocks are added to the limit, never taken out of it (the token budget stays the last bound)
     reserved = min(len(chosen), _RESERVED_SLOTS)
     limit += reserved

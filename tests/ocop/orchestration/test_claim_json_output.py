@@ -407,6 +407,21 @@ def test_the_best_block_of_each_searched_part_keeps_its_place_even_without_a_sha
     assert plain not in _most_relevant(prose + [plain], terms, 3)
 
 
+def test_the_graph_relation_block_keeps_its_place_when_worded_unlike_the_question():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+
+    prose = [
+        ((f"S{i}", 6, f"u{i}", f"c{i}"), {"raw_text": "thay thế văn bản quy định", "text": "thay thế"}, {}, False)
+        for i in range(8)
+    ]
+    clause = {"raw_text": "Quyết định số 148/QĐ-TTg hết hiệu lực kể từ ngày này", "text": "hết hiệu lực"}
+    terms = ["thay", "the", "van", "ban"]
+    relation = (("S9", 13, "u9", "c9"), {**clause, "graph_edge_id": "e1"}, {}, False)
+    assert relation in _most_relevant(prose + [relation], terms, 3)
+    plain = (relation[0], clause, {}, False)
+    assert plain not in _most_relevant(prose + [plain], terms, 3)
+
+
 def test_claim_may_name_the_parent_heading_shown_above_the_excerpt():
     parent = row(
         "1.1. Nguồn gốc sản phẩm: Yêu cầu: 100% sản phẩm được trồng trên địa bàn cấp tỉnh",
