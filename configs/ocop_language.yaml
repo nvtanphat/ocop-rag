@@ -80,6 +80,10 @@ product_markers: [sản phẩm, có sản phẩm, với sản phẩm, mặt hàn
 
 # Whole-question follow-up behaviour.
 followup:
+  # Zero denotes an uncounted plural: use the bounded set of recent referents.
+  reference_quantities: {hai: 2, '2': 2, ba: 3, '3': 3, cả hai: 2, cả ba: 3, các: 0, những: 0}
+  demonstrative: '(?:nay|do|ay|tren|vua\s+(?:noi|nhac|hoi|roi)|kia|nhac\s+den)'
+  alternative_reference: 'khac'
   openers: [thế, vậy, còn, nếu vậy, với năm đó, đổi sang, chuyển sang, thế còn, vậy còn, thế thì, vậy thì]
   pronouns: [nó, cái đó, cái này, điều đó, điều này, đó, ý đó, mục đó, phần đó, văn bản đó, quyết định đó]
   # Closing phrases that ask about the same thing again for a new part ("Nơi tiếp nhận thì sao?").
@@ -178,7 +182,7 @@ dialogue:
   acknowledgment: '(?:ok|okay|vang|da|(?:ok )?(?:minh|toi) (?:da )?hieu(?: roi)?)'
   farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
   identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'
-  help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'
+  help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?(?:viec |dieu |chuc nang )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'
   rephrase: '(?:(?:minh|toi) chua hieu|(?:hay )?(?:giai thich|noi)(?: lai)? (?:de hieu|don gian|de)(?: hon)?(?: duoc khong)?|explain (?:that )?(?:more simply|again))'
   correction: '(?:(?:khong phai|sai roi)(?: y (?:minh|toi))?|{address} (?:tra loi )?sai roi|that is wrong)'
   sources: '(?:(?:cho (?:minh|toi) )?(?:xem )?nguon(?: cua cau (?:do|nay))?|show (?:me )?(?:the )?sources?)'
@@ -196,6 +200,7 @@ messages:
     tenant_id: đơn vị (tenant)
     dossier_id: mã hồ sơ
     document_or_sheet_for_code: phiếu hoặc văn bản chứa mã tiêu chí này
+    document_for_locator: văn bản chứa điều này (số hiệu cụ thể)
     document_version_or_event_year: văn bản hoặc năm sự kiện cần áp dụng
     split_question: tách thành từng câu hỏi riêng
     referent_form: hai biểu mẫu bạn muốn nói tới (số mẫu cụ thể)

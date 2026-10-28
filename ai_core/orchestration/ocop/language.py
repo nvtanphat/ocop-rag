@@ -37,6 +37,9 @@ class Followup(BaseModel):
     tail_cues: list[str] = []
     generic_question: str = "{target}{scope} nói gì?"
     scope_of: str = "của"
+    reference_quantities: dict[str, int] = Field(default_factory=dict)
+    demonstrative: str = ""
+    alternative_reference: str = ""
 
 
 class Messages(BaseModel):

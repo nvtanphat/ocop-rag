@@ -29,8 +29,8 @@ REFERENT_SLOTS = {
     "product": ("product_names", "product_name"),
 }
 COMPARE_CUE = re.compile(r"\bso sanh\b|\bso voi\b|\bkhac voi\b|\bcung voi\b")
-PLURAL = r"(?:hai|2|ba|3|ca\s+hai|cac|nhung|ca\s+ba)"
-DEMONSTRATIVE = r"(?:nay|do|ay|tren|vua\s+(?:noi|nhac|hoi|roi)|kia|nhac\s+den)"
+# Shared with query decomposition; grammar comes from the same language config.
+DEMONSTRATIVE = get_language().followup.demonstrative
 
 
 def empty() -> dict:
@@ -51,7 +51,7 @@ def sanitize(raw: Any) -> dict:
         for kind in REFERENT_SLOTS:
             values = referents.get(kind)
             if isinstance(values, list):
-                out["referents"][kind] = [v for v in values if _short(v, 64)][:MAX_REFERENTS]
+                out["referents"][kind] = [v for v in values if _short(v)][:MAX_REFERENTS]
     if _short(raw.get("standalone"), 600):
         out["standalone"] = raw["standalone"]
     if _short(raw.get("corpus_version"), 64):
@@ -123,12 +123,22 @@ def _noun_pattern(lang: Language, kind: str) -> str:
     )
 
 
-def _points_back(folded: str, noun: str) -> bool:
-    return bool(
-        re.search(
-            rf"\b{PLURAL}\s+(?:{noun})\s+{DEMONSTRATIVE}\b|\b(?:{noun})\s+{DEMONSTRATIVE}\s+khac", folded
-        )
+def _reference_count(folded: str, noun: str, lang: Language) -> int | None:
+    quantities = {fold(k): v for k, v in lang.followup.reference_quantities.items()}
+    if not quantities or not lang.followup.demonstrative:
+        return None
+    alternatives = "|".join(
+        r"\s+".join(re.escape(w) for w in phrase.split())
+        for phrase in sorted(quantities, key=len, reverse=True)
     )
+    match = re.search(rf"\b({alternatives})\s+(?:{noun})\s+{lang.followup.demonstrative}\b", folded)
+    if match:
+        return quantities[re.sub(r"\s+", " ", match.group(1))]
+    if lang.followup.alternative_reference and re.search(
+        rf"\b(?:{noun})\s+{lang.followup.demonstrative}\s+{lang.followup.alternative_reference}\b", folded
+    ):
+        return 2
+    return None
 
 
 def singular_reference(question: str, lang: Language | None = None) -> bool:
@@ -139,7 +149,10 @@ def singular_reference(question: str, lang: Language | None = None) -> bool:
     """
     lang = lang or get_language()
     nouns = "|".join(_noun_pattern(lang, kind) for kind in REFERENT_SLOTS)
-    return bool(re.search(rf"\b(?:{nouns})(?:\s+[a-z]+){{0,2}}\s+{DEMONSTRATIVE}\b", fold(question)))
+    return bool(
+        lang.followup.demonstrative
+        and re.search(rf"\b(?:{nouns})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", fold(question))
+    )
 
 
 def dangling_reference(question: str, memory: Any, updates: dict, lang: Language | None = None) -> str | None:
@@ -150,11 +163,12 @@ def dangling_reference(question: str, memory: Any, updates: dict, lang: Language
     folded = fold(question)
     for kind in REFERENT_SLOTS:
         noun = _noun_pattern(lang, kind)
+        count = _reference_count(folded, noun, lang) if noun else None
         if (
             noun
             and not _values(updates, kind)
-            and len(referents.get(kind, [])) < 2
-            and _points_back(folded, noun)
+            and count is not None
+            and len(referents.get(kind, [])) < (count or 2)
         ):
             return kind
     return None
@@ -175,8 +189,9 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
             continue
         new = _values(updates, kind)
         # "Hai mẫu này khác nhau ở đâu?": a plural demonstrative over a kind with at least two discussed items
-        if not new and len(pool) >= 2 and _points_back(folded, noun):
-            return _as_slots(kind, pool[:2][::-1])
+        count = _reference_count(folded, noun, lang)
+        if not new and count is not None and len(pool) >= (count or 2):
+            return _as_slots(kind, pool[: count or len(pool)][::-1])
         # "So sánh với mẫu số 01": the new item against the most recent different one
         if new and len(new) == 1 and COMPARE_CUE.search(folded):
             before = [v for v in pool if v != new[0]]
@@ -263,7 +278,9 @@ def rewrite(
     }
     # The name of the product/organisation swapped in is the thing replaced, not a word of the question.
     named = {
-        w for key in ("product_name", "organization_name") for w in lang.content_words(str(updates.get(key) or ""))
+        w
+        for key in ("product_name", "organization_name")
+        for w in lang.content_words(str(updates.get(key) or ""))
     }
     own_words = [
         w

@@ -326,14 +326,23 @@ def extract_slots(
             if standalone(x) and not any(x.start < end and start < x.end for start, end in locators)
         ]
 
-    products = outside_locators(catalog.find("product", text)) or outside_locators(catalog.find("product_group", text))
+    products = outside_locators(catalog.find("product", text))
+    linked = outside_locators(catalog.link("product", text, is_content=lambda w: bool(lang.content_words(w))))
+    products += [m for m in linked if not any(m.start < x.end and x.start < m.end for x in products)]
+    products = sorted(products, key=lambda m: m.start)
     if products:
-        slots["product_name"] = max(products, key=lambda x: x.end - x.start).label
-    elif coded := outside_locators(catalog.find_by_code("product", text)):
-        slots["product_name"] = coded[0].label
+        names = list(dict.fromkeys(m.label for m in products))
+        slots["product_name"] = names[0]
+        if len(names) > 1:
+            slots["product_names"] = names
+    elif groups := outside_locators(catalog.find("product_group", text)):
+        slots["product_name"] = max(groups, key=lambda x: x.end - x.start).label
     elif name := _product_from_marker(text, folded, p):
         slots["product_name"] = name
-    if orgs := outside_locators(catalog.find("organization", text)):
+    orgs = outside_locators(catalog.find("organization", text)) or outside_locators(
+        catalog.link("organization", text, is_content=lambda w: bool(lang.content_words(w)))
+    )
+    if orgs:
         slots["organization_name"] = max(orgs, key=lambda x: x.end - x.start).label
     only_year_in_code = len(years) == 1 and not slots.get("document_code")
     event = re.search(r"(?:" + _alt(lang.cues["event_year_scope"]) + r").{0,90}?\bnam\s+(20\d{2})\b", folded)
@@ -667,18 +676,28 @@ def _route_business(
     )
     explicit_oos = lang.hit(q, "explicit_out_of_scope")
     bare_code = bool(BARE_CRITERION.match(q)) and not followup
+    # "Điều 5 quy định gì?": an article number with nothing else says nothing about which of several documents is meant.
+    structure_words = {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)}
+    bare_locator = (
+        bool(updates.get("article_id"))
+        and not updates.get("document_code")
+        and not followup
+        and not set(content) - structure_words
+        and len(catalog.labels("document")) > 1
+    )
     reopened = False
+    off_corpus = False
     if not in_domain and not followup and not explicit_oos and indexed_content_bigram_coverage is not None:
         try:
             coverage = indexed_content_bigram_coverage(q)
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             coverage = None
-        if (
-            isinstance(coverage, (int, float))
-            and not isinstance(coverage, bool)
-            and get_settings().agent.scope_min_bigram_coverage <= coverage <= 1.0
-        ):
-            in_domain = reopened = True
+        if isinstance(coverage, (int, float)) and not isinstance(coverage, bool):
+            if get_settings().agent.scope_min_bigram_coverage <= coverage <= 1.0:
+                in_domain = reopened = True
+            else:
+                # Long enough to measure and not found in the corpus: a complete off-topic question, not a fragment of one.
+                off_corpus = True
     if explicit_oos:
         return Route(
             intent=Intent.OUT_OF_SCOPE,
@@ -688,10 +707,11 @@ def _route_business(
         )
     if (
         bare_code
-        or (not in_domain and not followup and len(content) <= 3)
+        or bare_locator
+        or (not in_domain and not followup and not off_corpus and len(content) <= 3)
         or (pronoun and not has_prior and not own_scope and len(content) <= 2)
     ):
-        missing = ["document_or_sheet_for_code"] if bare_code else ["topic"]
+        missing = ["document_or_sheet_for_code"] if bare_code else ["document_for_locator"] if bare_locator else ["topic"]
         return Route(
             intent=Intent.CLARIFY,
             strategy="clarify",
@@ -745,6 +765,15 @@ def _route_business(
         scores.setdefault(Intent.MULTIHOP_REASONING, 35)
     if facets.recognition and facets.recognition_listing:
         scores[Intent.RECOGNITION_LOOKUP] = 80
+    # Entity linking (the question names a catalogued product or producer) with no stronger signal: the question is about that
+    # entity's record, which lives in the verified recognition store, not in free text.
+    if (slots.get("product_name") or slots.get("organization_name")) and (
+        catalog.find("product", q)
+        or catalog.find("organization", q)
+        or catalog.link("product", q)
+        or catalog.link("organization", q)
+    ):
+        scores.setdefault(Intent.RECOGNITION_LOOKUP, 40)
     if followup and not scores:
         try:
             parent = Intent(prior.get("intent"))

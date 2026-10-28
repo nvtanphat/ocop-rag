@@ -125,6 +125,85 @@ def test_asking_the_rating_of_a_named_product_is_a_recognition_lookup():
     assert route_query("Tiêu chí để đạt mấy sao?", catalog=catalog).intent == Intent.CRITERIA_LOOKUP
 
 
+def _catalog_with(products=(), organizations=()):
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    return EntityCatalog(
+        {
+            "entities": {
+                "product": [{"label": x, "source_ids": []} for x in products],
+                "organization": [{"label": x, "source_ids": []} for x in organizations],
+            }
+        }
+    )
+
+
+def test_entity_linking_uses_a_run_of_words_that_only_one_label_contains():
+    catalog = _catalog_with(
+        organizations=["Hợp tác xã nông nghiệp Thụy Hương", "Hợp tác xã dịch vụ Phước An", "Công ty Hichagol"]
+    )
+    assert [m.label for m in catalog.link("organization", "Sản phẩm của Thụy Hương có gì?")] == [
+        "Hợp tác xã nông nghiệp Thụy Hương"
+    ]
+    # a phrase shared by several labels is a category, not a name
+    assert catalog.link("organization", "Hợp tác xã là gì?") == []
+
+
+def test_entity_linking_ignores_ordinary_words_and_partial_names():
+    catalog = _catalog_with(
+        products=["Sản phẩm từ tinh bột và sản phẩm thay thế chế biến"],
+        organizations=["Hộ kinh doanh Nguyễn Thị Huyền"],
+    )
+    # "thay thế" occurs in one label only, but as plain description, not as a name
+    assert "product_name" not in route_query("QĐ26/2026 thay thế những văn bản nào?", catalog=catalog).slots
+    # "Nguyễn Thị" is the start of a longer name that the label does not have
+    assert not catalog.link("organization", "Nguyễn Thị Hà là người đại diện hay chủ thể?")
+    assert [m.label for m in catalog.link("organization", "Nguyễn Thị Huyền đại diện cho đơn vị nào?")] == [
+        "Hộ kinh doanh Nguyễn Thị Huyền"
+    ]
+
+
+def test_a_question_naming_a_catalogued_entity_is_a_lookup_of_its_record():
+    catalog = _catalog_with(
+        products=["Gạo ruộng rươi ST25", "Mứt Atiso đỏ"], organizations=["Hợp tác xã nông nghiệp Thụy Hương"]
+    )
+    for q, slot in (
+        ("Gạo ruộng rươi ST25 được bao nhiêu điểm?", "product_name"),
+        ("Mứt Atiso đỏ của công ty nào sản xuất?", "product_name"),
+        ("Thụy Hương có những sản phẩm nào đạt 4 sao?", "organization_name"),
+    ):
+        route = route_query(q, catalog=catalog)
+        assert route.intent == Intent.RECOGNITION_LOOKUP and slot in route.slots, q
+    # a stronger signal in the same question still wins
+    assert route_query("Tiêu chí của Mứt Atiso đỏ là gì?", catalog=catalog).intent == Intent.CRITERIA_LOOKUP
+
+
+def test_a_complete_off_topic_question_is_out_of_scope_but_a_fragment_asks_for_a_topic(monkeypatch):
+    measured = lambda text: 0.3  # noqa: E731  long enough to measure, not found in the corpus
+    unmeasurable = lambda text: None  # noqa: E731
+    assert route_query("Hôm nay thời tiết Hà Nội thế nào?", indexed_content_bigram_coverage=measured).intent == Intent.OUT_OF_SCOPE
+    assert route_query("Hôm nay thời tiết Hà Nội thế nào?", indexed_content_bigram_coverage=unmeasurable).intent == Intent.CLARIFY
+
+
+def test_an_article_number_alone_asks_which_document_when_the_corpus_has_several():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    many = EntityCatalog({"entities": {"document": [{"label": "26/2026/QĐ-TTg"}, {"label": "17/2023/QH15"}]}})
+    one = EntityCatalog({"entities": {"document": [{"label": "26/2026/QĐ-TTg"}]}})
+    asked = route_query("Điều 5 quy định gì?", catalog=many)
+    assert asked.intent == Intent.CLARIFY and asked.missing_slots == ["document_for_locator"]
+    assert route_query("Điều 5 quy định gì?", catalog=one).intent != Intent.CLARIFY
+    assert route_query("Điều 5 Luật Hợp tác xã quy định gì?", catalog=many).intent != Intent.CLARIFY
+    assert route_query("Điều 5 QĐ26/2026 quy định gì?", catalog=many).intent == Intent.EXACT_LOOKUP
+    session = {"last_query": "QĐ26/2026 Điều 6?", "slots": {"document_code": "26/2026", "article_id": "6"}}
+    assert route_query("Còn Điều 7?", catalog=many, session=session).slots["document_code"] == "26/2026"
+
+
+def test_asking_what_the_assistant_can_do_is_a_conversation_act():
+    for q in ("Bạn có thể giúp tôi những việc gì?", "Bạn giúp được gì?", "Bạn hỗ trợ tôi những gì?"):
+        assert route_query(q).intent == Intent.CONVERSATION, q
+
+
 def test_a_code_word_names_the_one_product_that_carries_it():
     from ai_core.orchestration.ocop.catalog import EntityCatalog
 

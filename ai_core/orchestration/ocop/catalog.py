@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -196,22 +197,80 @@ class EntityCatalog:
                 )
         return sorted(found, key=lambda x: x.start)
 
-    def find_by_code(self, kind: str, query: str) -> list[Match]:
-        """Entities named by a code-like word alone ("ST25", "HANA" for "Gạo ruộng rươi ST25"): a word with a digit or in
-        capitals that occurs in exactly one label of `kind`. Ordinary words never qualify, nor does an ambiguous code."""
-        owners: dict[str, set[str]] = {}
+    def link(self, kind: str, query: str, *, is_content=None) -> list[Match]:
+        """Entity linking by a distinctive part of the name ("ST25", "Thụy Hương" for the full catalogue label).
+
+        A run of consecutive query words that occurs inside exactly one label of `kind` names that entity. A run shared by
+        several labels ("hợp tác xã", "gạo ruộng rươi") is a category, not a name, and a single word qualifies only when
+        it looks like a code (digit or capitals). A run inside a label counts as a name only when the label itself writes it
+        as one (capitalised or with digits, not as the label's first word): ordinary words such as "thay thế" in a long
+        product description are never names, however rare. `is_content` filters out runs made only of function words.
+        """
+
+        def name_like(word: str, first: bool) -> bool:
+            return any(c.isdigit() for c in word) or (word[:1].isupper() and (not first or word.isupper()))
+
+        query = unicodedata_nfc(query)
+        normalize = (lambda word: unicodedata_nfc(word).casefold()) if has_diacritics(query) else fold
+        occurs: dict[tuple[str, ...], set[str]] = {}
+        code_words: set[str] = set()
         for item in self._items.get(kind, []):
-            for word in re.findall(r"[\w]+", fold(item["label"])):
-                owners.setdefault(word, set()).add(item["label"])
-        found, seen = [], set()
-        for m in re.finditer(r"[\w]+", query):
-            word = m.group(0)
-            code_like = any(c.isdigit() for c in word) or (len(word) >= 3 and word.isupper())
-            labels = owners.get(fold(word), set()) if code_like else set()
-            if len(labels) == 1 and (label := next(iter(labels))) not in seen:
-                seen.add(label)
-                found.append(Match(kind, label, (), m.start(), m.end()))
-        return found
+            raw = re.findall(r"[\w]+", item["label"])
+            words = [normalize(w) for w in raw]
+            code_words.update(normalize(w) for w in raw if any(c.isdigit() for c in w) or (len(w) >= 3 and w.isupper()))
+            ok = [name_like(w, i == 0) for i, w in enumerate(raw)]
+            for n in range(1, len(words) + 1):
+                for i in range(len(words) - n + 1):
+                    if all(ok[i : i + n]):
+                        occurs.setdefault(tuple(words[i : i + n]), set()).add(item["label"])
+        spans = [(m.start(), m.end(), m.group(0)) for m in re.finditer(r"[\w]+", query)]
+
+        def consecutive(left, right) -> bool:
+            # A list boundary ends a name. A hyphen can join parts of one code;
+            # keep checking the entire code so a mismatched suffix cannot link.
+            gap = query[left[1] : right[0]]
+            return all(
+                (char.isspace() and char not in "\r\n") or unicodedata.category(char) == "Pd"
+                for char in gap
+            )
+
+        found, seen, taken = [], set(), []
+        # longest runs first, so "Thụy Hương" is not also reported as "Thụy" and "Hương"
+        for n in range(min(6, len(spans)), 0, -1):
+            for i in range(len(spans) - n + 1):
+                run = spans[i : i + n]
+                if any(not consecutive(left, right) for left, right in zip(run, run[1:])):
+                    continue
+                start, end = run[0][0], run[-1][1]
+                if any(start < e and s < end for s, e in taken):
+                    continue
+                words = tuple(normalize(w) for _, _, w in run)
+                labels = occurs.get(words, set())
+                if len(labels) != 1:
+                    continue
+                # A name-like word right next to the run that the label does not continue with is part of another, longer
+                # name ("Nguyễn Thị Hà" is not the label "Nguyễn Thị Huyền"): the partial match names nothing.
+                label_ = next(iter(labels))
+                extended = False
+                for j in (i - 1, i + n):
+                    if 0 <= j < len(spans) and name_like(spans[j][2], j == 0):
+                        if not (consecutive(spans[j], run[0]) if j < i else consecutive(run[-1], spans[j])):
+                            continue
+                        pair = (normalize(spans[j][2]), *words) if j < i else (*words, normalize(spans[j][2]))
+                        if label_ not in occurs.get(pair, set()):
+                            extended = True
+                if extended:
+                    continue
+                if n == 1 and words[0] not in code_words:
+                    continue
+                if is_content is not None and not any(is_content(w) for w in words):
+                    continue
+                label = next(iter(labels))
+                taken.append((start, end))
+                if label not in seen:
+                    seen.add(label)
+                    found.append(Match(kind, label, (), start, end))
+        return sorted(found, key=lambda m: m.start)
 
     def document_by_type_year(self, kind: str, year: str) -> str | None:
         """Number of the only catalogued document of this type and year (None when absent or ambiguous)."""
