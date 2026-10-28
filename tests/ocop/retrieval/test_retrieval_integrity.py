@@ -135,7 +135,8 @@ def test_vietnamese_unaccented_query_recovers_accented_document(tmp_path):
 
 
 def test_reranker_candidate_depth_not_limited_to_3x_target_count(tmp_path, monkeypatch):
-    rows = [_row(f"item_{i:02}", f"ho so thang diem {i}") for i in range(20)]
+    count = max(20, module.get_settings().retrieval.rerank_candidates + 1)
+    rows = [_row(f"item_{i:02}", f"ho so thang diem {i}") for i in range(count)]
     idx = _index(tmp_path / "idx", rows)
     seen = []
 
@@ -149,6 +150,28 @@ def test_reranker_candidate_depth_not_limited_to_3x_target_count(tmp_path, monke
     seen.clear()
     module.search(idx, "ho so thang diem", top_k=1, rerank=True)
     assert len(seen) == module.get_settings().retrieval.rerank_candidates
+
+
+def test_first_stage_rank_can_be_merged_with_the_cross_encoder_order(tmp_path, monkeypatch):
+    rows = [_row(f"item_{i:02}", "ho so thang diem " + "x " * i) for i in range(12)]
+    idx = _index(tmp_path / "idx", rows)
+
+    def oracle_rerank(query, candidates, model_id, revision=None, **kwargs):
+        # a cross-encoder that is sure about one deep candidate and ranks the rest in reverse first-stage order
+        return sorted(candidates, key=lambda r: (r["chunk_id"] != "item_11", r["chunk_id"]))
+
+    monkeypatch.setattr(module, "_rerank", oracle_rerank)
+    settings = module.get_settings().retrieval
+    first = module.search(idx, "ho so thang diem", top_k=12, rerank=False)
+    first_ids = [r["chunk_id"] for r in first]
+    monkeypatch.setattr(settings, "rerank_first_stage_weight", 0.0)
+    alone = module.search(idx, "ho so thang diem", top_k=12, rerank=True, rerank_candidates=12)
+    assert alone[0]["chunk_id"] == "item_11"  # the cross-encoder alone decides
+    monkeypatch.setattr(settings, "rerank_first_stage_weight", 1.0)
+    merged = module.search(idx, "ho so thang diem", top_k=12, rerank=True, rerank_candidates=12)
+    assert merged[0]["chunk_id"] == first[0]["chunk_id"]  # strong first-stage evidence keeps its place
+    ids = [r["chunk_id"] for r in merged]
+    assert ids.index("item_11") < first_ids.index("item_11")  # while the cross-encoder's pick is still promoted
 
 
 def test_unpinned_reranker_does_not_enable_remote_code(tmp_path, monkeypatch):

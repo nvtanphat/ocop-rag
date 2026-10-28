@@ -28,6 +28,16 @@ Các tham số Qdrant/Neo4j và lựa chọn dense nằm trong trợ giúp CLI, 
 python tools/cli.py run --help
 ```
 
+## Mô hình truy vấn trên CPU
+
+`retrieval.rerank_threads` trong `configs/ocop_retrieval.yaml` được đặt một lần trước khi nạp trọng số hoặc tính embedding/rerank. Khởi động lại tiến trình sau khi đổi số luồng. Embedding và reranker dùng chung khóa tải/tính toán để giới hạn bộ nhớ khi nhiều request đến đồng thời; request có thể chờ lượt tính mô hình.
+
+`retrieval.tensor_reader_backend` nhận `auto`, `pread` hoặc `mmap`. `auto` chọn `pread` trên Windows và `mmap` trên hệ điều hành khác. Extra `retrieval`/`full` yêu cầu `safetensors>=0.8` để hỗ trợ bộ đọc này. Model, revision và chiều vector tiếp tục lấy từ cấu hình và manifest hiện hành; mọi lần nạp vẫn chỉ đọc trọng số cục bộ và giữ `trust_remote_code=false`.
+
+Cache điểm rerank phân biệt ngân sách token của cặp câu hỏi/đoạn. Phản hồi vẫn ghi `rerank_input_truncated` khi đoạn bị cắt, kể cả khi dùng lại điểm đã cache. Kích thước nhóm ứng viên và trọng số RRF tiếp tục nằm trong cấu hình truy xuất.
+
+Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), [các bộ đọc Safetensors](https://huggingface.co/docs/safetensors/en/api/torch).
+
 ## LLM tùy chọn
 
 `.env` được client LLM nạp khi cần; biến môi trường đã có được ưu tiên. FE không giữ key hay gọi nhà cung cấp LLM trực tiếp. Mặc định câu hỏi FE dùng `use_llm=false`; có thể bật sinh câu trả lời trên form.

@@ -17,6 +17,7 @@ from ai_core.retrieval.ocop.models_config import (
     resolve_local_model_path,
 )
 from ai_core.retrieval.ocop.settings import get_settings
+from ai_core.retrieval.ocop import model_runtime
 from ai_core.retrieval.ocop.index_pipeline import (
     ROOT,
     BM25Search,
@@ -70,9 +71,11 @@ def _dense_hits(
         from qdrant_client import QdrantClient
     except ImportError as exc:
         raise RuntimeError("qdrant-client is required for dense/hybrid query") from exc
-    model = _load_embedding(dense["model_id"], dense.get("revision"))
-    query, meta = _fit_query(model, query)
-    vector = _encode(model, [query], True)[0]
+    with model_runtime.inference():
+        with model_runtime.tensor_reader():
+            model = _load_embedding(dense["model_id"], dense.get("revision"))
+        query, meta = _fit_query(model, query)
+        vector = _encode(model, [query], True)[0]
     if len(vector) != dense["dimension"]:
         raise RuntimeError("Embedding dimension mismatch")
     client = QdrantClient(host=dense["host"], port=dense["port"])
@@ -130,6 +133,7 @@ def rrf(ranks: list[list[str]], k: int | None = None, weights: list[float] | Non
     return merged
 
 
+@model_runtime.model_loader
 @lru_cache(maxsize=1)
 def _load_reranker(model_id: str, revision: str | None = None):
     os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
@@ -224,7 +228,8 @@ def query_content_bigram_coverage(index_dir: Path, query: str) -> float | None:
 
     A missing or invalid local index returns ``None`` so the caller keeps the
     normal fail-closed out-of-scope decision. At least two informative query
-    bigrams are required to avoid reopening on a single generic phrase.
+    bigrams are required to avoid reopening on a single generic phrase; a shorter query also returns ``None``
+    (it cannot be measured), so a number always means "measured against the corpus".
     """
     index_dir = Path(index_dir).resolve()
     files = (index_dir / "manifest.json", index_dir / "chunks.jsonl", index_dir / "bm25.json.gz")
@@ -234,7 +239,7 @@ def query_content_bigram_coverage(index_dir: Path, query: str) -> float | None:
         return None
     query_bigrams = _scope_bigrams(query)
     if len(query_bigrams) < 2:
-        return 0.0
+        return None  # too short to measure: a fragment, not evidence of being off-corpus
     try:
         corpus_tokens = _indexed_scope_tokens(str(index_dir), signature)
     except (OSError, RuntimeError, ValueError, KeyError, json.JSONDecodeError):
@@ -274,6 +279,7 @@ def _remember(key: tuple, score: float, limit: int) -> None:
         _RERANK_CACHE.popitem(last=False)
 
 
+@model_runtime.inference()
 def _rerank(
     query: str,
     candidates: list[dict],
@@ -291,22 +297,18 @@ def _rerank(
     budget = pair_token_budget or get_pair_token_budget()
     reranker = _load_reranker(model_id, revision)
     reranker.max_length = budget
-    try:
-        import torch
-
-        torch.set_num_threads(cfg.rerank_threads)
-    except ImportError:
-        pass
-    keys = [(model_id, revision, query, item.get("chunk_id"), hash(item["text"])) for item in candidates]
+    keys = [(model_id, revision, budget, query, item.get("chunk_id"), hash(item["text"])) for item in candidates]
     scores = _cached_scores(keys)
+    tokenizer = getattr(reranker, "tokenizer", None)
+    if tokenizer is not None and callable(tokenizer):
+        for row in candidates:
+            if len(tokenizer(query, row["text"], add_special_tokens=True, truncation=False)["input_ids"]) > budget:
+                row["rerank_input_truncated"] = True
+            else:
+                row.pop("rerank_input_truncated", None)
     todo = [i for i, score in enumerate(scores) if score is None]
     if todo:
         pairs = [(query, candidates[i]["text"]) for i in todo]
-        tokenizer = getattr(reranker, "tokenizer", None)
-        if tokenizer is not None and callable(tokenizer):
-            for i, (q, doc) in zip(todo, pairs):
-                if len(tokenizer(q, doc, add_special_tokens=True, truncation=False)["input_ids"]) > budget:
-                    candidates[i]["rerank_input_truncated"] = True
         fresh = reranker.predict(pairs, batch_size=cfg.rerank_batch_size, show_progress_bar=False)
         for i, score in zip(todo, fresh, strict=True):
             scores[i] = float(score)
@@ -515,6 +517,7 @@ def search(
         results[-1].update(dense_meta)
     if rerank and results:
         try:
+            first_stage = [row["chunk_id"] for row in results[:rerank_candidates]]
             head = _rerank(
                 query,
                 results[:rerank_candidates],
@@ -522,6 +525,14 @@ def search(
                 reranker_revision,
                 pair_token_budget=pair_token_budget,
             )
+            if settings.rerank_first_stage_weight > 0:
+                # The cross-encoder promotes what it is given but must not veto strong first-stage evidence: merge the two
+                # orders (it re-scored `head` in its own order, best first).
+                merged = rrf(
+                    [first_stage, [row["chunk_id"] for row in head]],
+                    weights=[settings.rerank_first_stage_weight, 1.0],
+                )
+                head.sort(key=lambda row: (-merged[row["chunk_id"]], row["chunk_id"]))
             results = head + results[rerank_candidates:]
         except Exception as exc:  # the reranker is optional: report why and keep the deterministic order
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):

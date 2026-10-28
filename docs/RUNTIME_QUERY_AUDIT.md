@@ -116,6 +116,65 @@ Dấu vân tay và trạng thái sau sửa: `ocop-evidence-b531594eddc8`, ready,
 
 Lượt API sau hợp lệ dùng cùng số luồng 6, khởi tạo trước khi nạp mô hình theo [hướng dẫn PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), cùng trọng số, hybrid, rerank 24. B2 chạy riêng một lần rồi toàn bộ 26 câu: 27/27 HTTP 200, không có native crash. Đây là phép thử vận hành, chưa chứng minh riêng việc khởi tạo luồng là nguyên nhân chữa lỗi. Kiểm trace với `call_count`: cao nhất ba lượt, không vượt năm hoặc trần riêng của từng câu. C3 tiếp tục hỏi văn bản chứa mẫu; không đổi gold hoặc chính sách làm rõ. Cách khởi động chuẩn và đọc tensor bền vững tiếp tục xử lý ở tầng truy xuất/cấu hình; mã vận hành tạm không đưa vào repo.
 
-## 3–10. Chưa duyệt
+## 3. Truy xuất lúc truy vấn — đạt cổng chấp nhận
 
-Tiếp tục từ thành phần 3. Chưa có kết luận đạt cho các thành phần này.
+Bất biến: model/revision, chiều vector và phạm vi corpus giữ nguyên; chỉ nạp trọng số cục bộ với `trust_remote_code=false`; source/evidence filters áp dụng trước khi xếp hạng; ngân sách 24 ứng viên và trọng số RRF đang chạy giữ nguyên; CPU được khởi tạo trước tensor work, tối đa một phép tải/tính mô hình đồng thời trong tiến trình.
+
+| ID | Tầng hỏng | Triệu chứng và nguyên nhân đo được |
+| --- | --- | --- |
+| native-load | Đọc trọng số | Safetensors 0.6.2/mmap và 0.8.0/mmap đều từng fault tại mapped storage khi nạp reranker; 0.8.0/pread nạp được cùng trọng số. Default startup trước sửa có native crash nên không được coi như lượt đo chất lượng hợp lệ. |
+| native-forward | CPU runtime | Một lượt API phục hồi vẫn fault ở `Linear.forward`/`c10.dll`. Mã đặt số luồng sau lúc tính embedding. Chưa gán riêng nguyên nhân này cho giới hạn RAM hoặc thread; phép thử khởi tạo sớm cùng 6 luồng đã hoàn tất 27 request trước sửa bền vững. |
+| concurrent-load | Cache mô hình | Hai request đầu cùng key gọi constructor hai lần vì khóa cache không bao quanh việc khởi tạo; test trước/sau 2 → 1 constructor. |
+| concurrent-inference | Runtime mô hình | Hai lượt rerank, hoặc embedding cùng rerank, chạy chồng nhau và cùng sửa trạng thái mô hình; test đo peak phép tính 2 → 1. |
+| pair-budget-cache | Cache điểm | Cùng câu/đoạn với ngân sách 64 rồi 128 vẫn trả điểm tương ứng 64 ở cả hai lượt. Sau sửa nhận hai điểm 64/128 từ đúng lượt tính; khóa cache trước thiếu ngân sách hiệu lực. |
+| cached-truncation | Chẩn đoán | Lượt đầu có cờ cắt đoạn, cache hit mất cờ dù cùng input/ngân sách. Sau sửa cả hai lượt giữ cờ; tokenizer được kiểm cả khi điểm đã cache. |
+
+Sửa tại [model_runtime.py:18](../ai_core/retrieval/ocop/model_runtime.py#L18): khởi tạo CPU một lần; [dòng 38](../ai_core/retrieval/ocop/model_runtime.py#L38) khóa dùng chung cho tải/tính mô hình; [dòng 46](../ai_core/retrieval/ocop/model_runtime.py#L46) chọn bộ đọc theo cấu hình và khôi phục alias Transformers khi thoát, kể cả lỗi. [search.py:136](../ai_core/retrieval/ocop/search.py#L136) đặt khóa ngoài LRU; [dòng 74](../ai_core/retrieval/ocop/search.py#L74) và [282](../ai_core/retrieval/ocop/search.py#L282) dùng runtime chung cho embedding/rerank; [dòng 300](../ai_core/retrieval/ocop/search.py#L300) phân biệt ngân sách trong cache và giữ chẩn đoán cắt đoạn. [settings.py:41](../ai_core/retrieval/ocop/settings.py#L41), [ocop_retrieval.yaml:25](../configs/ocop_retrieval.yaml#L25) thêm `tensor_reader_backend=auto`: pread trên Windows, mmap ở hệ khác. `pyproject.toml` đặt sàn Safetensors 0.8 trong extra retrieval/full; môi trường hiện tại đã cài 0.8.0, giữ nguyên Torch/Transformers/Sentence-Transformers và model/revision.
+
+Nguồn thiết kế: [PyTorch — set_num_threads trước eager execution](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), [Safetensors — mmap/pread](https://huggingface.co/docs/safetensors/en/api/torch), [Haystack DocumentJoiner — RRF](https://docs.haystack.deepset.ai/docs/documentjoiner), ADR-003/008/010. Bộ đọc thay cách đưa bytes trọng số vào RAM; không đổi bộ mã hóa hoặc định dạng vector.
+
+Kiểm chứng hiện có: 13 test mới offline đạt; 8 test runtime ban đầu đều đỏ trước sửa, hai test cache cũng đã đỏ riêng trước sửa. Tắt bộ đọc: 3 thất bại; tắt khởi tạo luồng sớm: 5; tắt khóa dùng chung: 3; tắt tích hợp search: 11; tắt sửa cache: 2. Khôi phục: 13/13 đạt. Toàn bộ Python/OCR: 1.052 test đạt; lint đạt.
+
+Uvicorn chuẩn đã cold-start thành công, health hybrid ready và ba câu LLM thật B2/B3/C2 đều HTTP 200. Thời gian lần lượt 71,11 / 33,73 / 82,87 giây; câu đầu gồm tải mô hình. Không dùng launcher hoặc thư viện chèn từ thư mục tạm trong phép thử này.
+
+Lượt bộ khóa ghi hạng ngay trong công cụ thực tế, với source/evidence filters của từng lần gọi; hooks chỉ quan sát, không thay kết quả. Tổng cộng 59 lần search, 0 fallback, 0 lỗi, tối đa 24 ứng viên rerank; 24 lần search có đoạn được ghi cờ cắt đầu vào reranker. Các trace chi tiết ở ngoài repo: `dev-retrieval-after.stages.jsonl` và `retrieval-stage-analysis.json`.
+
+| Dev / trang gold | BM25 | Dense | RRF đầu | Reranker | Hợp nhất | Trả về | Ứng viên | Search (giây) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 / 28;29 | 2;1 | 3;8 | 1;2 | 10;1 | 4;1 | 4;1 | 24 | 24,05 |
+| 6 / 13 | 10 | — | 22 | 15 | 21 | — | 24 | 15,51 |
+| 7 / 1 | 3 | 3 | 4 | 2 | 2 | 2 | 18 | 12,05 |
+| 45 / 8 | 1 | 2 | 1 | 1 | 1 | 1 | 24 | 16,21 |
+| 49 / 3 | 1 | 23 | 3 | 1 | 1 | 1 | 24 | 9,41 |
+| 50 / 3 | 1 | 2 | 1 | 2 | 1 | 1 | 24 | 17,83 |
+
+Hạng tính trên đoạn thuộc đúng source và trang gold; dấu — nghĩa là vắng trong danh sách của tầng đó. Với câu có nhiều lần search, bảng nêu lần đầu; JSONL giữ mọi lần. Dev-2 có ba lần tìm, cả hai trang tiếp tục có trong nhóm trả về. Điểm reranker của trang 28 ở lần đầu là 0,4183; RRF hiện có giữ trang này trong top-8, không quy hiệu quả đó thành thay đổi mới của phiên này. Các thời gian search gồm xử lý truy xuất và thu trace bên trong, không phải riêng thời gian cross-encoder.
+
+Dev-6 được kiểm thêm qua API thật: `search_regulations` + `search_graph`, trả đúng hai tên 148/QĐ-TTg và 1489/QĐ-TTg với citation QĐ26 trang 13, khớp gold nguồn đã khóa trước chạy. Đây là bằng chứng bổ sung của nhánh graph, không biến kết quả thiếu trang của riêng search thành top-8 thành công.
+
+| Bộ phát triển khóa, rerank + LLM stub | Trước runtime | Sau runtime |
+| --- | --- | --- |
+| `intent_ok` | 49/51 | 49/51 |
+| `tool_ok` | 50/51 | 50/51 |
+| `page_in_prompt` | 35/35 | 35/35 |
+| `top1_page_ok` | 28/35 | 28/35 |
+| `content_ok` / lỗi chạy | 35/35 / 0 | 35/35 / 0 |
+
+Median/max trước 16,21/146,21 giây; sau 19,33/156,06 giây. Lượt sau có thêm đọc index để thu mapping của trace ngoài thời gian hàm search, nên không coi chênh lệch này là phép so độ trễ thuần runtime. Bộ API chuẩn được đo riêng.
+
+| Bộ 26 câu API, LLM thật | Trước runtime | Sau runtime |
+| --- | --- | --- |
+| HTTP 200 | 26/26 | 26/26 |
+| Đúng tuyến | 26/26 | 26/26 |
+| Công cụ / trần riêng từng câu | 26/26 | 26/26 |
+| Đáp án theo bộ chấm riêng | 25/26 | 24/26 |
+
+Hai lần cold-start Uvicorn chuẩn, tổng 30 request LLM thật (3 ca đầu, dev-6 và bộ 26), đều HTTP 200, không có native crash. Trace bộ 26: tối đa ba lượt gọi thực tế, không vượt năm hoặc trần riêng từng câu.
+
+Chênh một đáp án là B5: ý thời hạn 36 tháng bị verifier loại sau khi mô hình thêm lời dẫn Điều 4 vào cách diễn đạt. Danh sách citation, unit ID, trang, bbox và source spans trước/sau trùng nhau; không quy đây thành hồi quy truy xuất hoặc đổi gold để khớp output. Giữ ca phân loại nhận định/kiểm chứng này cho mục 6. C3 tiếp tục hỏi rõ văn bản chứa mẫu. Không thay chính sách hoặc nhãn câu trả lời.
+
+Dấu vân tay giữ `ocop-evidence-b531594eddc8`, state ready, lineage_ok=true, neo4j_ready=true, 12.619/22.429 nút/cạnh. Những phần còn kiểm: bộ lọc/định danh và graph trong công cụ; chọn đúng cửa sổ và vai trò nguồn; trường hợp B5 ở sinh/kiểm chứng. Môi trường chạy và khả năng báo thiếu phụ thuộc tiếp tục kiểm ở mục 7/9.
+
+## 4–10. Chưa duyệt
+
+Tiếp tục từ thành phần 4; chưa có kết luận đạt cho các thành phần này.

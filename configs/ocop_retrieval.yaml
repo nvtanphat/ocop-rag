@@ -18,9 +18,11 @@ retrieval:
   rrf_k: 60
   rrf_weight_sparse: 1.0
   rrf_weight_dense: 1.0
-  rerank_candidates: 8             # cross-encoder pairs per query: ~1 s per 512-token pair on 6 CPU cores
+  rerank_candidates: 24            # first-stage hits the cross-encoder re-scores (it can only promote what it is given); ~1 s per 512-token pair on 6 CPU cores
+  rerank_first_stage_weight: 1.0   # weight of the first-stage rank when merged with the cross-encoder order (RRF); 0 = cross-encoder alone
   rerank_batch_size: 4
   rerank_threads: 6
+  tensor_reader_backend: auto    # pread on Windows (safetensors>=0.8), mmap elsewhere; tensor values are unchanged
   rerank_cache_entries: 512
   query_max_chars: 1500
   neighbor_chunks: 2               # top hits cut mid-sentence also bring the chunk that continues them

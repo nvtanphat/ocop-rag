@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,8 +33,12 @@ class RetrievalSettings(BaseModel):
     rrf_weight_sparse: float = Field(1.0, gt=0)
     rrf_weight_dense: float = Field(1.0, gt=0)
     rerank_candidates: int = Field(12, ge=1, le=200)
+    # Weight of the first-stage rank when the cross-encoder's order is merged with it (reciprocal-rank fusion); 0 = the
+    # cross-encoder alone decides the order of the candidates it re-scored.
+    rerank_first_stage_weight: float = Field(0.0, ge=0)
     rerank_batch_size: int = Field(4, ge=1)
     rerank_threads: int = Field(6, ge=1)
+    tensor_reader_backend: Literal["auto", "mmap", "pread"] = "auto"
     rerank_cache_entries: int = Field(512, ge=0)
     query_max_chars: int = Field(1500, ge=50)
     neighbor_chunks: int = Field(2, ge=0, le=8)
