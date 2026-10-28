@@ -80,7 +80,9 @@ def main() -> None:
     review = sub.add_parser(
         "review", help="Export human review queue, record one decision, or show statistics"
     )
-    review.add_argument("action", choices=["queue", "decide", "stats", "refresh-index"])
+    review.add_argument("action", choices=["queue", "decide", "stats", "refresh-index", "publish-neo4j"])
+    review.add_argument("--neo4j-uri", default="bolt://localhost:7687")
+    review.add_argument("--neo4j-user", default="neo4j")
     review.add_argument("--root", type=Path, default=ROOT)
     review.add_argument("--out", type=Path)
     review.add_argument("--render", action="store_true", help="Render source-checked crops when exporting")
@@ -133,6 +135,16 @@ def main() -> None:
                     "graph": graph["counts"],
                     "index": refresh_index_after_graph_change(args.root),
                 }
+            elif args.action == "publish-neo4j":
+                from ai_core.graph.ocop.store import publish_reviewed_graph
+                from ai_core.orchestration.ocop.llm import load_env_file
+
+                load_env_file()
+                if not os.getenv("NEO4J_PASSWORD"):
+                    raise RuntimeError("NEO4J_PASSWORD is required for Neo4j publishing")
+                result = publish_reviewed_graph(
+                    args.root, uri=args.neo4j_uri, user=args.neo4j_user, password=os.environ["NEO4J_PASSWORD"]
+                )
             elif args.action == "refresh-index":
                 from ai_core.system.index_refresh import refresh_index_after_graph_change
 

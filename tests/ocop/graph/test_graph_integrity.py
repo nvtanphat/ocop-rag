@@ -478,3 +478,17 @@ def test_neo4j_publication_failure_does_not_switch_active(monkeypatch, tmp_path)
         publish_neo4j(g, password="unused")
     assert session.executed == 1 and driver.closed
     assert all("OcopGraphActive" not in q for q, _ in session.tx.calls)
+
+def test_publishing_the_reviewed_graph_records_the_upload_in_the_manifest(monkeypatch, tmp_path):
+    from ai_core.graph.ocop.store import publish_reviewed_graph
+
+    k = make_knowledge(tmp_path)
+    graph_dir = tmp_path / "data/processed/ocop/graph"
+    dump(k / "business_entities.jsonl", [entity("decision", "RecognitionDecision"), entity("record", "RecognitionRecord")])
+    dump(k / "business_relations.jsonl", [rel()])
+    manifest = build_graph(k, graph_dir)
+    fake_backend(monkeypatch)
+    outcome = publish_reviewed_graph(tmp_path, uri="bolt://x", user="neo4j", password="unused")
+    stored = json.loads((graph_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert stored["neo4j"] == outcome and outcome["graph_version"] == manifest["graph_version"]
+    assert stored["graph_version"] == manifest["graph_version"] and stored["file_sha256"] == manifest["file_sha256"]

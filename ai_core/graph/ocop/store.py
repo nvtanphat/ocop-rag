@@ -137,6 +137,31 @@ def publish_neo4j(
         drv.close()
 
 
+def publish_reviewed_graph(root, *, uri: str, user: str, password: str) -> dict:
+    """Publish the current (reviewed) graph to Neo4j and record it in the graph manifest.
+
+    The snapshot is immutable and version-scoped, so this is idempotent; a later graph rebuild writes a new manifest
+    without the record, which is exactly when the published copy is stale.
+    """
+    import json
+
+    from ocop_contracts.locking import process_lock
+    from ai_core.graph.ocop.review import _write_lock
+
+    root = Path(root)
+    base = root / "data/processed/ocop"
+    with (
+        process_lock(base / ".system.lock", wait_timeout=900),
+        _write_lock(root / "data/review/ocop_graph_projection"),
+    ):
+        manifest_path = base / "graph" / "manifest.json"
+        outcome = publish_neo4j(base / "graph", uri=uri, user=user, password=password, verified_only=False)
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["neo4j"] = outcome
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+        return outcome
+
+
 def _properties(row):
     """Neo4j properties cannot contain nested maps or arrays of maps."""
     return {

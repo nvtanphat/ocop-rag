@@ -26,6 +26,10 @@ services:
     profiles: [stores]
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-local-only-change-this-secret}"
+      # Bounded so the stack fits a workstation that also runs the embedding and reranker models.
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP:-512m}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP:-512m}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-256m}
     ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
     volumes: [ocop_neo4j:/data]
 volumes:
