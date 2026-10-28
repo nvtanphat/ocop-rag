@@ -149,6 +149,12 @@ class _Patterns:
             r"(?<![a-z0-9])(?:" + _alt(lang.entity_terminators) + r")(?![a-z0-9])|[?.!,;:]"
         )
         self.non_entity = re.compile(r"^(?:" + _alt(lang.non_entity_phrases) + r")$")
+        heads = lang.cues.get("single_syllable_entity_heads") or []
+        self.entity_head = re.compile(r"(?<![a-z0-9])(?:" + _alt(heads) + r")\s*$") if heads else None
+        self.chapter = re.compile(r"(?<![a-z0-9])(?:" + _alt(n.get("chapter", [])) + r")\s+[ivxlcdm0-9]+\b") if n.get("chapter") else None
+        statute_types = [w for kind in ("law", "decree", "circular") for w in lang.document_types.get(kind, [])]
+        # A named statute ("Luật An toàn thực phẩm"): the type word followed by a title, not by a number.
+        self.statute_title = re.compile(r"(?<![a-z0-9])(?:" + _alt(statute_types) + r")\s+(?!(?:so\s*)?\d)[a-z]")
 
 
 _PATTERN_CACHE: dict[int, _Patterns] = {}
@@ -276,7 +282,10 @@ def extract_slots(
     if (m := p.sheet.search(folded)) and int(m.group(1)) > 0:
         slots["sheet_number"] = int(m.group(1))
     if m := p.criterion.search(folded):
-        if not re.fullmatch(r"20\d{2}", m.group(1)):
+        statute_section = m.group(0).startswith("muc") and (
+            (p.chapter and p.chapter.search(folded)) or p.statute_title.search(folded) or p.type_words["law"].search(folded)
+        )
+        if not re.fullmatch(r"20\d{2}", m.group(1)) and not statute_section:
             slots["criterion_id"] = m.group(1)
     catalog = catalog or EntityCatalog()
     # Locality: catalog entry, else a marker + capitalised words the user literally wrote.
@@ -293,12 +302,34 @@ def extract_slots(
             if name and not p.locality_blocker.search(folded[: m.start()]):
                 slots["region"] = name
                 break
-    products = catalog.find("product", text) or catalog.find("product_group", text)
+    # A catalog name inside a legal/structural locator is the locator, not the entity: "Điều 7" is an
+    # article even though "điều" (cashew) is also a product group. fold() keeps NFC character offsets.
+    locators = [m.span() for pattern in (p.article, p.sheet, p.form, p.page, p.criterion) for m in pattern.finditer(folded)]
+
+    # A name inside a statute's title is part of the title: "Luật An toàn thực phẩm" is not the product "thực phẩm".
+    for m in p.statute_title.finditer(folded):
+        end = p.terminator.search(folded, m.end())
+        locators.append((m.start(), end.start() if end else len(folded)))
+
+    def standalone(x) -> bool:
+        if len(x.label.split()) > 1 or p.entity_head is None:
+            return True
+        tail = folded[x.end :].lstrip()
+        return bool(p.entity_head.search(folded[: x.start]) or not tail or p.terminator.match(tail))
+
+    def outside_locators(matches):
+        return [
+            x
+            for x in matches
+            if standalone(x) and not any(x.start < end and start < x.end for start, end in locators)
+        ]
+
+    products = outside_locators(catalog.find("product", text)) or outside_locators(catalog.find("product_group", text))
     if products:
         slots["product_name"] = max(products, key=lambda x: x.end - x.start).label
     elif name := _product_from_marker(text, folded, p):
         slots["product_name"] = name
-    if orgs := catalog.find("organization", text):
+    if orgs := outside_locators(catalog.find("organization", text)):
         slots["organization_name"] = max(orgs, key=lambda x: x.end - x.start).label
     only_year_in_code = len(years) == 1 and not slots.get("document_code")
     event = re.search(r"(?:" + _alt(lang.cues["event_year_scope"]) + r").{0,90}?\bnam\s+(20\d{2})\b", folded)

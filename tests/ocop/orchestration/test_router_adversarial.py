@@ -81,6 +81,40 @@ def test_existing_known_classification_still_passes():
     assert route.slots.get("product_name") == "Mật ong"
 
 
+def test_catalog_name_inside_a_legal_locator_is_not_an_entity():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    # "Điều" is both the article noun and a product group (cashew) in the corpus catalog.
+    catalog = EntityCatalog({"entities": {"product_group": [{"label": "Điều", "source_ids": []}]}})
+    article = route_query("QĐ26/2026 Điều 7 có quy định đánh giá lại không?", catalog=catalog)
+    assert article.slots["article_id"] == "7" and "product_name" not in article.slots
+    assert route_query("Hạt điều thuộc nhóm nào?", catalog=catalog).slots.get("product_name") == "Điều"
+
+
+def test_one_syllable_catalog_name_needs_an_entity_context():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    catalog = EntityCatalog({"entities": {"product_group": [{"label": "Điều", "source_ids": []}]}})
+    assert "product_name" not in route_query("Điều kiện để sản phẩm được nâng hạng là gì?", catalog=catalog).slots
+    assert route_query("Sản phẩm điều rang muối đạt mấy sao?", catalog=catalog).slots.get("product_name") == "Điều"
+
+
+def test_name_inside_a_statute_title_is_not_a_product():
+    from ai_core.orchestration.ocop.catalog import EntityCatalog
+
+    catalog = EntityCatalog({"entities": {"product_group": [{"label": "thực phẩm", "source_ids": []}]}})
+    assert "product_name" not in route_query("Chương I của Luật An toàn thực phẩm", catalog=catalog).slots
+
+
+def test_statute_section_is_not_a_scoring_criterion():
+    assert "criterion_id" not in route_query("Mục 1 Chương II Luật 17/2023 quy định gì?").slots
+    assert route_query("Phiếu 1 QĐ26 tiêu chí 1.1 là gì?").slots.get("criterion_id") == "1.1"
+
+
+def test_scoring_sheet_question_without_catalog_hit_is_in_scope():
+    assert route_query("Mật ong rừng được chấm theo phiếu nào?").intent != Intent.OUT_OF_SCOPE
+
+
 def test_existing_known_exact_document_still_passes():
     route = route_query("Điều 6 QĐ26/2026 quy định gì?")
     assert route.intent == Intent.EXACT_LOOKUP

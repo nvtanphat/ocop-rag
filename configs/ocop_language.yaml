@@ -43,6 +43,8 @@ structure_nouns:
   sheet: [phiếu]
   page: [trang pdf, trang]
   criterion: [tiêu chí, mục]
+  # In a statute ("Chương II", "Luật ...") "Mục N" is a section of the chapter, not a scoring criterion.
+  chapter: [chương]
 star_noun: [sao]
 # Rating ladder of the evaluation framework. `certified_star_levels` are the levels that carry a certificate and an
 # asterisk legend; the asterisk quantifier in table legends is derived from them.
@@ -92,7 +94,11 @@ cues:
   part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc]
   in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
     nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
-    điểm, mẫu, đăng ký, nộp hồ sơ]
+    điểm, mẫu, đăng ký, nộp hồ sơ, phiếu nào, phiếu số, được chấm, chấm điểm, chấm theo, phân hạng, hạng sao,
+    mấy sao]
+  # A one-syllable catalog name ("chè", "điều") is an entity only right after one of these heads, or when an entity
+  # terminator follows it; otherwise it is the first syllable of a compound ("điều kiện", "chè" in "chè chén").
+  single_syllable_entity_heads: [sản phẩm, mặt hàng, hạt, nhóm, phân nhóm, bộ sản phẩm, loại, các loại, cây]
   explicit_out_of_scope: [kết quả bóng đá, giá bitcoin, xem tarot, dự báo thời tiết, viết mã độc]
   authority: [thẩm quyền, cơ quan nào, ai công nhận, ai có thẩm quyền, ai quyết định, cấp nào công nhận, cấp nào có thẩm quyền]
   producer: [chủ thể nào, chủ thể của, ai sản xuất, do ai, cơ sở nào sản xuất, đơn vị nào sản xuất, sản xuất bởi,
