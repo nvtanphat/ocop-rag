@@ -25,7 +25,7 @@ def test_query_preserves_every_citation_field(api_client, monkeypatch):
         citations=[citation],
         route=Route(intent=Intent.EXACT_LOOKUP, strategy="structured"),
     )
-    monkeypatch.setattr(ocop_routes, "_agent", lambda *a: SimpleNamespace(ask=lambda *a, **k: answer))
+    monkeypatch.setattr(ocop_routes, "_agent", lambda *a, **k: SimpleNamespace(ask=lambda *a, **k: answer))
     response = api_client.post("/api/ocop/query", json={"query": "Evidence", "use_llm": False})
     assert response.status_code == 200
     assert response.json()["citations"] == [citation]

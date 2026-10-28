@@ -25,10 +25,18 @@ def configured_profile(env: Mapping[str, str] | None = None) -> str:
     return value
 
 
+def rerank_enabled(env: Mapping[str, str] | None = None) -> bool:
+    """Whether this deployment re-ranks dense/hybrid candidates with the cross-encoder (``OCOP_RERANK``); never a client choice."""
+    value = (env if env is not None else os.environ).get("OCOP_RERANK", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
 def profile_status(root: Path, env: Mapping[str, str] | None = None) -> dict:
     """{profile, ready, missing[]} - ``missing`` names every unmet requirement of the profile."""
     profile = configured_profile(env)
     missing: list[str] = []
+    if rerank_enabled(env) and profile != "hybrid":
+        missing.append("rerank_requires_hybrid_profile")
     if profile == "hybrid":
         missing += [f"dependency:{m}" for m in HYBRID_MODULES if importlib.util.find_spec(m) is None]
         manifest_path = Path(root) / "data" / "processed" / "ocop" / "index" / "manifest.json"

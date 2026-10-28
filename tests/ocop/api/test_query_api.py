@@ -25,6 +25,22 @@ def test_sources_and_signed_pdf_remain_available_before_build():
     assert client.get("/api/ocop/sources/NOT-REGISTERED/pdf").status_code == 404
 
 
+def test_sources_report_their_page_and_ocr_page_counts(monkeypatch, tmp_path):
+    import json
+
+    source_id = client.get("/api/ocop/sources").json()[0]["source_id"]
+    (tmp_path / "pages/pages").mkdir(parents=True)
+    entry = {"source_id": source_id, "pages": [1, 2, 3], "artifact": f"pages/{source_id}.jsonl", "artifact_sha256": "sha-fixture"}
+    (tmp_path / "pages/manifest.json").write_text(json.dumps({"sources": [entry]}), encoding="utf-8")
+    rows = [{"pdf_page": 1, "ocr_engine": "easyocr"}, {"pdf_page": 2, "ocr_engine": None}, {"pdf_page": 3, "ocr_engine": "easyocr"}]
+    (tmp_path / "pages/pages" / f"{source_id}.jsonl").write_text(
+        "\n".join(map(json.dumps, rows)), encoding="utf-8"
+    )
+    monkeypatch.setattr(routes, "DATA", tmp_path)
+    listed = {s["source_id"]: s for s in client.get("/api/ocop/sources").json()}
+    assert (listed[source_id]["page_count"], listed[source_id]["ocr_pages"]) == (3, 2)
+
+
 def test_api_fails_closed_without_built_corpus(monkeypatch, tmp_path):
     monkeypatch.setattr(routes, "DATA", tmp_path)
     response = client.post(
@@ -65,7 +81,7 @@ def test_api_query_after_coherent_build_uses_agent(monkeypatch, tmp_path):
             calls.append((query, kwargs))
             return SimpleNamespace(model_dump=lambda **opts: {"status": "retrieval_only", "citations": []})
 
-    monkeypatch.setattr(routes, "_agent", lambda *args: FakeAgent())
+    monkeypatch.setattr(routes, "_agent", lambda *args, **kwargs: FakeAgent())
     response = client.post(
         "/api/ocop/query",
         json={

@@ -25,6 +25,37 @@ def test_default_profile_is_sparse_and_ready(tmp_path):
     assert profile_status(tmp_path, {}) == {"profile": "sparse", "ready": True, "missing": []}
 
 
+def test_rerank_is_a_deployment_choice_that_needs_the_hybrid_profile(tmp_path):
+    assert profile_status(tmp_path, {"OCOP_RERANK": "1"})["missing"] == ["rerank_requires_hybrid_profile"]
+    assert profile_status(tmp_path, {"OCOP_RERANK": "0"})["ready"] is True
+
+
+def test_only_hybrid_requests_use_the_reranker(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    from ai_core.system.pipeline import OcopSystemPipeline
+
+    (tmp_path / "index").mkdir()
+    (tmp_path / "index/manifest.json").write_text('{"corpus_version":"fixture"}', encoding="utf-8")
+    monkeypatch.setattr(routes, "DATA", tmp_path)
+    monkeypatch.setattr(OcopSystemPipeline, "status", lambda self, **k: {"state": "ready"})
+    monkeypatch.setattr(routes, "profile_status", lambda root: {"profile": "hybrid", "ready": True, "missing": []})
+    seen = {}
+
+    def fake_agent(with_llm, mode, version="", partial=False, rerank=False):
+        seen[mode] = rerank
+        return SimpleNamespace(ask=lambda *a, **k: SimpleNamespace(model_dump=lambda **o: {"status": "x", "citations": []}))
+
+    monkeypatch.setattr(routes, "_agent", fake_agent)
+    monkeypatch.setenv("OCOP_RERANK", "1")
+    for mode in ("sparse", "hybrid"):
+        client.post("/api/ocop/query", json={"query": "OCOP là gì", "retrieval_mode": mode, "use_llm": False})
+    assert seen == {"sparse": False, "hybrid": True}
+    monkeypatch.delenv("OCOP_RERANK")
+    client.post("/api/ocop/query", json={"query": "OCOP là gì", "retrieval_mode": "hybrid", "use_llm": False})
+    assert seen["hybrid"] is False
+
+
 def test_unknown_profile_is_rejected():
     with pytest.raises(ValueError):
         configured_profile({"OCOP_RETRIEVAL_PROFILE": "dense-only"})

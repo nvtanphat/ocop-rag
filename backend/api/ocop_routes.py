@@ -22,7 +22,7 @@ from ai_core.orchestration.ocop.llm import make_answer_client
 from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
-from ai_core.system.profile import profile_status
+from ai_core.system.profile import profile_status, rerank_enabled
 from backend.api.graph_subgraph import MAX_SEEDS, SubgraphResponse, read_subgraph
 from backend.api.reference_data import ReferenceResponse, read_references
 
@@ -103,6 +103,27 @@ def health():
     }
 
 
+@lru_cache(maxsize=32)
+def _ocr_page_count(artifact: str, sha256: str) -> int:
+    """Pages of one source artifact read by OCR (cached per artifact hash; a rebuilt artifact has a new hash)."""
+    count = 0
+    try:
+        with (DATA / "pages" / artifact).open(encoding="utf-8") as lines:
+            for line in lines:
+                count += bool(json.loads(line).get("ocr_engine")) if line.strip() else 0
+    except (OSError, ValueError):
+        return 0
+    return count
+
+
+def _source_pages(entry: dict) -> tuple[int, int]:
+    """(pages, OCR pages) of a source from the page manifest."""
+    pages = len(entry.get("pages") or []) or int(entry.get("page_count_expected") or 0)
+    artifact = entry.get("artifact")
+    ocr = _ocr_page_count(artifact, entry.get("artifact_sha256", "")) if artifact else 0
+    return pages, ocr
+
+
 @router.get("/sources")
 def sources():
     pages = _json(DATA / "pages" / "manifest.json")
@@ -114,8 +135,8 @@ def sources():
             "source_kind": s.get("source_kind"),
             "jurisdiction": s.get("jurisdiction"),
             "source_verification": s.get("source_verification"),
-            "page_count": by_id.get(s["source_id"], {}).get("pages_processed", 0),
-            "ocr_pages": by_id.get(s["source_id"], {}).get("counts", {}).get("ocr_executed", 0),
+            "page_count": _source_pages(by_id.get(s["source_id"], {}))[0],
+            "ocr_pages": _source_pages(by_id.get(s["source_id"], {}))[1],
             "filename": Path(s["path"]).name,
         }
         for s in _registry()
@@ -203,12 +224,19 @@ def source_page_evidence(
 
 # Session state contains only conversational slots, never identity/tenant permissions.
 @lru_cache(maxsize=128)
-def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = "", allow_partial_debug: bool = False):
+def _agent(
+    with_llm: bool,
+    retrieval_mode: str,
+    corpus_version: str = "",
+    allow_partial_debug: bool = False,
+    rerank: bool = False,
+):
     # Never reuse an agent holding an obsolete index/graph after rebuild.
     return OcopAgent(
         ROOT,
         llm=make_answer_client() if with_llm else None,
         retrieval_mode=retrieval_mode,
+        rerank=rerank,
         allow_partial_debug=allow_partial_debug,
     )
 
@@ -244,7 +272,13 @@ async def ask(request: AskRequest):
     # Public search only. No client-provided tenant_id or dossier privileges.
     try:
         use_llm = request.use_llm and understand(request.query)[0].action != "respond"
-        agent = _agent(use_llm, request.retrieval_mode, manifest.get("corpus_version", ""), allow_partial)
+        agent = _agent(
+            use_llm,
+            request.retrieval_mode,
+            manifest.get("corpus_version", ""),
+            allow_partial,
+            rerank=rerank_enabled() and request.retrieval_mode != "sparse",
+        )
     except (RuntimeError, ValueError, OSError) as exc:
         raise service_unavailable(
             "llm_unavailable" if request.use_llm else "agent_unavailable", "configuration", exc
