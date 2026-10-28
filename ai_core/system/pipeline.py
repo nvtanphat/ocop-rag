@@ -9,6 +9,7 @@ fails. RAG reads an independently produced OCR dataset and never executes OCR.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -337,8 +338,13 @@ class OcopSystemPipeline:
                     if not knowledge.get("complete"):
                         raise RuntimeError("Evidence extraction did not cover the entire PDF corpus")
                     if not _semantic_complete(knowledge.get("semantic_proposals", {}), options):
+                        proposals = knowledge.get("semantic_proposals", {})
+                        errors = Counter(str(row.get("error_type"))[:160] for row in proposals.get("chunk_errors", []))
+                        state = semantic_state(proposals, max_units=options.semantic_max_units)
                         raise RuntimeError(
                             "LLM extraction incomplete; rerun to resume cached chunks before publication"
+                            f" (state={state}, profile_matches={proposals.get('model') == _semantic_profile(options)}"
+                            f", failed chunks by error: {dict(errors.most_common(5))})"
                         )
                     old_graph = _load_json(self.data / "graph" / "manifest.json")
                     from ai_core.graph.ocop.review import ledger_path, ledger_digest

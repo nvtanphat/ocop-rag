@@ -3,7 +3,7 @@
 import json
 import pytest
 from fastapi.testclient import TestClient
-from ai_core.orchestration.ocop.workflow import OcopAgent
+from ai_core.orchestration.ocop.workflow import PARTIAL_CORPUS_NOTICE, OcopAgent
 from backend.api.ocop_main import app
 
 
@@ -33,7 +33,7 @@ def test_partial_debug_marks_even_clarification_and_ignores_context_override(tmp
     answer = agent.ask("Xem hồ sơ riêng của tôi", context={"allow_partial_debug": False})
     assert answer.status == "partial_debug_corpus"
     assert answer.claim_verification["answer_status"] in ("clarify", "out_of_scope")
-    assert "partial_debug_corpus" in answer.answer
+    assert answer.answer.startswith(PARTIAL_CORPUS_NOTICE)
     assert answer.tools_used == []
 
 

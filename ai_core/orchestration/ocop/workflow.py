@@ -48,6 +48,10 @@ class OcopState(TypedDict, total=False):
     rewrite_method: str
 
 
+# First line of every answer served from a partial corpus; clients show it as a notice, not as content.
+PARTIAL_CORPUS_NOTICE = "[Corpus chưa đầy đủ — kết quả chỉ để thử nghiệm]"
+
+
 class OcopAgent:
     def __init__(
         self,
@@ -1023,7 +1027,7 @@ class OcopAgent:
         if self.allow_partial_debug:
             payload = {
                 **payload,
-                "answer": "[partial_debug_corpus]\n" + payload["answer"],
+                "answer": PARTIAL_CORPUS_NOTICE + "\n" + payload["answer"],
                 "status": "partial_debug_corpus",
                 "claim_verification": {
                     **payload.get("claim_verification", {}),

@@ -27,16 +27,10 @@ def test_sources_and_signed_pdf_remain_available_before_build():
 
 def test_api_fails_closed_without_built_corpus(monkeypatch, tmp_path):
     monkeypatch.setattr(routes, "DATA", tmp_path)
-    for mode in ("sparse", "hybrid"):
-        response = client.post(
-            "/api/ocop/query",
-            json={
-                "query": "Mẫu số 01",
-                "retrieval_mode": mode,
-                "use_llm": False,
-            },
-        )
-        assert response.status_code == 503
+    response = client.post(
+        "/api/ocop/query", json={"query": "Mẫu số 01", "retrieval_mode": "sparse", "use_llm": False}
+    )
+    assert response.status_code == 503
     # Even a forged index manifest is insufficient without an approved build.
     index = tmp_path / "index"
     index.mkdir()

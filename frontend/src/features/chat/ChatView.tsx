@@ -13,6 +13,10 @@ export type Message = {
   answer?: AskResult;
   error?: string;
 };
+// The backend prefixes answers from a partial corpus with this line; the badge above the answer replaces it.
+const PARTIAL_NOTICE = "[Corpus chưa đầy đủ";
+const withoutPartialNotice = (text: string) =>
+  text.startsWith(PARTIAL_NOTICE) ? text.slice(text.indexOf("\n") + 1).trimStart() : text;
 const suggestions = [
   "Hồ sơ đăng ký OCOP gồm những gì?",
   "Quy trình đánh giá OCOP như thế nào?",
@@ -142,7 +146,9 @@ export function ChatView({
                             <Icon name="graph" size={19} strokeWidth={1.8} />
                           </button>
                         </div>
-                        {message.answer.status === "generated_claims_verified" ? (
+                        {message.answer.status === "partial_debug_corpus" ? (
+                          <span className="verify warn">Corpus chưa đầy đủ — kết quả chỉ để thử nghiệm</span>
+                        ) : message.answer.status === "generated_claims_verified" ? (
                           <span className="verify">
                             Câu trả lời đã xác minh <Icon name="checkBadge" size={14} />
                           </span>
@@ -152,7 +158,7 @@ export function ChatView({
                           )
                         )}
                         <CitationText
-                          text={message.answer.answer}
+                          text={withoutPartialNotice(message.answer.answer)}
                           citations={message.answer.citations}
                           onOpen={onOpen}
                         />

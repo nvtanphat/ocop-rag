@@ -215,13 +215,7 @@ def _agent(with_llm: bool, retrieval_mode: str, corpus_version: str = "", allow_
 
 @router.post("/query")
 async def ask(request: AskRequest):
-    manifest = _json(DATA / "index" / "manifest.json")
-    if (DATA / ".promoting").exists():
-        raise HTTPException(status_code=503, detail="Kho OCOP đang cập nhật, thử lại sau.")
-    if not manifest:
-        raise HTTPException(
-            status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run."
-        )
+    # Whether this deployment can serve the requested mode does not depend on the corpus, so it is decided first.
     try:
         profile = profile_status(ROOT)
     except ValueError as exc:
@@ -233,6 +227,13 @@ async def ask(request: AskRequest):
         )
     if not profile["ready"]:
         raise service_unavailable("retrieval_profile_unready", "retrieval", RuntimeError(",".join(profile["missing"])))
+    manifest = _json(DATA / "index" / "manifest.json")
+    if (DATA / ".promoting").exists():
+        raise HTTPException(status_code=503, detail="Kho OCOP đang cập nhật, thử lại sau.")
+    if not manifest:
+        raise HTTPException(
+            status_code=503, detail="Chưa chuẩn bị corpus OCOP. Chạy python tools/cli.py run."
+        )
     readiness = OcopSystemPipeline(ROOT).status(validate_sources=True, reuse_unchanged=True)
     allow_partial = readiness["state"] != "ready" and bool(manifest.get("corpus_version"))
     if not allow_partial and readiness["state"] != "ready":
