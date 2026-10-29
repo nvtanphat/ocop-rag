@@ -14,9 +14,18 @@ Hệ thống có một corpus đang hoạt động. `ocop_main.py` phục vụ A
 
 ## Hỏi đáp
 
-`OcopAgent` hiểu hội thoại và ý định miền, lập DAG công cụ, thực thi có giới hạn, chấm độ phủ, khôi phục có giới hạn và ghép câu trả lời. Router/LLM chỉ chọn trong registry; mặc định tối đa năm lần gọi, kể cả khôi phục. Một năm lịch sử không được âm thầm thay quyết định đã ghim.
+`OcopAgent` hiểu hội thoại và ý định miền, lập DAG công cụ, thực thi, chấm độ phủ, khôi phục và ghép câu trả lời theo các bất biến:
 
-Nguồn được ghép theo cửa sổ liên quan đến câu hỏi. Marker hợp lệ chỉ chứng minh liên kết trích dẫn; cổng claim kiểm thêm số/điểm/sao và căn cứ trong đoạn trích. Nguồn chưa duyệt có thể được hiển thị với nhãn chưa xác minh theo ADR-009; không vì vậy mà công nhận điểm/sao sản phẩm.
+| Tầng | Bất biến |
+| --- | --- |
+| Router, hội thoại, catalog | Giữ tên và tập thực thể; đại từ chỉ trỏ đối tượng đã nhắc; lời chào giữ chủ đề; năm không thay quyết định đã ghim |
+| Planner, workflow | Chỉ dispatch tool thuộc registry; mặc định tối đa năm lượt thực tế kể cả recovery; trạng thái chặn không mở tìm kiếm chung; optional không làm thiếu tool bắt buộc |
+| Truy xuất | Giữ corpus, model/revision, chiều vector và bộ lọc nguồn; chỉ nạp trọng số cục bộ với `trust_remote_code=false`; tải/tính mô hình dùng khóa chung |
+| Công cụ | Mã văn bản không giải được không mở phạm vi nguồn; lọc và giới hạn đầu ra giữ danh tính bản ghi, phản ánh phần còn thiếu |
+| Bằng chứng, ngữ cảnh | SOURCE lấy từ đoạn gốc; cửa sổ giữ mệnh đề/facet được hỏi; mọi nguồn chia sẻ ngân sách cứng; verifier đọc đúng cửa sổ mô hình thấy |
+| Sinh, kiểm chứng | Marker và quote đúng chỉ chứng minh truy vết; claim phải khớp nghĩa, số, phủ định và chủ thể; cổng điểm/sao không được bỏ qua |
+
+Hợp đồng sinh và kiểm từng claim nằm tại [ADR-009](adr/009-claim-level-answers-and-session-privacy.md).
 
 Phiên chỉ lưu ngữ cảnh hội thoại đã giới hạn và che định danh. Quyền riêng tư chỉ đến từ `AuthContext` phía server; request công khai không nhận tenant, hồ sơ hay rule do client cung cấp. Index public không chứa hồ sơ riêng tư.
 
@@ -69,3 +78,10 @@ Giao diện React (Vite) là một ứng dụng một trang, bố cục fluid: n
 Tài liệu, sản phẩm, tiêu chí, trang và vị trí citation đều đến từ API; FE chỉ giữ nhãn giao diện. Thiếu dữ liệu xác minh thì hiện trạng thái rỗng, không hiện điểm/sao. Truy vết công cụ lấy từ response thực tế.
 
 Review thực hiện qua CLI; không có API hay màn hình ghi quyết định review. Xem [RUNBOOK](RUNBOOK.md). Các quyết định nền tảng nằm trong [ADR](adr/README.md).
+
+## Giới hạn đã biết
+
+- Chưa có bộ tạo `verified_*.jsonl` cho hai endpoint reference; `/criteria` và
+  `/products` hiện trả danh sách rỗng, không tạo bản ghi thay thế.
+- LLM có thể cho verdict kiểm nghĩa khác nhau giữa các lượt dù cùng bằng chứng;
+  một lần trả lời đạt không bảo đảm các lần chạy sau cho cùng kết quả.
