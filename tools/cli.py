@@ -80,7 +80,7 @@ def main() -> None:
     review = sub.add_parser(
         "review", help="Export human review queue, record one decision, or show statistics"
     )
-    review.add_argument("action", choices=["queue", "decide", "stats", "refresh-index", "publish-neo4j"])
+    review.add_argument("action", choices=["queue", "decide", "stats", "refresh-index", "publish-neo4j", "export-references"])
     review.add_argument("--neo4j-uri", default="bolt://localhost:7687")
     review.add_argument("--neo4j-user", default="neo4j")
     review.add_argument("--root", type=Path, default=ROOT)
@@ -145,6 +145,10 @@ def main() -> None:
                 result = publish_reviewed_graph(
                     args.root, uri=args.neo4j_uri, user=args.neo4j_user, password=os.environ["NEO4J_PASSWORD"]
                 )
+            elif args.action == "export-references":
+                from ai_core.graph.ocop.store import export_reference_files
+
+                result = export_reference_files(args.root)
             elif args.action == "refresh-index":
                 from ai_core.system.index_refresh import refresh_index_after_graph_change
 

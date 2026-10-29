@@ -103,7 +103,7 @@ def test_invalid_or_private_reference_is_never_published(reference_api, change):
         ("source_id", "PRIVATE"),
         ("source_sha256", "a" * 64),
         ("pdf_page", 2),
-        ("bbox", [30, 40, 160, 70]),
+        ("bbox", [30, 40, 500, 70]),
         ("evidence_unit_id", "missing"),
     ],
 )
@@ -128,14 +128,54 @@ def test_verified_label_cannot_invent_a_star_value(reference_api):
     assert client.get("/api/ocop/products").json()["items"] == []
 
 
-def test_unverified_source_cannot_publish_a_verified_reference(reference_api):
+def test_unit_that_does_not_cover_the_cited_page_cannot_publish_a_reference(reference_api):
     client, data, record = reference_api
     units_file = data / "knowledge/evidence_units.jsonl"
     unit = json.loads(units_file.read_text())
-    unit["review_status"] = "needs_review"
+    unit["spans"][0]["pdf_page"] = 2
     units_file.write_text(json.dumps(unit) + "\n")
     (data / "knowledge/verified_criteria.jsonl").write_text(json.dumps(record) + "\n")
     assert client.get("/api/ocop/criteria").json()["items"] == []
+
+
+def _graph_node(node_id, node_type, label, citation, *, check="human_verified", status="verified"):
+    return {
+        "node_id": node_id,
+        "node_type": node_type,
+        "label": label,
+        "check": check,
+        "review_status": status,
+        "citations": [citation, dict(citation)],
+    }
+
+
+def test_exported_references_list_only_checked_nodes_with_allowed_citation_fields(reference_api):
+    from ai_core.graph.ocop.store import export_reference_files
+
+    client, data, record = reference_api
+    citation = {**record["citations"][0], "quote": "never publish", "row": 3, "bbox": [30, 40, 150, 70]}
+    nodes = [
+        _graph_node("n1", "Criterion", "Tiêu chí kiểm tra", citation),
+        _graph_node("n2", "Criterion", "Tiêu chí kiểm tra", citation),
+        _graph_node("n3", "Criterion", "Tiêu chí chưa kiểm", citation, check="failed"),
+        _graph_node("n4", "Criterion", "Tiêu chí bị loại", citation, status="rejected"),
+        _graph_node("n5", "Product", "Sản phẩm A", citation),
+        _graph_node("n6", "Regulation", "Không thuộc danh sách", citation),
+    ]
+    (data / "graph").mkdir()
+    (data / "graph/nodes.jsonl").write_text("\n".join(json.dumps(n) for n in nodes) + "\n")
+    root = data.parents[2]
+    assert export_reference_files(root)["exported"] == {"criteria": 1, "products": 1}
+    exported = json.loads((data / "knowledge/verified_criteria.jsonl").read_text())
+    assert len(exported["citations"]) == 1
+    assert set(exported["citations"][0]) <= {
+        "source_id", "evidence_unit_id", "source_sha256", "pdf_page", "bbox", "printed_page", "table_bbox",
+        "block_id", "table_id", "cell_id",
+    }
+    served = client.get("/api/ocop/criteria").json()
+    assert served["status"] == "verified"
+    assert [item["label"] for item in served["items"]] == ["Tiêu chí kiểm tra"]
+    assert [item["label"] for item in client.get("/api/ocop/products").json()["items"]] == ["Sản phẩm A"]
 
 
 @pytest.mark.parametrize(

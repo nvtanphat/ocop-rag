@@ -57,7 +57,7 @@ Mặc định phiên nằm trong bộ nhớ một tiến trình (TTL 1 giờ, t�
 
 Request hỏi đáp gồm `query`, `session_id`, `retrieval_mode`, `use_llm`; không nhận trường thừa. Response giữ nguyên citation, bao gồm `source_id`, `pdf_page`, `bbox`, `evidence_unit_id`, `source_sha256` và các span liên quan. HTTP 503 có thông báo hạ tầng được giới hạn để không lộ bí mật.
 
-Hai endpoint reference đọc `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` do server quản lý. Chỉ trả trường cho phép từ bản ghi `verified`/`human_verified`, `visibility=public`, đúng corpus active, không mang tenant/hồ sơ. Citation phải khớp EvidenceUnit đã xác minh, span và PDF khoá SHA; nhãn chứa điểm/sao phải có hỗ trợ số tương ứng. Thiếu dữ liệu hoặc corpus chưa nhất quán: `status=no_verified_data`, `items=[]`; UI hiện “Chưa có dữ liệu xác minh”. Chúng không biến OCR candidates thành quy tắc đánh giá.
+Hai endpoint reference đọc `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` do server quản lý; `python tools/cli.py review export-references` tạo chúng từ các node `Criterion`/`Product` trong nhóm `human_verified` của graph, ràng với corpus index hiện hành và gộp các nhãn trùng trong cùng văn bản. Chỉ trả trường cho phép từ bản ghi `verified`/`human_verified`, `visibility=public`, đúng corpus active, không mang tenant/hồ sơ. Citation phải thuộc một EvidenceUnit của đúng nguồn có span ở trang được trích, PDF khoá SHA và vùng nằm trong trang; nhãn chứa điểm/sao phải có hỗ trợ số tương ứng. Thiếu dữ liệu hoặc corpus chưa nhất quán: `status=no_verified_data`, `items=[]`; UI hiện “Chưa có dữ liệu xác minh”. Chúng không biến OCR candidates thành quy tắc đánh giá.
 
 ## Frontend
 
@@ -81,7 +81,7 @@ Review thực hiện qua CLI; không có API hay màn hình ghi quyết định 
 
 ## Giới hạn đã biết
 
-- Chưa có bộ tạo `verified_*.jsonl` cho hai endpoint reference; `/criteria` và
-  `/products` hiện trả danh sách rỗng, không tạo bản ghi thay thế.
+- Hai file reference không tự cập nhật: sau mỗi lần dựng lại graph hoặc index phải chạy lại
+  `review export-references`, nếu không corpus lệch và endpoint trả danh sách rỗng.
 - LLM có thể cho verdict kiểm nghĩa khác nhau giữa các lượt dù cùng bằng chứng;
   một lần trả lời đạt không bảo đảm các lần chạy sau cho cùng kết quả.

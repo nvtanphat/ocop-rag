@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -92,28 +93,33 @@ def _records(path: Path) -> list[dict]:
 def _matches(root: Path, c: ReferenceCitation, sources: dict, hashes: dict, units: dict) -> bool:
     source = sources.get(c.source_id)
     unit = units.get(c.evidence_unit_id)
+    # Verification of the record is attested by the exporter from the checked graph; the evidence unit only has to
+    # exist for this source and cover the cited page. The cited box (a table cell or row) lies inside that page.
     if (
         not source
         or not unit
-        or unit.get("review_status") not in {"verified", "human_verified"}
         or unit.get("source_id") != c.source_id
         or hashes.get(c.source_id) != c.source_sha256
     ):
         return False
     if not any(
-        s.get("pdf_page") == c.pdf_page
-        and s.get("source_sha256") == c.source_sha256
-        and s.get("bbox") == list(c.bbox)
+        s.get("pdf_page") == c.pdf_page and s.get("source_sha256") == c.source_sha256
         for s in unit.get("spans", [])
     ):
         return False
     pdf = (root / source["path"]).resolve()
     if not pdf.is_relative_to((root / "data/raw/ocop").resolve()) or pdf.suffix.lower() != ".pdf":
         return False
-    if hashlib.sha256(pdf.read_bytes()).hexdigest() != c.source_sha256:
+    digest, pages = _pdf_facts(str(pdf), pdf.stat().st_mtime_ns)
+    if digest != c.source_sha256 or not 1 <= c.pdf_page <= len(pages):
         return False
-    with fitz.open(pdf) as doc:
-        if not 1 <= c.pdf_page <= len(doc):
-            return False
-        box = fitz.Rect(c.bbox)
-        return not box.is_empty and doc[c.pdf_page - 1].rect.contains(box)
+    box = fitz.Rect(c.bbox)
+    return not box.is_empty and pages[c.pdf_page - 1].contains(box)
+
+
+@lru_cache(maxsize=32)
+def _pdf_facts(path: str, mtime_ns: int) -> tuple[str, tuple[fitz.Rect, ...]]:
+    """SHA-256 and page rectangles of a locked PDF, computed once per file version rather than once per citation."""
+    data = Path(path).read_bytes()
+    with fitz.open(stream=data, filetype="pdf") as doc:
+        return hashlib.sha256(data).hexdigest(), tuple(page.rect for page in doc)

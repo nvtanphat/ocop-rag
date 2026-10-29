@@ -162,6 +162,64 @@ def publish_reviewed_graph(root, *, uri: str, user: str, password: str) -> dict:
         return outcome
 
 
+_REFERENCE_KINDS = {"criteria": "Criterion", "products": "Product"}
+_CITATION_FIELDS = (
+    "source_id", "evidence_unit_id", "source_sha256", "pdf_page", "bbox", "printed_page", "table_bbox",
+    "block_id", "table_id", "cell_id",
+)
+
+
+def export_reference_files(root) -> dict:
+    """Write the public criteria/products lists the reference endpoints serve, from the checked graph.
+
+    Only nodes in the graph's verified bucket are listed, each with the citations the graph holds for it. The file is
+    bound to the active index corpus; the endpoint re-validates every citation against the locked PDF, so a stale or
+    inconsistent file lists nothing. Run again after any graph or index rebuild.
+    """
+    import json
+
+    base = Path(root) / "data/processed/ocop"
+    version = json.loads((base / "index/manifest.json").read_text(encoding="utf-8"))["corpus_version"]
+    nodes = [json.loads(line) for line in (base / "graph/nodes.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    counts = {}
+    for kind, node_type in _REFERENCE_KINDS.items():
+        lines, seen = [], set()
+        for node in nodes:
+            if node.get("node_type") != node_type or not usable(node) or node.get("review_status") != "verified":
+                continue
+            citations, keys = [], set()
+            for citation in node.get("citations", []):
+                key = (citation.get("evidence_unit_id"), citation.get("pdf_page"), tuple(citation.get("bbox") or ()))
+                if key in keys or not all(citation.get(f) for f in ("source_id", "evidence_unit_id", "pdf_page", "bbox")):
+                    continue
+                keys.add(key)
+                citations.append({f: citation[f] for f in _CITATION_FIELDS if citation.get(f) is not None})
+            label = " ".join(str(node.get("label", "")).split())
+            if not citations or not label or (label, citations[0]["source_id"]) in seen:
+                continue
+            seen.add((label, citations[0]["source_id"]))
+            lines.append(
+                json.dumps(
+                    {
+                        "id": node["node_id"],
+                        "label": label,
+                        "corpus_version": version,
+                        "review_status": "human_verified",
+                        "visibility": "public",
+                        "citations": citations,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+        target = base / "knowledge" / f"verified_{kind}.jsonl"
+        temporary = target.with_suffix(".jsonl.tmp")
+        temporary.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+        temporary.replace(target)
+        counts[kind] = len(lines)
+    return {"corpus_version": version, "exported": counts}
+
+
 def _properties(row):
     """Neo4j properties cannot contain nested maps or arrays of maps."""
     return {

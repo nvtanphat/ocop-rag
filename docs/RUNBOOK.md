@@ -87,6 +87,8 @@ python tools/cli.py review stats
 
 Xuất bản graph hiện hành sang Neo4j (idempotent, theo snapshot bất biến, ghi trạng thái vào manifest của graph): `docker compose --profile stores up -d neo4j`, sau đó `python tools/cli.py review publish-neo4j` (đọc `NEO4J_PASSWORD` từ môi trường hoặc `.env`). Dựng lại graph sẽ xoá trạng thái này, tức bản trên Neo4j đã cũ: chạy lại lệnh. `run --neo4j` dựng lại cả corpus và xuất bản graph vừa dựng, không phải graph hiện hành, nên không dùng cho mục đích này.
 
+Danh sách cho `/criteria` và `/products`: `python tools/cli.py review export-references` ghi `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` từ graph hiện hành. Chạy lại sau mỗi lần dựng lại graph hoặc index.
+
 Ledger tại `data/review/ocop_review_decisions.jsonl` chỉ ghi nối tiếp. Duyệt thực thể không tự động duyệt mọi cạnh và bằng chứng. `decide` dựng graph và làm mới index; nếu graph đã đổi nhưng làm mới index lỗi, giữ ledger và chạy `review refresh-index` sau khi khắc phục hạ tầng. Không xoá lịch sử review.
 
 ## Xử lý lỗi
@@ -96,7 +98,7 @@ Ledger tại `data/review/ocop_review_decisions.jsonl` chỉ ghi nối tiếp. D
 | FE báo không kết nối được | Backend có chạy, đúng cổng, Vite proxy tới 8000 |
 | HTTP 503 hoặc health chưa ready | Dataset đầy đủ, source lock, fingerprint extraction/index/graph, cờ promoting |
 | HTTP 422 khi mở evidence | Số trang, thứ tự/bounds bbox, SHA của citation so với PDF |
-| Reference rỗng | Có tệp verified server-owned, đúng corpus, visibility public và EvidenceUnit đã duyệt |
+| Reference rỗng | Chạy `review export-references`; tệp verified phải đúng corpus index, visibility public, citation khớp EvidenceUnit và PDF khoá SHA |
 | LLM không khả dụng | Provider, endpoint, model, key; tắt sinh LLM để tra bằng chứng thuần |
 | Graph/index version mismatch | Dựng lại đồng bộ hoặc làm mới index sau review |
 
