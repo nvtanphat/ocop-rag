@@ -28,6 +28,7 @@ retrieval:
   neighbor_chunks: 2               # top hits cut mid-sentence also bring the chunk that continues them
 agent:
   max_tool_calls: 5                # AGENTS.md: default maximum of five tool calls per question
+  lookup_max_rows: 15              # structured lookup evidence rows; recognition shares this budget across records
   grader_min_relevance: 0.13       # min share of question terms in a row for it to count as relevant evidence
   scope_min_bigram_coverage: 0.60  # share of query content bigrams in one indexed chunk that reopens an unrecognised question
   graph_hops: 2

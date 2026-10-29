@@ -5,6 +5,8 @@ from pathlib import Path
 import json
 from datetime import date
 import re
+import unicodedata
+from itertools import zip_longest
 from ocop_contracts.ratings import level_class
 from ai_core.retrieval.ocop.search import search
 from ai_core.retrieval.ocop.settings import get_settings
@@ -17,6 +19,7 @@ from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
 from ai_core.orchestration.ocop.language import get_language
+from ai_core.orchestration.ocop.document_scope import DocumentResolver
 from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
 
@@ -28,6 +31,17 @@ def _jurisdiction_key(value: str) -> str:
     )
     key = re.sub(r"^(?:" + prefixes + r")\s+", "", key)
     return re.sub(r"[^a-z0-9]", "", key)
+
+
+def _recognition_stars(row: dict):
+    values = [row.get(k) for k in ("star_rating", "rating_stars", "stars") if row.get(k) is not None]
+    body = normalize(str(row.get("row_text") or row.get("text") or row.get("label_candidate") or ""))
+    nouns = "|".join(r"\s+".join(re.escape(word) for word in normalize(value).split())
+                     for value in get_language().star_noun if value.strip())
+    stated = {int(m.group(1)) for m in re.finditer(
+        r"(?<!\d)(" + level_class(certified=True) + r")\s*(?:" + nouns + r")(?![a-z0-9])", body
+    )} if nouns else set()
+    return values, stated
 
 
 def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | None) -> bool:
@@ -47,12 +61,7 @@ def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | N
         elif asked not in {_jurisdiction_key(token) for token in tokens}:
             return False
     if stars is not None:
-        values = [row.get(k) for k in ("star_rating", "rating_stars", "stars") if row.get(k) is not None]
-        body = normalize(str(row.get("row_text") or row.get("label_candidate") or ""))
-        stated = {
-            int(m.group(1))
-            for m in re.finditer(r"(?<!\d)(" + level_class(certified=True) + r")\s*sao\b", body)
-        }
+        values, stated = _recognition_stars(row)
         if values:
             if any(str(v).strip() != str(stars) for v in values):
                 return False
@@ -64,6 +73,56 @@ def _verified_recognition_scope(row: dict, *, region: str | None, stars: int | N
             if stated != {stars}:
                 return False
     return True
+
+
+def _recognition_records_in_scope(rows: list[dict], *, region, stars):
+    groups = {}
+    for index, row in enumerate(rows):
+        ids = row.get("graph_node_ids")
+        key = (row.get("source_id"), tuple(sorted(ids))) if (
+            row.get("graph_node_type") == "RecognitionRecord" and isinstance(ids, list) and ids
+            and all(isinstance(value, str) for value in ids)
+        ) else ("row", index)
+        groups.setdefault(key, []).append(row)
+    result = []
+    for group in groups.values():
+        verified = [row for row in group if row.get("review_status") == "verified"]
+        if not verified or not all(_verified_recognition_scope(row, region=region, stars=None) for row in verified):
+            continue
+        if stars is not None:
+            ratings = [row for row in verified if any(_recognition_stars(row))]
+            if not ratings or not all(_verified_recognition_scope(row, region=None, stars=stars) for row in ratings):
+                continue
+        result.extend(verified)
+    return result
+
+
+def _matching_entity_ids(nodes: list[dict], requested: str) -> set[str]:
+    def identity(value):
+        return re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(value)).casefold()).strip()
+
+    exact = {node["node_id"] for node in nodes if identity(node["label"]) == identity(requested)}
+    if exact:
+        return exact
+    from ai_core.orchestration.ocop.language import has_diacritics
+
+    key = identity if has_diacritics(requested) else normalize
+    needle = key(requested)
+    pattern = re.compile(r"(?<!\w)" + re.escape(needle) + r"(?!\w)")
+    partial = [node for node in nodes if needle and pattern.search(key(node["label"]))]
+    return {node["node_id"] for node in partial} if len({identity(node["label"]) for node in partial}) == 1 else set()
+
+
+def _bounded_recognition_rows(rows: list[dict], limit: int) -> list[dict]:
+    """Allocate a bounded result across records before taking more cells of any one record."""
+    if len(rows) <= limit:
+        return rows
+    groups = {}
+    for index, row in enumerate(rows):
+        ids = row.get("graph_node_ids") or []
+        key = (row.get("source_id"), tuple(sorted(ids))) if ids else ("row", index)
+        groups.setdefault(key, []).append(row)
+    return [row for batch in zip_longest(*groups.values()) for row in batch if row is not None][:limit]
 
 
 def graph_seeds(
@@ -128,42 +187,20 @@ class ToolRegistry:
             found = [x for x in found if x[0] == str(year)]
         return max(found)[2] if found else None
 
-    def _registry_source_for_number(self, code: str) -> str | None:
-        """Registry source whose document number starts with the given number segments ("26/2026" -> "26/2026/QĐ-TTg";
-        "148" never matches "1489/..."). Ambiguity returns None."""
+    def document_labels(self, source_ids: list[str]) -> list[str]:
+        """Human-readable document numbers (falling back to the source id) for a list of registry sources."""
         path = self.root / "configs/ocop_sources.json"
-        if not path.is_file():
-            return None
-        wanted = [s for s in re.split(r"[/.\-\s]+", normalize(code)) if s]
-        found = []
-        for src in json.loads(path.read_text(encoding="utf-8")).get("sources", []):
-            have = [s for s in re.split(r"[/.\-\s]+", normalize(str(src.get("document_number") or ""))) if s]
-            if have[: len(wanted)] == wanted:
-                found.append(src["source_id"])
-        return found[0] if len(found) == 1 else None
+        names = {}
+        if path.is_file():
+            names = {
+                s["source_id"]: str(s.get("document_number") or "")
+                for s in json.loads(path.read_text(encoding="utf-8")).get("sources", [])
+            }
+        return [names.get(sid) or sid for sid in source_ids]
 
     def _resolve_source_id(self, code: str | None) -> str | None:
-        """Resolve document code to a unique corpus source; ambiguous -> unfiltered.
-
-        The evidence filter runs before BM25/Qdrant ranking, never after top-K.
-        """
-        if not code:
-            return None
-        tokens = re.findall(r"\d+", str(code))
-        if not tokens:
-            return None
-        by_number = self._registry_source_for_number(str(code))
-        if by_number:
-            return by_number
-        path = self.index_dir / "chunks.jsonl"
-        if not path.is_file():
-            return None
-        matches = set()
-        for row in records(path):
-            sid = str(row["source_id"])
-            if all(re.search(r"(?<!\d)" + re.escape(token) + r"(?!\d)", sid) for token in tokens):
-                matches.add(sid)
-        return next(iter(matches)) if len(matches) == 1 else None
+        """Resolve the whole reference to one current source; ambiguity never broadens it."""
+        return DocumentResolver(self.root).resolve(code)
 
     def _per_document(self, name: str, query: str, slots: dict, context: dict, auth, codes: list) -> dict:
         """A comparison names several documents: look each one up on its own and keep the rows of every one.
@@ -347,10 +384,10 @@ class ToolRegistry:
         if TOOL_REGISTRY[name].requires_auth and not isinstance(auth, AuthContext):
             raise PermissionError("This private OCOP tool requires trusted server authentication")
         codes = slots.get("document_codes")
-        if name in ("search_regulations", "lookup_legal_unit") and isinstance(codes, list) and len(codes) > 1:
-            return self._per_document(name, query, slots, context, auth, codes)
         if name == "search_regulations" and not context.get("_part"):
             return self._search_with_parts(query, slots, context, auth)
+        if name in ("search_regulations", "lookup_legal_unit") and isinstance(codes, list) and len(codes) > 1:
+            return self._per_document(name, query, slots, context, auth, codes)
         if name == "search_regulations":
             mode = context.get("retrieval_mode", "sparse")
             doc = slots.get("document_code")
@@ -446,24 +483,10 @@ class ToolRegistry:
                 except (ValueError, KeyError, OSError):
                     return {"results": [], "status": "sheet_scope_unavailable"}
             region = slots.get("region")
-            q = normalize(query)
             # Local deadlines are jurisdiction-specific: never answer with a
             # national document or an unrelated province when multiple guidance
             # files happen to exist. Enforce the source allowlist before ranking.
-            local_deadline = bool(
-                region
-                and any(
-                    term in q
-                    for term in (
-                        "han nop",
-                        "truoc ngay",
-                        "han cuoi",
-                        "thoi han nop",
-                        "han dang ky",
-                        "thoi han dang ky",
-                    )
-                )
-            )
+            local_deadline = bool(region and get_language().hit(query, "deadline"))
             if local_deadline:
                 sources_path = self.root / "configs/ocop_sources.json"
                 sources = []
@@ -526,18 +549,7 @@ class ToolRegistry:
             local_document_query = bool(
                 region
                 and not doc
-                and any(
-                    phrase in q
-                    for phrase in (
-                        "van ban o ",
-                        "van ban cua ",
-                        "tai lieu o ",
-                        "tai lieu cua ",
-                        "quyet dinh cua ",
-                        "quyet dinh o ",
-                        "van ban dia phuong",
-                    )
-                )
+                and get_language().hit(query, "local_document")
             )
             if local_document_query:
                 registry = self.root / "configs/ocop_sources.json"
@@ -699,7 +711,7 @@ class ToolRegistry:
                 }
             # Source-backed text retrieval is an explicit fallback, never a
             # fabricated structured requirement and never a verified rule.
-            keyword = "minh chứng giấy tờ tiêu chí " + query
+            keyword = " ".join([*get_language().cues["evidence_search_terms"], query])
             return {
                 "results": search(
                     self.index_dir,
@@ -726,6 +738,11 @@ class ToolRegistry:
                 "reason": "use_regulation_search_for_unspecified_form",
             }
         if name in ("lookup_form", "lookup_criterion", "lookup_product_subgroup", "lookup_recognition"):
+            row_limit = get_settings().agent.lookup_max_rows
+            document_code = slots.get("document_code")
+            resolved_source = self._resolve_source_id(document_code) if document_code else None
+            if document_code and not resolved_source:
+                return {"results": [], "status": "document_not_found_or_ambiguous"}
             try:
                 graph = GraphEvidence(
                     self.graph_dir,
@@ -742,16 +759,13 @@ class ToolRegistry:
             }
             nodes = [n for n in graph.nodes.values() if n["node_type"] in mapping[name]]
             asked_products = [
-                normalize(str(x))
+                str(x)
                 for x in (slots.get("product_names") or [slots.get("product_name")])
                 if x
             ]
             if name == "lookup_recognition" and asked_products:
-                products = {
-                    n["node_id"]
-                    for n in graph.nodes.values()
-                    if n["node_type"] == "Product" and any(a in normalize(n["label"]) for a in asked_products)
-                }
+                product_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Product"]
+                products = set().union(*(_matching_entity_ids(product_nodes, asked) for asked in asked_products))
                 if not products:
                     # The named product is not in the recognition store: say so, never fall back to loosely related text.
                     return {
@@ -765,6 +779,18 @@ class ToolRegistry:
                     if edge["relation_type"] == "RECOGNIZES" and edge["target_entity_id"] in products
                 }
                 nodes = [n for n in nodes if n["node_id"] in record_ids]
+            asked_orgs = [str(slots["organization_name"])] if slots.get("organization_name") else []
+            if name == "lookup_recognition" and asked_orgs:
+                organization_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Organization"]
+                orgs = set().union(*(_matching_entity_ids(organization_nodes, asked) for asked in asked_orgs))
+                if not orgs:
+                    return {"results": [], "status": "entity_not_found", "entity": [str(slots["organization_name"])]}
+                declared = {
+                    edge["source_entity_id"]
+                    for edge in graph.edges
+                    if edge["relation_type"] == "DECLARED_BY" and edge["target_entity_id"] in orgs
+                }
+                nodes = [n for n in nodes if n["node_id"] in declared]
             if name == "lookup_criterion" and slots.get("sheet_number"):
                 doc = slots.get("document_code")
                 source = self._resolve_source_id(doc) if doc else None
@@ -800,25 +826,10 @@ class ToolRegistry:
             if name == "lookup_recognition":
                 needle = None  # Keep all source cells of the matched record, including its owner.
             requested_criterion = slots.get("criterion_id") if name == "lookup_criterion" else None
-            document_code = slots.get("document_code")
             if document_code:
-                numbers = re.findall(r"\d+", str(document_code))
-                rows = [
-                    r
-                    for r in rows
-                    if all(
-                        re.search(r"(?<!\d)" + re.escape(n) + r"(?!\d)", str(r.get("source_id", "")))
-                        for n in numbers
-                    )
-                ]
+                rows = [row for row in rows if row["source_id"] == resolved_source]
             if name == "lookup_recognition" and (slots.get("region") or slots.get("star_rating")):
-                rows = [
-                    r
-                    for r in rows
-                    if _verified_recognition_scope(
-                        r, region=slots.get("region"), stars=slots.get("star_rating")
-                    )
-                ]
+                rows = _recognition_records_in_scope(rows, region=slots.get("region"), stars=slots.get("star_rating"))
                 if not rows:
                     return {
                         "results": [],
@@ -850,7 +861,7 @@ class ToolRegistry:
                         missing = sorted(requested_forms - verified_forms, key=int)
                         if missing:
                             return {
-                                "results": rows[:15],
+                                "results": rows[:row_limit],
                                 "status": "incomplete_form_ids",
                                 "missing_form_ids": missing,
                                 "verified": False,
@@ -879,6 +890,7 @@ class ToolRegistry:
                                 "results": [],
                                 "status": "form_version_ambiguous",
                                 "reason": "multiple_document_versions_contain_requested_forms",
+                                "candidate_documents": self.document_labels(sorted(complete)),
                             }
                         # Include at least one verified unit per requested form,
                         # regardless of OCR duplicates ordering or output limit.
@@ -1011,8 +1023,28 @@ class ToolRegistry:
                         int(r.get("pdf_page") or 0),
                     )
                 )
-            return {"results": rows[:15], "verified": False}
+            # Completeness describes the delivered set, after every scope and output limit.
+            rows = _bounded_recognition_rows(rows, row_limit) if name == "lookup_recognition" else rows[:row_limit]
+            missing_entities = []
+            if name == "lookup_recognition" and (asked_products or asked_orgs):
+                represented = {node_id for row in rows for node_id in row.get("graph_node_ids", [])}
+                for requested, entity_nodes, relation in (
+                    (asked_products, [n for n in graph.nodes.values() if n["node_type"] == "Product"], "RECOGNIZES"),
+                    (asked_orgs, [n for n in graph.nodes.values() if n["node_type"] == "Organization"], "DECLARED_BY"),
+                ):
+                    for asked in requested:
+                        matches = _matching_entity_ids(entity_nodes, asked)
+                        if not any(edge["relation_type"] == relation and edge["source_entity_id"] in represented
+                                   and edge["target_entity_id"] in matches for edge in graph.edges):
+                            missing_entities.append(asked)
+            return {"results": rows, "verified": False,
+                    "status": "incomplete_entity_set" if rows and missing_entities else "ok" if rows else "no_results",
+                    **({"missing_entities": missing_entities} if missing_entities else {})}
         if name == "search_graph":
+            document_code = slots.get("document_code")
+            source_filter = self._resolve_source_id(document_code) if document_code else None
+            if document_code and not source_filter:
+                return {"results": [], "status": "document_not_found_or_ambiguous"}
             # Check *all* files before linking evidence IDs or traversing edges.
             # A partly generated graph must behave like an unavailable index.
             if not all(
@@ -1063,7 +1095,7 @@ class ToolRegistry:
                     checked_nodes,
                     query,
                     slots.get("product_name"),
-                    self._resolve_source_id(slots.get("document_code")),
+                    source_filter,
                 )
             if not seed and context.get("retrieved_evidence_ids"):
                 source_ids = list(context["retrieved_evidence_ids"])
@@ -1105,13 +1137,9 @@ class ToolRegistry:
             )
             requested = []
             folded = normalize(query)
-            for phrase, predicate in (
-                ("thay the", "REPLACES"),
-                ("sua doi", "AMENDS"),
-                ("can cu van ban", "BASED_ON"),
-                ("dinh chi hieu luc", "SUSPENDS"),
-            ):
-                if phrase in folded:
+            language = get_language()
+            for predicate, phrases in language.cues["relation_predicates"].items():
+                if predicate in semantic and language.words("graph_relation:" + predicate, phrases).search(folded):
                     requested.append(predicate)
             if requested and slots.get("document_code"):
                 semantic = tuple(requested)
@@ -1268,7 +1296,7 @@ class ToolRegistry:
         if name == "open_source_span":
             identity = slots.get("evidence_unit_id")
             if not identity:
-                return {"results": []}
+                return {"results": [], "status": "no_results"}
             try:
                 graph = GraphEvidence(
                     self.graph_dir,
@@ -1278,5 +1306,6 @@ class ToolRegistry:
             except (OSError, ValueError, KeyError):
                 return self._graph_failure()
             node = graph.units.get(identity)
-            return {"results": graph.node_rows([node]) if node else []}
+            rows = graph.node_rows([node]) if node else []
+            return {"results": rows, "status": "ok" if rows else "no_results"}
         raise ValueError("Unknown or unauthorized OCOP tool: " + name)

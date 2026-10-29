@@ -125,6 +125,12 @@ def test_a_named_product_missing_from_the_recognition_store_is_reported_not_gues
     assert output["results"] == [] and output["status"] == "entity_not_found" and output["entity"] == ["ZZZ"]
 
 
+def test_a_named_producer_missing_from_the_recognition_store_is_reported_not_guessed(tmp_path):
+    reg = _store(tmp_path)
+    output = reg.dispatch("lookup_recognition", query="Hợp tác xã ZZZ có sản phẩm nào?", slots={"organization_name": "ZZZ"})
+    assert output["results"] == [] and output["status"] == "entity_not_found" and output["entity"] == ["ZZZ"]
+
+
 def test_unknown_recognition_event_year_denied_not_inferred(tmp_path):
     reg = _store(tmp_path)
     output = reg.dispatch(

@@ -9,6 +9,8 @@ enum when nothing deterministic matched; it can never supply tools or authorizat
 
 from __future__ import annotations
 
+from ai_core.orchestration.ocop.document_scope import DocumentResolver, document_pattern
+
 import re
 import unicodedata
 from collections.abc import Callable
@@ -112,10 +114,8 @@ class _Patterns:
     """Regexes assembled from the vocabulary file (folded, whole word)."""
 
     def __init__(self, lang: Language):
-        doc = _alt([w for words in lang.document_types.values() for w in words])
         n = lang.structure_nouns
-        number = r"(\d{1,4}(?:[/.-]\d{2,4})?(?:[/.-][a-z]+\d*)*)"
-        self.document = re.compile(r"(?<![a-z0-9])(?:" + doc + r")\s*(?:so\s*)?" + number)
+        self.document = document_pattern(lang)
         self.bare_number = re.compile(
             r"(?<![a-z0-9/])(\d{1,4}/(?:19|20)\d{2}(?:/[a-z]+\d*)?(?:-[a-z]+)*)(?![a-z0-9/])"
         )
@@ -228,8 +228,9 @@ def extract_slots(
     text = _nfc(query)
     folded = fold(text)
     slots: dict = {}
+    documents = DocumentResolver(language=lang)
     if (m := p.document.search(folded)) and not re.fullmatch(r"(?:19|20)\d{2}", m.group(1)):
-        slots["document_code"] = text[m.start(1) : m.end(1)]
+        slots["document_code"] = documents.qualify(text[m.start(1) : m.end(1)], text[m.start() : m.start(1)])
     elif m := p.bare_number.search(folded):
         slots["document_code"] = text[m.start() : m.end()]
     elif catalog is not None and (
@@ -239,7 +240,7 @@ def extract_slots(
     # Several documents named in one question (a comparison): every one is searched, none is dropped.
     codes = list(
         dict.fromkeys(
-            text[m.start(1) : m.end(1)]
+            documents.qualify(text[m.start(1) : m.end(1)], text[m.start() : m.start(1)])
             for m in p.document.finditer(folded)
             if not re.fullmatch(r"(?:19|20)\d{2}", m.group(1))
         )

@@ -36,6 +36,10 @@ python tools/cli.py run --help
 
 Cache điểm rerank phân biệt ngân sách token của cặp câu hỏi/đoạn. Phản hồi vẫn ghi `rerank_input_truncated` khi đoạn bị cắt, kể cả khi dùng lại điểm đã cache. Kích thước nhóm ứng viên và trọng số RRF tiếp tục nằm trong cấu hình truy xuất.
 
+`agent.lookup_max_rows` giới hạn số hàng bằng chứng của lookup cấu trúc (mặc định 15).
+Lookup công nhận phân bổ ngân sách lần lượt theo bản ghi trước khi lấy thêm ô của
+cùng bản ghi, để một bản ghi nhiều ô không che các sản phẩm khác.
+
 Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), [các bộ đọc Safetensors](https://huggingface.co/docs/safetensors/en/api/torch).
 
 ## LLM tùy chọn

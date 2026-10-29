@@ -38,6 +38,7 @@ document_number_markers:
 
 # Nouns that introduce a numbered structural reference.
 structure_nouns:
+  number: [số]
   article: [điều]
   form: [mẫu số, mẫu]
   sheet: [phiếu]
@@ -141,6 +142,7 @@ cues:
     đủ điều kiện attt, miễn chứng nhận, attp, an toàn vệ sinh thực phẩm, điều kiện vệ sinh]
   classification: [thuộc nhóm, thuộc phân nhóm, thuộc loại, nhóm nào, nhóm gì, phân nhóm, phân loại sản phẩm]
   evidence_requirements: [minh chứng, giấy tờ cần, hồ sơ cần có, cần chứng nhận gì, yêu cầu giấy tờ, loại giấy tờ, cần giấy tờ]
+  evidence_search_terms: [minh chứng giấy tờ tiêu chí]
   relation: [thay thế, sửa đổi văn bản, sửa đổi quyết định, bổ sung văn bản, căn cứ văn bản]
   relation_open: [liên quan đến, mối quan hệ, đối chiếu, liên hệ với, kết hợp các, liên hệ giữa]
   relation_predicates:

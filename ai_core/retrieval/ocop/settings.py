@@ -47,6 +47,7 @@ class RetrievalSettings(BaseModel):
 class AgentSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_tool_calls: int = Field(5, ge=1, le=8)
+    lookup_max_rows: int = Field(15, ge=1)
     grader_min_relevance: float = Field(0.13, ge=0, le=1)
     scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
     graph_hops: int = Field(2, ge=1, le=4)
