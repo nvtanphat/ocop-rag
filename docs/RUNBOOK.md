@@ -85,6 +85,8 @@ python tools/cli.py review stats
 
 `review queue` xuất hàng đợi; `--render` tạo crop từ PDF đã kiểm SHA. Người duyệt đối chiếu trang và vùng bằng chứng trước khi gọi `review decide` với `--target-id`, `--content-hash`, `--decision`, `--reviewer`; chỉ dùng ID/hash thực lấy từ hàng đợi. Quyết định `correct` cần tệp correction hợp lệ. Không sao chép ID/hash của ví dụ vào corpus thật.
 
+Xuất bản graph hiện hành sang Neo4j (idempotent, theo snapshot bất biến, ghi trạng thái vào manifest của graph): `docker compose --profile stores up -d neo4j`, sau đó `python tools/cli.py review publish-neo4j` (đọc `NEO4J_PASSWORD` từ môi trường hoặc `.env`). Dựng lại graph sẽ xoá trạng thái này, tức bản trên Neo4j đã cũ: chạy lại lệnh. `run --neo4j` dựng lại cả corpus và xuất bản graph vừa dựng, không phải graph hiện hành, nên không dùng cho mục đích này.
+
 Ledger tại `data/review/ocop_review_decisions.jsonl` chỉ ghi nối tiếp. Duyệt thực thể không tự động duyệt mọi cạnh và bằng chứng. `decide` dựng graph và làm mới index; nếu graph đã đổi nhưng làm mới index lỗi, giữ ledger và chạy `review refresh-index` sau khi khắc phục hạ tầng. Không xoá lịch sử review.
 
 ## Xử lý lỗi

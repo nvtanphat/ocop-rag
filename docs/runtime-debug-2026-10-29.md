@@ -232,7 +232,83 @@ với status `partial_evidence`. Không thay câu hỏi hoặc gold.
 Toàn bộ 1.104 test pass; vân tay, ready/lineage/Neo4j và 12.619/22.429 giữ nguyên.
 Thành phần 5 được nghiệm thu trên mã này; chưa kết luận thành phần 6–10.
 
-## 6–10. Chưa kết luận
+## 6. Sinh và kiểm chứng — đang đo
 
-Tiếp tục theo thứ tự; không dùng kết quả các thành phần trước để tuyên bố các
-thành phần sau đã hoàn tất.
+Bất biến: quote phải là chuỗi nguyên văn của đoạn được trích; quote không tự
+chứng minh nghĩa; số trong câu hỏi không cấp quyền khẳng định số đó; phủ định và
+vai trò của giá trị số phải khớp; cổng điểm/sao không được bỏ qua bằng ngoại lệ
+quy tắc chung.
+
+| Ca offline | Tầng hỏng | Trước sửa | Nguyên nhân |
+| --- | --- | --- | --- |
+| real-quote-new-fact | `_judge_claims` | Quote thật làm claim thêm “xuất khẩu toàn bộ” được nhận | Nhánh quote bỏ qua kiểm độ phủ/nghĩa |
+| dropped-negation / dropped-bound | `verify_claims` | Bỏ “không” vẫn được nhận là đoạn nguyên văn con | Chỉ kiểm sai lệch phủ định khi chính claim có từ phủ định |
+| asked-number | Grounding/anchor | 99 ngày sai được nhận khi người hỏi cũng viết 99 | Số từ câu hỏi được miễn kiểm nguồn |
+| quantity-swap / event-year | Grounding | Đảo số giữa bản giấy/điện tử; lấy năm số hiệu đổi năm sự kiện | So tập số, không gắn với nhãn đại lượng |
+| wrong-subject-star | Cổng điểm/sao | ALPHA 3 sao, BETA 5 sao vẫn cho ALPHA 5 sao | Chỉ tìm biểu thức điểm/sao trong hợp nguồn |
+| changed-punctuation / invented-quote / metadata-quote | Anchor | Quote đổi dấu câu, bịa hoặc ghép metadata vẫn có đường được nhận | Chuẩn hóa xóa dấu câu; quote sai bị bỏ qua; union ngữ cảnh bị coi như đoạn gốc |
+
+Sửa tại `answer.py`, `verification.py`, `entailment.py` và cue ngôn ngữ:
+
+- Kiểm literal substring và tối thiểu 15 ký tự cho quote được cung cấp; schema
+  generation khai báo `minLength`, mọi property vẫn có trong `required`.
+- Quote không bỏ qua grounding. Diễn đạt lại thiếu độ phủ chỉ được xét lại bằng
+  verdict riêng; quote của verdict phải nằm trong một đoạn gốc được trích, không
+  ghép dòng metadata vào cuối.
+- Loại miễn số từ câu hỏi. So cặp giá trị–nhãn đại lượng trước/sau số, giữ đúng
+  khoảng nguồn nêu; nhãn năm phân biệt năm sự kiện với số trong danh tính văn bản.
+- So phủ định trên mệnh đề khớp, có ranh giới token; không dùng một phủ định không
+  liên quan ở câu khác để bác câu đúng.
+- Cổng điểm/sao dùng bản ghi khớp chủ thể nhất; các ô cùng hàng/node vẫn đi cùng
+  nhau. Trường hợp đồng hạng nhưng bất đồng bị chặn. Ngoại lệ quy tắc chung không
+  được bỏ qua lỗi gán điểm/sao sang bản ghi khác.
+- Từ phủ định, danh từ đại lượng và ranh giới cụm nằm trong
+  `configs/ocop_language.yaml`, không chứa hằng theo corpus trong mã.
+
+Tiền lệ: [ALCE](https://arxiv.org/abs/2305.14627) tách correctness và citation
+quality, kiểm từng phát biểu với nguồn; [Anthropic citations](https://platform.claude.com/docs/en/build-with-claude/citations)
+dùng đoạn trích để truy vết. Chỉ áp dụng nguyên tắc kiểm riêng anchor và nội dung;
+không thêm framework hay mô hình vào máy.
+
+Kiểm chứng tạm: 85 test liên quan pass. Bộ mới 15 test: 11 ca sai đều fail khi
+nạp hàm cũ ở `860a994`, 4 ca đúng vẫn pass; bản sửa chặn 11 ca và giữ 4 ca đúng.
+Các ca được viết/chạy đỏ trước sửa; đối chứng chỉ thay hàm trong bộ nhớ.
+Artifact: `component6-negative.txt`. Các test cũ cho “quote thật là đủ” và “số do
+câu hỏi cung cấp được miễn” được sửa theo hợp đồng an toàn; không đổi gold/lock.
+
+Preflight LLM thật với schema mới thành công, quote 24 ký tự, không có HTTP 400.
+Ca renewal chạy lại trên mã **chưa sửa** đã được nhận qua verdict với quote dài
+hơn: ghi nhận biến thiên, không dùng ca này để kết luận cải thiện do bản sửa.
+Lần đo đầu trên API (LLM thật, `hybrid` + rerank) tụt từ 14 xuống 10/16 ca vì
+kiểm chứng quá chặt. Nguyên nhân và cách sửa ở gốc:
+
+| Nguyên nhân | Sửa |
+| --- | --- |
+| Claim nêu "Điều 6", "Phiếu 1", "Tiêu chí 1.1" nhưng số nằm ở metadata, không ở đoạn quote | `lookup_legal_unit`/`lookup_criterion` gắn `resolved_locator`; nhãn vị trí được thêm vào union của hàng được trích |
+| Bộ xét lại không biết "Quyết định này" chỉ văn bản nào | Prompt xét lại có dòng `VĂN BẢN CHỨA ĐOẠN TRÍCH` và quy tắc chỉ định |
+| Câu "bản OCR chưa được xác minh" model tự nối vào claim làm claim bị loại | `_without_review_remark` bỏ riêng mệnh đề đó, chỉ loại claim khi không còn gì |
+| Câu hỏi nhiều bước mất khối quan hệ đồ thị khi cắt cửa sổ | `_most_relevant` giữ chỗ cho khối quan hệ đầu tiên; từ khóa cửa sổ gồm nhãn hàng quan hệ |
+
+Kết quả 16 ca API (cùng bộ, cùng cấu hình mạnh nhất): phần 5 là 14, phần 6 lần
+đầu 10, sau sửa 13, 13, **15**. Ca còn sai là `sheet-environment`: bộ xét lại trả
+`entails=false` cho một claim có quote nguyên văn và đã đạt ở lần chạy trước; ghi
+nhận là biến thiên của LLM, không sửa theo một lần chạy. Độ trễ trung vị 44,5 s
+(phần 5: 36,9 s) do thêm lượt xét lại ngữ nghĩa. Router/planner không đổi trong
+phần 6 nên bộ chọn luồng không được chạy lại.
+
+Toàn bộ 1.125 test (`tests`, `ocr/tests`) pass; vân tay `ocop-evidence-b531594eddc8`,
+ready/lineage/Neo4j và 12.619/22.429 giữ nguyên. Thành phần 6 được nghiệm thu.
+
+## 7–10. API, frontend, cấu hình, công cụ
+
+- API: `_agent(..., rerank)` bật reranker theo `OCOP_RERANK`; `/sources` trả số
+  trang OCR/PDF. `/criteria` và `/products` vẫn rỗng vì chưa có bộ tạo
+  `verified_*.jsonl` — giới hạn đã biết, nằm ngoài phạm vi dữ liệu đã chốt.
+- Frontend: `retrieval_mode` lấy từ `Health.retrieval_profile` thay cho `"sparse"`
+  cố định; `ASK_TIMEOUT_MS = 180000` cho câu hỏi dùng LLM. `npm test` 15/15,
+  `npm run build` đạt.
+- Cấu hình: `OCOP_RERANK`, `NEO4J_HEAP`/`NEO4J_PAGECACHE` trong `.env.example`,
+  `docs/CONFIGURATION.md`, `docs/ARCHITECTURE.md`.
+- Công cụ: `tools/cli.py review publish-neo4j` đẩy đồ thị đã có vào Neo4j mà không
+  đụng vân tay; hướng dẫn ở `docs/RUNBOOK.md`.
+- Chưa đo lại các mã lỗi 422/404/503 và `/graph/subgraph` trong đợt này.

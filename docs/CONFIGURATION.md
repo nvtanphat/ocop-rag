@@ -15,10 +15,11 @@
 - `OCOP_ROOT`: gốc corpus cho API, đọc khi import ứng dụng. Launcher dùng repo hiện tại; không trỏ tới thư mục chứa corpus khác với frontend đang kiểm chứng.
 - `OCOP_OCR_DATASET`: đường dẫn dataset OCR; mặc định `data/ocr-dataset`. `--ocr-dataset` của CLI hoặc `-OcrDataset` của `run.ps1` được ưu tiên. Docker gắn dataset read-only tại `/app/ocr-dataset`.
 - `OCOP_RETRIEVAL_PROFILE`: `sparse` (mặc định) hoặc `hybrid`; xem [ARCHITECTURE](ARCHITECTURE.md). Docker nhận giá trị qua build arg `OCOP_PROFILE`, `hybrid` cài thêm extra `retrieval`.
+- `OCOP_RERANK`: `1` bật reranker cho yêu cầu hybrid/dense (chỉ hợp lệ với `OCOP_RETRIEVAL_PROFILE=hybrid`); mặc định tắt. Tham số `rerank_candidates`, `rerank_first_stage_weight` nằm trong `configs/ocop_retrieval.yaml`. Mỗi cặp rerank tốn khoảng 1 giây CPU, câu hỏi có rerank thường mất 15–80 giây.
 - `OCOP_SESSION_STORE`: `memory` (mặc định) hoặc `sqlite`; `OCOP_SESSION_DB` chọn tệp SQLite, mặc định `data/processed/ocop/sessions.sqlite3`.
 - `OCOP_MODELS_DIR`: kho mô hình cục bộ cho embedding/reranker. Các model phải được chuẩn bị trước; không bật `trust_remote_code`.
 - `OCOP_EASYOCR_MODEL_DIR`, `OCOP_VIETOCR_WEIGHTS`: trọng số OCR dùng trong dự án OCR riêng.
-- `NEO4J_PASSWORD`: bí mật khi bật dịch vụ graph ngoài; không commit giá trị thực.
+- `NEO4J_PASSWORD`: bí mật khi bật dịch vụ graph ngoài; không commit giá trị thực. `NEO4J_HEAP` (mặc định `512m`) và `NEO4J_PAGECACHE` (`256m`) giới hạn bộ nhớ container Neo4j trong `docker-compose.yml`; xuất bản graph cần khoảng 1 GB heap (`NEO4J_HEAP=1g`). Neo4j chỉ là nơi xuất bản graph, đường truy vấn đọc graph cục bộ.
 - `OCOP_ENFORCE_RELEASE_GATE=1`: CLI từ chối phục vụ khi evaluation gate không đạt.
 - `OCOP_LANGGRAPH_CHECKPOINT_ENABLED=1` và `OCOP_LANGGRAPH_CHECKPOINT_PATH`: bật SQLite checkpoint cho luồng có AuthContext tin cậy và session hợp lệ. API public không tự cấp quyền này.
 

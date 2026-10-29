@@ -42,6 +42,8 @@ Phiên chỉ lưu ngữ cảnh hội thoại đã giới hạn và che định d
 - `sparse` (mặc định): chỉ BM25. Yêu cầu `retrieval_mode` là `dense` hoặc `hybrid` bị từ chối bằng HTTP 422 thay vì âm thầm trả kết quả BM25.
 - `hybrid`: cần `sentence-transformers`, `qdrant-client`, chỉ mục dense đã dựng và Qdrant truy cập được. Thiếu bất kỳ mục nào, `/health` báo `not_ready` kèm danh sách `retrieval_profile.missing` và `/query` trả 503.
 
+`OCOP_RERANK=1` bật cross-encoder cho yêu cầu `dense`/`hybrid` của bản triển khai hybrid; yêu cầu `sparse` không bao giờ rerank. Đây là lựa chọn của triển khai, không phải của client; đặt `OCOP_RERANK=1` với hồ sơ `sparse` làm `/health` báo `rerank_requires_hybrid_profile`. Reranker re-score `retrieval.rerank_candidates` ứng viên rồi hợp nhất thứ hạng tầng đầu theo `retrieval.rerank_first_stage_weight` (RRF; 0 = chỉ theo cross-encoder), để cross-encoder cứu được đoạn nằm sâu nhưng không phủ quyết bằng chứng mạnh của tầng đầu. `/health` trả `retrieval_profile`; frontend chọn `hybrid` đúng khi hồ sơ này sẵn sàng, ngược lại `sparse`.
+
 ## Phiên hội thoại
 
 Mặc định phiên nằm trong bộ nhớ một tiến trình (TTL 1 giờ, tối đa 512 phiên). Với nhiều worker trên một máy hoặc cần giữ phiên qua lần khởi động lại, đặt `OCOP_SESSION_STORE=sqlite`: mọi lần cập nhật là một giao dịch `BEGIN IMMEDIATE` nên các lượt đồng thời không ghi đè nhau. Nhiều máy cần kho mạng triển khai cùng giao diện `get/save`.
