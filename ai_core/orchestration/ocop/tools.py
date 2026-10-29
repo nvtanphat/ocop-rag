@@ -683,6 +683,9 @@ class ToolRegistry:
                     unit = graph.units[hit["evidence_unit_id"]]
                     hit.update({"graph_node_ids": [unit["node_id"]], "check": unit["check"]})
                 rows = hits + rows
+            if slots.get("article_id"):
+                # The passages were fetched under this article: that scope, not the question's wording, says where they sit.
+                rows = [{**row, "resolved_locator": {"article_id": str(slots["article_id"])}} for row in rows]
             return {
                 "results": rows,
                 "status": ("exact_pdf_page" if rows else "requested_pdf_page_not_indexed")
@@ -1066,6 +1069,11 @@ class ToolRegistry:
                 )
             # Completeness describes the delivered set, after every scope and output limit.
             rows = _bounded_recognition_rows(rows, row_limit) if name == "lookup_recognition" else rows[:row_limit]
+            if name == "lookup_criterion":
+                # The sheet and criterion the rows were fetched under: scope the tool resolved, not wording from the question.
+                locator = {key: str(slots[key]) for key in ("sheet_number", "criterion_id") if slots.get(key)}
+                if locator:
+                    rows = [{**row, "resolved_locator": {**locator, **(row.get("resolved_locator") or {})}} for row in rows]
             missing_entities = []
             if name == "lookup_recognition" and (asked_products or asked_orgs):
                 represented = {node_id for row in rows for node_id in row.get("graph_node_ids", [])}

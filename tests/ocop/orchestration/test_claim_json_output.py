@@ -20,8 +20,9 @@ def results(*rows):
 
 
 class Model:
-    def __init__(self, payload):
+    def __init__(self, payload, *, verdicts=None):
         self.payload = payload
+        self.verdicts = verdicts or []
         self.calls = []
 
     def chat(self, *args, **kwargs):
@@ -29,6 +30,8 @@ class Model:
 
     def chat_structured(self, system, user, *, schema, max_tokens=1024):
         self.calls.append(schema)
+        if "verdicts" in schema["properties"]:
+            return json.dumps({"verdicts": self.verdicts})
         return json.dumps(self.payload)
 
 
@@ -117,7 +120,8 @@ RECOGNITION_ROW = (
 
 
 def _recognition_answer(claim, **kwargs):
-    model = Model({"claims": [{"text": claim, "sources": ["S1"]}], "missing": []})
+    model = Model({"claims": [{"text": claim, "sources": ["S1"]}], "missing": []},
+                  verdicts=[{"id": 0, "entails": True, "quote": RECOGNITION_ROW}])
     source = {**row(RECOGNITION_ROW), "source_id": "VN.HAIPHONG.QD525.2026"}
     return assemble("Gạo giống HANA được mấy sao, bao nhiêu điểm?", results(source), llm=model, **kwargs)
 
@@ -137,7 +141,8 @@ def test_a_claim_combining_two_verified_rows_is_checked_against_both_together():
     one = {**row("STT: 10; Sản phẩm: Gạo ST25; Tổ chức: Hợp tác xã Thụy Hương; Xếp loại: 4 sao"), "source_id": "D"}
     two = {**row("STT: 11; Sản phẩm: Gạo Hạt ngọc 9; Tổ chức: Hợp tác xã Thụy Hương; Xếp loại: 4 sao", unit="u2")}
     claim = "Gạo ST25 và Gạo Hạt ngọc 9 đều có Tổ chức là Hợp tác xã Thụy Hương"
-    model = Model({"claims": [{"text": claim, "sources": ["S1", "S2"]}], "missing": []})
+    model = Model({"claims": [{"text": claim, "sources": ["S1", "S2"]}], "missing": []},
+                  verdicts=[{"id": 0, "entails": True, "quote": one["text"] + "\n" + two["text"]}])
     out = assemble("Hai sản phẩm đó của hợp tác xã nào?", results(one, two), llm=model)
     assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
     invented = Model({"claims": [{"text": claim + " từ năm 2031", "sources": ["S1", "S2"]}], "missing": []})
@@ -145,8 +150,14 @@ def test_a_claim_combining_two_verified_rows_is_checked_against_both_together():
     assert bad["status"] == "citation_verification_failed"
 
 
-def _quoted(claim, quote, status="verified"):
-    model = Model({"claims": [{"text": claim, "sources": ["S1"], "quote": quote}], "missing": []})
+def _quoted(claim, quote, status="verified", *, entails=False):
+    class IndependentReview(Model):
+        def chat_structured(self, system, user, *, schema, max_tokens=1024):
+            if "verdicts" in schema["properties"]:
+                self.calls.append(schema)
+                return json.dumps({"verdicts": [{"id": 0, "entails": entails, "quote": quote}]})
+            return super().chat_structured(system, user, schema=schema, max_tokens=max_tokens)
+    model = IndependentReview({"claims": [{"text": claim, "sources": ["S1"], "quote": quote}], "missing": []})
     source = {**row("Điều 7. Trình tự đánh giá. 2. UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc", status=status)}
     return assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=model)
 
@@ -189,6 +200,23 @@ def test_what_the_graph_step_found_steers_which_part_of_a_long_passage_is_shown(
     assert any("hết hiệu lực sau 60 ngày" in prompt for prompt in seen), out
 
 
+def test_a_review_status_remark_appended_to_a_statement_is_dropped_but_the_statement_is_kept():
+    from ai_core.orchestration.ocop.answer import _parse_claims
+
+    def parse(*texts):
+        claims, _ = _parse_claims(json.dumps({"claims": [{"text": t, "sources": ["S1"], "quote": ""} for t in texts], "missing": []}))
+        return [c[0] for c in claims]
+
+    assert parse("Điều 11 ghi Quyết định có hiệu lực từ ngày 22/5/2026; nội dung nguồn chưa được xác minh.") == [
+        "Điều 11 ghi Quyết định có hiệu lực từ ngày 22/5/2026"
+    ]
+    assert parse("Có. Mục 1.6 nêu tiêu chí về môi trường; nội dung OCR này chưa được xác minh.") == [
+        "Có. Mục 1.6 nêu tiêu chí về môi trường"
+    ]
+    assert parse("Nguồn OCR chưa được xác minh.", "Nội dung trích xuất này chưa được duyệt.") == []  # only a remark
+    assert parse("Hồ sơ nộp trong 15 ngày.") == ["Hồ sơ nộp trong 15 ngày."]  # an ordinary claim is untouched
+
+
 def test_every_structured_output_schema_lists_all_its_properties_as_required():
     # Providers' strict structured-output mode rejects (HTTP 400) any object whose "required" omits a property.
     from ai_core.orchestration.ocop.answer import CLAIMS_SCHEMA
@@ -209,14 +237,18 @@ def test_every_structured_output_schema_lists_all_its_properties_as_required():
             assert set(obj["properties"]) == set(obj["required"]), obj
 
 
-def test_a_paraphrase_is_published_when_its_verbatim_quote_is_in_the_cited_excerpt():
+def test_a_paraphrase_needs_an_independent_entailment_verdict_and_an_original_quote():
     # the paraphrase shares almost no wording with the source, so word overlap alone would reject it
     out = _quoted(
         "Cơ quan cấp xã được 15 ngày làm việc để xử lý hồ sơ",
         "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc",
+        entails=True,
     )
     assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
     assert out["claim_verification"]["claims"][0]["anchor_quote"].startswith("UBND cấp xã")
+    rejected = _quoted("Cơ quan cấp xã được 15 ngày làm việc để xử lý hồ sơ",
+                       "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc", entails=False)
+    assert rejected["status"] == "citation_verification_failed"
 
 
 def test_a_quote_that_is_not_in_the_excerpt_or_lacks_the_claims_numbers_proves_nothing():
@@ -224,7 +256,7 @@ def test_a_quote_that_is_not_in_the_excerpt_or_lacks_the_claims_numbers_proves_n
     anchored_ok = _quoted(
         "Chính quyền cơ sở xử lý hồ sơ nhanh chóng", "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc"
     )
-    assert anchored_ok["status"] == "generated_claims_verified"  # a real quote is enough for a paraphrase without numbers
+    assert anchored_ok["status"] == "citation_verification_failed"  # the source does not establish "nhanh chóng"
     assert invented["status"] == "citation_verification_failed"
     missing_number = _quoted("Cơ quan cấp xã được 30 ngày làm việc", "UBND cấp xã tiếp nhận và đánh giá hồ sơ")
     assert missing_number["status"] == "citation_verification_failed"
@@ -234,7 +266,8 @@ def test_a_claim_may_name_the_heading_label_above_the_quoted_sentence():
     body = "UBND cấp xã tiếp nhận và đánh giá hồ sơ trong 15 ngày làm việc"
     source = {**row(body), "context": {"parent_chain": ["Điều 7. Trình tự đánh giá"]}}
     model = Model(
-        {"claims": [{"text": "Điều 7 quy định cấp xã có 15 ngày làm việc để tiếp nhận hồ sơ", "sources": ["S1"], "quote": body}], "missing": []}
+        {"claims": [{"text": "Điều 7 quy định cấp xã có 15 ngày làm việc để tiếp nhận hồ sơ", "sources": ["S1"], "quote": body}], "missing": []},
+        verdicts=[{"id": 0, "entails": True, "quote": body}],
     )
     out = assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=model)
     assert out["status"] == "generated_claims_verified", out["generation_diagnostics"]
@@ -260,7 +293,8 @@ def test_names_taken_from_a_source_id_and_the_corpus_vocabulary_are_not_new_enti
 
 
 def test_an_uncited_unreviewed_source_does_not_label_an_answer_backed_by_verified_rows():
-    model = Model({"claims": [{"text": "Gạo giống HANA xếp loại 4 sao", "sources": ["S1"]}], "missing": []})
+    model = Model({"claims": [{"text": "Gạo giống HANA xếp loại 4 sao", "sources": ["S1"]}], "missing": []},
+                  verdicts=[{"id": 0, "entails": True, "quote": RECOGNITION_ROW}])
     other = row("Gạo giống ST25 xếp loại 4 sao theo OCR", unit="u2", status="needs_review")
     out = assemble("Gạo giống HANA mấy sao?", results(row(RECOGNITION_ROW), other), llm=model)
     assert out["status"] == "generated_claims_verified" and "LƯU Ý" not in out["answer"]
@@ -374,13 +408,13 @@ def test_numbers_in_the_cited_document_identity_are_grounded():
                 {"text": "Quyết định 26/2026 có hiệu lực từ ngày 22 tháng 5 năm 2026", "sources": ["S1"]}
             ],
             "missing": [],
-        }
+        }, verdicts=[{"id": 0, "entails": True, "quote": unit["text"]}],
     )
     out = assemble("QĐ26/2026 có hiệu lực từ ngày nào?", results(unit), llm=model)
     assert out["status"] == "generated_unverified_claims"
 
 
-def test_grounding_accepts_restated_question_number_and_range_member_but_not_new_figures():
+def test_grounding_accepts_a_range_member_but_not_a_false_number_from_the_question():
     from ai_core.orchestration.ocop.verification import grounded_in_excerpt
 
     source = "Sản phẩm OCOP đạt từ 3 sao đến 5 sao trước ngày Quyết định có hiệu lực tiếp tục có giá trị đến hết thời hạn."
@@ -390,7 +424,7 @@ def test_grounding_accepts_restated_question_number_and_range_member_but_not_new
         grounded_in_excerpt(claim.replace("4 sao", "7 sao"), source, min_term_coverage=0.8)[1]
         == "grounding_numbers_missing"
     )
-    assert grounded_in_excerpt(
+    assert not grounded_in_excerpt(
         claim.replace("4 sao", "7 sao"), source, min_term_coverage=0.8, asked="đạt 7 sao"
     )[0]
     assert (
@@ -436,10 +470,13 @@ def _unreviewed(text, page=4):
 
 
 class _Fixed:
-    def __init__(self, payload):
+    def __init__(self, payload, *, verdicts=None):
         self.payload = payload
+        self.verdicts = verdicts or []
 
     def chat_structured(self, system, user, **kw):
+        if "verdicts" in kw["schema"]["properties"]:
+            return json.dumps({"verdicts": self.verdicts})
         return self.payload
 
 
@@ -459,7 +496,8 @@ def test_page_number_from_the_source_header_is_grounded():
             }
         ],
         llm=_Fixed(
-            '{"claims":[{"text":"Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định ở trang 4.","sources":["S1"]}],"missing":[]}'
+            '{"claims":[{"text":"Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định ở trang 4.","sources":["S1"]}],"missing":[]}',
+            verdicts=[{"id": 0, "entails": True, "quote": "Báo cáo tự đánh giá về sản phẩm Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định."}],
         ),
     )
     assert out["status"] == "generated_unverified_claims", out["generation_diagnostics"]
@@ -596,7 +634,8 @@ def test_claim_may_name_the_parent_heading_shown_above_the_excerpt():
     out = assemble(
         "Tiêu chí 1.1 có yêu cầu trồng trong tỉnh không?",
         results(parent),
-        llm=Model({"claims": [{"text": claim, "sources": ["S1"]}], "missing": []}),
+        llm=Model({"claims": [{"text": claim, "sources": ["S1"]}], "missing": []},
+                  verdicts=[{"id": 0, "entails": True, "quote": parent["text"]}]),
     )
     assert out["status"] == "generated_unverified_claims", out["generation_diagnostics"]
     # a word that is neither in the excerpt nor in its headings is still ungrounded

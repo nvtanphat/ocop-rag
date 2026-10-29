@@ -4,14 +4,17 @@ from __future__ import annotations
 import json
 import math
 import re
+from functools import lru_cache
+from pathlib import Path
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
-from ai_core.orchestration.ocop.entailment import SOFT_REASONS, anchored, review
+from ai_core.orchestration.ocop.entailment import MIN_QUOTE_CHARS, SOFT_REASONS, anchored, review
 from ai_core.orchestration.ocop.verification import (
     CRITICAL,
     check_source_markers,
     check_sensitive_claims,
     grounded_in_excerpt,
     verify_claims,
+    _normalize,
 )
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
 from ai_core.orchestration.ocop.language import fold
@@ -432,7 +435,7 @@ CLAIMS_SCHEMA = {
                 "properties": {
                     "text": {"type": "string"},
                     "sources": {"type": "array", "items": {"type": "string"}},
-                    "quote": {"type": "string"},
+                    "quote": {"type": "string", "minLength": MIN_QUOTE_CHARS},
                 },
             },
         },
@@ -444,6 +447,16 @@ CLAIMS_SCHEMA = {
 REVIEW_DISCLAIMER = re.compile(
     r"chưa\s+(?:được\s+)?(?:xác\s+minh|duyệt)|(?:OCR|trích xuất)[^.]{0,40}chưa", re.I
 )
+
+
+def _without_review_remark(text: str) -> str:
+    """Drop only the clauses that comment on the source's review status; what the claim says about the source stays."""
+    pieces = re.split(r"(;\s*|\.\s+)", text)  # clauses with their separators kept at the odd positions
+    kept = []
+    for i in range(0, len(pieces), 2):
+        if not REVIEW_DISCLAIMER.search(pieces[i]):
+            kept.append(pieces[i] + (pieces[i + 1] if i + 1 < len(pieces) else ""))
+    return "".join(kept).strip().rstrip(";, ").strip()
 
 
 def _parse_claims(raw):
@@ -458,8 +471,11 @@ def _parse_claims(raw):
     for item in data["claims"]:
         if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
             continue
-        if REVIEW_DISCLAIMER.search(item["text"]):
-            continue  # the system labels unreviewed sources itself; a claim about review status is not content
+        # The system labels unreviewed sources itself: a remark about review status is not content, and a claim that is
+        # nothing but such a remark is dropped. A remark the model appended to a real statement must not cost the statement.
+        item = {**item, "text": _without_review_remark(item["text"])}
+        if not item["text"]:
+            continue
         numbers = [
             int(m) for s in item.get("sources") or [] if isinstance(s, str) for m in re.findall(r"\d+", s)
         ]
@@ -520,22 +536,62 @@ def _sentences(text):
     return [s for s in _split_claims(text) if s.strip(" .")]
 
 
+@lru_cache(maxsize=128)
+def _document_label(source_id: str) -> str:
+    """Registry document number of a source ("26/2026/QĐ-TTg"), else its id: what a deictic "Quyết định này" refers to."""
+    path = Path(__file__).resolve().parents[3] / "configs" / "ocop_sources.json"
+    try:
+        for source in json.loads(path.read_text(encoding="utf-8")).get("sources", []):
+            if source.get("source_id") == source_id:
+                return str(source.get("document_number") or source_id)
+    except (OSError, ValueError):
+        pass
+    return source_id
+
+
+def _locator_label(row) -> str:
+    """The article a tool resolved this passage under ("Điều 6"): structure the passage sits in, not a number from the question."""
+    locator = (row or {}).get("resolved_locator") or {}
+    if not locator:
+        return ""
+    from ai_core.orchestration.ocop.language import get_language
+
+    nouns = get_language().structure_nouns
+    kinds = {"article_id": "article", "sheet_number": "sheet", "criterion_id": "criterion"}
+    # Every way the corpus vocabulary names the structure ("Tiêu chí 1.1", "Mục 1.1"): a claim may use any of them.
+    return chr(10).join(
+        f"{noun.capitalize()} {locator[key]}"
+        for key, kind in kinds.items()
+        if locator.get(key)
+        for noun in nouns[kind]
+    )
+
+
 def _judge_claims(claims, citations, selected, catalog=None, question=""):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers, quote in claims:
         soft_excerpt = ""
+        quote_metadata = ""
+        document_label = ""
         anchor = ""
         tags = "".join(f"[S{n}]" for n in numbers)
         # A claim may hold several sentences ("Có. Sản phẩm ..."); each one carries the claim's markers.
         marked = " ".join(s.rstrip(". ") + " " + tags + "." for s in _sentences(text)) or text + " " + tags
         reasons = []
+        cited = [next((r for r in selected if _cites(r, citations[n - 1])), None)
+                 for n in numbers if 0 < n <= len(citations)]
+        quote_sources = [str((row or {}).get("text") or "") for row in cited]
+        if quote and (len(quote.strip()) < MIN_QUOTE_CHARS
+                      or quote.strip() not in "\n".join(quote_sources)):
+            reasons.append("quote_not_verbatim")
         markers = check_source_markers(marked, citations)
         if not numbers or markers["invalid_markers"] or markers["missing_citations"]:
             reasons.append("unknown_citation_markers" if markers["invalid_markers"] else "missing_citations")
         sensitive = check_sensitive_claims(marked, selected, citations)
         star_unsupported = bool(sensitive["unsupported_score_or_star_claims"])
-        if star_unsupported and not _prose_rule_only(numbers, citations, selected, text, catalog):
+        if star_unsupported and (sensitive.get("misbound_score_or_star_claims")
+                                or not _prose_rule_only(numbers, citations, selected, text, catalog)):
             reasons.append("unsupported_score_or_star_claims")
         verdict = verify_claims(marked, citations, selected)
         tier = "verified"
@@ -551,11 +607,6 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
             if failures and set(failures) <= soft_failures and not reasons:
                 tier = "unreviewed" if "source_not_verified" in failures else "verified_paraphrase"
                 # A claim may combine what several cited passages say: it is checked against their union.
-                cited = [
-                    next((r for r in selected if _cites(r, citations[n - 1])), None)
-                    for n in numbers
-                    if 0 < n <= len(citations)
-                ]
                 # The header the model was shown names the document (source id), so numbers in that id are grounded too.
                 # Its page number is grounded only for a claim that is about the page ("ở trang 4"), never for other numbers.
                 about_page = bool(re.search(r"\btrang\b", fold(text)))
@@ -566,6 +617,8 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
                         str((r or {}).get("text") or "")
                         + chr(10)
                         + " > ".join(((r or {}).get("context") or {}).get("parent_chain") or [])
+                        + chr(10)
+                        + _locator_label(r)
                         for r in cited
                     ]
                     + [
@@ -579,23 +632,33 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
                         if 0 < n <= len(citations)
                     ]
                 )
-                # The claim's own verbatim quote is the primary evidence (quote-grounded generation): it must occur in the
-                # cited excerpt and carry every number, negation and proper name of the claim. A paraphrase then needs no
-                # lexical overlap with the source; a quote that is not in the excerpt proves nothing and falls through.
-                ids = " ".join(str(citations[n - 1].get("source_id") or "") for n in numbers if 0 < n <= len(citations))
+                # A real quote is an anchor, not an entailment verdict. Deterministic checks run first;
+                # lexical failures can only be reconsidered by the independent review below.
+                ids = " ".join(str(citations[n - 1].get("source_id") or "")
+                               + (f" trang {citations[n - 1].get('pdf_page')}" if about_page else "")
+                               for n in numbers if 0 < n <= len(citations))
                 # The headings above the excerpt ("Điều 7. …") label it; a claim may name that label without the quote repeating it.
                 headings = " ".join(" ".join(((r or {}).get("context") or {}).get("parent_chain") or []) for r in cited)
-                if quote and anchored(text, quote, union, asked=" ".join((question, ids, headings))):
-                    ok, why, anchor = True, "quote_anchored", quote
-                    tier = "unreviewed" if "source_not_verified" in failures else "verified_quote"
-                else:
-                    ok, why = grounded_in_excerpt(
-                        text,
-                        union,
-                        min_term_coverage=get_settings().context.grounding_min_term_coverage,
-                        critical=bool(CRITICAL.search(text)),
-                        asked=question,
+                quote_metadata = ids + " " + headings
+                document_label = "; ".join(
+                    dict.fromkeys(
+                        _document_label(str(citations[n - 1].get("source_id") or ""))
+                        for n in numbers
+                        if 0 < n <= len(citations)
                     )
+                )
+                ok, why = grounded_in_excerpt(
+                    text,
+                    union,
+                    min_term_coverage=get_settings().context.grounding_min_term_coverage,
+                    critical=bool(CRITICAL.search(text)),
+                    asked=question,
+                )
+                if ok and quote and anchored(text, quote, union, asked=" ".join((question, ids, headings))):
+                    anchor = quote
+                # Overlap can be 100% after swapping subject/object. Only a source copy skips semantic review.
+                if ok and not any(_normalize(text) in _normalize(source) for source in quote_sources):
+                    ok, why = False, "needs_semantic_entailment_check"
                 if not ok:
                     reasons.append(why)
                     if reasons == [why] and why in SOFT_REASONS:
@@ -611,7 +674,8 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
                 "tier": tier,
                 "unverified_source": markers["unverified_source"],
                 "order": len(accepted) + len(rejected),
-                **({"soft_excerpt": soft_excerpt} if soft_excerpt else {}),
+                **({"soft_excerpt": soft_excerpt, "quote_sources": quote_sources,
+                    "quote_metadata": quote_metadata, "document": document_label} if soft_excerpt else {}),
                 **({"quote": anchor} if anchor else {}),
             }
         )
@@ -629,7 +693,8 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
         str(citations[n - 1].get("source_id") or "") for r in soft for n in r["sources"] if 0 < n <= len(citations)
     )
     for index, quote in review(
-        llm, [{"claim": r["text"], "excerpt": r["soft_excerpt"]} for r in soft], asked=question + " " + named
+        llm, [{"claim": r["text"], "excerpt": r["soft_excerpt"], "quote_sources": r["quote_sources"], "document": r.get("document", ""),
+               "metadata": r["quote_metadata"]} for r in soft], asked=question + " " + named
     ).items():
         soft[index].update(reasons=[], tier="unreviewed_semantic", quote=quote)
         rejected.remove(soft[index])

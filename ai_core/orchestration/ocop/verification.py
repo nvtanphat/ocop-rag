@@ -66,6 +66,35 @@ def _row_text(rows: list[dict]) -> str:
     return re.sub(r"\s+", " ", text.casefold())
 
 
+def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict]) -> bool:
+    """Use the most subject-specific source records, preserving cells of the same table row."""
+    from ai_core.orchestration.ocop.language import get_language
+
+    groups = {}
+    for index, row in enumerate(rows):
+        if row.get("review_status") != "verified":
+            continue
+        spans = row.get("source_spans") or row.get("spans") or []
+        span = next((s for s in spans if isinstance(s, dict)), {}) if isinstance(spans, list) else {}
+        node_ids = row.get("graph_node_ids")
+        if span.get("table_id") and isinstance(span.get("row"), int):
+            identity = (row.get("source_id"), span["table_id"], span["row"])
+        elif isinstance(node_ids, list) and node_ids and all(isinstance(value, str) for value in node_ids):
+            identity = (row.get("source_id"), tuple(sorted(node_ids)))
+        else:
+            identity = (index,)
+        groups.setdefault(identity, []).append(str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""))
+    records = [part for texts in groups.values() for part in _split_claims(" ".join(texts))]
+    lang = get_language()
+    terms = {word for word in lang.content_words(SCORE_ASSERTION.sub(" ", MARKER.sub("", claim)))
+             if not word.isdigit()}
+    scores = [len(terms & set(lang.content_words(record))) for record in records]
+    best = max(scores, default=0)
+    candidates = [record for record, score in zip(records, scores) if score == best]
+    return bool(candidates) and all(_stated_in(assertion, re.sub(r"\s+", " ", record.casefold()))
+                                    for record in candidates)
+
+
 def check_sensitive_claims(
     answer: str, evidence_rows: list[dict], citations: list[dict] | None = None
 ) -> dict:
@@ -87,17 +116,23 @@ def check_sensitive_claims(
             "unsupported_score_or_star_claims": sorted(x for x in assertions if not _stated_in(x, verified)),
             "sensitive_claim_count": len(assertions),
         }
-    assertions, unsupported = set(), set()
+    assertions, unsupported, misbound = set(), set(), set()
     for sentence in _split_claims(answer):
         stated = found(sentence)
         if not stated:
             continue
         assertions |= stated
-        verified = _row_text(
-            _cited_rows([int(i) for i in MARKER.findall(sentence)], citations, evidence_rows)
-        )
-        unsupported.update(x for x in stated if not _stated_in(x, verified))
-    return {"unsupported_score_or_star_claims": sorted(unsupported), "sensitive_claim_count": len(assertions)}
+        cited = _cited_rows([int(i) for i in MARKER.findall(sentence)], citations, evidence_rows)
+        verified = _row_text(cited)
+        for assertion in stated:
+            present = _stated_in(assertion, verified)
+            aligned = present and _sensitive_records_agree(sentence, assertion, cited)
+            if not aligned:
+                unsupported.add(assertion)
+            if present and not aligned:
+                misbound.add(assertion)
+    return {"unsupported_score_or_star_claims": sorted(unsupported),
+            "misbound_score_or_star_claims": sorted(misbound), "sensitive_claim_count": len(assertions)}
 
 
 # Claim-level verification. Supports an optional audited semantic entailment
@@ -117,6 +152,65 @@ WORD = re.compile(r"[\wÀ-ỹ]+", re.U)
 
 def _normalize(s: str) -> str:
     return " ".join(WORD.findall(unicodedata.normalize("NFC", s).casefold()))
+
+
+def negation_conflict(claim: str, source: str) -> bool:
+    """Detect a changed polarity on the matching clause, not an unrelated negative elsewhere."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    lang = get_language()
+    negative = lang.words("claim_negation", lang.cues["claim_negation"])
+
+    def signature(text):
+        text = fold(text)
+        polarity = bool(negative.search(text))
+        words = " ".join(lang.content_words(negative.sub(" ", text)))
+        return polarity, words
+
+    polarity, words = signature(claim)
+    if not words:
+        return False
+    matches = [other for part in re.split(r"[;!?\n]|(?<!\d)\.(?!\d)", source)
+               for other, body in [signature(part)] if " " + words + " " in " " + body + " "]
+    return bool(matches) and polarity not in matches
+
+
+def numeric_binding_conflict(claim: str, source: str) -> bool:
+    """A present number cannot be moved to another identically worded quantity label."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    lang = get_language()
+    units = {fold(word) for word in lang.cues["claim_quantity_units"]}
+    boundaries = lang.stop | {fold(word) for word in lang.cues["claim_quantity_boundaries"]}
+
+    def bindings(text):
+        result = []
+        ranges = {m.start(2): {str(n) for n in range(int(m[1]), int(m[2]) + 1)}
+                  for m in _RANGE.finditer(text) if 0 < int(m[2]) - int(m[1]) <= 20}
+        for match in re.finditer(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text):
+            value = match[0].replace(",", ".").lstrip("0") or "0"
+            prefix = re.search(r"([^\W\d_]+)[ \t]*$", text[:match.start()])
+            if prefix and fold(prefix[1]) in units:
+                result.append((value, ("prefix", fold(prefix[1]))))
+            tail = re.match(r"[ \t]+([^\W\d_]+(?:[ \t]+[^\W\d_]+){0,7})", text[match.end():])
+            if not tail:
+                continue
+            words = re.findall(r"[a-z]+", fold(tail[1]))
+            if not words or words[0] not in units:
+                continue
+            label = [words[0]]
+            for word in words[1:3]:
+                if word in boundaries:
+                    break
+                label.append(word)
+            values = ranges.get(match.start(), {value})
+            result.extend((value, tuple(label)) for value in values)
+        return result
+
+    available = {}
+    for value, label in bindings(source):
+        available.setdefault(label, set()).add(value)
+    return any(label in available and value not in available[label] for value, label in bindings(claim))
 
 
 def _split_claims(answer: str) -> list[str]:
@@ -211,11 +305,11 @@ def verify_claims(
                 checked.append(("unsupported", "source_missing_claim_numbers"))
                 continue
 
-            def neg(s):
-                return bool(re.search(r"\b(?:không|chưa|miễn)\b", s, re.I))
-
-            if neg(prose) != neg(source) and ("không" in prose.lower() or "miễn" in prose.lower()):
+            if negation_conflict(prose, source):
                 checked.append(("unknown", "negation_scope_unresolved"))
+                continue
+            if numeric_binding_conflict(prose, source):
+                checked.append(("unsupported", "source_numeric_binding_mismatch"))
                 continue
             if _normalize(prose) and _normalize(prose) in _normalize(source):
                 checked.append(("supported", "exact_verbatim_support"))
@@ -329,7 +423,7 @@ def grounded_in_excerpt(
 
     Used for a claim that is not a verbatim copy of its source (an unreviewed source, or a paraphrase of a verified one,
     or one that combines several cited rows): such a claim may be shown, labelled as unreviewed when its source is, when
-    (1) every number in it occurs in the excerpt (or in the question, or inside a range the excerpt states),
+    (1) every number in it occurs in the excerpt or inside a range the excerpt states,
     (2) negation/exemption wording agrees with the excerpt,
     (3) enough of its content words occur in the excerpt (stricter for critical claims) and (4) its words are not
     merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
@@ -337,13 +431,13 @@ def grounded_in_excerpt(
     from ai_core.orchestration.ocop.language import get_language
 
     prose = _without_rejected_alternative(prose, asked)
-    # A number the user wrote in the question is a premise being restated, not a figure the model introduced; a number
-    # inside a range the source states is covered by it. Anything else must occur in the excerpt.
-    if _numbers(prose) - _numbers(source) - _numbers(asked) - _range_numbers(source):
+    # A user's number is not authority for a factual assertion. Values must occur in the source or its stated range.
+    if _numbers(prose) - _numbers(source) - _range_numbers(source):
         return False, "grounding_numbers_missing"
-    negation = lambda s: bool(re.search(r"\b(?:không|chưa|miễn)\b", s, re.I))  # noqa: E731
-    if negation(prose) != negation(source) and re.search(r"\b(?:không|miễn)\b", prose, re.I):
+    if negation_conflict(prose, source):
         return False, "grounding_negation_mismatch"
+    if numeric_binding_conflict(prose, source):
+        return False, "grounding_numeric_binding_mismatch"
     lang = get_language()
     from ai_core.orchestration.ocop.language import fold
 

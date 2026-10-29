@@ -173,6 +173,9 @@ cues:
   scoring_method: [cách tính điểm, hướng dẫn tính điểm, công thức tính điểm, quy trình chấm điểm, tính điểm như thế nào,
     tính điểm ra sao, tính điểm ocop như thế nào, thang điểm, phương pháp chấm điểm, điểm được tính thế nào]
   scoring_negation: [không, đừng, chưa, không cần]
+  claim_negation: [không, chưa, miễn]
+  claim_quantity_units: [điểm, sao, ngày, tháng, năm, bản, bộ, giờ, phút, lần, đợt, phần, trang]
+  claim_quantity_boundaries: [trước, sau, kể, tính]
   scoring_hypothetical: [nếu, giả sử]
   criteria_signal: [tiêu chí, bộ tiêu chí, thang điểm, mức điểm, điểm tối đa, cách tính điểm, công thức tính điểm,
     để đạt 3 sao, để đạt 4 sao, để đạt 5 sao, điểm ocop, phương pháp chấm điểm]
