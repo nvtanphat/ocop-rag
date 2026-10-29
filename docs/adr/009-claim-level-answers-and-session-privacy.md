@@ -23,4 +23,4 @@ Cổng điểm/sao vẫn tuân theo [ADR-005](005-no-unverified-score-or-star-as
 ## Hệ quả
 Lượt xét nghĩa làm tăng độ trễ; lỗi marker, quote hoặc điểm/sao không được lượt
 xét lại bỏ qua. Kết quả kiểm chứng được giữ theo từng claim để truy nguyên lỗi.
-Số đo lịch sử nằm trong [nhật ký runtime](../runtime-debug-2026-10-29.md).
+Số đo lịch sử nằm trong [tổng hợp kiểm tra runtime](../RUNTIME_AUDIT.md).
