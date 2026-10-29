@@ -28,6 +28,8 @@ SKIP_DIRS = {
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
+    ".tmp",
+    "build",
     "node_modules",
     "_smoke",
     "_scan_smoke",
@@ -38,8 +40,8 @@ SKIP_DIRS = {
     "htmlcov",
     "archive",
 }
-SKIP_FILES = {".DS_Store", ".env", ".npmrc", ".pypirc"}
-SKIP_EXTENSIONS = {".pem", ".key", ".p12", ".sqlite", ".sqlite3", ".db"}
+SKIP_FILES = {".DS_Store", ".env", ".npmrc", ".pypirc", ".c2c.json"}
+SKIP_EXTENSIONS = {".pem", ".key", ".p12", ".sqlite", ".sqlite3", ".db", ".log", ".tmp", ".bak"}
 # Derived indexes, OCR caches and ephemeral user runtime state are never source releases.
 SKIP_PREFIXES = (
     ("data", "processed"),

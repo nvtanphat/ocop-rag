@@ -64,6 +64,12 @@ def test_current_release_excludes_all_derived_and_runtime_data(tmp_path):
         "frontend/.env.local",
         "secrets/service.key",
         "reports/evaluation/out.json",
+        ".tmp/capture.json",
+        "ocop_contracts/build/lib/copied_module.py",
+        "ocr-run.log",
+        "manifest.json.tmp",
+        "settings.yaml.bak",
+        ".c2c.json",
         "data/review/ocop/needs_review.jsonl",
     ):
         path = root / rel
@@ -79,4 +85,6 @@ def test_current_release_excludes_all_derived_and_runtime_data(tmp_path):
         assert all("/data/review/" not in n for n in names)
         assert all("/data/private/" not in n for n in names)
         assert all("/reports/" not in n for n in names)
+        assert all("/.tmp/" not in n and "/build/" not in n for n in names)
+        assert all(not n.endswith((".log", ".tmp", ".bak", ".c2c.json")) for n in names)
         assert all(not n.endswith((".env", ".env.production", ".env.local", ".key")) for n in names)
