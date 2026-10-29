@@ -5,7 +5,7 @@ Văn bản được đánh chỉ mục của mỗi chunk gồm tiền tố cấu
 
 ## Quyết định
 1. **Chuỗi cha ngắn** (`ai_core/retrieval/ocop/graph_context.py`): chỉ các tổ tiên trực tiếp của nút sâu nhất mà chunk chứa, khử trùng với nội dung chunk, mỗi nhãn cắt ở ranh giới từ, tổng giới hạn theo tokenizer (khi có) hoặc ước lượng; lưu riêng ở `context.parent_chain`.
-2. **Trích đoạn từ `raw_text`** (`ai_core/orchestration/ocop/context.py`): chọn cửa sổ gồm các dòng/câu nguyên vẹn chứa nhiều thuật ngữ khác nhau của câu hỏi nhất, cắt có dấu "…", nhãn cột bảng đi kèm dòng bảng.
+2. **Trích đoạn từ `raw_text`** (`ai_core/orchestration/ocop/context.py`): chấm độ phủ trên cửa sổ thực sự vừa ngân sách; câu quá dài được cắt theo vị trí từ, có dấu "…"; nhãn cột bảng đi kèm dòng bảng.
 3. **Ngân sách trên toàn prompt** (`configs/ocop_retrieval.yaml`): system + câu hỏi + các khối SOURCE + phần dành cho đầu ra; thu hẹp cửa sổ dài nhất trước, bỏ hàng xếp thấp nhất sau cùng.
 4. **Kiểm độ phủ sau khi ghép**: tỉ lệ thuật ngữ câu hỏi có trong đúng văn bản gửi LLM; thấp hơn ngưỡng thì không sinh, trả bản trích xuất.
 5. Văn bản gửi bộ kiểm claim là cửa sổ mô hình nhìn thấy (không gồm dấu "…" và ứng viên OCR).
