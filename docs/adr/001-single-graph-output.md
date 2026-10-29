@@ -5,8 +5,8 @@ Nhiều tệp đồ thị song song làm phân mảnh dữ liệu, khó kiểm t
 
 ## Quyết định
 * Toàn bộ tri thức thực thể và quan hệ nằm trong một tập đầu ra chuẩn tại `data/processed/ocop/graph/`: `nodes.jsonl`, `edges.jsonl` và `manifest.json`.
-* Mọi nút và cạnh mang trường `check` (`passed` hoặc `human_verified`) và `origin` (`deterministic`, `llm` hoặc `human`).
-* Đối tượng vi phạm ràng buộc được ghi vào `rejected.jsonl` và không bao giờ được dùng khi truy vấn.
+* Mọi nút và cạnh mang trường `check` và `origin` để truy nguyên và lọc khi đọc.
+* Bản ghi vi phạm ràng buộc giữ thông tin lỗi trong cùng đầu ra đồ thị; runtime loại chúng khỏi truy vấn công khai. Không duy trì `rejected.jsonl` riêng.
 
 ## Hệ quả
 * Runtime, router và frontend chỉ đọc một nguồn đồ thị có mã băm SHA-256 được kiểm.

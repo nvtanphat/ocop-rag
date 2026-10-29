@@ -19,6 +19,8 @@
 - `OCOP_SESSION_STORE`: `memory` (mặc định) hoặc `sqlite`; `OCOP_SESSION_DB` chọn tệp SQLite, mặc định `data/processed/ocop/sessions.sqlite3`.
 - `OCOP_MODELS_DIR`: kho mô hình cục bộ cho embedding/reranker. Các model phải được chuẩn bị trước; không bật `trust_remote_code`.
 - `OCOP_EASYOCR_MODEL_DIR`, `OCOP_VIETOCR_WEIGHTS`: trọng số OCR dùng trong dự án OCR riêng.
+- `OCOP_LAYOUT_MODEL_DIR`: thư mục trọng số layout cục bộ cho thành phần OCR; chỉ dùng khi bật thành phần này.
+- `OCOP_OCR_PEAK_LOCK`: tệp khóa tải/tính OCR giữa các tiến trình; mặc định `ocop-ocr-peak.lock` trong thư mục tạm hệ điều hành.
 - `NEO4J_PASSWORD`: bí mật khi bật dịch vụ graph ngoài; không commit giá trị thực. `NEO4J_HEAP` (mặc định `512m`) và `NEO4J_PAGECACHE` (`256m`) giới hạn bộ nhớ container Neo4j trong `docker-compose.yml`; xuất bản graph cần khoảng 1 GB heap (`NEO4J_HEAP=1g`). Neo4j chỉ là nơi xuất bản graph, đường truy vấn đọc graph cục bộ.
 - `OCOP_ENFORCE_RELEASE_GATE=1`: CLI từ chối phục vụ khi evaluation gate không đạt.
 - `OCOP_LANGGRAPH_CHECKPOINT_ENABLED=1` và `OCOP_LANGGRAPH_CHECKPOINT_PATH`: bật SQLite checkpoint cho luồng có AuthContext tin cậy và session hợp lệ. API public không tự cấp quyền này.
