@@ -368,9 +368,14 @@ def _evidence(
     citations = []
     contexts = []
     selected = []
+    shown = set()
     for (key, row, span, table_backed), excerpt in zip(entries, excerpts):
         if excerpt is None or not excerpt.evidence.strip():
             continue
+        # Cells of one record can open the same window of the same page; show those words once.
+        if (key[0], key[1], excerpt.evidence) in shown:
+            continue
+        shown.add((key[0], key[1], excerpt.evidence))
         citation = {
             "source_id": key[0],
             "pdf_page": key[1],

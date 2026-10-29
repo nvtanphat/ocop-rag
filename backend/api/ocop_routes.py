@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ConfigDict
 
 from ai_core.orchestration.ocop.workflow import OcopAgent
-from ai_core.orchestration.ocop.llm import make_answer_client
+from ai_core.orchestration.ocop.llm import answer_provider, make_answer_client
 from ai_core.orchestration.ocop.dialogue import understand
 from ai_core.orchestration.ocop.sessions import default_store
 from ai_core.system.pipeline import OcopSystemPipeline
@@ -80,6 +80,14 @@ def _file_for(item: dict[str, Any]) -> Path:
     return file
 
 
+def _answer_llm_ready() -> bool:
+    """A hosted answer model is configured, so generation can be on by default. A local one may simply be off."""
+    try:
+        return answer_provider() == "openai" and make_answer_client() is not None
+    except (RuntimeError, ValueError, OSError):
+        return False
+
+
 @router.get("/health")
 def health():
     index = _json(DATA / "index" / "manifest.json")
@@ -94,6 +102,7 @@ def health():
         "status": system["state"] if profile["ready"] else "not_ready",
         "pipeline": system,
         "retrieval_profile": profile,
+        "answer_llm": _answer_llm_ready(),
         "sources_registered": len(_registry()),
         "pages": pages.get("counts", {}).get("pages", 0),
         "index_status": index.get("status", "missing"),

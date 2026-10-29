@@ -53,6 +53,7 @@ def test_health_identifies_corpus_and_backend_state(api_client):
         "status": "ready",
         "pipeline": {"state": "ready"},
         "retrieval_profile": {"profile": "sparse", "ready": True, "missing": []},
+        "answer_llm": False,
         "sources_registered": 0,
         "pages": 0,
         "index_status": "missing",
@@ -74,3 +75,12 @@ def test_read_routes_have_no_unrelated_domain_endpoints(api_client):
         "/api/ocop/graph/subgraph",
         "/api/ocop/query",
     }
+
+
+def test_health_reports_a_hosted_answer_model_as_ready_by_default(api_client, monkeypatch):
+    monkeypatch.setenv("OCOP_ANSWER_LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OCOP_ANSWER_OPENAI_API_KEY", "test-key")
+    assert api_client.get("/api/ocop/health").json()["answer_llm"] is True
+    monkeypatch.delenv("OCOP_ANSWER_OPENAI_API_KEY")
+    monkeypatch.delenv("OCOP_EXTRACT_OPENAI_API_KEY", raising=False)
+    assert api_client.get("/api/ocop/health").json()["answer_llm"] is False
