@@ -14,7 +14,7 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
-from ai_core.orchestration.ocop import memory, scope_model
+from ai_core.orchestration.ocop import memory, scope_model, semantic_route
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
@@ -79,6 +79,8 @@ class OcopAgent:
         self.rerank = rerank
         self.allow_partial_debug = allow_partial_debug is True
         self._checkpoint = None
+        # Semantic tier of the router (example utterances, embedding similarity); None switches it off.
+        self.semantic_route = semantic_route.for_index(self.tools.index_dir)
 
     def _catalog(self):
         try:
@@ -108,6 +110,7 @@ class OcopAgent:
             llm_route=(self.llm.route if self.llm and os.getenv("OCOP_LLM_ROUTER") == "1" else None),
             # Asked only where no deterministic signal separates a follow-up from an off-topic question.
             llm_scope=((lambda text: scope_model.propose(self.llm, text)) if self.llm else None),
+            semantic_route=self.semantic_route,
             indexed_content_bigram_coverage=lambda text: query_content_bigram_coverage(
                 self.tools.index_dir, text
             ),

@@ -576,14 +576,30 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
     return primary, secondary
 
 
+def _semantic_label(semantic_route, q: str, has_prior: bool) -> Intent | None:
+    """The intent whose example utterances ``q`` clearly resembles, or None when the proposal is not clear enough."""
+    if semantic_route is None:
+        return None
+    try:
+        proposal = semantic_route(q)
+        agent = get_settings().agent
+        if proposal is None or proposal.score < agent.semantic_min_score or proposal.margin < agent.semantic_min_margin:
+            return None
+        label = Intent(proposal.intent)
+    except Exception:  # noqa: BLE001 - a failing proposer must leave the deterministic route untouched
+        return None
+    return None if label == Intent.FOLLOWUP and not has_prior else label
+
+
 def _model_label(llm_scope: Callable[[str], dict], q: str, prior: dict) -> Intent | None:
     """The intent label the model proposes for ``q`` given the previous question, or None when it proposes nothing valid."""
     previous = "PREVIOUS: " + str(prior["last_query"]) + "\n" if prior.get("last_query") else ""
     text = previous + "CURRENT: " + q
     try:
-        return Intent((llm_scope(text) or {}).get("intent"))
+        label = Intent((llm_scope(text) or {}).get("intent"))
     except (ValueError, TypeError, AttributeError, RuntimeError, OSError):
         return None
+    return None if label == Intent.FOLLOWUP and not prior.get("last_query") else label
 
 
 def _route_business(
@@ -592,6 +608,7 @@ def _route_business(
     session: dict | None = None,
     llm_route: Callable[[str], dict] | None = None,
     llm_scope: Callable[[str], dict] | None = None,
+    semantic_route: Callable[[str], object] | None = None,
     indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
     catalog: EntityCatalog | None = None,
     language: Language | None = None,
@@ -696,20 +713,35 @@ def _route_business(
         or bool(slots.get("star_rating") or slots.get("years") and followup)
     )
     explicit_oos = lang.hit(q, "explicit_out_of_scope")
-    # Second tier. No deterministic signal says whether a short, bare question inside a conversation continues it ("Nộp
-    # ở đâu?" after a question on hồ sơ) or leaves OCOP ("Giá vàng hôm nay?"): the model is asked to pick one label; the
-    # label only steers this route and is checked against the enum, it never names a tool.
-    if llm_scope is not None and has_prior and not in_domain and not followup and not explicit_oos and not own_scope:
-        verdict = _model_label(llm_scope, q, prior)
+    # Where the rules have nothing to say they ask the next tiers instead of guessing, and the rules stay the cheap path
+    # for everything they are sure of. Second tier: the closest example utterances, when clearly ahead. Third tier: the
+    # model, picking one label of a closed list. A label only steers this route and is checked against the enum; it never
+    # names a tool. The answer is kept so that a question is asked at most once.
+    opinion: list[tuple[Intent | None, str]] = []
+
+    def second_opinion() -> tuple[Intent | None, str]:
+        if not opinion:
+            label, source = _semantic_label(semantic_route, q, has_prior), "semantic"
+            if label is None and llm_scope is not None:
+                label, source = _model_label(llm_scope, q, prior), "model"
+            opinion.append((label, source))
+        return opinion[0]
+
+    semantic = None
+    # A bare fragment with no conversation to lean on says too little to classify: asking for scope is the rules' job.
+    askable = has_prior or len(content) > 3
+    if not in_domain and not followup and not explicit_oos and not own_scope and askable and (semantic_route or llm_scope):
+        verdict, source = second_opinion()
         if verdict == Intent.FOLLOWUP:
             followup = True
             slots = _merge_followup(prior, updates)
         elif verdict == Intent.OUT_OF_SCOPE:
             return Route(
-                intent=Intent.OUT_OF_SCOPE, strategy="clarify", slots=slots, reason_codes=["model_out_of_scope"]
+                intent=Intent.OUT_OF_SCOPE, strategy="clarify", slots=slots, reason_codes=[source + "_out_of_scope"]
             )
         elif verdict is not None:
             in_domain = True
+            semantic = verdict
     bare_code = bool(BARE_CRITERION.match(q)) and not followup
     # "Điều 5 quy định gì?": an article number with nothing else says nothing about which of several documents is meant.
     structure_words = {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)}
@@ -817,8 +849,28 @@ def _route_business(
         scores[Intent.OCOP_OVERVIEW if parent == Intent.FOLLOWUP else parent] = 30
     if scores:
         intent = max(scores, key=scores.get)
+        if scores[intent] < get_settings().agent.rule_confident_score and not followup and semantic_route:
+            # A weak rule (a general cue, an entity mention) is a guess; clearly closer example utterances overrule it.
+            label = _semantic_label(semantic_route, q, has_prior)
+            # A vote for the catch-all overview is no evidence against a specific intent the rules found.
+            if label is not None and label not in (intent, Intent.FOLLOWUP, Intent.OUT_OF_SCOPE, Intent.OCOP_OVERVIEW):
+                intent = label
+                caps = [INTENT_CAPABILITY[label]] if label in INTENT_CAPABILITY else caps
+                cap_reasons.append("semantic_override")
     else:
         intent = Intent.OCOP_OVERVIEW
+        label, source = (semantic, "semantic") if semantic else second_opinion() if (semantic_route or llm_scope) else (None, "")
+        if label == Intent.OUT_OF_SCOPE and not structural_scope:
+            return Route(
+                intent=Intent.OUT_OF_SCOPE, strategy="clarify", slots=slots, reason_codes=[source + "_out_of_scope"]
+            )
+        if label == Intent.FOLLOWUP and has_prior and not followup:
+            followup = True
+            slots = _merge_followup(prior, updates)
+            cap_reasons.append(source + "_followup")
+        elif label is not None and label not in (Intent.FOLLOWUP, Intent.OUT_OF_SCOPE):
+            intent = label
+            cap_reasons.append(source + "_intent")
         if llm_route is not None:
             try:
                 result = llm_route(q)
@@ -933,6 +985,7 @@ def route_query(
     session: dict | None = None,
     llm_route: Callable[[str], dict] | None = None,
     llm_scope: Callable[[str], dict] | None = None,
+    semantic_route: Callable[[str], object] | None = None,
     indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
     catalog: EntityCatalog | None = None,
     language: Language | None = None,
@@ -947,6 +1000,7 @@ def route_query(
         session=prior,
         llm_route=llm_route,
         llm_scope=llm_scope,
+        semantic_route=semantic_route,
         catalog=catalog,
         language=language,
         indexed_content_bigram_coverage=indexed_content_bigram_coverage,

@@ -55,6 +55,9 @@ class AgentSettings(BaseModel):
     scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
     part_min_coverage: float = Field(0.34, ge=0, le=1)  # share of a question part's words one evidence row must hold
     source_agreement_share: float = Field(0.60, ge=0, le=1)  # share of earlier rows from one source to pin that source
+    rule_confident_score: int = Field(60, ge=0, le=100)  # router: a rule scoring below this is a weak guess the embeddings may overrule
+    semantic_min_score: float = Field(0.55, ge=0, le=1)  # router: closest example of an intent must be at least this similar
+    semantic_min_margin: float = Field(0.03, ge=0, le=1)  # router: and lead the best example of any other intent by this much
     graph_hops: int = Field(2, ge=1, le=4)
     graph_node_limit: int = Field(75, ge=1)
     graph_max_facts: int = Field(32, ge=1)

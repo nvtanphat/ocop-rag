@@ -1,0 +1,90 @@
+# Example utterances per intent for the semantic tier of the router (ai_core/orchestration/ocop/semantic_route.py).
+#
+# A question is compared with these by embedding similarity; the closest intent wins only when it is clearly ahead of the
+# next one (agent.semantic_min_score / semantic_min_margin in ocop_retrieval.yaml). They steer the route only where the
+# deterministic rules found no signal. Write them as people ask, with and without accents, and keep them apart from any
+# evaluation set: copying evaluation questions here would make the measurement meaningless.
+# FOLLOWUP counts only when the conversation already has a topic.
+schema_version: 1
+intents:
+  OCOP_OVERVIEW:
+    - Chương trình OCOP nhằm mục đích gì?
+    - OCOP có lợi ích gì cho hợp tác xã nhỏ?
+    - Đối tượng nào được tham gia chương trình mỗi xã một sản phẩm?
+    - Cho mình hiểu sơ qua về chương trình OCOP với
+    - Ai là người điều hành chương trình OCOP ở cấp trung ương?
+    - Chương trinh OCOP bat dau tu nam nao?
+    - Chủ thể nào đủ điều kiện đăng ký tham gia đánh giá sản phẩm?
+  CRITERIA_LOOKUP:
+    - Phần chất lượng sản phẩm được chấm tối đa bao nhiêu điểm?
+    - Mục bao bì và nhãn mác tính điểm như thế nào?
+    - Thang điểm đánh giá sản phẩm chia ra sao?
+    - Muốn lên hạng 5 sao phải đạt tổng bao nhiêu điểm?
+    - Phiếu chấm cho nhóm thực phẩm gồm những phần nào?
+    - Nguồn gốc nguyên liệu đạt mức cao nhất cần điều kiện gì?
+    - diem toi da cua phan thi truong la may diem
+    - Khác nhau giữa 3 sao và 4 sao nằm ở mức điểm nào?
+  PROCEDURE_FORM:
+    - Muốn đăng ký đánh giá sản phẩm thì phải làm những bước nào?
+    - Cần chuẩn bị giấy tờ gì để nộp cho cơ quan xét duyệt?
+    - Mẫu phiếu đăng ký tải ở đâu vậy?
+    - Hạn chót tiếp nhận hồ sơ là ngày nào?
+    - Hồ sơ nộp trực tiếp hay nộp qua mạng?
+    - Báo cáo tự đánh giá viết theo mẫu nào?
+    - Hồ sơ lam lai sau khi het han gom gi
+    - Người nộp cần đóng dấu hay ký tên vào phiếu đăng ký không?
+  RECOGNITION_LOOKUP:
+    - Hợp tác xã này có những sản phẩm nào được công nhận?
+    - Liệt kê các sản phẩm đạt 4 sao của một tỉnh
+    - Sản phẩm này đã được xếp hạng mấy sao rồi?
+    - Đơn vị nào sản xuất sản phẩm đó và được bao nhiêu điểm?
+    - Quyết định công nhận năm nay gồm những sản phẩm nào?
+    - Chủ thể của sản phẩm trong danh sách là ai?
+  EXACT_LOOKUP:
+    - Điều 8 của quyết định đó quy định điều gì?
+    - Cho mình xem nguyên văn khoản 2 điều 4
+    - Trang 12 của văn bản có nội dung gì?
+    - Cơ quan nào có thẩm quyền công nhận sản phẩm 5 sao?
+    - Đọc giúp mình mục cuối của phụ lục
+  PRODUCT_CLASSIFICATION:
+    - Trà túi lọc thuộc nhóm sản phẩm nào?
+    - Nước mắm được xếp vào bộ sản phẩm nào?
+    - Dịch vụ homestay có nằm trong danh mục sản phẩm không?
+    - Mỹ phẩm từ thảo dược xếp vào nhóm gì?
+    - san pham ruou ngam thuoc nhom nao
+  TEMPORAL_COMPARE:
+    - Văn bản này hiện còn hiệu lực hay đã hết?
+    - Quy định mới khác quy định cũ ở điểm nào?
+    - Từ năm sau thì hồ sơ phải làm theo văn bản nào?
+    - Hồ sơ nộp trước ngày chuyển tiếp xử lý ra sao?
+    - Có bản nào bị thay đổi nội dung so với lúc ban hành không?
+  SECTOR_COMPLIANCE:
+    - Bán thực phẩm đóng gói cần giấy phép gì về an toàn thực phẩm?
+    - Nhãn hàng hóa phải ghi những thông tin nào?
+    - Cơ sở nhỏ lẻ có phải tự công bố sản phẩm không?
+    - Điều kiện vệ sinh nơi chế biến được quy định thế nào?
+  MULTIHOP_REASONING:
+    - Văn bản nào sửa đổi văn bản kia và hiện nay áp dụng bản nào?
+    - Hai quyết định này liên quan nhau như thế nào?
+    - Căn cứ pháp lý của quyết định gồm những văn bản nào và chúng còn hiệu lực không?
+    - Văn bản mới thay thế những văn bản cũ nào và chuyển tiếp ra sao?
+  FOLLOWUP:
+    - Còn cái kia thì sao?
+    - Nộp ở chỗ nào thế?
+    - Mất bao lâu thì có kết quả?
+    - Vậy cần chuẩn bị mấy bản?
+    - Thế còn hạn nộp?
+    - Có phải trả phí không?
+    - Ai là người xét duyệt tiếp theo?
+    - Cho mình xem căn cứ luôn nhé
+    - Còn trường hợp nâng hạng thì sao?
+    - Rồi sau đó phải làm gì nữa?
+  OUT_OF_SCOPE:
+    - Hôm nay đội nào đá thắng trận bóng?
+    - Chỉ mình công thức nấu canh chua cá lóc
+    - Giá vàng trong nước hôm nay là bao nhiêu?
+    - Viết giúp mình một bài thơ về mùa thu
+    - Giải giúp mình bài toán hình học này
+    - Nên đầu tư cổ phiếu nào bây giờ?
+    - Cuối tuần này thời tiết ở Hà Nội thế nào?
+    - Bạn thích ăn món gì nhất?

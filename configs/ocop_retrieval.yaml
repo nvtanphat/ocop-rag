@@ -36,6 +36,9 @@ agent:
   scope_min_bigram_coverage: 0.60  # share of query content bigrams in one indexed chunk that reopens an unrecognised question
   part_min_coverage: 0.34          # share of a question part's content words that one evidence row must hold to cover it
   source_agreement_share: 0.60     # share of earlier evidence rows from one source needed to pin a follow-up to that source
+  rule_confident_score: 60         # router: an intent the rules scored below this is a weak guess the embedding tier may overrule
+  semantic_min_score: 0.55         # router, semantic tier: similarity of the closest example utterance of the winning intent
+  semantic_min_margin: 0.03        # router, semantic tier: its lead over the best example of any other intent
   graph_hops: 2
   graph_node_limit: 75
   graph_max_facts: 32

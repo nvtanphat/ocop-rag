@@ -227,9 +227,15 @@ def test_model_failure_preserves_deterministic_route():
 
 
 def test_workflow_keeps_experimental_dialogue_model_out_of_production(tmp_path):
-    client = SimpleNamespace(
-        route=lambda q: {}, chat_structured=lambda *a, **kw: pytest.fail("experimental model called")
-    )
+    from ai_core.orchestration.ocop import scope_model
+
+    def structured(system, *args, **kwargs):
+        # The router's own model tier (closed label list) is a different call from the experimental dialogue model.
+        if system == scope_model.SYSTEM:
+            return '{"intent": "OUT_OF_SCOPE"}'
+        pytest.fail("experimental model called")
+
+    client = SimpleNamespace(route=lambda q: {}, chat_structured=structured)
     agent = OcopAgent(tmp_path, llm=client)
     result = agent.route({"query": "Some unfamiliar conversational wording without a clear task"})
     assert result["route"]["intent"] in ("CLARIFY", "OUT_OF_SCOPE")

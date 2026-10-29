@@ -22,12 +22,15 @@ python tools/cli.py evaluate --help
 python tools/evaluate_question_sets.py --help
 python tools/evaluate_manual_pdf.py --help
 python tools/evaluate_conversations.py --help
+python tools/evaluate_router.py --help
 python tools/evaluate_reviewed_claims.py --help
 ```
 
 `evaluate_question_sets` nhận `--root`, `--questions`, `--lock`, `--mode`, `--out`; `--sealed` chỉ in tổng. `--llm stub` chỉ thu prompt, không sinh câu trả lời; `--llm real` dùng cấu hình model thật. Chỉ dùng stub trong phép đo prompt, không dùng để tuyên bố chất lượng sinh.
 
 `sparse` dùng BM25; `hybrid` thêm vector và RRF; `rerank` thêm cross-encoder. So sánh trên cùng corpus, graph/index version và câu hỏi đã khoá. Không gọi mạng/model trong pytest để thay thế một phép đo thực tế.
+
+`evaluate_router` chấm router trên một bộ câu hỏi có nhãn (mặc định `data/evaluations/ocop/ocop_router_gold_80.jsonl`): đúng ý định, đúng luồng (lane), hỏi lại, phạm vi, slot; theo từng nhãn và từng thẻ, kèm ma trận nhầm lẫn. Mỗi câu chạy `route` rồi `plan` của agent như `ask`, các câu trước trong hội thoại dựng phiên bằng đúng `next_state` của API; không công cụ nào chạy và không gọi mô hình trừ khi có `--model` (tầng LLM của router, báo cả tỉ lệ câu phải hỏi mô hình). `--no-semantic` tắt tầng embedding. Hàng không có trường `split` được chia cố định theo id: số lẻ là `dev` (được xem từng câu sai để chỉnh), số chẵn là `sealed` (chỉ xem tổng bằng `--split sealed --sealed`, không chỉnh router theo từng câu). Gold gán theo nguồn nào trả lời được câu hỏi, không theo kết quả router.
 
 ## Cổng phát hành
 

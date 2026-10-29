@@ -303,9 +303,24 @@ def test_the_model_is_not_asked_when_the_deterministic_tier_already_knows():
     ask = _scope("OUT_OF_SCOPE", calls)
     route_query("Điều 6 Quyết định 26/2026/QĐ-TTg quy định gì?", session=PRIOR_DOSSIER, llm_scope=ask)  # domain
     route_query("Thế còn hồ sơ nâng hạng?", session=PRIOR_DOSSIER, llm_scope=ask)  # follow-up opener
-    route_query("Nộp ở đâu vậy bạn?", llm_scope=ask)  # no conversation to continue
     route_query("Cho mình dự báo thời tiết ngày mai", session=PRIOR_DOSSIER, llm_scope=ask)  # explicitly off-topic
     assert calls == []
+
+
+def test_without_a_conversation_the_model_may_decide_scope_but_cannot_continue_what_does_not_exist():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+
+    question = "Chỉ mình cách pha cà phê sữa đá ngon nhất với nhé"
+    baseline = route_query(question)
+    seen = []
+    assert route_query(question, llm_scope=_scope("FOLLOWUP", seen)) == baseline  # nothing to follow
+    assert seen == ["CURRENT: " + question]
+    assert route_query(question, llm_scope=_scope("OUT_OF_SCOPE")).intent == Intent.OUT_OF_SCOPE
+    # A bare fragment with no conversation is for the rules to ask about, not for the model to guess.
+    fragment = []
+    route_query("Nộp ở đâu vậy bạn?", llm_scope=_scope("OUT_OF_SCOPE", fragment))
+    assert fragment == []
 
 
 def test_the_router_model_is_given_only_labels_the_router_accepts():
