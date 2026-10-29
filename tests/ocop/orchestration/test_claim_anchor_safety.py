@@ -187,3 +187,22 @@ def test_parallel_tiers_bind_a_claim_only_when_one_tier_states_all_of_its_number
     assert unsupported("Sản phẩm đạt hạng 5 sao khi tổng điểm trung bình đạt từ 70 đến 100 điểm")
     assert unsupported("Sản phẩm đạt hạng 5 sao khi tổng điểm trung bình đạt từ 50 đến 100 điểm")
     assert unsupported("Sản phẩm đạt hạng 4 sao khi tổng điểm trung bình đạt từ 90 đến 100 điểm")
+
+
+def test_a_quote_differing_only_in_layout_is_verbatim_but_a_changed_word_never_is():
+    from ai_core.orchestration.ocop.entailment import verbatim
+
+    source = "**Điều 11. Hiệu lực thi hành**\n1. Quyết định này có hiệu lực\nthi hành từ ngày 22 tháng 5 năm 2026."
+    assert verbatim("1. Quyết định này có hiệu lực thi hành từ ngày 22 tháng 5 năm 2026.", source)
+    assert verbatim("Điều 11. Hiệu lực thi hành 1. Quyết định này có hiệu lực", source)
+    assert not verbatim("1. Quyết định này có hiệu lực thi hành từ ngày 22 tháng 6 năm 2026.", source)
+    assert not verbatim("thi hành từ ngày 22 tháng 5 năm 2026. 1. Quyết định này có hiệu lực", source)
+    assert not verbatim("hiệu lực", source)  # shorter than a quote must be
+
+
+def test_an_answer_names_what_was_looked_up_never_the_internal_tool():
+    from ai_core.orchestration.ocop.workflow import _public_names
+
+    said = _public_names(["lookup_criterion", "search_graph", "lookup_criterion"])
+    assert "lookup_" not in said and "search_" not in said and said.count("tra tiêu chí đánh giá") == 1
+    assert _public_names(["unregistered_tool"]) == "unregistered_tool"

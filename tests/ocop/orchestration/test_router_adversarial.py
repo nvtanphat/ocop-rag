@@ -239,3 +239,17 @@ def test_existing_known_exact_document_still_passes():
     route = route_query("Điều 6 QĐ26/2026 quy định gì?")
     assert route.intent == Intent.EXACT_LOOKUP
     assert route.slots["document_code"] == "26/2026"
+
+
+def test_a_star_level_with_a_named_place_asks_for_recorded_recognitions_unless_it_asks_for_a_rule_or_procedure():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+
+    for question in ("Hải Phòng có những sản phẩm OCOP 4 sao nào?", "Những sản phẩm 4 sao của Hải Phòng là gì?"):
+        route = route_query(question)
+        assert route.intent == Intent.RECOGNITION_LOOKUP and "lookup_recognition" in route.required_tools
+    for question in (
+        "Điều kiện để sản phẩm ở Hải Phòng đạt 4 sao là gì?",
+        "Hà Tĩnh nhận hồ sơ OCOP 4 sao đến khi nào?",
+    ):
+        assert "lookup_recognition" not in route_query(question).required_tools[:1]

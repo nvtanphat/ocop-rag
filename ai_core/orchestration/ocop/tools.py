@@ -524,18 +524,28 @@ class ToolRegistry:
                 sources = []
                 if sources_path.is_file():
                     sources = json.loads(sources_path.read_text(encoding="utf-8")).get("sources", [])
-                local = list(
-                    dict.fromkeys(
-                        str(src["source_id"])
-                        for src in sources
-                        if src.get("source_kind") == "local_guidance"
-                        and _jurisdiction_key(str(region))
-                        in {
-                            _jurisdiction_key(str(src.get("jurisdiction") or "")),
-                            _jurisdiction_key(re.split(r"\s+-\s+", str(src.get("jurisdiction") or ""))[-1]),
-                        }
-                        and src.get("source_id")
-                    )
+                # A jurisdiction reads "province - locality": guidance of a locality is the guidance of that place, and
+                # also what the province it lies in can be told, with the narrower scope stated in the answer.
+                asked = _jurisdiction_key(str(region))
+                matched = [
+                    src
+                    for src in sources
+                    if src.get("source_kind") == "local_guidance"
+                    and src.get("source_id")
+                    and asked
+                    in {
+                        _jurisdiction_key(str(src.get("jurisdiction") or "")),
+                        *(_jurisdiction_key(part) for part in re.split(r"\s+-\s+", str(src.get("jurisdiction") or ""))),
+                    }
+                ]
+                local = list(dict.fromkeys(str(src["source_id"]) for src in matched))
+                narrower = sorted(
+                    {
+                        str(src.get("jurisdiction"))
+                        for src in matched
+                        if asked != _jurisdiction_key(str(src.get("jurisdiction") or ""))
+                        and asked != _jurisdiction_key(re.split(r"\s+-\s+", str(src.get("jurisdiction") or ""))[-1])
+                    }
                 )
                 if not local:
                     return {
@@ -573,7 +583,11 @@ class ToolRegistry:
                             continue
                         seen.add(key)
                         hits.append(hit)
-                return {"results": hits[:12], "status": "local_guidance_scoped"}
+                return {
+                    "results": hits[:12],
+                    "status": "local_guidance_scoped",
+                    **({"narrower_scope": narrower} if narrower else {}),
+                }
             # A question explicitly about *a local document* is not answered
             # from another province simply because BM25 ranks its wording high.
             # This is intentionally narrower than "rules applicable in Huế":

@@ -47,10 +47,20 @@ SCHEMA = {
 }
 
 
+def plain(text: str) -> str:
+    """Words in order, as written: line breaks, runs of spaces and Markdown bold marks are layout, not content."""
+    return re.sub(r"\s+", " ", text.replace("**", "")).strip()
+
+
+def verbatim(quote: str, source: str) -> bool:
+    """The quote's words appear in the source exactly as written, in the same order."""
+    return len(plain(quote)) >= MIN_QUOTE_CHARS and plain(quote) in plain(source)
+
+
 def anchored(claim: str, quote: str, excerpt: str, asked: str = "", *, quote_source: str | None = None) -> bool:
     """The quote is verbatim in the excerpt and carries every number, negation and proper name of the claim."""
     original = excerpt if quote_source is None else quote_source
-    if len(quote.strip()) < MIN_QUOTE_CHARS or quote.strip() not in original:
+    if not verbatim(quote, original):
         return False
     if _numbers(claim) - _numbers(quote) - (_numbers(asked) & _numbers(excerpt)) - _range_numbers(quote):
         return False
@@ -114,7 +124,7 @@ def review(llm, items: list[dict], *, asked: str = "") -> dict[int, str]:
             and 0 <= index < len(items)
             and isinstance(quote, str)
             and ("quote_sources" not in items[index]
-                 or quote.strip() in "\n".join(items[index]["quote_sources"]))
+                 or verbatim(quote, "\n".join(items[index]["quote_sources"])))
             and anchored(items[index]["claim"], quote, items[index]["excerpt"],
                          asked + " " + items[index].get("metadata", ""),
                          quote_source="\n".join(items[index]["quote_sources"]) if "quote_sources" in items[index] else None)

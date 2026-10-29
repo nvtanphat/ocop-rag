@@ -428,7 +428,16 @@ class Facets:
         stars = bool(slots.get("star_rating"))
         self.normative_star = stars and h("normative_star") and not h("recognition_listing_negative")
         self.rating_assertion = stars and h("rating_assertion")
-        self.recognition = not self.authority and h("recognition")
+        # A star level together with a named place, producer or product asks about recorded recognitions even when
+        # the question never says "công nhận"; a rule about reaching that level (normative) or a deadline does not.
+        star_record = (
+            stars
+            and bool(slots.get("region") or slots.get("organization_name") or slots.get("product_name"))
+            and not self.normative_star
+            and not self.procedure
+            and not h("deadline")
+        )
+        self.recognition = not self.authority and (h("recognition") or star_record)
         self.criteria = (
             h("criteria")
             or self.normative_star

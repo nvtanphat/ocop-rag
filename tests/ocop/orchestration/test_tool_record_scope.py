@@ -399,3 +399,27 @@ def test_criterion_fallback_keeps_section_continuations_before_the_next_sheet(st
                       slots={"document_code": "900", "sheet_number": 1, "criterion_id": "1.6"},
                       context={"retrieval_mode": "hybrid", "rerank": True})
     assert calls[0]["evidence_unit_ids"] == {"intro", "continuation", "later-cell"}
+
+
+@pytest.mark.parametrize("asked,expected,narrower", [
+    ("Province - Locality", "local_guidance_scoped", None),
+    ("Locality", "local_guidance_scoped", None),
+    ("Province", "local_guidance_scoped", ["Province - Locality"]),
+    ("Elsewhere", "local_guidance_not_in_corpus", None),
+])
+def test_a_local_guidance_answers_for_its_province_and_says_how_narrow_it_is(store, monkeypatch, asked, expected, narrower):
+    registry, _ = store
+    config = registry.root / "configs"
+    config.mkdir()
+    (config / "ocop_sources.json").write_text(json.dumps({"sources": [
+        {"source_id": SOURCE, "source_kind": "local_guidance", "jurisdiction": "Province - Locality"},
+    ]}), encoding="utf8")
+    language = module.get_language()
+    language = type(language).model_validate({
+        **language.model_dump(), "cues": {**language.cues, "deadline": ["custom sample request"]},
+    })
+    monkeypatch.setattr(module, "get_language", lambda: language)
+    monkeypatch.setattr(module, "search", lambda *a, **k: [{"source_id": SOURCE, "chunk_id": "r", "text": "t"}])
+    result = registry.dispatch("search_regulations", query="custom sample request", slots={"region": asked})
+    assert result["status"] == expected
+    assert result.get("narrower_scope") == narrower

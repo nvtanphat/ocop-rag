@@ -54,6 +54,14 @@ class OcopState(TypedDict, total=False):
 PARTIAL_CORPUS_NOTICE = "[Corpus chưa đầy đủ — kết quả chỉ để thử nghiệm]"
 
 
+def _public_names(tools: list[str]) -> str:
+    """What was being looked up, in the reader's words; a tool's internal name never reaches an answer."""
+    from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
+
+    said = [(TOOL_REGISTRY[name].public_description if name in TOOL_REGISTRY else "") or name for name in tools]
+    return ", ".join(dict.fromkeys(said))
+
+
 class OcopAgent:
     def __init__(
         self,
@@ -95,7 +103,9 @@ class OcopAgent:
         choice = route_query(
             query,
             session=safe_session,
-            llm_route=(self.llm.route if self.llm else None),
+            # The model proposes an intent only for a question no deterministic signal covers, and costs one extra
+            # model round trip: opt-in (OCOP_LLM_ROUTER=1). The deterministic route is the default.
+            llm_route=(self.llm.route if self.llm and os.getenv("OCOP_LLM_ROUTER") == "1" else None),
             indexed_content_bigram_coverage=lambda text: query_content_bigram_coverage(
                 self.tools.index_dir, text
             ),
@@ -729,6 +739,11 @@ class OcopAgent:
         )
         if absent:
             notices.append(absent)
+        narrower = sorted({
+            label for item in outputs for label in ((item.get("output") or {}).get("narrower_scope") or [])
+        })
+        if narrower:
+            notices.append("Nguồn này là hướng dẫn riêng của " + "; ".join(narrower) + ", chưa chắc áp dụng cho toàn địa bàn được hỏi.")
         ambiguous_sheet = [item for item in outputs if (item.get("output") or {}).get("status") == "sheet_document_ambiguous"]
         if ambiguous_sheet:
             # Several documents carry a sheet with this number: ask which one, naming the candidates.
@@ -914,7 +929,7 @@ class OcopAgent:
         if gaps and response["status"] not in ("insufficient_evidence",):
             response["optional_gaps"] = gaps
             response["answer"] = (
-                "[Chưa có dữ liệu cho phần phụ: " + ", ".join(gaps) + "]\n" + response["answer"]
+                "[Chưa có dữ liệu cho phần phụ: " + _public_names(gaps) + "]\n" + response["answer"]
             )
         if notices and response["status"] != "insufficient_evidence":
             response["answer"] = "[" + " ".join(notices) + "]" + chr(10) + response["answer"]
@@ -938,7 +953,7 @@ class OcopAgent:
                 missing = [name for name in missing if name != "resolve_temporal_applicability"]
             if missing:
                 response["answer"] = (
-                    "[CHƯA ĐỦ CHỨNG CỨ CHO TOÀN BỘ YÊU CẦU: " + ", ".join(missing) + "]\n" + response["answer"]
+                    "[CHƯA ĐỦ CHỨNG CỨ CHO TOÀN BỘ YÊU CẦU: " + _public_names(missing) + "]\n" + response["answer"]
                 )
                 if response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
                     response["status"] = "partial_evidence"
