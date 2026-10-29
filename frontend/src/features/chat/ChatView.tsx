@@ -186,7 +186,7 @@ export function ChatView({
                                       [S{index + 1}] {sourceTitle(source, citation.source_id)}
                                     </b>
                                     <span>
-                                      {citation.review_status === "verified"
+                                      {citation.review_status === "verified" || source
                                         ? "Nguồn đã xác minh"
                                         : "Nguồn chưa được duyệt"}
                                     </span>

@@ -97,7 +97,8 @@ export function EvidenceGraph({
             {citations.map((citation, index) => {
               const at = place(index);
               const source = sources.find((item) => item.source_id === citation.source_id);
-              const verified = citation.review_status === "verified";
+              // A source registered in the corpus is approved as a whole; only unknown sources are flagged.
+              const verified = citation.review_status === "verified" || !!source;
               return (
                 <g
                   key={`node-${index}`}

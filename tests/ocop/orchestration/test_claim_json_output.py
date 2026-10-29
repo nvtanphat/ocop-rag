@@ -411,7 +411,8 @@ def test_numbers_in_the_cited_document_identity_are_grounded():
         }, verdicts=[{"id": 0, "entails": True, "quote": unit["text"]}],
     )
     out = assemble("QĐ26/2026 có hiệu lực từ ngày nào?", results(unit), llm=model)
-    assert out["status"] == "generated_unverified_claims"
+    assert out["status"] == "generated_claims_verified"
+    assert "22 tháng 5 năm 2026" in out["answer"] and "LƯU Ý" not in out["answer"]
 
 
 def test_grounding_accepts_a_range_member_but_not_a_false_number_from_the_question():
@@ -692,3 +693,13 @@ def test_all_claims_rejected_but_a_gap_named_gives_the_gap_not_a_raw_dump():
     )
     assert out["status"] == "insufficient_evidence" and "không nêu điều khoản về hồ sơ" in out["answer"]
     assert "Điều 1. Công nhận" not in out["answer"]
+
+
+def test_a_corpus_source_is_never_labelled_unreviewed_but_an_unknown_source_is():
+    from ai_core.orchestration.ocop.verification import check_source_markers
+
+    corpus = {"source_id": "VN.OCOP.QD26.2026", "review_status": "needs_review"}
+    stranger = {"source_id": "NOT.IN.CORPUS", "review_status": "needs_review"}
+    assert check_source_markers("Nêu rõ [S1]", [corpus])["unverified_source"] is False
+    assert check_source_markers("Nêu rõ [S1]", [stranger])["unverified_source"] is True
+    assert check_source_markers("Nêu rõ [S1] [S2]", [corpus, stranger])["unverified_source"] is True

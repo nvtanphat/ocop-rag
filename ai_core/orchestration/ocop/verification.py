@@ -1,10 +1,23 @@
 """Citation identity guard. It cannot prove semantic entailment from OCR content."""
 
 from __future__ import annotations
+import json
 import re
 import unicodedata
+from functools import lru_cache
+from pathlib import Path
 
 MARKER = re.compile(r"\[S(\d+)\]")
+
+
+@lru_cache(maxsize=1)
+def _corpus_sources() -> frozenset[str]:
+    """Source ids registered in the locked corpus."""
+    path = Path(__file__).resolve().parents[3] / "configs" / "ocop_sources.json"
+    try:
+        return frozenset(s["source_id"] for s in json.loads(path.read_text(encoding="utf-8")).get("sources", []))
+    except (OSError, ValueError, KeyError):
+        return frozenset()
 
 
 def check_source_markers(answer: str, citations: list[dict]) -> dict:
@@ -15,9 +28,12 @@ def check_source_markers(answer: str, citations: list[dict]) -> dict:
     status = (
         "missing_citations" if missing else ("markers_valid" if not invalid else "unknown_citation_markers")
     )
-    # Only the sources the answer actually cites decide whether it is labelled unreviewed.
+    # Only the sources the answer actually cites decide whether it is labelled unreviewed. A source of the locked
+    # corpus is approved as a whole; its per-row machine status (needs_review) never reaches the reader. Sources
+    # outside the corpus keep the label. This is labelling only: score and star claims are gated on the row itself.
     used = [x for i, x in enumerate(citations, 1) if i in references] or citations
-    unverified = any(x.get("review_status") != "verified" for x in used)
+    corpus = _corpus_sources()
+    unverified = any(x.get("review_status") != "verified" and x.get("source_id") not in corpus for x in used)
     return {
         "status": status,
         "invalid_markers": invalid,
