@@ -37,12 +37,10 @@ Phiên chỉ lưu ngữ cảnh hội thoại đã giới hạn và che định d
 
 ## Hồ sơ truy xuất
 
-`OCOP_RETRIEVAL_PROFILE` quy định bản triển khai phục vụ gì:
-
-- `sparse` (mặc định): chỉ BM25. Yêu cầu `retrieval_mode` là `dense` hoặc `hybrid` bị từ chối bằng HTTP 422 thay vì âm thầm trả kết quả BM25.
-- `hybrid`: cần `sentence-transformers`, `qdrant-client`, chỉ mục dense đã dựng và Qdrant truy cập được. Thiếu bất kỳ mục nào, `/health` báo `not_ready` kèm danh sách `retrieval_profile.missing` và `/query` trả 503.
-
-`OCOP_RERANK=1` bật cross-encoder cho yêu cầu `dense`/`hybrid` của bản triển khai hybrid; yêu cầu `sparse` không bao giờ rerank. Đây là lựa chọn của triển khai, không phải của client; đặt `OCOP_RERANK=1` với hồ sơ `sparse` làm `/health` báo `rerank_requires_hybrid_profile`. Reranker re-score `retrieval.rerank_candidates` ứng viên rồi hợp nhất thứ hạng tầng đầu theo `retrieval.rerank_first_stage_weight` (RRF; 0 = chỉ theo cross-encoder), để cross-encoder cứu được đoạn nằm sâu nhưng không phủ quyết bằng chứng mạnh của tầng đầu. `/health` trả `retrieval_profile`; frontend chọn `hybrid` đúng khi hồ sơ này sẵn sàng, ngược lại `sparse`.
+Profile và rerank do triển khai chọn; giá trị, điều kiện sẵn sàng và mã lỗi nằm
+trong [CONFIGURATION](CONFIGURATION.md#đường-dẫn-và-dịch-vụ). `/health` trả
+`retrieval_profile`; frontend chọn `hybrid` khi hồ sơ này sẵn sàng, ngược lại
+chọn `sparse`.
 
 ## Phiên hội thoại
 
@@ -66,7 +64,7 @@ Giao diện React (Vite) là một ứng dụng một trang, bố cục fluid: n
 | `src/features/references` | Tiêu chí và sản phẩm từ `/criteria`, `/products`, xuất CSV; dùng chung một view |
 | `src/features/pdf` | Ảnh trang từ `evidence.png` với đúng SHA và bbox, điều hướng trang, thu phóng, bật/tắt vùng trích dẫn, mở PDF gốc đúng trang |
 | `src/features/graph` | Tab "Dẫn chứng": liên kết câu hỏi → nguồn trích dẫn thực tế. Tab "Quan hệ tri thức": vùng lân cận từ `/graph/subgraph` quanh một đoạn bằng chứng hoặc nút, phân biệt nút đã được người duyệt với nút chỉ đạt kiểm tra tự động, mở được PDF tại vị trí của từng nút; không suy diễn quan hệ pháp lý |
-| `src/styles/workspace.css` | Stylesheet duy nhất của giao diện, gồm giao diện sáng/tối |
+| `src/styles/` | `index.css` đặt reset chung và nạp `fonts.css`; `workspace.css` định dạng màn hình và giao diện sáng/tối |
 
 Tài liệu, sản phẩm, tiêu chí, trang và vị trí citation đều đến từ API; FE chỉ giữ nhãn giao diện. Thiếu dữ liệu xác minh thì hiện trạng thái rỗng, không hiện điểm/sao. Truy vết công cụ lấy từ response thực tế.
 

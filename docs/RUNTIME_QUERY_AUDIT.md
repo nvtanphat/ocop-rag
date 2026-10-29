@@ -175,6 +175,8 @@ Chênh một đáp án là B5: ý thời hạn 36 tháng bị verifier loại sa
 
 Dấu vân tay giữ `ocop-evidence-b531594eddc8`, state ready, lineage_ok=true, neo4j_ready=true, 12.619/22.429 nút/cạnh. Những phần còn kiểm: bộ lọc/định danh và graph trong công cụ; chọn đúng cửa sổ và vai trò nguồn; trường hợp B5 ở sinh/kiểm chứng. Môi trường chạy và khả năng báo thiếu phụ thuộc tiếp tục kiểm ở mục 7/9.
 
-## 4–10. Chưa duyệt
+## Theo dõi tiếp
 
-Tiếp tục từ thành phần 4; chưa có kết luận đạt cho các thành phần này.
+Kết quả thành phần 4–6 và giới hạn kiểm tra 7–10 được ghi tiếp trong
+[nhật ký ngày 29/10](runtime-debug-2026-10-29.md). Các số đo bên trên thuộc lượt
+kiểm tra ban đầu, không phải kết quả cuối của những thay đổi sau đó.

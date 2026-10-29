@@ -47,7 +47,7 @@ Chỉ dựng corpus, không chạy server:
 python tools/cli.py run --ocr-dataset data/ocr-dataset --no-semantic-extract --build-only
 ```
 
-Lệnh này đọc dataset OCR độc lập, không thực hiện OCR. Muốn dựng lại mọi dẫn xuất, thêm `--refresh`; source PDF không được sửa. Sau khi code extraction/graph/retrieval đổi, fingerprint thay đổi nên phải dựng lại; không sửa manifest để bỏ qua kiểm phiên bản.
+Lệnh này đọc dataset OCR độc lập, không thực hiện OCR. Muốn dựng lại mọi dẫn xuất, thêm `--refresh`; source PDF không được sửa. Phạm vi mã làm đổi phiên bản được mô tả tại [vân tay mã nguồn](DEVELOPMENT.md#vân-tay-mã-nguồn); không phải mọi thay đổi runtime đều yêu cầu dựng lại.
 
 ### Dựng lại từ văn bản OCR đã duyệt
 

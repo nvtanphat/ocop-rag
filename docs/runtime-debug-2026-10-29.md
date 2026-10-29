@@ -147,8 +147,8 @@ Hai test phạm vi và ba test ngữ cảnh bổ sung đều đã đỏ trước
 module tại commit `19fbfe1`. Bộ liên quan 98 pass; toàn bộ **1.103 pass**. Vân tay,
 ready/lineage/Neo4j và 12.619/22.429 giữ nguyên. Lượt benchmark đầy đủ đầu bị dừng
 trong thư viện mô hình (`deallocated bytearray object has exported buffers`),
-không có báo cáo hoàn chỉnh; đang chạy lại với API tắt và duy nhất một tiến trình
-nạp mô hình. Chưa dùng capture một ca để kết luận cả bộ đo đã đạt.
+không có báo cáo hoàn chỉnh. Các lượt chạy lại bên dưới tắt API và chỉ dùng một
+tiến trình nạp mô hình; capture một ca không thay thế kết quả cả bộ.
 
 ### Tiếp quản và tái lập phép đo
 
@@ -167,9 +167,6 @@ workspace và lưu bản sao bytes ban đầu ngoài repository.
 - Lời gọi structured output thật với schema claims thành công, đủ trường bắt buộc.
 - Vân tay vẫn `ocop-evidence-b531594eddc8`; ready/lineage/Neo4j đều đạt;
   12.619 nút và 22.429 cạnh không đổi.
-
-Lượt đo rerank + stub đầy đủ đang chạy với API tắt. Chưa nghiệm thu thành phần 5
-cho tới khi có đủ benchmark có khóa và API thật trên mã cuối.
 
 Lượt chạy lại sau tiếp quản hoàn tất 51 câu: 0 lỗi, intent 49/51, tool 50/51,
 page/content 34/35, top1 29/35, trung vị 17,58 giây, lớn nhất 124,60 giây.
@@ -232,7 +229,7 @@ với status `partial_evidence`. Không thay câu hỏi hoặc gold.
 Toàn bộ 1.104 test pass; vân tay, ready/lineage/Neo4j và 12.619/22.429 giữ nguyên.
 Thành phần 5 được nghiệm thu trên mã này; chưa kết luận thành phần 6–10.
 
-## 6. Sinh và kiểm chứng — đang đo
+## 6. Sinh và kiểm chứng — đã nghiệm thu
 
 Bất biến: quote phải là chuỗi nguyên văn của đoạn được trích; quote không tự
 chứng minh nghĩa; số trong câu hỏi không cấp quyền khẳng định số đó; phủ định và
@@ -252,7 +249,7 @@ Sửa tại `answer.py`, `verification.py`, `entailment.py` và cue ngôn ngữ:
 
 - Kiểm literal substring và tối thiểu 15 ký tự cho quote được cung cấp; schema
   generation khai báo `minLength`, mọi property vẫn có trong `required`.
-- Quote không bỏ qua grounding. Diễn đạt lại thiếu độ phủ chỉ được xét lại bằng
+- Quote không bỏ qua grounding. Diễn đạt lại phải được xét nghĩa bằng
   verdict riêng; quote của verdict phải nằm trong một đoạn gốc được trích, không
   ghép dòng metadata vào cuối.
 - Loại miễn số từ câu hỏi. So cặp giá trị–nhãn đại lượng trước/sau số, giữ đúng
@@ -270,7 +267,7 @@ quality, kiểm từng phát biểu với nguồn; [Anthropic citations](https:/
 dùng đoạn trích để truy vết. Chỉ áp dụng nguyên tắc kiểm riêng anchor và nội dung;
 không thêm framework hay mô hình vào máy.
 
-Kiểm chứng tạm: 85 test liên quan pass. Bộ mới 15 test: 11 ca sai đều fail khi
+Kiểm chứng trung gian: 85 test liên quan pass. Bộ mới 15 test: 11 ca sai đều fail khi
 nạp hàm cũ ở `860a994`, 4 ca đúng vẫn pass; bản sửa chặn 11 ca và giữ 4 ca đúng.
 Các ca được viết/chạy đỏ trước sửa; đối chứng chỉ thay hàm trong bộ nhớ.
 Artifact: `component6-negative.txt`. Các test cũ cho “quote thật là đủ” và “số do

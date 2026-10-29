@@ -13,4 +13,6 @@
 6. Không dùng ONNX/int8: bản ONNX của bge-reranker-v2-m3 chỉ do cộng đồng phát hành, lượng tử hóa động của torch không ổn định với bản transformers được ghim, và chất lượng sau lượng tử hóa chưa được đo.
 
 ## Hệ quả
-Mọi thay đổi mã trong graph/retrieval buộc dựng lại graph và chỉ mục, vì phiên bản kiểm tra gắn với mã nguồn.
+Các danh sách tại `SCHEMA_REVISION` và `INDEX_VERSION` xác định mã làm đổi phiên bản
+graph/chỉ mục; xem [vân tay mã nguồn](../DEVELOPMENT.md#vân-tay-mã-nguồn). Mã runtime
+ngoài các danh sách đó không tự yêu cầu dựng lại.

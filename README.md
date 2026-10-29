@@ -1,33 +1,17 @@
 ﻿# OCOP GraphRAG
 
-Hệ thống tra cứu tài liệu OCOP với trích dẫn truy ngược về PDF gốc, trang, vùng bằng chứng và mã SHA-256. Nội dung OCR chưa được duyệt được phân biệt với dữ liệu đã xác minh; điểm/sao chưa xác minh không dùng để kết luận xếp hạng.
+Hệ thống tra cứu tài liệu OCOP với trích dẫn truy ngược về PDF gốc, trang, vùng bằng chứng và mã SHA-256.
 
-PDF được khoá nguồn → dataset OCR độc lập → EvidenceUnit → đồ thị đã kiểm và chỉ mục → router giới hạn công cụ → kiểm chứng từng claim → API FastAPI và giao diện React. Backend phục vụ bản build frontend; mọi yêu cầu dữ liệu của giao diện đi qua `/api/ocop/*`. Không có dữ liệu tài liệu, sản phẩm hay tiêu chí viết cứng trong FE.
+Một hệ thống đầu cuối: PDF → dataset OCR → EvidenceUnit → đồ thị và chỉ mục → định tuyến công cụ → kiểm chứng claim → API FastAPI và giao diện React.
 
-Cần Python 3.11+, Node.js 22.14+ và dependencies trong [DEVELOPMENT](docs/DEVELOPMENT.md). Khởi động giao diện và API bằng một lệnh PowerShell:
+| Việc cần làm | Tài liệu chính |
+| --- | --- |
+| Cài dependencies, chạy test và phát triển | [DEVELOPMENT](docs/DEVELOPMENT.md) |
+| Khởi động bằng PowerShell hoặc Docker, kiểm tra dịch vụ | [RUNBOOK](docs/RUNBOOK.md#khởi-động) |
+| Chọn profile truy xuất, mô hình và biến môi trường | [CONFIGURATION](docs/CONFIGURATION.md) |
+| Hiểu luồng hỏi đáp, API và frontend | [ARCHITECTURE](docs/ARCHITECTURE.md) |
+| Đo chất lượng và đọc kết quả | [EVALUATION](docs/EVALUATION.md) |
+| Tra thuật ngữ và quyết định thiết kế | [GLOSSARY](GLOSSARY.md), [ADR](docs/adr/README.md) |
+| Quy trình OCR độc lập | [OCR](ocr/README.md) |
 
-```powershell
-.\run.ps1
-```
-
-Mở http://127.0.0.1:8000. Script build FE rồi chạy backend trong cùng terminal; Ctrl+C dừng dịch vụ. Với dataset OCR hoàn chỉnh trong `data/ocr-dataset`, lệnh sau dựng corpus rồi khởi động:
-
-```powershell
-.\run.ps1 -OcrDataset data/ocr-dataset
-```
-
-Dataset không đi kèm repo. Thiếu dataset không được coi là đã có corpus đầy đủ; xem trạng thái backend/corpus ở header. Quy trình chuẩn bị dữ liệu và Docker nằm trong [RUNBOOK](docs/RUNBOOK.md).
-
-Kiểm thử từ gốc repo:
-
-```powershell
-python tools/cli.py --help
-python -m pytest -q
-ruff check .
-Push-Location frontend
-npm test
-npm run build
-Pop-Location
-```
-
-Tài liệu: [kiến trúc](docs/ARCHITECTURE.md), [cấu hình](docs/CONFIGURATION.md), [vận hành và review](docs/RUNBOOK.md), [phát triển](docs/DEVELOPMENT.md), [đánh giá](docs/EVALUATION.md), [thuật ngữ](GLOSSARY.md), [ADR](docs/adr/README.md), [OCR](ocr/README.md).
+Quy tắc sửa mã và bảo toàn nguồn: [AGENTS.md](AGENTS.md).

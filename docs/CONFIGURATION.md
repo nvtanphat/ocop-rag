@@ -14,7 +14,7 @@
 
 - `OCOP_ROOT`: gốc corpus cho API, đọc khi import ứng dụng. Launcher dùng repo hiện tại; không trỏ tới thư mục chứa corpus khác với frontend đang kiểm chứng.
 - `OCOP_OCR_DATASET`: đường dẫn dataset OCR; mặc định `data/ocr-dataset`. `--ocr-dataset` của CLI hoặc `-OcrDataset` của `run.ps1` được ưu tiên. Docker gắn dataset read-only tại `/app/ocr-dataset`.
-- `OCOP_RETRIEVAL_PROFILE`: `sparse` (mặc định) hoặc `hybrid`; xem [ARCHITECTURE](ARCHITECTURE.md). Docker nhận giá trị qua build arg `OCOP_PROFILE`, `hybrid` cài thêm extra `retrieval`.
+- `OCOP_RETRIEVAL_PROFILE`: `sparse` (mặc định) chỉ phục vụ BM25, từ chối yêu cầu dense/hybrid bằng HTTP 422. `hybrid` cần `sentence-transformers`, `qdrant-client`, chỉ mục dense và Qdrant truy cập được; thiếu điều kiện thì `/health` trả `not_ready` cùng `retrieval_profile.missing`, `/query` trả 503. Docker nhận giá trị qua build arg `OCOP_PROFILE`, `hybrid` cài thêm extra `retrieval`.
 - `OCOP_RERANK`: `1` bật reranker cho yêu cầu hybrid/dense (chỉ hợp lệ với `OCOP_RETRIEVAL_PROFILE=hybrid`); mặc định tắt. Tham số `rerank_candidates`, `rerank_first_stage_weight` nằm trong `configs/ocop_retrieval.yaml`. Mỗi cặp rerank tốn khoảng 1 giây CPU, câu hỏi có rerank thường mất 15–80 giây.
 - `OCOP_SESSION_STORE`: `memory` (mặc định) hoặc `sqlite`; `OCOP_SESSION_DB` chọn tệp SQLite, mặc định `data/processed/ocop/sessions.sqlite3`.
 - `OCOP_MODELS_DIR`: kho mô hình cục bộ cho embedding/reranker. Các model phải được chuẩn bị trước; không bật `trust_remote_code`.
@@ -22,6 +22,11 @@
 - `NEO4J_PASSWORD`: bí mật khi bật dịch vụ graph ngoài; không commit giá trị thực. `NEO4J_HEAP` (mặc định `512m`) và `NEO4J_PAGECACHE` (`256m`) giới hạn bộ nhớ container Neo4j trong `docker-compose.yml`; xuất bản graph cần khoảng 1 GB heap (`NEO4J_HEAP=1g`). Neo4j chỉ là nơi xuất bản graph, đường truy vấn đọc graph cục bộ.
 - `OCOP_ENFORCE_RELEASE_GATE=1`: CLI từ chối phục vụ khi evaluation gate không đạt.
 - `OCOP_LANGGRAPH_CHECKPOINT_ENABLED=1` và `OCOP_LANGGRAPH_CHECKPOINT_PATH`: bật SQLite checkpoint cho luồng có AuthContext tin cậy và session hợp lệ. API public không tự cấp quyền này.
+
+Đặt `OCOP_RERANK=1` với profile `sparse` làm `/health` báo
+`rerank_requires_hybrid_profile`; yêu cầu sparse không rerank. Tham số
+`rerank_first_stage_weight` là trọng số RRF của thứ hạng tầng đầu khi hợp nhất
+với reranker; giá trị 0 chỉ dùng thứ hạng cross-encoder.
 
 Các tham số Qdrant/Neo4j và lựa chọn dense nằm trong trợ giúp CLI, không lấy từ request FE:
 
@@ -66,8 +71,5 @@ Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stabl
 
 `run.ps1 -OcrDataset ...` dựng không dùng extraction LLM. Muốn dùng semantic extraction, gọi CLI `run` với cấu hình model đã sẵn sàng. Lỗi cấu hình LLM không được biến thành câu trả lời đã xác minh.
 
-## Reference verified
-
-Mỗi dòng server-owned trong `data/processed/ocop/knowledge/verified_criteria.jsonl` hoặc `verified_products.jsonl` có `id`, `label`, `corpus_version`, `review_status`, `visibility` và `citations`. Citation gồm đầy đủ định danh nguồn/bằng chứng, trang, bbox, SHA. Không dùng tệp này để nhập dữ liệu từ người dùng hoặc LLM; không tạo bản ghi giả khi chưa có dữ liệu xác minh.
-
-Không có cấu hình API base ở FE: client cố định `/api/ocop`. Vite proxy tới 8000; khi chạy bản build, frontend và API cùng origin.
+Hợp đồng endpoint và nguồn tham chiếu nằm trong [ARCHITECTURE](ARCHITECTURE.md#api-giao-diện);
+cách chạy frontend cùng backend nằm trong [DEVELOPMENT](DEVELOPMENT.md#frontend).

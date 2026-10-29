@@ -8,7 +8,7 @@ Chỉ áp dụng ý tưởng giải quyết một vấn đề đo được; khô
 
 | Dự án / tài liệu | Ý tưởng chính | Quyết định |
 | --- | --- | --- |
-| Docling, MinerU | Layout, thứ tự đọc, bảng nhiều trang và ô gộp | Dùng PyMuPDF + PaddleOCR layout; gộp rowspan/colspan, ghép chunk tiếp nối và khôi phục khoảng trắng từ hình học PDF. Không thêm mô hình layout thứ hai |
+| Docling, MinerU | Layout, thứ tự đọc, bảng nhiều trang và ô gộp | Dùng hình học PDF từ PyMuPDF; OCR cấu hình EasyOCR CRAFT + VietOCR trong `ocop_models.yaml`. Gộp rowspan/colspan và ghép chunk tiếp nối; không thêm mô hình layout thứ hai |
 | Google LangExtract | Trích xuất neo vị trí nguồn, nhiều lượt (gleaning) | Mỗi thực thể/cạnh mang quote + trang + bbox + SHA-256; gleaning và vân tay trích xuất (`semantic_state`) |
 | OpenSPG/KAG | Schema ràng buộc, chỉ mục hai chiều đồ thị ↔ văn bản, suy luận theo bước | `SUPPORTED_BY` nối nút ↔ EvidenceUnit, index ghi `structural_graph_version`, router lập kế hoạch nhiều công cụ. Không dùng logical-form engine |
 | Microsoft GraphRAG | Tóm tắt cộng đồng cho câu hỏi tổng quát | Không dùng: corpus có sẵn cây Điều/Khoản/Điểm và phiếu; tóm tắt do LLM sinh là nội dung chưa kiểm chứng |
@@ -18,7 +18,7 @@ Chỉ áp dụng ý tưởng giải quyết một vấn đề đo được; khô
 | LlamaIndex (`HierarchicalNodeParser`, `SentenceWindowNodeParser`, `RouterQueryEngine`, `CitationQueryEngine`) | Tách văn bản truy xuất và hiển thị; bộ chọn trả enum hợp lệ; mỗi nhận định gắn nguồn | Áp dụng nguyên tắc: đầu ra LLM chỉ là gợi ý trong enum, citation bằng `[S#]` cùng JSON claims |
 | Haystack `DocumentJoiner`, Sentence-Transformers `CrossEncoder` | BM25 + vector hợp nhất bằng RRF, rerank rồi cắt top-k | RRF tự cài, không thêm thư viện; tham số rerank theo cấu hình |
 | LangGraph adaptive/corrective RAG, Self-RAG, CRAG | Phân tích câu hỏi, chấm đủ/thiếu bằng chứng | Luồng route → plan → execute → grade → recover; `missing` và kiểm độ phủ tất định, không để LLM tự chấm |
-| ALCE, RAGAS, ARES | Đo citation recall/precision và faithfulness theo từng phát biểu | Đơn vị "claim"; kiểm tất định thay cho NLI vì chưa có bộ kiểm được audit; bộ đo ảnh PDF của dự án là thước đo chính |
+| ALCE, RAGAS, ARES | Đo citation recall/precision và faithfulness theo từng phát biểu | Đơn vị "claim"; kiểm tất định số/phủ định và xét nghĩa riêng cho diễn đạt lại. Quote đúng không tự chứng minh nội dung đúng (ADR-009) |
 | Aurelio `semantic-router`, DSPy | Tuyến định nghĩa bằng câu mẫu; tối ưu định tuyến bằng số đo | Không dùng: cần embedding mỗi câu hỏi và ngưỡng chưa đo; giữ cue có kiểm soát |
 | pyvi, underthesea | Tách từ tiếng Việt | Không dùng cho định tuyến: cue theo cụm từ nguyên vẹn là đủ |
 
