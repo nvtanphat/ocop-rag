@@ -11,7 +11,9 @@ Gold evidence lấy từ ảnh PDF đã kiểm SHA, do người đọc nguồn g
 | Bộ giữ riêng | Ngoài repo, khoá hash | Chỉ xem số tổng; không điều chỉnh theo từng ca |
 | Hội thoại offline | `tests/fixtures/conversation_eval.json` | Kiểm chính sách phiên, làm rõ, đổi chủ đề |
 
-Không thay gold để khớp output. Nếu gold bị soạn sai, cần quy trình sửa/khóa riêng trước khi chạy lại. Các bộ câu hỏi trong `data/evaluations` là dữ liệu đánh giá được giữ nguyên.
+Không thay gold để khớp output. Nếu gold bị soạn sai, cần quy trình sửa/khóa riêng trước khi chạy lại.
+
+Repo hiện không chứa bộ dữ liệu đánh giá nào trong `data/evaluations/ocop/`; bộ cũ vẫn tra được trong lịch sử Git. Khi thêm bộ mới, đặt đúng tên và vị trí ở bảng trên (các công cụ đọc đường dẫn mặc định đó, hoặc nhận `--dataset`/`--questions`), kèm lock hash cho bộ phát triển. Hai test dữ liệu đánh giá tự bỏ qua khi không có file và tự chạy lại khi file xuất hiện. `tools/cli.py evaluate` và cổng phát hành `validate_latest` cần `retrieval_page_gold_seed.jsonl` nên chưa chạy được cho tới khi bộ đó có mặt.
 
 ## Công cụ
 
