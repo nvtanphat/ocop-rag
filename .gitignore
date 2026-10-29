@@ -34,5 +34,8 @@ htmlcov/
 *.pid
 *.tmp
 *.bak
+*.orig
+*.swp
+Thumbs.db
 build/
 dist/

@@ -1,5 +1,6 @@
 .git/
 .env
+.c2c.json
 .venv/
 node_modules/
 frontend/node_modules/
@@ -8,6 +9,11 @@ data/
 outputs/
 models/
 *.log
+*.tmp
+*.bak
+*.orig
+*.swp
+Thumbs.db
 __pycache__/
 .pytest_cache/
 .ruff_cache/
