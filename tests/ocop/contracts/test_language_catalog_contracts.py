@@ -167,3 +167,14 @@ def test_document_code_resolves_by_registry_number_segments(tmp_path):
     assert registry._resolve_source_id("1489") == "X.B.2025"
     assert registry._resolve_source_id("17/2023/QH15") == "X.C.2023"
     assert registry._resolve_source_id("17/2023") == "X.C.2023"
+
+
+def test_an_abbreviation_of_a_shared_phrase_is_a_kind_of_entity_not_the_one_label_that_spells_it():
+    catalog = _catalog(organization=["HTX Sen Huế", "Hợp tác xã Thụy Hương", "Hợp tác xã Quang Hải"])
+    # "HTX" in a question is the user's word for "hợp tác xã"; it names none of the cooperatives.
+    assert catalog.link("organization", "Mình là HTX ở phường Thành Sen") == []
+    # The full label, a distinctive name and a code still link.
+    assert [m.label for m in catalog.link("organization", "Thụy Hương có sản phẩm nào")] == ["Hợp tác xã Thụy Hương"]
+    assert [m.label for m in catalog.find("organization", "HTX Sen Huế ở đâu")] == ["HTX Sen Huế"]
+    products = _catalog(product=["Gạo ST25", "Gạo ruộng rươi HANA", "Gạo ruộng rươi Tím"])
+    assert [m.label for m in products.link("product", "ST25 được mấy sao")] == ["Gạo ST25"]

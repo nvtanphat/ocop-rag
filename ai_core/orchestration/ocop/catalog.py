@@ -223,6 +223,15 @@ class EntityCatalog:
                 for i in range(len(words) - n + 1):
                     if all(ok[i : i + n]):
                         occurs.setdefault(tuple(words[i : i + n]), set()).add(item["label"])
+        # An abbreviation of a phrase that several labels share names a kind of entity, not one of them: "HTX" is the
+        # initials of "hợp tác xã" even if exactly one label happens to be written with the abbreviation.
+        shared: dict[tuple[str, ...], set[str]] = {}
+        for item in self._items.get(kind, []):
+            words = [normalize(w) for w in re.findall(r"[\w]+", item["label"])]
+            for n in range(2, min(5, len(words)) + 1):
+                for i in range(len(words) - n + 1):
+                    shared.setdefault(tuple(words[i : i + n]), set()).add(item["label"])
+        initialisms = {"".join(word[0] for word in run) for run, owners in shared.items() if len(owners) >= 2}
         spans = [(m.start(), m.end(), m.group(0)) for m in re.finditer(r"[\w]+", query)]
 
         def consecutive(left, right) -> bool:
@@ -246,7 +255,7 @@ class EntityCatalog:
                     continue
                 words = tuple(normalize(w) for _, _, w in run)
                 labels = occurs.get(words, set())
-                if len(labels) != 1:
+                if len(labels) != 1 or (n == 1 and words[0] in initialisms):
                     continue
                 # A name-like word right next to the run that the label does not continue with is part of another, longer
                 # name ("Nguyễn Thị Hà" is not the label "Nguyễn Thị Huyền"): the partial match names nothing.
