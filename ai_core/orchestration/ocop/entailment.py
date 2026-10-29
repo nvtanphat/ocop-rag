@@ -57,10 +57,23 @@ def verbatim(quote: str, source: str) -> bool:
     return len(plain(quote)) >= MIN_QUOTE_CHARS and plain(quote) in plain(source)
 
 
+MAX_QUOTE_PARTS = 4
+
+
+def quoted_from(quote: str, source: str) -> bool:
+    """A quote of one passage, or of one passage per cited source on separate lines (a comparison of two records).
+
+    Every part must be verbatim by itself; a part that is not in the source, or a long run of stitched lines, fails."""
+    if verbatim(quote, source):
+        return True
+    parts = [part for part in quote.split("\n") if part.strip()]
+    return 1 < len(parts) <= MAX_QUOTE_PARTS and all(verbatim(part, source) for part in parts)
+
+
 def anchored(claim: str, quote: str, excerpt: str, asked: str = "", *, quote_source: str | None = None) -> bool:
     """The quote is verbatim in the excerpt and carries every number, negation and proper name of the claim."""
     original = excerpt if quote_source is None else quote_source
-    if not verbatim(quote, original):
+    if not quoted_from(quote, original):
         return False
     if _numbers(claim) - _numbers(quote) - (_numbers(asked) & _numbers(excerpt)) - _range_numbers(quote):
         return False
@@ -124,7 +137,7 @@ def review(llm, items: list[dict], *, asked: str = "") -> dict[int, str]:
             and 0 <= index < len(items)
             and isinstance(quote, str)
             and ("quote_sources" not in items[index]
-                 or verbatim(quote, "\n".join(items[index]["quote_sources"])))
+                 or quoted_from(quote, "\n".join(items[index]["quote_sources"])))
             and anchored(items[index]["claim"], quote, items[index]["excerpt"],
                          asked + " " + items[index].get("metadata", ""),
                          quote_source="\n".join(items[index]["quote_sources"]) if "quote_sources" in items[index] else None)

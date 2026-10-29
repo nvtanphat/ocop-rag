@@ -7,7 +7,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
-from ai_core.orchestration.ocop.entailment import MIN_QUOTE_CHARS, SOFT_REASONS, anchored, review, verbatim
+from ai_core.orchestration.ocop.entailment import MIN_QUOTE_CHARS, SOFT_REASONS, anchored, quoted_from, review
 from ai_core.orchestration.ocop.verification import (
     CRITICAL,
     check_source_markers,
@@ -306,6 +306,10 @@ def _evidence(
         )
         if span is None:
             continue
+        # The citation's own box: a span of the same page that has one beats a first span that is only a table.
+        span = next(
+            (x for x in spans if isinstance(x, dict) and x.get("pdf_page") == span["pdf_page"] and x.get("bbox")), span
+        )
         body = _body(row)
         if not body:
             continue
@@ -588,7 +592,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
         cited = [next((r for r in selected if _cites(r, citations[n - 1])), None)
                  for n in numbers if 0 < n <= len(citations)]
         quote_sources = [str((row or {}).get("text") or "") for row in cited]
-        if quote and not verbatim(quote, "\n".join(quote_sources)):
+        if quote and not quoted_from(quote, "\n".join(quote_sources)):
             reasons.append("quote_not_verbatim")
         markers = check_source_markers(marked, citations)
         if not numbers or markers["invalid_markers"] or markers["missing_citations"]:

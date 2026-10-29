@@ -214,3 +214,25 @@ def test_the_programme_name_is_not_a_name_a_passage_must_introduce_but_an_invent
     record = "STT: 3; Sản phẩm: Nước mắm Cát Hải; Điểm đánh giá: 84,1; Xếp loại: 4 sao"
     assert anchored("Nước mắm Cát Hải được xếp loại OCOP 4 sao.", record, record)
     assert not anchored("Nước mắm Phú Quốc được xếp loại OCOP 4 sao.", record, record)
+
+
+def test_a_comparison_may_quote_one_line_per_cited_source_but_never_a_line_that_is_not_in_them():
+    from ai_core.orchestration.ocop.entailment import quoted_from
+
+    one = "STT: 13; Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo giống HANA; Địa chỉ: Thôn Trà Phương"
+    two = "STT: 10; Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo ST25; Địa chỉ: Thôn Trà Phương"
+    sources = one + "\n" + two
+    assert quoted_from("Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo giống HANA\nTổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo ST25", sources)
+    assert not quoted_from("Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo giống HANA\nTổ chức/cá nhân: Hợp tác xã Sen Huế; Sản phẩm: Gạo ST25", sources)
+    stitched = "\n".join(f"Tổ chức/cá nhân: Hợp tác xã Thụy Hương; Sản phẩm: Gạo giống HANA{'' if i else ''}" for i in range(5))
+    assert not quoted_from(stitched, sources)
+
+
+def test_a_citation_box_comes_from_a_span_of_the_cited_page_when_the_first_span_is_only_a_table():
+    from ai_core.orchestration.ocop.answer import _evidence
+
+    row = {"source_id": "D", "evidence_unit_id": "u", "chunk_id": "c", "review_status": "needs_review",
+           "text": "Điều kiện về hồ sơ sản phẩm theo quy định.",
+           "source_spans": [{"pdf_page": 3, "table_bbox": [1, 2, 3, 4]}, {"pdf_page": 3, "bbox": [10, 20, 30, 40]}]}
+    citations, _, _ = _evidence([row], question="Điều kiện về hồ sơ sản phẩm")
+    assert citations and citations[0]["pdf_page"] == 3 and citations[0]["bbox"] == [10, 20, 30, 40]
