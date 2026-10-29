@@ -53,9 +53,6 @@ def _semantic_profile(options: "PipelineOptions") -> str:
     return semantic_profile(extraction_identity(), options.semantic_max_units, extraction_gleanings())
 
 
-SEMANTIC_STATES = ("disabled", "complete", "partial", "failed")
-
-
 def semantic_state(metadata: dict, *, max_units: int | None = None) -> dict:
     """Readiness of the LLM extraction layer of a built corpus.
 

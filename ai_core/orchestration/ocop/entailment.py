@@ -1,18 +1,13 @@
-"""Quote-anchored entailment for claims that are a faithful paraphrase but fail the lexical overlap check.
+"""Review paraphrases against cited excerpts with an independent entailment verdict.
 
-A paraphrase ("QĐ26 thay thế QĐ148 và QĐ1489" for "bãi bỏ ... Quyết định số 148/QĐ-TTg ...") shares few consecutive
-words with its excerpt, so word-coverage grounding rejects true statements. A second, independent model call judges
-each such claim against the excerpt it cites and must return the verbatim excerpt text that supports it. The verdict
-alone proves nothing: it only counts when the quote is found in the excerpt and the same hard checks as everywhere
-else pass on that quote (every number, negation, every proper name). Only the soft lexical failures are reviewable;
-number, negation, citation and score/star failures are never overridden.
+Support requires an original quote and deterministic number, negation and name
+checks. Review never overrides citation or score/star failures.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import unicodedata
 
 from ai_core.orchestration.ocop.language import fold
 from ai_core.orchestration.ocop.verification import _numbers, _range_numbers, negation_conflict, numeric_binding_conflict
@@ -50,10 +45,6 @@ SCHEMA = {
         }
     },
 }
-
-
-def _squash(text: str) -> str:
-    return " ".join(re.findall(r"\w+", unicodedata.normalize("NFC", text).casefold()))
 
 
 def anchored(claim: str, quote: str, excerpt: str, asked: str = "", *, quote_source: str | None = None) -> bool:
