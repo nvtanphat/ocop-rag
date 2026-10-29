@@ -138,10 +138,6 @@ def _merge_continuations(entries):
     return out
 
 
-_SIBLING_SLOTS = 3
-_RESERVED_SLOTS = 3
-
-
 def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
     """Keep `limit` blocks by greedy, rarity-weighted coverage of the question's terms (ties keep tool order).
 
@@ -151,7 +147,7 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
     still-uncovered weight they add, so every part of a multi-part question keeps at least its best block.
     The kept blocks keep their original order.
     """
-    if len(entries) <= limit or not terms:
+    if len(entries) <= limit:
         return entries[:limit]
     wanted = set(terms)
 
@@ -160,11 +156,7 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
         text = (
             str(row.get("raw_text") or row.get("text") or "")
             + " "
-            + " ".join(
-                str(c.get("quote", ""))
-                for c in (row.get("context") or {}).get("parent_source_spans", [])
-                if isinstance(c, dict)
-            )
+            + " ".join((row.get("context") or {}).get("parent_chain") or [])
         )
         return wanted & set(re.findall(r"[a-z0-9]+", fold(text)))
 
@@ -172,32 +164,41 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
     weight = {t: math.log(1 + len(entries) / df) for t in wanted if (df := sum(t in f for f in found))}
     covered: set[str] = set()
     chosen: list[int] = []
+    protected: set[int] = set()
+
+    def reserve(index):
+        if index is not None and index not in chosen and len(chosen) < limit:
+            chosen.append(index)
+            protected.add(index)
+            covered.update(found[index])
+
+    def facet_match(index, facet):
+        row = entries[index][1]
+        body = str(row.get("raw_text") or row.get("text") or "")
+        labels = [str(row.get(key) or "") for key in ("title", "label_candidate")]
+        lines = [line for line in [*body.splitlines(), *labels] if covers({"text": line}, facet)]
+        score = max((sum(weight.get(term, 0) for term in wanted & set(re.findall(r"[a-z0-9]+", fold(line))))
+                     for line in lines), default=0)
+        return bool(lines), score, -index
+
     # An explicitly requested part (criterion code "1.6", "Mẫu số 02") is a requirement, not a hint: question terms drop such
     # codes, so term coverage alone would let generic prose outvote the one row that holds the part. The best-ranked block
     # of each such facet is kept first.
     for facet in facets:
         if facet.startswith("terms:"):
             continue
-        first = next((i for i, e in enumerate(entries) if covers(e[1], facet)), None)
-        if first is not None and first not in chosen:
-            chosen.append(first)
-            covered |= found[first]
+        candidates = [i for i, entry in enumerate(entries) if covers(entry[1], facet)]
+        first = max(candidates, key=lambda i: facet_match(i, facet), default=None)
+        reserve(first)
     # Each part of a compound question was searched on its own (row['query_part']); the best-ranked block that search added keeps
     # its place even when no question word names it ("cơ quan ban hành" is answered by a heading that says "Ủy ban nhân dân").
     for part in dict.fromkeys(e[1].get("query_part") for e in entries if e[1].get("query_part")):
         first = next((i for i, e in enumerate(entries) if e[1].get("query_part") == part), None)
-        if first is not None and first not in chosen:
-            chosen.append(first)
-            covered |= found[first]
+        reserve(first)
     # A relation the graph tool proved is often worded unlike the question (a decision "thay thế" an older one says the old
     # one "hết hiệu lực"), so term coverage scores it near zero; its best-ranked block keeps a place like a query part.
     first = next((i for i, e in enumerate(entries) if e[1].get("graph_edge_id")), None)
-    if first is not None and first not in chosen:
-        chosen.append(first)
-        covered |= found[first]
-    # reserved blocks are added to the limit, never taken out of it (the token budget stays the last bound)
-    reserved = min(len(chosen), _RESERVED_SLOTS)
-    limit += reserved
+    reserve(first)
     while len(chosen) < limit:
         gain = lambda i: sum(weight[t] for t in found[i] - covered)  # noqa: E731
         best = max(
@@ -215,15 +216,32 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
         chosen.append(best)
         covered |= found[best]
 
-    # Cells of one table that tools returned together describe one row (product / owner / representative): a chosen
-    # table block brings its returned siblings, at most `_SIBLING_SLOTS` extra.
+    # Keep a selected record's returned cells together inside the same hard limit.
+    # A table can contain many different records; its identifier alone is not their identity.
     def table(i):
         span = entries[i][2]
-        return (entries[i][0][0], entries[i][0][1], span.get("table_id")) if span.get("table_id") else None
+        table_id = span.get("table_id")
+        if not isinstance(table_id, str) or not table_id:
+            return None
+        ids = entries[i][1].get("graph_node_ids")
+        identity = tuple(sorted(ids)) if isinstance(ids, list) and all(isinstance(value, str) for value in ids) else ()
+        row = span.get("row")
+        identity = identity or (row if isinstance(row, int) else None)
+        return (entries[i][0][0], entries[i][0][1], table_id, identity)
 
     tables = {table(i) for i in chosen if entries[i][3]} - {None}
-    extra = [i for i in range(len(entries)) if i not in chosen and table(i) in tables][:_SIBLING_SLOTS]
-    return [entries[i] for i in sorted(chosen + extra)]
+    protected.update(i for i in chosen if entries[i][3])
+    extra = [i for i in range(len(entries)) if i not in chosen and table(i) in tables]
+    for index in extra[:get_settings().context.max_table_siblings]:
+        if len(chosen) >= limit:
+            removable = [i for i in chosen if i not in protected]
+            if not removable:
+                break
+            victim = min(removable, key=lambda i: (sum(weight[t] for t in found[i]), -i))
+            chosen.remove(victim)
+        chosen.append(index)
+        protected.add(index)
+    return [entries[i] for i in sorted(chosen)]
 
 
 def _drop_repeats(entries):
@@ -251,9 +269,25 @@ def _evidence(
     """
     cfg = get_settings().context
     terms = question_terms(question)
+    # Multi-step questions ("which documents does X replace, and when do they expire?"): what the graph step found (the
+    # other end of a relation) is what the next step's passage must be about, so it also steers which part of a long
+    # passage is shown. It only guides the choice of window; coverage and ranking still use the question's own terms.
+    asked = set(re.findall(r"[a-z0-9]+", fold(question)))
+    linked = [
+        t
+        for row in records
+        if isinstance(row, dict) and row.get("graph_edge_id") and len(str(row.get("text") or "")) <= 160
+        for t in re.findall(r"[a-z0-9]+", fold(re.sub(r"\[[A-Z_]+\]", " ", str(row.get("text") or ""))))
+        if t not in asked and t not in terms
+    ]
+    window_terms = terms + list(dict.fromkeys(linked))
     grouped = {}
     for row in records:
         if not isinstance(row, dict) or not str(row.get("source_id") or "").strip():
+            continue
+        if str(row.get("chunk_id") or "").startswith("graph:"):
+            # Typed relation descriptions guide window selection above. Only their original
+            # graph-evidence passages can become SOURCE blocks and verbatim quotes.
             continue
         spans = row.get("source_spans") or row.get("spans") or []
         if not isinstance(spans, list):
@@ -324,7 +358,7 @@ def _evidence(
         for i, (key, row, span, flag) in enumerate(entries, 1)
     ]
     excerpts = (
-        fit_budget([e[1] for e in entries], [e[3] for e in entries], terms, cfg, budget, headers)
+        fit_budget([e[1] for e in entries], [e[3] for e in entries], window_terms, cfg, budget, headers)
         if entries
         else []
     )
@@ -430,9 +464,11 @@ def _parse_claims(raw):
             int(m) for s in item.get("sources") or [] if isinstance(s, str) for m in re.findall(r"\d+", s)
         ]
         # A marker written inside the text counts too; ids outside the SOURCE list are kept so the checker rejects them.
-        numbers += [int(m) for m in re.findall(r"\[S(\d+)\]", item["text"])]
+        # A source label written in the sentence ("[S1]", or a bare "S1 ghi …") is a citation, not content.
+        label = re.compile(r"\[S(\d+)\]|(?<![\w-])S(\d{1,2})(?![\w-])")
+        numbers += [int(a or b) for a, b in label.findall(item["text"])]
         quote = item.get("quote") if isinstance(item.get("quote"), str) else ""
-        claims.append((re.sub(r"\s*\[S\d+\]", "", item["text"]).strip(), list(dict.fromkeys(numbers)), quote))
+        claims.append((re.sub(r"\s*" + label.pattern, "", item["text"]).strip(), list(dict.fromkeys(numbers)), quote))
     # A gap may share one sentence with the review-status remark ("SOURCE không nêu điều khoản …; OCR chưa được xác minh"): only the
     # remark is dropped (the system labels unreviewed sources itself), the gap is kept.
     missing = []

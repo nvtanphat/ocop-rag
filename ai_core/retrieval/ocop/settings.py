@@ -22,6 +22,7 @@ class ContextSettings(BaseModel):
     parent_label_max_chars: int = Field(90, ge=20)
     min_term_coverage: float = Field(0.25, ge=0, le=1)
     max_source_blocks: int = Field(12, ge=1)
+    max_table_siblings: int = Field(3, ge=0)
     grounding_min_term_coverage: float = Field(0.8, ge=0, le=1)
 
 

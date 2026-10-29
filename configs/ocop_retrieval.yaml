@@ -10,6 +10,7 @@ context:
   parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
   parent_label_max_chars: 90
   max_source_blocks: 12            # SOURCE blocks in one prompt after merging continuations and dropping repeats
+  max_table_siblings: 3            # related cells share max_source_blocks; never increase the block limit
   grounding_min_term_coverage: 0.8 # share of an unreviewed-source claim's content words found in its cited excerpt (0.9 for critical claims)
   min_term_coverage: 0.25          # share of question content terms present in the prompt SOURCE text; below it no generation
 retrieval:

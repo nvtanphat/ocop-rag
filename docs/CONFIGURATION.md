@@ -40,6 +40,11 @@ Cache điểm rerank phân biệt ngân sách token của cặp câu hỏi/đo�
 Lookup công nhận phân bổ ngân sách lần lượt theo bản ghi trước khi lấy thêm ô của
 cùng bản ghi, để một bản ghi nhiều ô không che các sản phẩm khác.
 
+`context.max_source_blocks` là giới hạn chung, kể cả các nguồn giữ chỗ cho facet,
+quan hệ và ô liên quan. `context.max_table_siblings` (mặc định 3) giới hạn các ô
+đi kèm cùng bản ghi trong ngân sách này. Nguồn không còn vừa ngân sách token sau
+khi thu hẹp trích đoạn sẽ bị bỏ, kể cả khi chỉ còn một nguồn.
+
 Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), [các bộ đọc Safetensors](https://huggingface.co/docs/safetensors/en/api/torch).
 
 ## LLM tùy chọn

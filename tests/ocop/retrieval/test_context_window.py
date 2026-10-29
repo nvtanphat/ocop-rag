@@ -130,3 +130,10 @@ def test_returned_table_siblings_travel_with_the_chosen_row():
     owner = _entry("Hợp tác xã Thụy Hương", 9, "t1")
     kept = _most_relevant([*generic, row, owner], ["hana", "quyet", "dinh", "co", "quan"], 2)
     assert row in kept and owner in kept
+
+
+def test_the_kind_of_document_a_question_points_at_is_not_a_term_to_find_in_the_passage():
+    from ai_core.orchestration.ocop.context import question_terms
+
+    assert question_terms("Điều 2 Quyết định 525 quy định gì?") == []
+    assert question_terms("Quyết định về nhãn hàng hóa là gì?") == ["nhan", "hang", "hoa"]

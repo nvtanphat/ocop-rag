@@ -151,6 +151,44 @@ def _quoted(claim, quote, status="verified"):
     return assemble("UBND cấp xã có bao nhiêu ngày?", results(source), llm=model)
 
 
+def test_a_source_label_written_in_a_sentence_is_a_citation_not_content():
+    from ai_core.orchestration.ocop.answer import _parse_claims
+
+    claims, _ = _parse_claims(
+        json.dumps(
+            {
+                "claims": [
+                    {"text": "Dữ liệu trích xuất S1 ghi QĐ 26/2026 thay thế QĐ 148 [S11]", "sources": [], "quote": ""},
+                    {"text": "Gạo ST25 đạt 4 sao", "sources": ["S2"], "quote": ""},
+                ],
+                "missing": [],
+            }
+        )
+    )
+    assert claims[0][1] == [1, 11] and "S1" not in claims[0][0] and "148" in claims[0][0]
+    assert claims[1][0] == "Gạo ST25 đạt 4 sao"  # a product code is not a source label
+
+
+def test_what_the_graph_step_found_steers_which_part_of_a_long_passage_is_shown():
+    seen = []
+
+    class Capture(Model):
+        def chat_structured(self, system, user, *, schema, max_tokens=1024):
+            seen.append(user)
+            return super().chat_structured(system, user, schema=schema, max_tokens=max_tokens)
+
+    filler = "Đối với các sản phẩm đã được đánh giá trước đây, văn bản cũ hết hiệu lực khi có quyết định thay thế. " * 8
+    clause = "Quyết định số 148/QĐ-TTg và Quyết định số 1489/QĐ-TTg hết hiệu lực sau 60 ngày kể từ ngày có hiệu lực."
+    long_row = row(filler + clause + " " + filler)
+    relation = {**row("26/2026/QĐ-TTg [REPLACES] 148/QĐ-TTg", unit="u2"), "graph_edge_id": "e1"}
+    out = assemble(
+        "Quyết định 26 thay thế văn bản nào và khi nào các văn bản đó hết hiệu lực?",
+        results(relation, long_row),
+        llm=Capture({"claims": [], "missing": []}),
+    )
+    assert any("hết hiệu lực sau 60 ngày" in prompt for prompt in seen), out
+
+
 def test_every_structured_output_schema_lists_all_its_properties_as_required():
     # Providers' strict structured-output mode rejects (HTTP 400) any object whose "required" omits a property.
     from ai_core.orchestration.ocop.answer import CLAIMS_SCHEMA

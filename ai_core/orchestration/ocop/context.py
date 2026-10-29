@@ -10,6 +10,7 @@ Design notes (see docs/adr/006-context-window-and-parent-chain.md):
 from __future__ import annotations
 
 import re
+from collections import Counter, deque
 from dataclasses import dataclass
 
 from ai_core.orchestration.ocop.language import fold, get_language
@@ -37,7 +38,9 @@ def question_terms(question: str) -> list[str]:
     # "phiếu 1", "mẫu 02", "điều 5": a noun directly followed by its number is a reference the slots resolve; the
     # passage that answers it need not repeat the noun (a criterion sheet's text rarely says "phiếu").
     referenced = set(re.findall(r"([a-z]+)\s+\d{1,4}\b", fold(question)))
-    return list(dict.fromkeys(w for w in words if w not in referenced))
+    # The kind of document a question points at ("Quyết định", "Luật") locates it like its number does; it is not content.
+    kinds = {fold(w) for names in get_language().document_types.values() for n in names for w in n.split()}
+    return list(dict.fromkeys(w for w in words if w not in referenced and w not in kinds))
 
 
 def _segments(text: str, limit: int = 420) -> list[str]:
@@ -59,21 +62,64 @@ def _hard_cut(text: str, limit: int) -> str:
     return text[:limit].rsplit(" ", 1)[0]
 
 
+def _word_window(text: str, wanted: set[str], max_chars: int) -> tuple[str, bool, bool]:
+    """A bounded original-text slice, balancing context on both sides of matched words."""
+    words = list(re.finditer(r"\S+", text))
+    hits = [set(re.findall(r"[a-z0-9]+", fold(word.group()))) & wanted for word in words]
+    counts: Counter = Counter()
+    positions: deque = deque()
+    right = 0
+    best_score = (-1, -1, -1, 0)
+    best = None
+    for left, word in enumerate(words):
+        start = word.start()
+        while right < len(words) and words[right].end() - start <= max_chars:
+            counts.update(hits[right])
+            if hits[right]:
+                positions.append(right)
+            right += 1
+        if right == left:  # A single token cannot fit intact.
+            right += 1
+            continue
+        end = words[right - 1].end()
+        balance = min(words[positions[0]].start() - start, end - words[positions[-1]].end()) if positions else 0
+        score = (len(counts), balance, end - start, -start)
+        if score > best_score:
+            best_score, best = score, (start, end)
+        for term in hits[left]:
+            counts[term] -= 1
+            if not counts[term]:
+                del counts[term]
+        if positions and positions[0] == left:
+            positions.popleft()
+    if best is None:
+        return _hard_cut(text, max_chars), False, True
+    start, end = best
+    return text[start:end], start > 0, end < len(text)
+
+
 def select_window(text: str, terms: list[str], max_chars: int) -> tuple[str, bool, bool]:
     """Best contiguous run of whole segments (≤ max_chars) by distinct question-term hits."""
     if len(text) <= max_chars:
         return text.strip(), False, False
+    if not terms:
+        return _hard_cut(text, max_chars), False, True
     segments = _segments(text)
     if not segments:
         return _hard_cut(text, max_chars), False, True
     wanted = set(terms)
-    sets = [set(re.findall(r"[a-z0-9]+", fold(s))) for s in segments]
-    sizes = [len(s) + 1 for s in segments]
+    long = {i: _word_window(segment, wanted, max_chars) for i, segment in enumerate(segments)
+            if len(segment) > max_chars}
+    rendered = [long[i][0] if i in long else segment for i, segment in enumerate(segments)]
+    sets = [set(re.findall(r"[a-z0-9]+", fold(segment))) for segment in rendered]
+    sizes = [len(segment) + 1 for segment in rendered]
     best = (-1, 0, 0, 0)  # (score, -length, i, j)
     for i in range(len(segments)):
         covered: set[str] = set()
         total = 0
         for j in range(i, len(segments)):
+            if j > i and (i in long or j in long):
+                break  # A slice inside a long segment cannot skip text to join a neighbour.
             total += sizes[j]
             if total > max_chars and j > i:
                 break
@@ -83,6 +129,9 @@ def select_window(text: str, terms: list[str], max_chars: int) -> tuple[str, boo
             if cand > (best[0], best[1], -best[2], best[3]):
                 best = (score, -total, i, j)
     _, _, i, j = best
+    if i in long:
+        window, left, right = long[i]
+        return window, i > 0 or left, i < len(segments) - 1 or right
     window = "\n".join(segments[i : j + 1])
     if len(window) > max_chars:  # one segment longer than the budget
         window = _hard_cut(window, max_chars)
@@ -199,7 +248,8 @@ def fit_budget(
         elif caps[longest] > 120:
             caps[longest] = max(120, int(caps[longest] * 0.7))
         else:
-            break
+            keep.pop()  # Even the minimum excerpt plus its header cannot fit.
+            continue
         rendered[longest] = render_row(
             rows[longest], terms, cfg, table_backed=flags[longest], max_chars=caps[longest]
         )
