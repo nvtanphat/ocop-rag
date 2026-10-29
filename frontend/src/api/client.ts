@@ -67,8 +67,14 @@ export interface Source {
   ocr_pages: number
   filename: string
 }
+export interface RetrievalProfile {
+  profile: 'sparse' | 'hybrid'
+  ready: boolean
+  missing: string[]
+}
 export interface Health {
   status: string
+  retrieval_profile?: RetrievalProfile
   pipeline: JsonObject
   sources_registered: number
   pages: number
@@ -128,6 +134,14 @@ export class ApiError extends Error {
 }
 
 const BASE = '/api/ocop'
+// A reranked answer from a live model can take well over a minute; the deployment, not the page, bounds the work.
+export const ASK_TIMEOUT_MS = 180000
+
+/** The deployment owns the retrieval profile: use hybrid exactly when the backend reports it ready, else sparse. */
+export function retrievalModeFor(health: Health | null | undefined): 'sparse' | 'hybrid' {
+  const profile = health?.retrieval_profile
+  return profile?.profile === 'hybrid' && profile.ready ? 'hybrid' : 'sparse'
+}
 export async function request<T>(path: string, init?: RequestInit, timeoutMs = 90000): Promise<T> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -154,7 +168,7 @@ export const api = {
   products: () => request<ReferenceResponse>('/products'),
   ask: (body: AskRequest) => request<AskResult>('/query', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  }),
+  }, ASK_TIMEOUT_MS),
   subgraph: (seed: SubgraphSeed, hops = 1, limit = 50) => {
     const params = new URLSearchParams({ hops: String(hops), limit: String(limit) })
     if ('evidenceUnitId' in seed) params.set('evidence_unit_id', seed.evidenceUnitId)

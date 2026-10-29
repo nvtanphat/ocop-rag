@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, request, type Citation } from './client'
+import { api, ApiError, request, retrievalModeFor, type Citation, type Health } from './client'
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
@@ -16,6 +16,28 @@ describe('OCOP API client', () => {
   it.each([400, 404, 422, 500, 503])('reports HTTP %s without fake fallback data', async status => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: { message: 'Unavailable' } }), { status })))
     await expect(api.sources()).rejects.toMatchObject({ message: 'Unavailable', status })
+  })
+
+  it('asks for hybrid retrieval only when the backend reports that profile ready', () => {
+    const health = (profile: 'sparse' | 'hybrid', ready: boolean) =>
+      ({ retrieval_profile: { profile, ready, missing: ready ? [] : ['qdrant_unreachable'] } }) as Health
+    expect(retrievalModeFor(health('hybrid', true))).toBe('hybrid')
+    expect(retrievalModeFor(health('hybrid', false))).toBe('sparse')
+    expect(retrievalModeFor(health('sparse', true))).toBe('sparse')
+    expect(retrievalModeFor(null)).toBe('sparse')
+    expect(retrievalModeFor({} as Health)).toBe('sparse')
+  })
+
+  it('gives a reranked answer more time than an ordinary request', async () => {
+    vi.useFakeTimers()
+    const fetch = vi.fn((_url, { signal }: RequestInit) => new Promise((resolve, reject) => {
+      signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+      setTimeout(() => resolve(new Response(JSON.stringify({ answer: 'late but valid' }))), 120000)
+    }))
+    vi.stubGlobal('fetch', fetch)
+    const result = api.ask({ query: 'q', retrieval_mode: 'hybrid', use_llm: true })
+    await vi.advanceTimersByTimeAsync(120000)
+    await expect(result).resolves.toEqual({ answer: 'late but valid' })
   })
 
   it('reports an unreachable backend', async () => {

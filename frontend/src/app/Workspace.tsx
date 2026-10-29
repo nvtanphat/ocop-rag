@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import {
   api,
+  retrievalModeFor,
   type Citation,
   type Health,
   type ReferenceResponse,
@@ -125,7 +126,7 @@ export default function Workspace() {
       const answer = await api.ask({
         query: text,
         session_id: sessionId,
-        retrieval_mode: "sparse",
+        retrieval_mode: retrievalModeFor(health),
         use_llm: useLlm,
       });
       setMessages((previous) =>
