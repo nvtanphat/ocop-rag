@@ -7,7 +7,9 @@ reference library is explicitly allowlisted by configs/ocop_sources.json.
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -29,6 +31,7 @@ from backend.api.reference_data import ReferenceResponse, read_references
 ROOT = Path(os.environ.get("OCOP_ROOT", Path(__file__).resolve().parents[2])).resolve()
 DATA = ROOT / "data" / "processed" / "ocop"
 router = APIRouter(prefix="/api/ocop", tags=["OCOP knowledge"])
+LOG = logging.getLogger("ocop.api")
 
 
 class AskRequest(BaseModel):
@@ -41,6 +44,8 @@ class AskRequest(BaseModel):
 
 def service_unavailable(code: str, layer: str, exc: Exception) -> HTTPException:
     """503 with a fixed schema {code, layer, error_type, message}; never echoes the exception text (may hold secrets)."""
+    # The operator sees which layer failed and with what kind of error; the exception text stays out of every log.
+    LOG.warning("unavailable code=%s layer=%s error=%s", code, layer, type(exc).__name__)
     return HTTPException(
         status_code=503,
         detail={
@@ -78,6 +83,31 @@ def _file_for(item: dict[str, Any]) -> Path:
     if not file.is_file():
         raise HTTPException(status_code=404, detail="Chưa có PDF gốc trong thư mục dữ liệu")
     return file
+
+
+def query_summary(payload: dict, total_ms: float, use_llm: bool, retrieval_mode: str) -> dict:
+    """One low-cardinality line per answered question: where it went and where the time was spent.
+
+    Never holds the question, the session, the answer text or any evidence text."""
+    trace = payload.get("tool_trace") or []
+    tool_ms = sum(float(step.get("latency_ms") or 0) for step in trace if step.get("step") == "tool")
+    diagnostics = payload.get("generation_diagnostics") or {}
+    rejected = diagnostics.get("rejected")
+    accepted = diagnostics.get("accepted")
+    return {
+        "status": payload.get("status"),
+        "intent": payload.get("intent"),
+        "path": (payload.get("route") or {}).get("retrieval_path"),
+        "tools": payload.get("tools_used") or [],
+        "mode": retrieval_mode,
+        "llm": bool(use_llm),
+        "citations": len(payload.get("citations") or []),
+        "claims_accepted": accepted if isinstance(accepted, int) else len(accepted or []),
+        "claims_rejected": len(rejected or []) if not isinstance(rejected, int) else rejected,
+        "total_ms": round(total_ms),
+        "tools_ms": round(tool_ms),
+        "generation_ms": round(max(total_ms - tool_ms, 0)),
+    }
 
 
 def _answer_llm_ready() -> bool:
@@ -292,11 +322,21 @@ async def ask(request: AskRequest):
         raise service_unavailable(
             "llm_unavailable" if request.use_llm else "agent_unavailable", "configuration", exc
         ) from exc
+    started = time.monotonic()
     try:
         answer = await run_in_threadpool(
             agent.ask, request.query, session=default_store.get(request.session_id)
         )
         default_store.save(request.session_id, request.query, answer)
-        return answer.model_dump(mode="json")
+        payload = answer.model_dump(mode="json")
+        LOG.info(
+            "query %s",
+            json.dumps(
+                query_summary(payload, (time.monotonic() - started) * 1000, use_llm, request.retrieval_mode),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+        )
+        return payload
     except (RuntimeError, ValueError, FileNotFoundError) as exc:
         raise service_unavailable("query_failed", "retrieval", exc) from exc

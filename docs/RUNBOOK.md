@@ -91,6 +91,12 @@ Danh sách cho `/criteria` và `/products`: `python tools/cli.py review export-r
 
 Ledger tại `data/review/ocop_review_decisions.jsonl` chỉ ghi nối tiếp. Duyệt thực thể không tự động duyệt mọi cạnh và bằng chứng. `decide` dựng graph và làm mới index; nếu graph đã đổi nhưng làm mới index lỗi, giữ ledger và chạy `review refresh-index` sau khi khắc phục hạ tầng. Không xoá lịch sử review.
 
+## Quan sát
+
+Mỗi câu hỏi được trả lời để lại một dòng log `ocop.api query {...}` gồm `status`, `intent`, `path` (luồng RAG), `tools`, `mode`, `llm`, `citations`, `claims_accepted`/`claims_rejected`, `total_ms`, `tools_ms`, `generation_ms`. Dòng này không chứa câu hỏi, phiên, câu trả lời hay đoạn trích. Mỗi lần trả 503 để lại `ocop.api unavailable code=… layer=… error=<loại lỗi>` (không có thông điệp lỗi). `OCOP_LOG_LEVEL` đổi mức log (mặc định `INFO`). Chi tiết từng bước của một câu hỏi nằm trong `tool_trace` và `generation_diagnostics` của chính phản hồi.
+
+Span OpenTelemetry (`ocop.agent.ask`, `ocop.agent.tool_dispatch`, `ocop.retrieval.search`, `ocop.llm.*`) chỉ phát khi tiến trình API được cấu hình SDK và exporter (`OTEL_EXPORTER_OTLP_ENDPOINT`); không cấu hình thì chúng không làm gì.
+
 ## Xử lý lỗi
 
 | Triệu chứng | Kiểm tra |

@@ -15,6 +15,7 @@
 - `OCOP_ROOT`: gốc corpus cho API, đọc khi import ứng dụng. Launcher dùng repo hiện tại; không trỏ tới thư mục chứa corpus khác với frontend đang kiểm chứng.
 - `OCOP_OCR_DATASET`: đường dẫn dataset OCR; mặc định `data/ocr-dataset`. `--ocr-dataset` của CLI hoặc `-OcrDataset` của `run.ps1` được ưu tiên. Docker gắn dataset read-only tại `/app/ocr-dataset`.
 - `OCOP_RETRIEVAL_PROFILE`: `sparse` (mặc định) chỉ phục vụ BM25, từ chối yêu cầu dense/hybrid bằng HTTP 422. `hybrid` cần `sentence-transformers`, `qdrant-client`, chỉ mục dense và Qdrant truy cập được; thiếu điều kiện thì `/health` trả `not_ready` cùng `retrieval_profile.missing`, `/query` trả 503. Docker nhận giá trị qua build arg `OCOP_PROFILE`, `hybrid` cài thêm extra `retrieval`.
+- `OCOP_LOG_LEVEL`: mức log của `ocop.*` (`INFO` mặc định); xem mục Quan sát trong [RUNBOOK](RUNBOOK.md).
 - `OCOP_LLM_ROUTER`: `1` cho phép mô hình đề xuất intent với câu hỏi không có tín hiệu tất định nào, tốn thêm một lượt gọi mô hình (khoảng 10 giây); mặc định tắt, router tất định quyết định. Slot và công cụ vẫn chỉ nhận giá trị trong danh sách đã đăng ký.
 - `OCOP_RERANK`: `1` bật reranker cho yêu cầu hybrid/dense (chỉ hợp lệ với `OCOP_RETRIEVAL_PROFILE=hybrid`); mặc định tắt. Tham số `rerank_candidates`, `rerank_first_stage_weight` nằm trong `configs/ocop_retrieval.yaml`. Mỗi cặp rerank tốn khoảng 1 giây CPU, câu hỏi có rerank thường mất 15–80 giây.
 - `OCOP_SESSION_STORE`: `memory` (mặc định) hoặc `sqlite`; `OCOP_SESSION_DB` chọn tệp SQLite, mặc định `data/processed/ocop/sessions.sqlite3`.

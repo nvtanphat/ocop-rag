@@ -84,3 +84,38 @@ def test_health_reports_a_hosted_answer_model_as_ready_by_default(api_client, mo
     monkeypatch.delenv("OCOP_ANSWER_OPENAI_API_KEY")
     monkeypatch.delenv("OCOP_EXTRACT_OPENAI_API_KEY", raising=False)
     assert api_client.get("/api/ocop/health").json()["answer_llm"] is False
+
+
+def test_query_summary_says_where_a_question_went_and_never_what_it_said():
+    payload = {
+        "status": "generated_claims_verified",
+        "intent": "RECOGNITION_LOOKUP",
+        "answer": "Câu trả lời riêng tư",
+        "route": {"retrieval_path": "PINPOINT"},
+        "tools_used": ["lookup_recognition"],
+        "citations": [{}, {}],
+        "generation_diagnostics": {"accepted": 5, "rejected": [{"claim": "ý bị loại"}]},
+        "tool_trace": [
+            {"step": "route"},
+            {"step": "tool", "name": "lookup_recognition", "latency_ms": 1200.4},
+            {"step": "tool", "name": "search_regulations", "latency_ms": 800},
+        ],
+    }
+    summary = ocop_routes.query_summary(payload, 30500, True, "hybrid")
+    assert summary == {
+        "status": "generated_claims_verified", "intent": "RECOGNITION_LOOKUP", "path": "PINPOINT",
+        "tools": ["lookup_recognition"], "mode": "hybrid", "llm": True, "citations": 2,
+        "claims_accepted": 5, "claims_rejected": 1, "total_ms": 30500, "tools_ms": 2000, "generation_ms": 28500,
+    }
+    assert "riêng tư" not in str(summary) and "bị loại" not in str(summary)
+
+
+def test_a_503_leaves_a_trace_for_the_operator_without_the_exception_text(caplog, monkeypatch):
+    import logging
+
+    monkeypatch.setattr(logging.getLogger("ocop"), "propagate", True)
+    with caplog.at_level("WARNING", logger="ocop.api"):
+        error = ocop_routes.service_unavailable("llm_unavailable", "configuration", RuntimeError("secret-key-123"))
+    assert error.status_code == 503
+    assert "code=llm_unavailable" in caplog.text and "layer=configuration" in caplog.text
+    assert "RuntimeError" in caplog.text and "secret-key-123" not in caplog.text

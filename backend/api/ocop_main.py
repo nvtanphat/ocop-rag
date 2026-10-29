@@ -1,5 +1,7 @@
 """OCOP GraphRAG web API."""
 
+import logging
+import os
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +11,21 @@ from backend.api.ocop_routes import router
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX_FILE = ROOT / "frontend" / "dist" / "index.html"
+
+
+def _configure_logging() -> None:
+    """The application's own log ("ocop.*"), beside uvicorn's access lines; OCOP_LOG_LEVEL changes its level."""
+    log = logging.getLogger("ocop")
+    if log.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    log.addHandler(handler)
+    log.setLevel(os.environ.get("OCOP_LOG_LEVEL", "INFO").upper())
+    log.propagate = False
+
+
+_configure_logging()
 
 app = FastAPI(title="OCOP GraphRAG API", version="1.0.0")
 app.add_middleware(
