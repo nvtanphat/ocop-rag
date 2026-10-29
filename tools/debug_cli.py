@@ -9,11 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Command descriptions below contain Vietnamese. On Windows, a non-redirected
-# console gives Python a cp1252 stdout, so `python tools/cli.py --help` died
-# with UnicodeEncodeError before printing anything — the documented entrypoint
-# was unusable there. Force UTF-8 for our own output; `errors="replace"` keeps
-# a terminal that genuinely cannot render a glyph from turning into a crash.
+# Vietnamese command descriptions require UTF-8 on Windows; replacement keeps
+# terminals that cannot render a glyph from turning output into a crash.
 for _stream in (sys.stdout, sys.stderr):
     _reconfigure = getattr(_stream, "reconfigure", None)
     if callable(_reconfigure):
@@ -65,16 +62,10 @@ _MODULE_COMMANDS: dict[str, tuple[str, str]] = {
     ),
 }
 
-# command name -> (path to a standalone script not living in a package, description)
-_SCRIPT_COMMANDS: dict[str, tuple[Path, str]] = {}
-
-
 def _list_commands() -> str:
     lines = ["Available commands:", ""]
-    width = max(len(name) for name in (*_MODULE_COMMANDS, *_SCRIPT_COMMANDS))
+    width = max(len(name) for name in _MODULE_COMMANDS)
     for name, (_, desc) in sorted(_MODULE_COMMANDS.items()):
-        lines.append(f"  {name:<{width}}  {desc}")
-    for name, (_, desc) in sorted(_SCRIPT_COMMANDS.items()):
         lines.append(f"  {name:<{width}}  {desc}")
     return "\n".join(lines)
 
@@ -96,9 +87,6 @@ def main() -> None:
         cmd = [sys.executable, "-m", module, *rest]
         if command == "lock-ocop":
             cmd.append("--write-lock")
-    elif command in _SCRIPT_COMMANDS:
-        script_path, _ = _SCRIPT_COMMANDS[command]
-        cmd = [sys.executable, str(script_path), *rest]
     else:
         print(f"Unknown command: {command!r}\n", file=sys.stderr)
         print(_list_commands(), file=sys.stderr)
