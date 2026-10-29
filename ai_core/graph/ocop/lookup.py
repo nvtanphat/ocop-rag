@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from ocop_contracts.ratings import level_class
+from ai_core.orchestration.ocop.language import get_language
 
 from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION, records
@@ -22,14 +23,16 @@ def authority_nodes(nodes, *, star_rating=None):
     star level was asked - lists that level; merely mentioning "thẩm quyền" is not enough."""
     from ai_core.knowledge.ocop.authorities import find_authorities
 
+    lang = get_language()
+    star = lang.alternation(lang.star_noun)
     selected = []
     for node in nodes:
         label = str(node.get("label") or "")
-        if node.get("node_type") not in _LEGAL_UNIT_TYPES or "công nhận" not in label.casefold():
+        if node.get("node_type") not in _LEGAL_UNIT_TYPES or not lang.hit(label, "recognition"):
             continue
         if not any(True for _ in find_authorities(label)):
             continue
-        stars = {int(n) for n in re.findall(r"(?<!\d)(" + level_class() + r")\s*sao\b", label, re.I)}
+        stars = {int(n) for n in re.findall(r"(?<!\d)(" + level_class() + r")\s*" + star + r"\b", label, re.I)}
         if star_rating is not None and int(star_rating) not in stars:
             continue
         selected.append(node)
@@ -175,7 +178,8 @@ class GraphEvidence:
                 ]
             )
         if article:
-            rx = re.compile(r"^Điều\s*" + re.escape(str(article)) + r"(?=\b|[.])", re.I)
+            noun = get_language().alternation(get_language().structure_nouns["article"])
+            rx = re.compile(r"^" + noun + r"\s*" + re.escape(str(article)) + r"(?=\b|[.])", re.I)
             selected = []
             active = False
             last_page = None

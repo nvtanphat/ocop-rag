@@ -13,6 +13,8 @@ context:
   max_table_siblings: 3            # related cells share max_source_blocks; never increase the block limit
   grounding_min_term_coverage: 0.8 # share of an unreviewed-source claim's content words found in its cited excerpt (0.9 for critical claims)
   min_term_coverage: 0.25          # share of question content terms present in the prompt SOURCE text; below it no generation
+  min_quote_chars: 15              # a quote shorter than this proves nothing about the claim it backs
+  max_quote_parts: 4               # lines of one quote: one passage per cited source of a comparison
 retrieval:
   top_k: 8
   candidate_pool_min: 40           # sparse/dense candidates before fusion
@@ -32,6 +34,8 @@ agent:
   lookup_max_rows: 15              # structured lookup evidence rows; recognition shares this budget across records
   grader_min_relevance: 0.13       # min share of question terms in a row for it to count as relevant evidence
   scope_min_bigram_coverage: 0.60  # share of query content bigrams in one indexed chunk that reopens an unrecognised question
+  part_min_coverage: 0.34          # share of a question part's content words that one evidence row must hold to cover it
+  source_agreement_share: 0.60     # share of earlier evidence rows from one source needed to pin a follow-up to that source
   graph_hops: 2
   graph_node_limit: 75
   graph_max_facts: 32

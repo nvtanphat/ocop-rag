@@ -3,11 +3,17 @@
 import re
 import json
 
+from ai_core.orchestration.ocop.language import fold
 from ai_core.orchestration.ocop.semantic import normalize as _fold
 
 
 def criterion_facets(question):
-    if not re.search(r"phiếu|phieu|tiêu chí|tieu chi|mục|muc", question, re.I):
+    """Criterion codes ("1.6") of a question that names a sheet or a criterion, nouns taken from the vocabulary file."""
+    from ai_core.orchestration.ocop.language import get_language
+
+    lang = get_language()
+    nouns = [*lang.structure_nouns["sheet"], *lang.structure_nouns["criterion"]]
+    if not lang.words("criterion_reference", nouns).search(fold(question)):
         return []
     return list(dict.fromkeys(re.findall(r"(?<![\d.])\d{1,2}\.\d{1,2}(?![\d.])", question)))
 

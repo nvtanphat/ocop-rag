@@ -10,10 +10,12 @@ import json
 import re
 
 from ai_core.orchestration.ocop.language import fold
+from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.orchestration.ocop.verification import _numbers, _range_numbers, negation_conflict, numeric_binding_conflict
 
 SOFT_REASONS = frozenset({"grounding_terms_missing", "grounding_terms_scattered", "needs_semantic_entailment_check"})
-MIN_QUOTE_CHARS = 15
+MIN_QUOTE_CHARS = get_settings().context.min_quote_chars
+MAX_QUOTE_PARTS = get_settings().context.max_quote_parts
 
 SYSTEM = (
     "Bạn là người kiểm chứng. Với mỗi cặp (claim, ĐOẠN TRÍCH), quyết định ĐOẠN TRÍCH có nêu rõ hoặc suy ra trực tiếp "
@@ -57,9 +59,6 @@ def verbatim(quote: str, source: str) -> bool:
     return len(plain(quote)) >= MIN_QUOTE_CHARS and plain(quote) in plain(source)
 
 
-MAX_QUOTE_PARTS = 4
-
-
 def quoted_from(quote: str, source: str) -> bool:
     """A quote of one passage, or of one passage per cited source on separate lines (a comparison of two records).
 
@@ -79,12 +78,13 @@ def anchored(claim: str, quote: str, excerpt: str, asked: str = "", *, quote_sou
         return False
     if negation_conflict(claim, quote) or numeric_binding_conflict(claim, quote):
         return False
-    negation = lambda s: bool(re.search(r"\b(?:không|chưa|miễn)\b", s, re.I))  # noqa: E731
-    if re.search(r"\b(?:không|miễn)\b", claim, re.I) and not negation(quote):
-        return False
     from ai_core.orchestration.ocop.language import get_language
 
     lang = get_language()
+    # One vocabulary for negation, shared with the claim checks: a claim that states a hard negation needs a quote
+    # that carries some negation.
+    if lang.hit(claim, "claim_hard_negation") and not lang.hit(quote, "claim_negation"):
+        return False
     present = set(re.findall(r"[a-z0-9]+", fold(excerpt)))
     # The vocabulary of the corpus (document types, structure nouns) names no new entity: "Quyết định", "Điều".
     known = {

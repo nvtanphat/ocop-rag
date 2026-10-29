@@ -7,6 +7,8 @@ import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
+from ai_core.orchestration.ocop.language import get_language
+
 MARKER = re.compile(r"\[S(\d+)\]")
 
 
@@ -55,9 +57,17 @@ def check_source_markers(answer: str, citations: list[dict]) -> dict:
 
 # A range ("từ 90 đến 100 điểm", "70 đến dưới 90 điểm") is one assertion: both bounds must be the source's, not
 # each bound found somewhere in the same passage.
-SCORE_ASSERTION = re.compile(
-    r"(?<!\w)\d+(?:[.,]\d+)?(?:\s*(?:đến|tới|-|–)\s*(?:dưới\s+)?\d+(?:[.,]\d+)?)?\s*(?:điểm|sao)\b", re.I
-)
+def score_assertion() -> re.Pattern:
+    """A score or star level as the corpus writes it, built from the vocabulary file (no wording in this module)."""
+    lang = get_language()
+
+    def build() -> re.Pattern:
+        number = r"\d+(?:[.,]\d+)?"
+        units = lang.alternation([*lang.star_noun, *lang.cues["score_noun"]])
+        joined = r"\s*" + lang.alternation("range_connector") + r"\s*(?:" + lang.alternation("range_below") + r"\s+)?"
+        return re.compile(r"(?<!\w)" + number + "(?:" + joined + number + r")?\s*" + units + r"\b", re.I)
+
+    return lang.compiled("score_assertion", build)
 
 
 def _cited_rows(marker_ids: list[int], citations: list[dict], evidence_rows: list[dict]) -> list[dict]:
@@ -80,9 +90,10 @@ def _stated_in(assertion: str, verified: str) -> bool:
     """A score/star assertion is in the verified text literally, or ("74,6 điểm") as the number of a score label ("Điểm đánh giá: 74,6")."""
     if assertion in verified:
         return True
-    number = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*điểm", assertion)
+    score = get_language().alternation("score_noun")
+    number = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*" + score, assertion, re.I)
     return bool(number) and bool(
-        re.search(r"điểm[^\d;|]{0,40}(?<!\d)" + re.escape(number[1]) + r"(?![\d.,]*\d)", verified)
+        re.search(score + r"[^\d;|]{0,40}(?<!\d)" + re.escape(number[1]) + r"(?![\d.,]*\d)", verified, re.I)
     )
 
 
@@ -119,7 +130,7 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
         groups.setdefault(identity, []).append(str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""))
     records = [part for texts in groups.values() for part in _split_claims(" ".join(texts))]
     lang = get_language()
-    terms = {word for word in lang.content_words(SCORE_ASSERTION.sub(" ", MARKER.sub("", claim)))
+    terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)))
              if not word.isdigit()}
     scores = [len(terms & set(lang.content_words(record))) for record in records]
     best = max(scores, default=0)
@@ -144,7 +155,7 @@ def check_sensitive_claims(
     """
 
     def found(text):
-        return {re.sub(r"\s+", " ", m.group(0).casefold()).strip() for m in SCORE_ASSERTION.finditer(text)}
+        return {re.sub(r"\s+", " ", m.group(0).casefold()).strip() for m in score_assertion().finditer(text)}
 
     if citations is None:
         assertions = found(answer)
@@ -181,9 +192,15 @@ def check_sensitive_claims(
 SENTENCE_TERMINATOR = re.compile(
     r"((?:(?<=[!?])|(?<!\d)\.)(?:\s*\[S\d+\])*)(?:\s+|\n+|$)|(?:\s*\[S\d+\])*\n+"
 )
-CRITICAL = re.compile(
-    r"\b(?:\d{1,3}\s*(?:điểm|sao)|\d{4}|bắt buộc|miễn|không\s+phải|hiệu lực|được công nhận|hạn cuối)\b", re.I
-)
+def critical_claim(text: str) -> bool:
+    """A claim that states a score, a year or a duty/exemption/validity: it is held to the stricter grounding."""
+    lang = get_language()
+
+    def build() -> re.Pattern:
+        units = lang.alternation([*lang.star_noun, *lang.cues["score_noun"]])
+        return re.compile(r"\b(?:\d{1,3}\s*" + units + r"|\d{4}|" + lang.alternation("claim_critical") + r")\b", re.I)
+
+    return bool(lang.compiled("claim_critical", build).search(text))
 WORD = re.compile(r"[\wÀ-ỹ]+", re.U)
 
 
@@ -223,7 +240,7 @@ def numeric_binding_conflict(claim: str, source: str) -> bool:
     def bindings(text):
         result = []
         ranges = {m.start(2): {str(n) for n in range(int(m[1]), int(m[2]) + 1)}
-                  for m in _RANGE.finditer(text) if 0 < int(m[2]) - int(m[1]) <= 20}
+                  for m in _range().finditer(text) if 0 < int(m[2]) - int(m[1]) <= 20}
         for match in re.finditer(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text):
             value = match[0].replace(",", ".").lstrip("0") or "0"
             prefix = re.search(r"([^\W\d_]+)[ \t]*$", text[:match.start()])
@@ -301,7 +318,7 @@ def verify_claims(
         prose = MARKER.sub("", claim).strip(" .,:;\n-")
         if not prose:
             continue
-        sensitive = bool(CRITICAL.search(prose))
+        sensitive = critical_claim(prose)
         if not markers:
             claims.append(
                 {
@@ -408,20 +425,37 @@ def _numbers(text: str) -> set[str]:
     return {run.lstrip("0") or "0" for run in re.findall(r"\d+", text)}
 
 
-_RANGE = re.compile(r"(?:từ|tu)\s+(\d+)\s*(?:[a-zà-ỹ]+\s+){0,2}?(?:đến|den|tới|toi|-)\s*(\d+)", re.I)
+def _range() -> re.Pattern:
+    """"từ A [unit] đến B": a stated range, from the start and connector words of the vocabulary file."""
+    lang = get_language()
+    return lang.compiled(
+        "range",
+        lambda: re.compile(
+            lang.alternation("range_start")
+            + r"\s+(\d+)\s*(?:[^\W\d_]+\s+){0,2}?"
+            + lang.alternation("range_connector")
+            + r"\s*(\d+)",
+            re.I,
+        ),
+    )
 
 
 def _range_numbers(text: str) -> set[str]:
     """Integers lying inside a stated "từ A đến B" range (short ranges only): "từ 3 sao đến 5 sao" covers 4."""
     covered: set[str] = set()
-    for m in _RANGE.finditer(text):
+    for m in _range().finditer(text):
         low, high = int(m.group(1)), int(m.group(2))
         if low < high and high - low <= 20:
             covered.update(str(n) for n in range(low, high + 1))
     return covered
 
 
-_REJECTED_ALTERNATIVE = re.compile(r"[,;]?\s*(?:chứ\s+)?không\s+phải(?:\s+là)?\s+([^.,;]+)", re.I)
+def _rejected_alternative() -> re.Pattern:
+    lang = get_language()
+    return lang.compiled(
+        "rejected_alternative",
+        lambda: re.compile(r"[,;]?\s*" + lang.alternation("rejected_alternative") + r"\s+([^.,;]+)", re.I),
+    )
 
 
 def _spelled_out(text: str) -> str:
@@ -452,7 +486,7 @@ def _without_rejected_alternative(prose: str, asked: str) -> str:
         named = [w for w in lang.content_words(_spelled_out(match.group(1))) if w not in labels]
         return "" if named and set(named) <= words else match.group(0)
 
-    return _REJECTED_ALTERNATIVE.sub(keep, prose)
+    return _rejected_alternative().sub(keep, prose)
 
 
 def grounded_in_excerpt(

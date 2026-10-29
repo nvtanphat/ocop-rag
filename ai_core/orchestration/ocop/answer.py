@@ -9,7 +9,7 @@ from pathlib import Path
 from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
 from ai_core.orchestration.ocop.entailment import MIN_QUOTE_CHARS, SOFT_REASONS, anchored, quoted_from, review
 from ai_core.orchestration.ocop.verification import (
-    CRITICAL,
+    critical_claim,
     check_source_markers,
     check_sensitive_claims,
     grounded_in_excerpt,
@@ -17,7 +17,7 @@ from ai_core.orchestration.ocop.verification import (
     _normalize,
 )
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
-from ai_core.orchestration.ocop.language import fold
+from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
@@ -454,9 +454,20 @@ CLAIMS_SCHEMA = {
 }
 
 
-REVIEW_DISCLAIMER = re.compile(
-    r"chưa\s+(?:được\s+)?(?:xác\s+minh|duyệt)|(?:OCR|trích xuất)[^.]{0,40}chưa", re.I
-)
+def review_disclaimer() -> re.Pattern:
+    """A clause that only comments on the review status of the source, built from the vocabulary file."""
+    lang = get_language()
+    return lang.compiled(
+        "review_disclaimer",
+        lambda: re.compile(
+            lang.alternation("review_disclaimer")
+            + "|"
+            + lang.alternation("review_disclaimer_subject")
+            + r"[^.]{0,40}"
+            + lang.alternation("review_disclaimer_state"),
+            re.I,
+        ),
+    )
 
 
 def _without_review_remark(text: str) -> str:
@@ -464,7 +475,7 @@ def _without_review_remark(text: str) -> str:
     pieces = re.split(r"(;\s*|\.\s+)", text)  # clauses with their separators kept at the odd positions
     kept = []
     for i in range(0, len(pieces), 2):
-        if not REVIEW_DISCLAIMER.search(pieces[i]):
+        if not review_disclaimer().search(pieces[i]):
             kept.append(pieces[i] + (pieces[i + 1] if i + 1 < len(pieces) else ""))
     return "".join(kept).strip().rstrip(";, ").strip()
 
@@ -503,7 +514,7 @@ def _parse_claims(raw):
             kept = [
                 c.strip()
                 for c in re.split(r";\s*|\.\s+", item)
-                if c.strip() and not REVIEW_DISCLAIMER.search(c)
+                if c.strip() and not review_disclaimer().search(c)
             ]
             if kept:
                 missing.append("; ".join(kept).rstrip(". "))
@@ -660,7 +671,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
                     text,
                     union,
                     min_term_coverage=get_settings().context.grounding_min_term_coverage,
-                    critical=bool(CRITICAL.search(text)),
+                    critical=critical_claim(text),
                     asked=question,
                 )
                 if ok and quote and anchored(text, quote, union, asked=" ".join((question, ids, headings))):

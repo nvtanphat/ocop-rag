@@ -50,6 +50,8 @@ Tool mới phải được đăng ký ở `capabilities.py`, có logic dispatch 
 
 Không sửa/đổi tên PDF gốc, không tái khoá nguồn để che thay đổi. Dữ liệu nguồn mới cần quy trình phê duyệt registry/lock riêng; sau đó dựng lại dataset và corpus. Entity catalog sinh từ registry/graph, không viết cứng tên văn bản/sản phẩm trong router. Từ vựng ở `ocop_language.yaml`; ngưỡng và ngân sách ở `ocop_retrieval.yaml`/`ocop_models.yaml`.
 
+Từ ngữ quyết định hành vi (phủ định, đơn vị điểm/sao, danh từ cấu trúc như Điều/Phiếu/Mẫu, từ mở đầu câu nối tiếp, từ khoá "quan trọng") chỉ có một nơi: `ocop_language.yaml`. Mã dựng mẫu từ đó bằng `Language.alternation`/`Language.words`/`Language.compiled` (khớp nguyên cụm, có dấu hoặc không dấu), không viết chữ Việt trong lệnh `re`. `tests/ocop/contracts/test_vocabulary_lives_in_config.py` quét cú pháp các module chạy thật và báo lỗi nếu có. Ngưỡng nhận/loại câu trả lời cũng ở `ocop_retrieval.yaml` (có kiểm tra giá trị trong `settings.py`), không là hằng trong mã. Tệp thuộc vân tay không áp dụng quy tắc này vì không được sửa khi giữ nguyên corpus.
+
 Commit nhỏ theo conventional commits; chỉ stage đường dẫn đã sửa. Không commit `.env`, dữ liệu riêng tư, dẫn xuất runtime hoặc báo cáo sinh tự động. Xem [EVALUATION](EVALUATION.md) trước khi sử dụng bộ giữ riêng.
 
 ## Vân tay mã nguồn

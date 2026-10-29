@@ -223,15 +223,30 @@ def _surface(lang: Language, kind: str, value: str) -> str:
     return value
 
 
-_SUBSTITUTIONS = {  # kind -> regexp finding the reference to replace inside the previous standalone question
-    "form": re.compile(r"(?i)\bmẫu(?:\s+số)?\s+\d+"),
-    "article": re.compile(r"(?i)\bđiều\s+\d+"),
-    "sheet": re.compile(r"(?i)\bphiếu(?:\s+số)?\s+\d+"),
-    "document": re.compile(
-        r"(?i)\b(?:QĐ|Quyết\s+định|Nghị\s+định|NĐ|Thông\s+tư|TT)\s*(?:số\s+)?\d{1,4}(?:/\d{4})?(?:/[\wĐ-]+)?"
-    ),
-}
-_OPENER = re.compile(r"(?i)^\s*(?:thế\s+còn|vậy\s+còn|còn|thế\s+thì|vậy\s+thì|thế|vậy|nếu\s+vậy)\s+")
+def _substitutions(lang: Language) -> dict[str, re.Pattern]:
+    """kind -> regexp finding that kind of reference in the previous standalone question, from the vocabulary file."""
+
+    def build() -> dict[str, re.Pattern]:
+        nouns = lang.structure_nouns
+        word = lang.alternation(nouns["number"])  # "số": "Mẫu số 01", "Quyết định số 26"
+        documents = [name for names in lang.document_types.values() for name in names]
+        return {
+            "form": re.compile(lang.alternation(nouns["form"]) + r"(?:\s+" + word + r")?\s+\d+", re.I),
+            "article": re.compile(lang.alternation(nouns["article"]) + r"\s+\d+", re.I),
+            "sheet": re.compile(lang.alternation(nouns["sheet"]) + r"(?:\s+" + word + r")?\s+\d+", re.I),
+            "document": re.compile(
+                lang.alternation(documents) + r"\s*(?:" + word + r"\s+)?\d{1,4}(?:/\d{4})?(?:/[\wĐ-]+)?", re.I
+            ),
+        }
+
+    return lang.compiled("memory_substitutions", build)
+
+
+def _opener(lang: Language) -> re.Pattern:
+    """The words that open a follow-up ("Thế còn Điều 7?") and carry no content of their own."""
+    return lang.compiled(
+        "memory_opener", lambda: re.compile(r"^\s*" + lang.alternation("followup_rewrite_openers") + r"\s+", re.I)
+    )
 
 
 def rewrite(
@@ -256,13 +271,14 @@ def rewrite(
     base = state["standalone"]
     if not base:
         return question, "no_memory"
-    stripped = _OPENER.sub("", question).strip()
+    stripped = _opener(lang).sub("", question).strip()
     resolved = {**updates, **(carried or {})}
     # Another document than the one under discussion: what was asked about (Điều/Mẫu/Phiếu of the old one) does not travel.
     switched = [
         d for d in _values(updates, "document") if d not in state["referents"].get("document", [])[:1]
     ] and state["referents"].get("document")
-    carries_target = any(_SUBSTITUTIONS[kind].search(base) for kind in ("article", "form", "sheet"))
+    substitutions = _substitutions(lang)
+    carries_target = any(substitutions[kind].search(base) for kind in ("article", "form", "sheet"))
     if (
         switched
         and carries_target
@@ -290,7 +306,7 @@ def rewrite(
     if not own_words:
         # nothing but a reference: the previous standalone question, with whatever explicit thing the user swapped in
         text, replaced = base, []
-        for kind, pattern in _SUBSTITUTIONS.items():
+        for kind, pattern in substitutions.items():
             new = _values(resolved, kind)
             if new and pattern.search(text):
                 text = pattern.sub(" và ".join(_surface(lang, kind, v) for v in new), text, count=1)

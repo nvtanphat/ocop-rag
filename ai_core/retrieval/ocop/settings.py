@@ -24,6 +24,8 @@ class ContextSettings(BaseModel):
     max_source_blocks: int = Field(12, ge=1)
     max_table_siblings: int = Field(3, ge=0)
     grounding_min_term_coverage: float = Field(0.8, ge=0, le=1)
+    min_quote_chars: int = Field(15, ge=5)  # a quote shorter than this proves nothing about the claim it backs
+    max_quote_parts: int = Field(4, ge=1, le=8)  # lines of one quote: one passage per cited source of a comparison
 
 
 class RetrievalSettings(BaseModel):
@@ -51,6 +53,8 @@ class AgentSettings(BaseModel):
     lookup_max_rows: int = Field(15, ge=1)
     grader_min_relevance: float = Field(0.13, ge=0, le=1)
     scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
+    part_min_coverage: float = Field(0.34, ge=0, le=1)  # share of a question part's words one evidence row must hold
+    source_agreement_share: float = Field(0.60, ge=0, le=1)  # share of earlier rows from one source to pin that source
     graph_hops: int = Field(2, ge=1, le=4)
     graph_node_limit: int = Field(75, ge=1)
     graph_max_facts: int = Field(32, ge=1)

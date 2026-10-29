@@ -144,7 +144,8 @@ class OcopAgent:
                     previous = re.sub(r"\b20\d{2}\b", updates["years"][-1], previous)
                 # Text query is only for ranking. Structured tools use effective
                 # merged slots, so stale values in prose cannot change their scope.
-                effective = previous + " (cập nhật yêu cầu: " + query + ")"
+                # Only the two questions' own words: a label word added here would be searched for like evidence.
+                effective = previous + " " + query
                 method = "legacy_concat"
         return {
             "route": choice.model_dump(mode="json"),
@@ -723,6 +724,7 @@ class OcopAgent:
                 }
             }
         notices = []
+        temporal_unverified = False  # a notice states that no verified validity rule was applied
         unresolved = sorted(
             {
                 str(code)
@@ -803,6 +805,7 @@ class OcopAgent:
                         "citations": [],
                     }
                 }
+            temporal_unverified = True
             notices.append(
                 "Chưa có quy tắc hiệu lực/chuyển tiếp đã xác minh: nội dung dưới đây chỉ nêu những gì từng văn bản "
                 "ghi, không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể."
@@ -937,7 +940,7 @@ class OcopAgent:
                 "partial_temporal_unverified"
                 if response["status"]
                 in ("generated_claims_verified", "generated_unverified_claims", "partial_claims_verified")
-                and any("hiệu lực" in n for n in notices)
+                and temporal_unverified
                 else response["status"]
             )
         coverage = state.get("evidence_coverage") or {}
@@ -949,7 +952,7 @@ class OcopAgent:
                 )
             )
             # A gap that a notice above already explains in words is not repeated by its internal tool name.
-            if any("hiệu lực" in n for n in notices):
+            if temporal_unverified:
                 missing = [name for name in missing if name != "resolve_temporal_applicability"]
             if missing:
                 response["answer"] = (

@@ -176,6 +176,31 @@ cues:
   # The programme's own name is vocabulary of the whole corpus, not an entity a passage must introduce.
   claim_program_names: [OCOP]
   claim_negation: [không, chưa, miễn]
+  # Negations that, once a claim states them, the quoted passage must carry too ("chưa" alone may be a tense).
+  claim_hard_negation: [không, miễn]
+  # Words that open a follow-up and are dropped when the question is rebuilt around the previous one.
+  followup_rewrite_openers: [thế còn, vậy còn, còn, thế thì, vậy thì, thế, vậy, nếu vậy]
+  # Words appended to a question to search again for the source a missing structured lookup should have found.
+  tool_search_terms:
+    lookup_criterion: [bộ tiêu chí]
+    lookup_evidence_requirements: [yêu cầu minh chứng]
+    lookup_form: [biểu mẫu hồ sơ]
+    lookup_product_subgroup: [phân nhóm sản phẩm]
+    resolve_temporal_applicability: [hiệu lực điều khoản chuyển tiếp]
+    lookup_recognition: [quyết định công nhận]
+  # A claim that states one of these (besides a score, star level or year) is held to the stricter grounding.
+  claim_critical: [bắt buộc, miễn, không phải, hiệu lực, được công nhận, hạn cuối]
+  # How a score or star level is written: "74,6 điểm", "5 sao", "từ 90 đến dưới 100 điểm".
+  score_noun: [điểm]
+  range_start: [từ]
+  range_connector: [đến, tới, "-", "–"]
+  range_below: [dưới]
+  # "..., không phải X": the user's own alternative, rejected, is not a new assertion.
+  rejected_alternative: [chứ không phải là, chứ không phải, không phải là, không phải]
+  # An answer line that only says its source is unreviewed ("nguồn OCR chưa được xác minh") states no fact.
+  review_disclaimer: [chưa được xác minh, chưa xác minh, chưa được duyệt, chưa duyệt]
+  review_disclaimer_subject: [OCR, trích xuất]
+  review_disclaimer_state: [chưa]
   claim_quantity_units: [điểm, sao, ngày, tháng, năm, bản, bộ, giờ, phút, lần, đợt, phần, trang]
   claim_quantity_boundaries: [trước, sau, kể, tính]
   scoring_hypothetical: [nếu, giả sử]

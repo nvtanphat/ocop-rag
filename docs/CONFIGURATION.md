@@ -5,7 +5,7 @@
 | Cấu hình | Nguồn đọc |
 | --- | --- |
 | Từ vựng, ý định, địa danh, thang sao | `configs/ocop_language.yaml` |
-| Ngân sách truy xuất, context, rerank và công cụ | `configs/ocop_retrieval.yaml` |
+| Ngân sách truy xuất, context, rerank và công cụ; ngưỡng nhận/loại câu trả lời (`min_term_coverage`, `grounding_min_term_coverage`, `min_quote_chars`, `max_quote_parts`, `part_min_coverage`, `source_agreement_share`) | `configs/ocop_retrieval.yaml` |
 | Mô hình, revision và giới hạn tokenizer | `configs/ocop_models.yaml` |
 | Che định danh trước khi lưu phiên/checkpoint | `configs/ocop_privacy.yaml` |
 | Tên cơ quan | `configs/ocop_authorities.json` |

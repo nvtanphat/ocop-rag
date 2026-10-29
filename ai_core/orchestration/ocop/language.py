@@ -122,6 +122,25 @@ class Language(BaseModel):
     def words(self, key: str, values: list[str]) -> re.Pattern:
         return self._regex(key, values)
 
+    def alternation(self, source: str | list[str]) -> str:
+        """Regex source matching any phrase of a cue (or of a list), accented or not, spaces flexible.
+
+        For patterns that must keep positions in the original text (so they cannot run on folded text) and that
+        combine vocabulary with structure (digits, optional words). Compile it with ``re.I``."""
+        phrases = self.cues[source] if isinstance(source, str) else source
+        if isinstance(phrases, dict):
+            raise TypeError(f"cue {source} is a mapping")
+        forms = {form for phrase in phrases for form in (unicodedata.normalize("NFC", phrase).casefold(), fold(phrase))}
+        ordered = sorted(forms, key=len, reverse=True)
+        return "(?:" + "|".join(r"\s+".join(re.escape(word) for word in form.split()) for form in ordered) + ")"
+
+    def compiled(self, key: str, build):
+        """A pattern built from this vocabulary once and kept with it, so a changed vocabulary changes the pattern."""
+        cache = self.__dict__.setdefault("_pattern", {})
+        if key not in cache:
+            cache[key] = build()
+        return cache[key]
+
     @property
     def stop(self) -> frozenset[str]:
         return frozenset(fold(w) for w in [*self.stopwords, *self.instruction_words])

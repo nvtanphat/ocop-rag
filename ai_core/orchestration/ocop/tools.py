@@ -374,7 +374,7 @@ class ToolRegistry:
         else:
             rows = [r for r in earlier if r.get("source_id")]
         top = Counter(r["source_id"] for r in rows).most_common(1)
-        return top[0][0] if top and top[0][1] / len(rows) >= 0.6 else None
+        return top[0][0] if top and top[0][1] / len(rows) >= get_settings().agent.source_agreement_share else None
 
     def search_part(self, part: str, slots: dict, context: dict, auth) -> dict:
         """Search one part of a question, scoped by what that part names itself: "Thành Sen hạn nộp ..., và theo QĐ26 ..."
@@ -982,8 +982,9 @@ class ToolRegistry:
 
                 # Only match an explicit criterion code at the beginning of a
                 # labeled criterion. Never infer IDs from arbitrary score digits.
+                noun = get_language().alternation(get_language().structure_nouns["criterion"])
                 pattern = _re.compile(
-                    r"^(?:tiêu chí\s*)?" + _re.escape(str(requested_criterion)) + r"(?=\s|[.):-]|$)", _re.I
+                    r"^(?:" + noun + r"\s*)?" + _re.escape(str(requested_criterion)) + r"(?=\s|[.):-]|$)", _re.I
                 )
                 rows = [
                     r

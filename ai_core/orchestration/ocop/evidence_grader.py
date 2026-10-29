@@ -10,6 +10,7 @@ import re
 import unicodedata
 
 from ai_core.retrieval.ocop.settings import get_settings
+from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.orchestration.ocop.query_frames import identity_request, identity_coverage
 from ai_core.orchestration.ocop.planner import RECOVERY_BLOCKING_STATUSES
 
@@ -58,18 +59,15 @@ def _text(row: dict) -> str:
     )
 
 
-PART_COVERAGE = 0.34
-
-
 def uncovered_parts(query: str, row_tokens: list[set[str]]) -> list[str]:
     """Parts of a compound question that no scope-valid evidence row speaks to (a part is covered when one row holds
-    at least PART_COVERAGE of its content words). A question that is not compound has no parts to miss."""
+    at least agent.part_min_coverage of its content words). A question that is not compound has no parts to miss."""
     from ai_core.retrieval.ocop.decompose import sub_queries
 
     missed = []
     for part in sub_queries(query):
         wanted = tokens(part)
-        if wanted and not any(len(wanted & row) / len(wanted) >= PART_COVERAGE for row in row_tokens):
+        if wanted and not any(len(wanted & row) / len(wanted) >= get_settings().agent.part_min_coverage for row in row_tokens):
             missed.append(part)
     return missed
 
@@ -123,7 +121,8 @@ def grade_evidence(
                     scope = "mismatch"
             region = slots.get("region")
             jurisdiction = str(row.get("jurisdiction") or "")
-            if region and jurisdiction and jurisdiction not in ("nationwide", "toàn quốc", str(region)):
+            nationwide = {fold(label) for label in get_language().nationwide_labels}
+            if region and jurisdiction and fold(jurisdiction) not in {*nationwide, fold(str(region))}:
                 scope = "mismatch"
                 relevance = 0.0
             elif scope != "mismatch" and (not region or jurisdiction):
@@ -227,14 +226,9 @@ def bounded_rewrite(query: str, missing_tools: list[str], slots: dict) -> str:
     bad = set(missing_tools) - set(TOOL_REGISTRY)
     if bad:
         raise ValueError("Unregistered tool supplied to rewrite")
-    suffix = {
-        "lookup_criterion": "bộ tiêu chí",
-        "lookup_evidence_requirements": "yêu cầu minh chứng",
-        "lookup_form": "biểu mẫu hồ sơ",
-        "lookup_product_subgroup": "phân nhóm sản phẩm",
-        "resolve_temporal_applicability": "hiệu lực điều khoản chuyển tiếp",
-        "lookup_recognition": "quyết định công nhận",
-    }
-    supplements = " ".join(suffix[k] for k in missing_tools if k in suffix)
+    from ai_core.orchestration.ocop.language import get_language
+
+    terms = get_language().cues["tool_search_terms"]
+    supplements = " ".join(" ".join(terms[k]) for k in missing_tools if k in terms)
     # Ensure original query remains intact at front, including years/decision.
     return (query.strip() + " " + supplements).strip()
