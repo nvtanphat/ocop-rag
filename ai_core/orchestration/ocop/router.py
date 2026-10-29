@@ -576,11 +576,22 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
     return primary, secondary
 
 
+def _model_label(llm_scope: Callable[[str], dict], q: str, prior: dict) -> Intent | None:
+    """The intent label the model proposes for ``q`` given the previous question, or None when it proposes nothing valid."""
+    previous = "PREVIOUS: " + str(prior["last_query"]) + "\n" if prior.get("last_query") else ""
+    text = previous + "CURRENT: " + q
+    try:
+        return Intent((llm_scope(text) or {}).get("intent"))
+    except (ValueError, TypeError, AttributeError, RuntimeError, OSError):
+        return None
+
+
 def _route_business(
     query: str,
     *,
     session: dict | None = None,
     llm_route: Callable[[str], dict] | None = None,
+    llm_scope: Callable[[str], dict] | None = None,
     indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
     catalog: EntityCatalog | None = None,
     language: Language | None = None,
@@ -685,6 +696,20 @@ def _route_business(
         or bool(slots.get("star_rating") or slots.get("years") and followup)
     )
     explicit_oos = lang.hit(q, "explicit_out_of_scope")
+    # Second tier. No deterministic signal says whether a short, bare question inside a conversation continues it ("Nộp
+    # ở đâu?" after a question on hồ sơ) or leaves OCOP ("Giá vàng hôm nay?"): the model is asked to pick one label; the
+    # label only steers this route and is checked against the enum, it never names a tool.
+    if llm_scope is not None and has_prior and not in_domain and not followup and not explicit_oos and not own_scope:
+        verdict = _model_label(llm_scope, q, prior)
+        if verdict == Intent.FOLLOWUP:
+            followup = True
+            slots = _merge_followup(prior, updates)
+        elif verdict == Intent.OUT_OF_SCOPE:
+            return Route(
+                intent=Intent.OUT_OF_SCOPE, strategy="clarify", slots=slots, reason_codes=["model_out_of_scope"]
+            )
+        elif verdict is not None:
+            in_domain = True
     bare_code = bool(BARE_CRITERION.match(q)) and not followup
     # "Điều 5 quy định gì?": an article number with nothing else says nothing about which of several documents is meant.
     structure_words = {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)}
@@ -907,6 +932,7 @@ def route_query(
     *,
     session: dict | None = None,
     llm_route: Callable[[str], dict] | None = None,
+    llm_scope: Callable[[str], dict] | None = None,
     indexed_content_bigram_coverage: Callable[[str], float | None] | None = None,
     catalog: EntityCatalog | None = None,
     language: Language | None = None,
@@ -920,6 +946,7 @@ def route_query(
     options = dict(
         session=prior,
         llm_route=llm_route,
+        llm_scope=llm_scope,
         catalog=catalog,
         language=language,
         indexed_content_bigram_coverage=indexed_content_bigram_coverage,

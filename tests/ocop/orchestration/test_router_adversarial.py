@@ -253,3 +253,87 @@ def test_a_star_level_with_a_named_place_asks_for_recorded_recognitions_unless_i
         "Hà Tĩnh nhận hồ sơ OCOP 4 sao đến khi nào?",
     ):
         assert "lookup_recognition" not in route_query(question).required_tools[:1]
+
+
+PRIOR_DOSSIER = {
+    "last_query": "Hồ sơ đăng ký lần đầu gồm những gì?",
+    "slots": {},
+    "intent": "PROCEDURE_FORM",
+    "capabilities": ["procedure_form"],
+}
+
+
+def _scope(label, seen=None):
+    def propose(text):
+        if seen is not None:
+            seen.append(text)
+        if isinstance(label, Exception):
+            raise label
+        return {"intent": label}
+
+    return propose
+
+
+def test_the_model_decides_a_bare_question_inside_a_conversation_between_follow_up_and_off_topic():
+    from ai_core.orchestration.ocop.router import route_query
+    from ai_core.orchestration.ocop.contracts import Intent
+
+    seen = []
+    follow = route_query("Nộp ở đâu vậy bạn?", session=PRIOR_DOSSIER, llm_scope=_scope("FOLLOWUP", seen))
+    assert follow.intent == Intent.FOLLOWUP
+    assert seen == ["PREVIOUS: Hồ sơ đăng ký lần đầu gồm những gì?\nCURRENT: Nộp ở đâu vậy bạn?"]
+    away = route_query("Giá vàng hôm nay bao nhiêu?", session=PRIOR_DOSSIER, llm_scope=_scope("OUT_OF_SCOPE"))
+    assert away.intent == Intent.OUT_OF_SCOPE and "model_out_of_scope" in away.reason_codes
+    topic = route_query("Mất bao lâu thì có kết quả?", session=PRIOR_DOSSIER, llm_scope=_scope("PROCEDURE_FORM"))
+    assert topic.intent not in (Intent.OUT_OF_SCOPE, Intent.CLARIFY)
+
+
+def test_a_label_the_model_invents_or_a_failing_model_leaves_the_deterministic_route_unchanged():
+    from ai_core.orchestration.ocop.router import route_query
+
+    baseline = route_query("Cần nộp mấy bộ?", session=PRIOR_DOSSIER)
+    for proposal in ("check_certificate_eligibility", "delete_database", None, RuntimeError("offline")):
+        assert route_query("Cần nộp mấy bộ?", session=PRIOR_DOSSIER, llm_scope=_scope(proposal)) == baseline
+
+
+def test_the_model_is_not_asked_when_the_deterministic_tier_already_knows():
+    from ai_core.orchestration.ocop.router import route_query
+
+    calls = []
+    ask = _scope("OUT_OF_SCOPE", calls)
+    route_query("Điều 6 Quyết định 26/2026/QĐ-TTg quy định gì?", session=PRIOR_DOSSIER, llm_scope=ask)  # domain
+    route_query("Thế còn hồ sơ nâng hạng?", session=PRIOR_DOSSIER, llm_scope=ask)  # follow-up opener
+    route_query("Nộp ở đâu vậy bạn?", llm_scope=ask)  # no conversation to continue
+    route_query("Cho mình dự báo thời tiết ngày mai", session=PRIOR_DOSSIER, llm_scope=ask)  # explicitly off-topic
+    assert calls == []
+
+
+def test_the_router_model_is_given_only_labels_the_router_accepts():
+    from ai_core.orchestration.ocop import scope_model
+    from ai_core.orchestration.ocop.contracts import Intent
+
+    assert set(scope_model.INTENTS) <= {intent.value for intent in Intent}
+    assert {"FOLLOWUP", "OUT_OF_SCOPE"} <= set(scope_model.INTENTS)
+    assert scope_model.SCHEMA["required"] == ["intent"] and scope_model.SCHEMA["additionalProperties"] is False
+
+    class Model:
+        def chat_structured(self, system, user, *, schema, max_tokens):
+            self.schema, self.user = schema, user
+            return '{"intent": "FOLLOWUP"}'
+
+    model = Model()
+    assert scope_model.propose(model, "CURRENT: Nộp ở đâu?") == {"intent": "FOLLOWUP"}
+    assert model.schema == scope_model.SCHEMA
+    for broken in (object(), type("Bad", (), {"chat_structured": lambda *a, **k: "not json"})(),
+                   type("Off", (), {"chat_structured": lambda *a, **k: (_ for _ in ()).throw(RuntimeError("offline"))})()):
+        assert scope_model.propose(broken, "CURRENT: x") == {}
+
+
+def test_the_evidence_fingerprint_is_the_one_the_built_corpus_carries():
+    """A change to any file hashed by knowledge_extract.VERSION (llm.py among them) renames every evidence unit.
+
+    The model tier of the router therefore lives in scope_model.py. Move this value only with a deliberate rebuild
+    of the corpus (docs/DEVELOPMENT.md), never to make a stray edit pass."""
+    from ai_core.processing.ocop import knowledge_extract
+
+    assert knowledge_extract.VERSION == "ocop-evidence-b531594eddc8"

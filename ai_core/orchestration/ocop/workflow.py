@@ -14,7 +14,7 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
-from ai_core.orchestration.ocop import memory
+from ai_core.orchestration.ocop import memory, scope_model
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
@@ -106,6 +106,8 @@ class OcopAgent:
             # The model proposes an intent only for a question no deterministic signal covers, and costs one extra
             # model round trip: opt-in (OCOP_LLM_ROUTER=1). The deterministic route is the default.
             llm_route=(self.llm.route if self.llm and os.getenv("OCOP_LLM_ROUTER") == "1" else None),
+            # Asked only where no deterministic signal separates a follow-up from an off-topic question.
+            llm_scope=((lambda text: scope_model.propose(self.llm, text)) if self.llm else None),
             indexed_content_bigram_coverage=lambda text: query_content_bigram_coverage(
                 self.tools.index_dir, text
             ),
