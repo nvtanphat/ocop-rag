@@ -463,7 +463,6 @@ html{zoom:.75}
 .vstate.err h3{color:#b4473d}
 .vstate button{margin-top:8px;height:36px;padding:0 16px;border-radius:8px;background:var(--green);color:#fff;font-weight:600;font-size:13px}
 .verify.err{border-color:#e6b9b3;color:#b4473d!important}
-.vcount{margin-left:auto;font-size:12.5px;color:var(--muted)}
 .dgrid.list .dact{width:200px}
 .dcard .dtop b{word-break:break-word}
 .dact a.dl{flex:1;height:36px;border-radius:8px;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;text-decoration:none}
