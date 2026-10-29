@@ -154,6 +154,38 @@ PART_SCOPE_SLOTS = frozenset({"document_code", "document_codes", "region", "arti
 BAD_DOCUMENT_STATUSES = frozenset({"document_not_found_or_ambiguous", "no_results", "unknown"})
 
 
+def _section_evidence_units(graph, section, linked_units):
+    """Keep source continuations between checked section anchors, never a whole-page expansion."""
+    if not linked_units:
+        return linked_units
+    source = section.get("source_id")
+
+    def order(uid):
+        unit = graph.units.get(uid) or {}
+        value = unit.get("properties", {}).get("source_order")
+        return value if unit.get("source_id") == source and type(value) is int else None
+
+    def start(node):
+        return min((value for uid in node.get("evidence_unit_ids", [])
+                    if (value := order(uid)) is not None), default=None)
+
+    first = start(section)
+    if first is None:
+        return linked_units
+    following = [value for node in graph.nodes.values()
+                 if node.get("source_id") == source and node.get("node_type") == section.get("node_type")
+                 and (value := start(node)) is not None and value > first]
+    # Without a following section, stop at the last linked unit rather than opening the document tail.
+    last = min(following) if following else max(
+        (value + 1 for uid in linked_units if (value := order(uid)) is not None), default=first,
+    )
+    return linked_units | {
+        uid for uid, unit in graph.units.items()
+        if (value := order(uid)) is not None and first <= value < last
+        and unit.get("properties", {}).get("unit_kind") != "page"
+    }
+
+
 class ToolRegistry:
     def __init__(self, root: Path):
         self.root = Path(root)
@@ -791,6 +823,7 @@ class ToolRegistry:
                     if edge["relation_type"] == "DECLARED_BY" and edge["target_entity_id"] in orgs
                 }
                 nodes = [n for n in nodes if n["node_id"] in declared]
+            scoped_units = None
             if name == "lookup_criterion" and slots.get("sheet_number"):
                 doc = slots.get("document_code")
                 source = self._resolve_source_id(doc) if doc else None
@@ -803,7 +836,12 @@ class ToolRegistry:
                 ]
                 if len(sheets) != 1:
                     return {"results": [], "status": "sheet_scope_unavailable"}
-                scope, _ = graph.descendants(sheets, {"HAS_CRITERION", "HAS_SUBCRITERION"})
+                scope, _ = graph.descendants(sheets, {"HAS_CRITERION", "HAS_SUBCRITERION", "HAS_OPTION"})
+                scoped_units = {
+                    uid for identity in scope - set(sheets)
+                    for uid in graph.nodes[identity].get("evidence_unit_ids", [])
+                } & set(graph.units)
+                scoped_units = _section_evidence_units(graph, graph.nodes[sheets[0]], scoped_units)
                 nodes = [n for n in nodes if n["node_id"] in scope]
             rows = graph.node_rows(nodes)
             if name == "lookup_recognition" and asked_products:
@@ -951,6 +989,8 @@ class ToolRegistry:
                 years = [str(y) for y in slots.get("years", [])]
                 if name == "lookup_product_subgroup" and not source_filter and len(years) <= 1:
                     source_filter = self._framework_source(years[0] if years else None)
+                if scoped_units is not None and not scoped_units:
+                    return {"results": [], "status": "sheet_scope_unavailable"}
                 return {
                     "results": search(
                         self.index_dir,
@@ -958,7 +998,8 @@ class ToolRegistry:
                         source_id=source_filter,
                         mode=context.get("retrieval_mode", "sparse"),
                         top_k=16,
-                        evidence_unit_ids=set(graph.units),
+                        evidence_unit_ids=scoped_units if scoped_units is not None else set(graph.units),
+                        rerank=bool(context.get("rerank", False)),
                     ),
                     "verified": False,
                     "status": "text_evidence_fallback",

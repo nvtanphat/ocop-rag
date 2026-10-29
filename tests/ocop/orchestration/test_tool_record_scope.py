@@ -340,3 +340,62 @@ def test_graph_relation_selection_uses_configured_cues(store, monkeypatch):
     registry.dispatch("search_graph", query="custom relation request",
                       slots={"document_code": "900", "graph_seed_ids": ["pa"]})
     assert calls == [["REPLACES"]]
+
+
+@pytest.mark.parametrize("has_units", [True, False])
+def test_criterion_fallback_preserves_sheet_units_and_rerank(store, monkeypatch, has_units):
+    registry, graph = store
+    graph.nodes = {
+        "sheet": {"node_id": "sheet", "node_type": "CriterionSheet", "source_id": SOURCE,
+                  "label": "Sample sheet", "properties": {"sheet_number": 1}},
+        "criterion": {"node_id": "criterion", "node_type": "Criterion", "source_id": SOURCE,
+                      "label": "Sample criterion", "evidence_unit_ids": ["scoped-unit"] if has_units else []},
+    }
+    graph.units = {"scoped-unit": {}, "other-sheet-unit": {}}
+    graph.descendants = lambda seeds, relations: ({"sheet", "criterion"}, [])
+    graph.node_rows = lambda nodes: []
+    calls = []
+
+    def search(*args, **kwargs):
+        calls.append(kwargs)
+        return []
+
+    monkeypatch.setattr(module, "search", search)
+    result = registry.dispatch("lookup_criterion", query="sample criterion request",
+                               slots={"document_code": "900", "sheet_number": 1, "criterion_id": "1.1"},
+                               context={"retrieval_mode": "hybrid", "rerank": True})
+    if has_units:
+        assert len(calls) == 1
+        assert calls[0]["source_id"] == SOURCE
+        assert calls[0]["evidence_unit_ids"] == {"scoped-unit"}
+        assert calls[0]["rerank"] is True
+    else:
+        assert not calls
+        assert result["status"] == "sheet_scope_unavailable"
+
+
+def test_criterion_fallback_keeps_section_continuations_before_the_next_sheet(store, monkeypatch):
+    registry, graph = store
+    graph.nodes = {
+        "sheet": {"node_id": "sheet", "node_type": "CriterionSheet", "source_id": SOURCE,
+                  "properties": {"sheet_number": 1}, "evidence_unit_ids": ["intro"]},
+        "next-sheet": {"node_id": "next-sheet", "node_type": "CriterionSheet", "source_id": SOURCE,
+                       "properties": {"sheet_number": 2}, "evidence_unit_ids": ["next-intro"]},
+        "criterion": {"node_id": "criterion", "node_type": "Criterion", "source_id": SOURCE,
+                      "evidence_unit_ids": ["intro", "later-cell"]},
+    }
+    def unit(order, source=SOURCE, kind="paragraph"):
+        return {"source_id": source, "properties": {"source_order": order, "unit_kind": kind}}
+    graph.units = {
+        "before": unit(9), "intro": unit(10), "continuation": unit(11),
+        "later-cell": unit(13), "next-intro": unit(14), "next-cell": unit(15),
+        "other-document": unit(11, "OTHER"), "whole-page": unit(12, kind="page"),
+    }
+    graph.descendants = lambda seeds, relations: ({"sheet", "criterion"}, [])
+    graph.node_rows = lambda nodes: []
+    calls = []
+    monkeypatch.setattr(module, "search", lambda *args, **kwargs: calls.append(kwargs) or [])
+    registry.dispatch("lookup_criterion", query="sample continuation",
+                      slots={"document_code": "900", "sheet_number": 1, "criterion_id": "1.6"},
+                      context={"retrieval_mode": "hybrid", "rerank": True})
+    assert calls[0]["evidence_unit_ids"] == {"intro", "continuation", "later-cell"}
