@@ -729,6 +729,19 @@ class OcopAgent:
         )
         if absent:
             notices.append(absent)
+        ambiguous_sheet = [item for item in outputs if (item.get("output") or {}).get("status") == "sheet_document_ambiguous"]
+        if ambiguous_sheet:
+            # Several documents carry a sheet with this number: ask which one, naming the candidates.
+            candidates = list(
+                dict.fromkeys(
+                    doc for item in ambiguous_sheet for doc in ((item.get("output") or {}).get("candidate_documents") or [])
+                )
+            )
+            question = "Phiếu này có trong nhiều văn bản (" + "; ".join(candidates) + "). Bạn muốn tra phiếu của văn bản nào?"
+            if any(self._usable_rows(item) for item in outputs if item not in ambiguous_sheet):
+                notices.append(question)
+            else:
+                return {"answer": {"answer": question, "status": "clarify", "citations": []}}
         if any((item.get("output") or {}).get("status") == "sheet_scope_unavailable" for item in outputs):
             # Another sheet's options are never substituted. If other tools found grounded evidence the answer is
             # built from that and says which part could not be resolved; otherwise nothing is answered.
@@ -920,11 +933,15 @@ class OcopAgent:
                     + coverage.get("missing_tools", [])
                 )
             )
-            response["answer"] = (
-                "[CHƯA ĐỦ CHỨNG CỨ CHO TOÀN BỘ YÊU CẦU: " + ", ".join(missing) + "]\n" + response["answer"]
-            )
-            if response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
-                response["status"] = "partial_evidence"
+            # A gap that a notice above already explains in words is not repeated by its internal tool name.
+            if any("hiệu lực" in n for n in notices):
+                missing = [name for name in missing if name != "resolve_temporal_applicability"]
+            if missing:
+                response["answer"] = (
+                    "[CHƯA ĐỦ CHỨNG CỨ CHO TOÀN BỘ YÊU CẦU: " + ", ".join(missing) + "]\n" + response["answer"]
+                )
+                if response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
+                    response["status"] = "partial_evidence"
         return {"answer": response}
 
     def graph(self, *, checkpointer=None):

@@ -20,6 +20,16 @@ def _corpus_sources() -> frozenset[str]:
         return frozenset()
 
 
+def approved(row: dict) -> bool:
+    """A row is trusted as source text when it is verified itself or comes from a source of the locked corpus.
+
+    The corpus is approved as a whole; its per-row machine status (needs_review) says nothing against it. Rows of
+    any other source stay unapproved. Every deterministic check on the claim (numbers, negation, binding, subject)
+    still applies to an approved row.
+    """
+    return row.get("review_status") == "verified" or row.get("source_id") in _corpus_sources()
+
+
 def check_source_markers(answer: str, citations: list[dict]) -> dict:
     references = {int(x) for x in MARKER.findall(answer)}
     valid = set(range(1, len(citations) + 1))
@@ -32,8 +42,7 @@ def check_source_markers(answer: str, citations: list[dict]) -> dict:
     # corpus is approved as a whole; its per-row machine status (needs_review) never reaches the reader. Sources
     # outside the corpus keep the label. This is labelling only: score and star claims are gated on the row itself.
     used = [x for i, x in enumerate(citations, 1) if i in references] or citations
-    corpus = _corpus_sources()
-    unverified = any(x.get("review_status") != "verified" and x.get("source_id") not in corpus for x in used)
+    unverified = any(not approved(x) for x in used)
     return {
         "status": status,
         "invalid_markers": invalid,
@@ -44,7 +53,11 @@ def check_source_markers(answer: str, citations: list[dict]) -> dict:
     }
 
 
-SCORE_ASSERTION = re.compile(r"(?<!\w)\d+(?:[.,]\d+)?\s*(?:điểm|sao)\b", re.I)
+# A range ("từ 90 đến 100 điểm", "70 đến dưới 90 điểm") is one assertion: both bounds must be the source's, not
+# each bound found somewhere in the same passage.
+SCORE_ASSERTION = re.compile(
+    r"(?<!\w)\d+(?:[.,]\d+)?(?:\s*(?:đến|tới|-|–)\s*(?:dưới\s+)?\d+(?:[.,]\d+)?)?\s*(?:điểm|sao)\b", re.I
+)
 
 
 def _cited_rows(marker_ids: list[int], citations: list[dict], evidence_rows: list[dict]) -> list[dict]:
@@ -77,18 +90,22 @@ def _row_text(rows: list[dict]) -> str:
     text = " ".join(
         str(row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
         for row in rows
-        if row.get("review_status") == "verified"
+        if approved(row)
     )
     return re.sub(r"\s+", " ", text.casefold())
 
 
-def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict]) -> bool:
-    """Use the most subject-specific source records, preserving cells of the same table row."""
+def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], together: frozenset[str] = frozenset()) -> bool:
+    """Use the most subject-specific source records, preserving cells of the same table row.
+
+    Records that match the subject equally well are ambiguous: every one of them must state the assertion. Parallel
+    items (the tiers "Hạng 5 sao: 90 đến 100 điểm", "Hạng 4 sao: ...") all match a claim about one tier equally; there
+    the claim is bound when a single record states all of the sentence's assertions together (``together``)."""
     from ai_core.orchestration.ocop.language import get_language
 
     groups = {}
     for index, row in enumerate(rows):
-        if row.get("review_status") != "verified":
+        if not approved(row):
             continue
         spans = row.get("source_spans") or row.get("spans") or []
         span = next((s for s in spans if isinstance(s, dict)), {}) if isinstance(spans, list) else {}
@@ -107,8 +124,12 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict]) -> bo
     scores = [len(terms & set(lang.content_words(record))) for record in records]
     best = max(scores, default=0)
     candidates = [record for record, score in zip(records, scores) if score == best]
-    return bool(candidates) and all(_stated_in(assertion, re.sub(r"\s+", " ", record.casefold()))
-                                    for record in candidates)
+    squashed = [re.sub(r"\s+", " ", record.casefold()) for record in candidates]
+    if not candidates:
+        return False
+    if all(_stated_in(assertion, record) for record in squashed):
+        return True
+    return len(together) > 1 and any(all(_stated_in(a, record) for a in together) for record in squashed)
 
 
 def check_sensitive_claims(
@@ -142,7 +163,7 @@ def check_sensitive_claims(
         verified = _row_text(cited)
         for assertion in stated:
             present = _stated_in(assertion, verified)
-            aligned = present and _sensitive_records_agree(sentence, assertion, cited)
+            aligned = present and _sensitive_records_agree(sentence, assertion, cited, frozenset(stated))
             if not aligned:
                 unsupported.add(assertion)
             if present and not aligned:
@@ -306,7 +327,7 @@ def verify_claims(
             continue
         checked = []
         for row in rows:
-            if row.get("review_status") != "verified":
+            if not approved(row):
                 checked.append(("unknown", "source_not_verified"))
                 continue
             source = str(row.get("text") or row.get("evidence_text") or row.get("row_text") or "")

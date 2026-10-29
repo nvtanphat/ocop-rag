@@ -837,6 +837,15 @@ class ToolRegistry:
                     and str(n.get("properties", {}).get("sheet_number")) == str(slots["sheet_number"])
                     and (not doc or source and n["source_id"] == source)
                 ]
+                if len(sheets) > 1 and not doc:
+                    # The same sheet number exists in several documents: the user chooses, nothing is guessed.
+                    holders = sorted({graph.nodes[identity]["source_id"] for identity in sheets})
+                    if len(holders) > 1:
+                        return {
+                            "results": [],
+                            "status": "sheet_document_ambiguous",
+                            "candidate_documents": self.document_labels(holders),
+                        }
                 if len(sheets) != 1:
                     return {"results": [], "status": "sheet_scope_unavailable"}
                 scope, _ = graph.descendants(sheets, {"HAS_CRITERION", "HAS_SUBCRITERION", "HAS_OPTION"})

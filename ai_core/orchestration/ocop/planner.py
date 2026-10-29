@@ -43,6 +43,7 @@ RECOVERY_BLOCKING_STATUSES = frozenset(
         "incomplete_form_ids",
         "form_source_scope_unverified",
         "form_version_ambiguous",
+        "sheet_document_ambiguous",
         "local_guidance_document_scope_mismatch",
     }
 )

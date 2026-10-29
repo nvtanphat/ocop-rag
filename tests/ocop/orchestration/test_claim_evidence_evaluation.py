@@ -30,10 +30,16 @@ def test_claim_verification_rejects_valid_marker_with_wrong_star():
 
 
 def test_claim_verification_never_promotes_unreviewed_ocr():
-    found = verify_claims(
-        "Hạt sen của HTX Sen Huế được công nhận 3 sao [S1].", _cite(), [_fact(review_status="needs_review")]
-    )
+    outside = {**_fact(review_status="needs_review"), "source_id": "NOT.IN.CORPUS"}
+    cite = [{**_cite()[0], "source_id": "NOT.IN.CORPUS"}]
+    found = verify_claims("Hạt sen của HTX Sen Huế được công nhận 3 sao [S1].", cite, [outside])
     assert found["status"] == "not_verified"
+
+
+def test_a_row_of_the_locked_corpus_is_trusted_but_its_numbers_are_still_checked():
+    row = _fact(review_status="needs_review")
+    assert verify_claims("Hạt sen của HTX Sen Huế được công nhận 3 sao [S1].", _cite(), [row])["status"] == "verified"
+    assert verify_claims("Hạt sen của HTX Sen Huế được công nhận 5 sao [S1].", _cite(), [row])["status"] == "unsupported"
 
 
 def test_claim_missing_reference_fails_even_if_source_is_present():

@@ -142,3 +142,48 @@ def test_a_legal_unit_lookup_marks_each_passage_with_the_article_it_was_fetched_
         context={"retrieval_mode": "sparse"},
     )
     assert out["results"] and all(r["resolved_locator"] == {"article_id": "6"} for r in out["results"])
+
+
+def test_a_sheet_number_shared_by_several_documents_asks_which_one_instead_of_guessing():
+    from pathlib import Path
+
+    from ai_core.orchestration.ocop.tools import ToolRegistry
+
+    tools = ToolRegistry(Path(__file__).resolve().parents[3])
+    asked = {"sheet_number": "1", "criterion_id": "1.6"}
+    out = tools.dispatch("lookup_criterion", query="Tiêu chí 1.6 trong phiếu 1", slots=asked)
+    assert out["status"] == "sheet_document_ambiguous" and not out["results"]
+    assert len(out["candidate_documents"]) >= 2
+    pinned = tools.dispatch(
+        "lookup_criterion", query="Tiêu chí 1.6 trong phiếu 1", slots={**asked, "document_code": "26/2026"}
+    )
+    assert pinned["results"] and pinned["status"] != "sheet_document_ambiguous"
+
+
+def test_a_document_code_is_not_a_word_the_passage_must_repeat():
+    from ai_core.orchestration.ocop.context import question_terms
+
+    assert question_terms("Điều 6 Quyết định 26/2026/QĐ-TTg quy định gì?") == []
+    assert "ttg" not in question_terms("Quyết định 148/QĐ-TTg ban hành bộ tiêu chí nào?")
+
+
+def test_parallel_tiers_bind_a_claim_only_when_one_tier_states_all_of_its_numbers():
+    from ai_core.orchestration.ocop.verification import check_sensitive_claims
+
+    tiers = (
+        "a) Hạng 5 sao: Tổng điểm trung bình đạt từ 90 đến 100 điểm, là sản phẩm đặc trưng.\n"
+        "b) Hạng 4 sao: Tổng điểm trung bình đạt từ 70 đến dưới 90 điểm, là sản phẩm đặc trưng.\n"
+        "c) Hạng 3 sao: Tổng điểm trung bình đạt từ 50 đến dưới 70 điểm, là sản phẩm có đặc thù."
+    )
+    rows = [{"source_id": "DOC", "evidence_unit_id": "u1", "text": tiers, "review_status": "verified"}]
+    citations = [{"source_id": "DOC", "evidence_unit_id": "u1"}]
+
+    def unsupported(claim):
+        return check_sensitive_claims(claim + " [S1].", rows, citations)["unsupported_score_or_star_claims"]
+
+    assert not unsupported("Sản phẩm đạt hạng 5 sao khi tổng điểm trung bình đạt từ 90 đến 100 điểm")
+    assert not unsupported("Sản phẩm đạt hạng 4 sao khi tổng điểm trung bình đạt từ 70 đến dưới 90 điểm")
+    # Numbers of two different tiers, or a range that no tier states, never bind together.
+    assert unsupported("Sản phẩm đạt hạng 5 sao khi tổng điểm trung bình đạt từ 70 đến 100 điểm")
+    assert unsupported("Sản phẩm đạt hạng 5 sao khi tổng điểm trung bình đạt từ 50 đến 100 điểm")
+    assert unsupported("Sản phẩm đạt hạng 4 sao khi tổng điểm trung bình đạt từ 90 đến 100 điểm")

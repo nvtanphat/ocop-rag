@@ -47,6 +47,7 @@ BAD_RESULT_STATUSES = frozenset(
         "incomplete_form_ids",
         "form_source_scope_unverified",
         "form_version_ambiguous",
+        "sheet_document_ambiguous",
         "recognition_scope_unverified",
         "entity_not_found",
         "recognition_year_scope_unverified",
