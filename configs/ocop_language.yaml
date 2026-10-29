@@ -173,6 +173,8 @@ cues:
   scoring_method: [cách tính điểm, hướng dẫn tính điểm, công thức tính điểm, quy trình chấm điểm, tính điểm như thế nào,
     tính điểm ra sao, tính điểm ocop như thế nào, thang điểm, phương pháp chấm điểm, điểm được tính thế nào]
   scoring_negation: [không, đừng, chưa, không cần]
+  # The programme's own name is vocabulary of the whole corpus, not an entity a passage must introduce.
+  claim_program_names: [OCOP]
   claim_negation: [không, chưa, miễn]
   claim_quantity_units: [điểm, sao, ngày, tháng, năm, bản, bộ, giờ, phút, lần, đợt, phần, trang]
   claim_quantity_boundaries: [trước, sau, kể, tính]

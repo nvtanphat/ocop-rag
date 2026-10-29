@@ -338,6 +338,8 @@ def verify_claims(
             source_nums = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", source))
             # The excerpt header the model was shown names the document ("QD525.2026"), so its numbers are grounded too.
             source_nums |= set(re.findall(r"\d+", str(row.get("source_id") or "")))
+            # ...and as the header writes it ("QD26.2026"), which a claim may repeat as "26.2026".
+            source_nums |= set(re.findall(r"\d+(?:\.\d+)+", str(row.get("source_id") or "")))
             if nums - source_nums:
                 checked.append(("unsupported", "source_missing_claim_numbers"))
                 continue

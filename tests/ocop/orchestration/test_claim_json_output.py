@@ -703,3 +703,15 @@ def test_a_corpus_source_is_never_labelled_unreviewed_but_an_unknown_source_is()
     assert check_source_markers("Nêu rõ [S1]", [corpus])["unverified_source"] is False
     assert check_source_markers("Nêu rõ [S1]", [stranger])["unverified_source"] is True
     assert check_source_markers("Nêu rõ [S1] [S2]", [corpus, stranger])["unverified_source"] is True
+
+
+def test_a_claim_may_write_the_document_number_as_the_source_header_does():
+    from ai_core.orchestration.ocop.verification import verify_claims
+
+    rows = [{"source_id": "VN.OCOP.QD26.2026", "evidence_unit_id": "u", "review_status": "verified",
+             "source_spans": [{"pdf_page": 4}], "text": "Hồ sơ gồm Phiếu đăng ký theo Mẫu số 01 Phụ lục III."}]
+    cites = [{"source_id": "VN.OCOP.QD26.2026", "evidence_unit_id": "u", "pdf_page": 4}]
+    said = "Theo Quyết định 26.2026, hồ sơ gồm Phiếu đăng ký theo Mẫu số 01 Phụ lục III [S1]."
+    reasons = lambda text: {c["reason"] for c in verify_claims(text, cites, rows)["claims"]}  # noqa: E731
+    assert "source_missing_claim_numbers" not in reasons(said)
+    assert "source_missing_claim_numbers" in reasons(said.replace("26.2026", "27.2026"))

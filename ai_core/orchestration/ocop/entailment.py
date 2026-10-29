@@ -76,7 +76,7 @@ def anchored(claim: str, quote: str, excerpt: str, asked: str = "", *, quote_sou
     # The vocabulary of the corpus (document types, structure nouns) names no new entity: "Quyết định", "Điều".
     known = {
         t
-        for names_ in (*lang.document_types.values(), *lang.structure_nouns.values())
+        for names_ in (*lang.document_types.values(), *lang.structure_nouns.values(), lang.cues.get("claim_program_names", []))
         for n in names_
         for t in re.findall(r"[a-z0-9]+", fold(n))
     }
