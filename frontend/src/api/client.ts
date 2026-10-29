@@ -75,6 +75,7 @@ export interface RetrievalProfile {
 export interface Health {
   status: string
   retrieval_profile?: RetrievalProfile
+  answer_llm?: boolean
   pipeline: JsonObject
   sources_registered: number
   pages: number

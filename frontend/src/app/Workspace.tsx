@@ -41,7 +41,13 @@ export default function Workspace() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
-  const [useLlm, setUseLlm] = useState(false);
+  const [useLlm, setUseLlmValue] = useState(false);
+  const llmChosen = useRef(false);
+  // The server's hosted answer model is on by default; a choice made in the toggle always wins.
+  const setUseLlm = (value: boolean) => {
+    llmChosen.current = true;
+    setUseLlmValue(value);
+  };
   const [selected, setSelected] = useState<Citation | null>(null);
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphMessage, setGraphMessage] = useState<Message | null>(null);
@@ -60,8 +66,10 @@ export default function Workspace() {
       api.products(),
     ]);
     const nextErrors: Record<string, string> = {};
-    if (h.status === "fulfilled") setHealth(h.value);
-    else {
+    if (h.status === "fulfilled") {
+      setHealth(h.value);
+      if (!llmChosen.current) setUseLlmValue(h.value.answer_llm === true);
+    } else {
       setHealth(null);
       nextErrors.health = errorText(h.reason);
     }
