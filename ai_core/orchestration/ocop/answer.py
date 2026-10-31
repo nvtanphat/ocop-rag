@@ -6,7 +6,7 @@ import math
 import re
 from functools import lru_cache
 from pathlib import Path
-from ai_core.orchestration.ocop.llm import OllamaClient, ModelOutputTruncated
+from ai_core.orchestration.ocop.llm import OpenAICompatClient, ModelOutputTruncated
 from ai_core.orchestration.ocop.entailment import MIN_QUOTE_CHARS, SOFT_REASONS, anchored, quoted_from, review
 from ai_core.orchestration.ocop.verification import (
     critical_claim,
@@ -16,9 +16,11 @@ from ai_core.orchestration.ocop.verification import (
     verify_claims,
     _normalize,
 )
-from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence
+from ai_core.graph.ocop.links import LINK_RELATIONS
+from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS
+from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence, merge_graph_provenance, fuse_tool_rows
 from ai_core.orchestration.ocop.language import fold, get_language
-from ai_core.orchestration.ocop.context import fit_budget, question_terms, term_coverage
+from ai_core.orchestration.ocop.context import fit_budget, graph_hops, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
 
@@ -132,6 +134,7 @@ def _merge_continuations(entries):
         base["merged_chunk_ids"] = list(base.get("merged_chunk_ids") or [base.get("chunk_id")]) + [
             row.get("chunk_id")
         ]
+        merge_graph_provenance(base, row)
         merged[p] = base
         absorbed.add(i)
     out = []
@@ -143,13 +146,12 @@ def _merge_continuations(entries):
 
 
 def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
-    """Keep `limit` blocks by greedy, rarity-weighted coverage of the question's terms (ties keep tool order).
+    """Keep `limit` blocks: first the reserved ones, then the rest in the fused retrieval order.
 
-    Tool order alone lets one structured tool fill the prompt with rows of the wrong page, and counting distinct
-    terms lets generic words ("quyết định", "cơ quan") outvote the one rare term that names the thing asked about
-    (a product, a form). Each term weighs log(1+N/df) over the candidate blocks, and blocks are picked by how much
-    still-uncovered weight they add, so every part of a multi-part question keeps at least its best block.
-    The kept blocks keep their original order.
+    Reserved: the best block of each requested part (criterion code, form number, query part), of each graph hop and
+    of each proved link. The remaining places follow the order the entries arrive in (all tools fused by rank and the
+    passages reranked), with per-document diversity; a re-ranking by term overlap would discard the cross-encoder's
+    order. The kept blocks keep their original order.
     """
     if len(entries) <= limit:
         return entries[:limit]
@@ -169,9 +171,15 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
     covered: set[str] = set()
     chosen: list[int] = []
     protected: set[int] = set()
+    # Optional graph enrichment adds context; it may take only a few places, so it never pushes out primary evidence.
+    enrichment_cap = get_settings().context.max_enrichment_blocks
+
+    def admissible(index):
+        return not entries[index][1].get("enrichment") or sum(
+            1 for i in chosen if entries[i][1].get("enrichment")) < enrichment_cap
 
     def reserve(index):
-        if index is not None and index not in chosen and len(chosen) < limit:
+        if index is not None and index not in chosen and len(chosen) < limit and admissible(index):
             chosen.append(index)
             protected.add(index)
             covered.update(found[index])
@@ -194,6 +202,8 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
         candidates = [i for i, entry in enumerate(entries) if covers(entry[1], facet)]
         first = max(candidates, key=lambda i: facet_match(i, facet), default=None)
         reserve(first)
+    for hop in sorted({h for entry in entries for h in graph_hops(entry[1])}):
+        reserve(next((i for i, entry in enumerate(entries) if hop in graph_hops(entry[1])), None))
     # Each part of a compound question was searched on its own (row['query_part']); the best-ranked block that search added keeps
     # its place even when no question word names it ("cơ quan ban hành" is answered by a heading that says "Ủy ban nhân dân").
     for part in dict.fromkeys(e[1].get("query_part") for e in entries if e[1].get("query_part")):
@@ -203,22 +213,44 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
     # one "hết hiệu lực"), so term coverage scores it near zero; its best-ranked block keeps a place like a query part.
     first = next((i for i, e in enumerate(entries) if e[1].get("graph_edge_id")), None)
     reserve(first)
-    while len(chosen) < limit:
-        gain = lambda i: sum(weight[t] for t in found[i] - covered)  # noqa: E731
-        best = max(
-            (i for i in range(len(entries)) if i not in chosen), key=lambda i: (gain(i), -i), default=None
-        )
-        if best is None:
+    # A link the graph proved joins two passages (a product's record and the sheet that classifies it): the passage at
+    # the far end is the next step of the question, so the best-ranked block of each kind of link keeps a place too.
+    linked_kinds = dict.fromkeys(e[1]["graph_relation"] for e in entries if e[1].get("graph_relation") in LINK_RELATIONS)
+    for kind in list(linked_kinds)[: get_settings().context.max_link_blocks]:
+        reserve(next((i for i, e in enumerate(entries) if e[1].get("graph_relation") == kind), None))
+    # The rest follows the fused retrieval order (entries arrive ranked), as ViCAS-RAG keeps its reranked order: a
+    # block the question shares no term with waits until the others are used, and one document takes at most
+    # max_blocks_per_document places before the other documents get theirs; leftovers fill from it afterwards.
+    # A rare question term (a product or form name) is a pin, like a named statute in ViCAS-RAG: its best-ranked block
+    # keeps a place even when generic words fill the higher ranks. Rare = in at most a quarter of the candidates.
+    rare = sorted((t for t in weight if sum(t in f for f in found) <= max(1, len(entries) // 4)),
+                  key=lambda t: (-weight[t], t))
+    for term in rare:
+        if len(chosen) >= max(1, limit // 2):
             break
-        if gain(best) <= 0:  # everything coverable is covered: fill by plain weighted relevance
-            rest = sorted(
-                (i for i in range(len(entries)) if i not in chosen),
-                key=lambda i: (-sum(weight[t] for t in found[i]), i),
-            )
-            chosen.extend(rest[: max(0, limit - len(chosen))])
+        if term not in covered:
+            reserve(next((i for i in range(len(entries)) if term in found[i] and admissible(i)), None))
+    per_document = get_settings().context.max_blocks_per_document
+    used: dict = {}
+    for index in chosen:
+        used[entries[index][0][0]] = used.get(entries[index][0][0], 0) + 1
+    deferred = []
+    for index in sorted(range(len(entries)), key=lambda i: (not found[i], i)):
+        if len(chosen) >= limit:
             break
-        chosen.append(best)
-        covered |= found[best]
+        if index in chosen or not admissible(index):
+            continue
+        document = entries[index][0][0]
+        if used.get(document, 0) >= per_document:
+            deferred.append(index)
+            continue
+        chosen.append(index)
+        used[document] = used.get(document, 0) + 1
+    for index in deferred:
+        if len(chosen) >= limit:
+            break
+        if admissible(index):
+            chosen.append(index)
 
     # Keep a selected record's returned cells together inside the same hard limit.
     # A table can contain many different records; its identifier alone is not their identity.
@@ -250,14 +282,20 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
 
 def _drop_repeats(entries):
     """Skip a block whose text is already shown on the same page (graph rows often repeat a heading or a clause)."""
-    seen: dict[tuple, list[str]] = {}
+    seen: dict[tuple, list[tuple[str, int]]] = {}
     kept = []
     for key, row, span, flag in entries:
         folded = " ".join(str(row.get("raw_text") or row.get("text") or "").casefold().split())
         shown = seen.setdefault((key[0], key[1]), [])
-        if folded and any(folded in other for other in shown):
+        parent = next((index for other, index in shown if folded and folded in other), None)
+        if parent is not None:
+            if row.get("review_status") == kept[parent][1].get("review_status"):
+                existing_key, previous, previous_span, previous_flag = kept[parent]
+                previous = dict(previous)
+                merge_graph_provenance(previous, row)
+                kept[parent] = (existing_key, previous, previous_span, previous_flag)
             continue
-        shown.append(folded)
+        shown.append((folded, len(kept)))
         kept.append((key, row, span, flag))
     return kept
 
@@ -346,6 +384,10 @@ def _evidence(
             conflicting.append(key)
             continue
         row, span, body = group[0]
+        if len(group) > 1:
+            row = dict(row)
+            for other, _, _ in group[1:]:
+                merge_graph_provenance(row, other)
         spans = row.get("source_spans") or row.get("spans") or []
         context_metadata = row.get("context") if isinstance(row.get("context"), dict) else {}
         table_backed = bool(
@@ -816,7 +858,7 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
 
 
 def assemble(
-    question: str, tool_results: list[dict], *, llm: OllamaClient | None = None, catalog=None, style: str = ""
+    question: str, tool_results: list[dict], *, llm: OpenAICompatClient | None = None, catalog=None, style: str = ""
 ) -> dict:
     result = _assemble(question, tool_results, llm=llm, catalog=catalog, style=style)
     missing = result.get("evidence_fusion", {}).get("missing_facets", [])
@@ -830,7 +872,7 @@ def assemble(
 
 
 def _assemble(
-    question: str, tool_results: list[dict], *, llm: OllamaClient | None = None, catalog=None, style: str = ""
+    question: str, tool_results: list[dict], *, llm: OpenAICompatClient | None = None, catalog=None, style: str = ""
 ) -> dict:
     records = []
     for result in tool_results:
@@ -838,14 +880,18 @@ def _assemble(
             continue
         payload = result.get("output", {})
         if isinstance(payload, dict) and payload.get("status") not in BAD_RESULT_STATUSES:
+            enrichment = bool(result.get("optional")) and result.get("tool") in ENRICHMENT_TOOLS
+            tool = str(result.get("tool") or "unknown")
             for key in ("results", "nodes"):
                 if isinstance(payload.get(key, []), list):
-                    records.extend(x for x in payload.get(key, []) if isinstance(x, dict))
-    # Reserve context for the graph tool that the plan actually executed.
-    # Eight earlier BM25 hits must not silently erase the relation proof.
-    graph_rows = [row for row in records if row.get("graph_edge_id")]
-    records = graph_rows[:4] + [row for row in records if not row.get("graph_edge_id")] + graph_rows[4:]
-    records = order_evidence(question, records)
+                    records.extend(
+                        {**x, "tool": tool, **({"enrichment": True} if enrichment else {})}
+                        for x in payload.get(key, [])
+                        if isinstance(x, dict)
+                    )
+    # Every tool's rows in one order by rank fusion; the graph proof keeps its place through the reservations in
+    # _most_relevant, not by leading the list.
+    records = order_evidence(question, fuse_tool_rows(records))
     citations, contexts, selected = _evidence(
         records,
         question=question,

@@ -96,6 +96,18 @@ followup:
 
 # Cue lists by question facet.
 cues:
+  graph_semantic_definition_scope: [giải thích từ ngữ]
+  graph_semantic_definition_copula: [còn gọi là, là]
+  graph_semantic_subject_definition: [tổ chức, cá nhân, pháp nhân, chủ thể, hộ gia đình]
+  graph_semantic_deadline_prefix: [trong vòng, trong thời hạn, không quá, chậm nhất, ít nhất]
+  graph_semantic_deadline_unit: [ngày làm việc, ngày, tháng, năm, giờ]
+  graph_semantic_product_set: [bộ sản phẩm]
+  graph_semantic_action_cues:
+    obligation: [phải]
+    permission: [được phép, có quyền]
+    prohibition: [không được, nghiêm cấm, cấm]
+    exemption: [không phải, được miễn]
+    temporal: [tiếp tục, có hiệu lực, áp dụng]
   # Complete record questions can stop after a source-backed identity lookup.
   # These are cue-family references, not copies of the phrases below.
   direct_lookup:
@@ -103,11 +115,11 @@ cues:
   direct_lookup_exclusion: [tại sao, vì sao, bằng cách nào]
   recognition_score_attribute: [bao nhiêu điểm, mấy điểm, điểm đánh giá, tổng điểm]
   # Words that join or contrast the parts of one question; each part is searched on its own as well.
-  part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc]
+  part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc, rồi, vậy]
   in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
     nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
     điểm, mẫu, đăng ký, nộp hồ sơ, phiếu nào, phiếu số, được chấm, chấm điểm, chấm theo, phân hạng, hạng sao,
-    mấy sao]
+    mấy sao, hợp tác xã, htx, tổ hợp tác, liên hiệp hợp tác xã]
   # A one-syllable catalog name ("chè", "điều") is an entity only right after one of these heads, or when an entity
   # terminator follows it; otherwise it is the first syllable of a compound ("điều kiện", "chè" in "chè chén").
   single_syllable_entity_heads: [sản phẩm, mặt hàng, hạt, nhóm, phân nhóm, bộ sản phẩm, loại, các loại, cây]
@@ -125,7 +137,9 @@ cues:
   recognition_listing_negative: [danh sách, liệt kê, đã được công nhận, sản phẩm nào được công nhận, bao nhiêu sản phẩm]
   procedure: [mẫu, biểu mẫu, điền, đăng ký, thủ tục, hồ sơ lần đầu, hồ sơ ocop, hồ sơ gồm, cần nộp hồ sơ]
   procedure_own: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị]
-  criteria: [tiêu chí, thang điểm, mức điểm, điểm tối đa, điểm chấm]
+  # The asker's own unnamed product: its star level or score is a premise they state, not a public record to look up.
+  own_subject: [bên mình, của mình, nhà mình, bên tôi, của tôi, nhà tôi, chúng tôi, chúng mình, bọn mình, của em, bên em]
+  criteria: [tiêu chí, thang điểm, mức điểm, điểm tối đa, điểm chấm, phiếu chấm, phiếu đánh giá]
   multihop: [liên quan đến, mối quan hệ, căn cứ vào những, đối chiếu, liên hệ với, dựa trên những, liên hệ giữa, yêu cầu minh chứng,
     minh chứng nào, đòi hỏi giấy tờ]
   temporal: [so sánh, chuyển tiếp, trước và sau, thay đổi theo năm, khác nhau, hiệu lực, năm nào áp dụng]
@@ -153,6 +167,18 @@ cues:
   normative_star: [điều kiện, yêu cầu, cần đáp ứng, để được, để đạt, tiêu chí, cần những gì, quy định thế nào]
   deadline: [hạn nộp, trước ngày, hạn cuối, thời hạn nộp, hạn đăng ký, thời hạn đăng ký]
   local_document: [văn bản ở, văn bản của, tài liệu ở, tài liệu của, quyết định của, quyết định ở, văn bản địa phương]
+  # Words of a provision reference ("khoản 1 Điều 7", "Phụ lục II", "Mẫu số 01") and of the verbs that change one.
+  # Units are linked across documents by them (graph/ocop/links.py).
+  provision_clause: [khoản]
+  provision_point: [điểm]
+  provision_annex: [phụ lục]
+  provision_form: [mẫu số, biểu số]
+  amend_verb: [sửa đổi bổ sung, sửa đổi, bổ sung, bãi bỏ, thay thế]
+  amend_object: [một số nội dung, một số điều, một số quy định]
+  reference_connector: [của, tại]
+  own_document_marker: [này]
+  # A year right after these names a version of the rules ("theo quy trình năm 2023"), not the year of an event.
+  version_reference: [quy trình, bộ quy định, quy định, bộ tiêu chí, bộ hồ sơ, hồ sơ ocop, bộ ocop, phiên bản, bản sửa, bản]
   event_year_scope: [công nhận, được công nhận, sản phẩm ocop đạt sao, sản phẩm đạt sao]
   assessment_year_scope: [đánh giá, chấm điểm, xét hạng]
   assessment_year_marker: [năm đánh giá, kỳ đánh giá, chấm điểm năm]

@@ -25,8 +25,9 @@ SCHEMA_REVISION = code_fingerprint(
     [
         _ROOT / "graph" / "ocop" / "builder.py",
         _ROOT / "graph" / "ocop" / "ontology.py",
-        _ROOT / "graph" / "ocop" / "review.py",
         _ROOT / "graph" / "ocop" / "grounding.py",
+        _ROOT / "graph" / "ocop" / "semantics.py",
+        _ROOT / "graph" / "ocop" / "links.py",
         *(
             _ROOT / "knowledge/ocop" / name
             for name in ("contracts.py", "shapes.py", "procedures.py", "authorities.py")
@@ -139,7 +140,9 @@ def _specific_citation(ref: dict, unit: dict) -> dict | None:
             return None
     elif row is not None:
         row_data = row_quote_bbox(unit, int(row))
-        if row_data is None or quote != row_data[0][:1200] or not bbox_matches(ref.get("bbox"), row_data[1]):
+        # A row whose cells carry no box is cited by its page span, the same rule the extractor applies.
+        expected = row_data[1] if row_data and row_data[1] is not None else spans[0].get("bbox")
+        if row_data is None or quote != row_data[0][:1200] or not bbox_matches(ref.get("bbox"), expected):
             return None
     else:
         if quote not in str(unit.get("text") or ""):
@@ -187,7 +190,7 @@ def build_graph(
     *,
     include_candidates: bool = True,
     allow_partial: bool = False,
-    review_decisions: Path | None = None,
+    extraction_dir: Path | None = None,
 ) -> dict:
     prior_active = (
         json.loads((output / "manifest.json").read_text(encoding="utf-8")).get("graph_version")
@@ -731,7 +734,7 @@ def build_graph(
                 evidence_ids=[r["evidence_unit_id"] for r in refs],
                 status="needs_review" if row.get("status") == "candidate" else row["status"],
                 label=row["statement"],
-                properties={"modality": row["kind"], "executable": False},
+                properties={"modality": row["kind"], "executable": False, "frame": row.get("frame") or {}},
                 citations=citations,
             )
             for ref in refs:
@@ -798,16 +801,48 @@ def build_graph(
                 node["label"] = number
     out_nodes = [nodes[k] for k in sorted(nodes)]
     out_edges = [edges[k] for k in sorted(edges)]
-    review_manifest = {}
-    if review_decisions is not None:
-        from ai_core.graph.ocop.review import apply_decisions
-
-        review_manifest = apply_decisions(out_nodes, out_edges, evidence_by_id, review_decisions)
     from ai_core.graph.ocop.grounding import check_graph
 
     out_nodes, out_edges, checks = check_graph(
         out_nodes, out_edges, evidence_by_id, registry=document_registry
     )
+    from ai_core.graph.ocop.semantics import derive_semantics, repair_document_anchors
+    from ai_core.graph.ocop.links import derive_links
+
+    repaired_documents = repair_document_anchors(out_nodes, evidence_by_id)
+    if repaired_documents:
+        repaired_ids = {node["node_id"] for node in repaired_documents}
+        checked_nodes, checked_edges, _ = check_graph(out_nodes, out_edges, evidence_by_id, registry=document_registry)
+        replacements = {node["node_id"]: node for node in checked_nodes if node["node_id"] in repaired_ids}
+        out_nodes = [replacements.get(node["node_id"], node) for node in out_nodes]
+        replacements = {edge["edge_id"]: edge for edge in checked_edges
+                        if repaired_ids.intersection((edge["source_entity_id"], edge["target_entity_id"]))}
+        out_edges = [replacements.get(edge["edge_id"], edge) for edge in out_edges]
+
+    link_rows, _ = derive_links(out_nodes, out_edges, evidence_by_id, document_registry, version)
+    out_edges = sorted({row["edge_id"]: row for row in [*out_edges, *link_rows]}.values(), key=lambda row: row["edge_id"])
+    semantic_nodes, semantic_edges, semantic_summary = derive_semantics(
+        out_nodes, out_edges, evidence_by_id, document_registry, version
+    )
+    out_nodes = sorted({row["node_id"]: row for row in [*out_nodes, *semantic_nodes]}.values(), key=lambda row: row["node_id"])
+    out_edges = sorted([*out_edges, *semantic_edges], key=lambda row: row["edge_id"])
+    edit_summary = {}
+    if extraction_dir is not None:
+        from ai_core.graph.ocop.extraction_file import apply_edits
+
+        out_nodes, out_edges, edit_summary = apply_edits(out_nodes, out_edges, extraction_dir)
+    # Without an approval step, "verified" means: passed the source checks, and every unit it cites is reviewed OCR text.
+    reviewed_units = {uid for uid, unit in evidence_by_id.items() if unit.get("structured", {}).get("text_reviewed")}
+    for row in [*out_nodes, *out_edges]:
+        cited = set(row.get("evidence_unit_ids") or ())
+        row["review_status"] = (
+            "verified" if row.get("check") == "passed" and cited and cited <= reviewed_units else "needs_review"
+        )
+    from collections import Counter
+
+    for name, rows in (("nodes", out_nodes), ("edges", out_edges)):
+        counts = Counter(row["check"] for row in rows)
+        checks[name] = {state: counts[state] for state in ("passed", "failed")}
     # A fingerprint of the *source bytes* also detects edits to evidence text,
     # even if node IDs, spans and labels themselves happen not to change.
     knowledge_files = sorted(knowledge.glob("*.jsonl")) + [knowledge / "manifest.json"]
@@ -823,9 +858,10 @@ def build_graph(
             "corpus_version": version,
             "candidate_mode": include_candidates,
             "source_complete": source_complete,
-            "human_review": review_manifest,
             "checks": checks,
             "schema_revision": SCHEMA_REVISION,
+            "semantic_projection": semantic_summary,
+            "extraction_edits": edit_summary,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -845,9 +881,10 @@ def build_graph(
         manifest = {
             "graph_version": graph_version,
             "source_knowledge_version": version,
-            "human_review": review_manifest,
             "checks": checks,
             "construction_failures": rejected,
+            "semantic_projection": semantic_summary,
+            "extraction_edits": edit_summary,
             "source_knowledge_sha256": source_fingerprint,
             "schema_revision": SCHEMA_REVISION,
             "status": "local_ready" if source_complete else "partial_debug_not_production",
@@ -884,15 +921,15 @@ def build_graph(
             shutil.copyfile(staging_dir / filename, temp_file)
             os.replace(temp_file, output / filename)
         os.replace(staging_dir / "manifest.json", output / "manifest.json")
-        _prune_snapshots(output, review_decisions, {graph_version, prior_active})
+        _prune_snapshots(output, {graph_version, prior_active})
         (output / "rejected.jsonl").unlink(missing_ok=True)
         return manifest
     finally:
         shutil.rmtree(staging_dir, ignore_errors=True)
 
 
-def _prune_snapshots(output, ledger, protected):
-    """Keep three recent snapshots plus active and explicitly ledger-pinned ones."""
+def _prune_snapshots(output, protected):
+    """Keep the three most recent snapshots plus the protected (new and previously active) ones."""
     snapshots = (output / "snapshots").resolve()
     choices = [
         p
@@ -900,14 +937,6 @@ def _prune_snapshots(output, ledger, protected):
         if p.is_dir() and not p.is_symlink() and re.fullmatch(r"[0-9a-f]{20}", p.name)
     ]
     protected = set(protected)
-    if ledger and Path(ledger).is_file():
-        for line in Path(ledger).read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            event = json.loads(line)
-            if not event.get("graph_version"):
-                return  # legacy ledger cannot identify its snapshot: preserve provenance
-            protected.add(event["graph_version"])
     protected.update(p.name for p in sorted(choices, key=lambda p: p.stat().st_mtime_ns, reverse=True)[:3])
     for path in choices:
         if path.name not in protected and path.resolve().is_relative_to(snapshots):

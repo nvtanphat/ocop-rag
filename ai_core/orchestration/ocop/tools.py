@@ -13,12 +13,13 @@ from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.lookup import exact_lookup
 from ai_core.graph.ocop.retriever import traverse
 from ai_core.graph.ocop.lookup import GraphEvidence
+from ai_core.graph.ocop.links import LINK_RELATIONS, SetLinker
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.temporal import resolve_event_applicability
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
-from ai_core.orchestration.ocop.language import get_language
+from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.orchestration.ocop.document_scope import DocumentResolver
 from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
@@ -143,7 +144,9 @@ def graph_seeds(
         label = " " + normalize(n["label"]) + " "
         if (
             (source_filter and n["node_type"] == "SourceDocument")
-            or (n["node_type"] in {"Product", "Organization"} and len(label.strip()) >= 4 and label in qnorm)
+            or (n["node_type"] in {"Product", "Organization", "Concept", "SubjectType", "ProductSet", "Authority",
+                                    "AdministrativeArea", "FormTemplate", "CriterionSheet"}
+                and len(label.strip()) >= 4 and label in qnorm)
             or (asked and n["node_type"] == "Product" and " " + asked + " " in label)
         ):
             seeds.append(n["node_id"])
@@ -191,6 +194,84 @@ class ToolRegistry:
         self.root = Path(root)
         self.index_dir = self.root / "data/processed/ocop/index"
         self.graph_dir = self.root / "data/processed/ocop/graph"
+
+    def _corpus_words(self) -> frozenset[str]:
+        """Folded words that occur anywhere in the indexed evidence (what the corpus can be asked about)."""
+        if not hasattr(self, "_words"):
+            from ai_core.orchestration.ocop.language import fold
+
+            words: set[str] = set()
+            path = self.index_dir / "evidence_units.jsonl"
+            if path.is_file():
+                with path.open(encoding="utf-8") as handle:
+                    for line in handle:
+                        words.update(re.findall(r"[a-z0-9]+", fold(json.loads(line).get("text") or "")))
+            self._words = frozenset(words)
+        return self._words
+
+    def _set_linker(self) -> SetLinker:
+        if not hasattr(self, "_linker"):
+            self._linker = SetLinker.from_jsonl(self.index_dir / "evidence_units.jsonl")
+        return self._linker
+
+    def _linked_product_sheets(self, graph, slots: dict, query: str) -> list[dict] | None:
+        """The framework's criterion sheets whose product list names the asked product, with the subgroup and group using them.
+
+        People name a product ("nước mắm", "gạo ST25"); the framework names product sets ("Bộ sản phẩm: Tương, nước mắm,
+        gia vị dạng lỏng khác"). The link is the set whose listed words cover the asked words that the fewest sets list
+        (inverse set frequency, a pair of adjacent words counting double). None when no set is clearly named, so the
+        caller keeps its own lookup; empty when sets exist but none is clearly named.
+        """
+        years = [str(y) for y in slots.get("years") or []]
+        source = (
+            self._resolve_source_id(slots["document_code"])
+            if slots.get("document_code")
+            else self._framework_source(years[0] if len(years) == 1 else None)
+        )
+        sheets = [n for n in graph.nodes.values() if n["node_type"] == "CriterionSheet" and n["source_id"] == source]
+        if not sheets:
+            return None
+        # The whole question: an extracted name can be only its generic part ("thực phẩm" of "đồ chế biến từ gạo, ngũ
+        # cốc ... nhóm thực phẩm khác"); a remembered name the question no longer writes is added.
+        named = str(slots.get("product_name") or "")
+        asked_text = query if fold(named) in fold(query) else f"{query} {named}"
+        by_id = {n["node_id"]: n for n in sheets}
+        chosen = [by_id[key] for key in self._set_linker().rank(asked_text, {k: n["label"] for k, n in by_id.items()})]
+        if not chosen:
+            return []  # no product set is clearly named
+        ids = {n["node_id"] for n in chosen}
+        subgroups = {
+            e["source_entity_id"] for e in graph.edges if e["relation_type"] == "USES_SHEET" and e["target_entity_id"] in ids
+        }
+        groups = {
+            e["source_entity_id"]
+            for e in graph.edges
+            if e["relation_type"] == "HAS_SUBGROUP" and e["target_entity_id"] in subgroups
+        }
+        return chosen + [graph.nodes[i] for i in (*sorted(subgroups), *sorted(groups)) if i in graph.nodes]
+
+    def _star_level_seeds(self, nodes: list[dict], query: str, slots: dict) -> list[str]:
+        """Star-level nodes of the current framework that the question names by level or by a score inside their range."""
+        framework = self._framework_source()
+        levels = [
+            n
+            for n in nodes
+            if n.get("node_type") == "StarLevel"
+            and n.get("source_id") == framework
+            and (n.get("properties") or {}).get("star_level") is not None
+        ]
+        wanted = {int(slots["star_rating"])} if slots.get("star_rating") else set()
+        score = get_language().alternation("score_noun")
+        for match in re.finditer(r"(?<![\d.,])(\d{1,3})(?:[.,]\d+)?\s*" + score + r"\b", unicodedata.normalize("NFC", query), re.I):
+            value = float(match.group(0).split()[0].replace(",", "."))
+            for node in levels:
+                props = node["properties"]
+                low, high = props.get("min_points"), props.get("max_points")
+                above = low is None or value > low or (value == low and props.get("min_inclusive") is not False)
+                below = high is None or value < high or (value == high and props.get("max_inclusive") is not False)
+                if above and below and (low is not None or high is not None):
+                    wanted.add(int(props["star_level"]))
+        return [n["node_id"] for n in levels if int(n["properties"]["star_level"]) in wanted]
 
     def _graph_failure(self):
         return {
@@ -270,7 +351,8 @@ class ToolRegistry:
         seen = {self._hit_key(row) for row in whole.get("results", [])}
         extra = []
         earlier = []  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
-        for part in sub_queries(query):
+        # Self-contained sub-questions written by the model when there is one, else the parts cut at joining words.
+        for part in context.get("aspects") or sub_queries(query):
             scope = (
                 self._anaphoric_source(
                     part,
@@ -441,7 +523,7 @@ class ToolRegistry:
                     nodes = {
                         n["node_id"]: n
                         for n in records(path / "nodes.jsonl")
-                        if n.get("check") in {"passed", "human_verified"}
+                        if n.get("check") == "passed"
                     }
                     seeds = [
                         n
@@ -456,7 +538,7 @@ class ToolRegistry:
                     edges = [
                         e
                         for e in records(path / "edges.jsonl")
-                        if e.get("check") in {"passed", "human_verified"}
+                        if e.get("check") == "passed"
                         and e["relation_type"] in {"HAS_CRITERION", "HAS_SUBCRITERION", "HAS_OPTION"}
                         and e["source_entity_id"] in nodes
                         and e["target_entity_id"] in nodes
@@ -807,6 +889,13 @@ class ToolRegistry:
                 "lookup_recognition": {"RecognitionRecord"},
             }
             nodes = [n for n in graph.nodes.values() if n["node_type"] in mapping[name]]
+            linked = self._linked_product_sheets(graph, slots, query) if name == "lookup_product_subgroup" else None
+            if linked:
+                nodes = linked
+            elif name == "lookup_product_subgroup" and not slots.get("product_name"):
+                # The question names no product set. Returning the first taxonomy nodes would answer every product
+                # with the same group; an ordinary miss lets the planner's text recovery search instead.
+                return {"results": [], "status": "no_results", "reason": "no_product_set_named"}
             asked_products = [
                 str(x)
                 for x in (slots.get("product_names") or [slots.get("product_name")])
@@ -815,29 +904,64 @@ class ToolRegistry:
             if name == "lookup_recognition" and asked_products:
                 product_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Product"]
                 products = set().union(*(_matching_entity_ids(product_nodes, asked) for asked in asked_products))
+                generic = False
                 if not products:
-                    # The named product is not in the recognition store: say so, never fall back to loosely related text.
-                    return {
-                        "results": [],
-                        "status": "entity_not_found",
-                        "entity": [str(x) for x in (slots.get("product_names") or [slots.get("product_name")]) if x],
-                    }
+                    # A name whose words all occur in the corpus is a kind of product ("mứt"), not an unknown product:
+                    # list the records whose product label carries those words, or none restricted when nothing does.
+                    # A name with a word the corpus never uses ("ST25" in a corpus without it) is reported as absent.
+                    known = self._corpus_words()
+                    lang = get_language()
+                    words = [w for asked in asked_products for w in lang.content_words(asked, accent_aware=True)]
+                    if all(w in known for w in words):
+                        generic = True
+                        products = {
+                            node["node_id"]
+                            for node in product_nodes
+                            if words and set(words) <= set(lang.content_words(node["label"], accent_aware=True))
+                        }
+                    else:
+                        return {
+                            "results": [],
+                            "status": "entity_not_found",
+                            "entity": [str(x) for x in (slots.get("product_names") or [slots.get("product_name")]) if x],
+                        }
                 record_ids = {
                     edge["source_entity_id"]
                     for edge in graph.edges
                     if edge["relation_type"] == "RECOGNIZES" and edge["target_entity_id"] in products
                 }
-                nodes = [n for n in nodes if n["node_id"] in record_ids]
+                if products and not generic and not record_ids and (slots.get("region") or slots.get("star_rating")):
+                    # The product exists in the graph but no recognition record points at it (a list row the graph did not
+                    # link): this is a gap in the structured data, not a verified "not recognised"; the text search answers.
+                    return {"results": [], "status": "no_results"}
+                if not (generic and not record_ids):
+                    nodes = [n for n in nodes if n["node_id"] in record_ids]
             asked_orgs = [str(slots["organization_name"])] if slots.get("organization_name") else []
             if name == "lookup_recognition" and asked_orgs:
                 organization_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Organization"]
                 orgs = set().union(*(_matching_entity_ids(organization_nodes, asked) for asked in asked_orgs))
                 if not orgs:
                     return {"results": [], "status": "entity_not_found", "entity": [str(slots["organization_name"])]}
+                # One owner can appear as several Organization nodes (full name and abbreviation) and one product as several
+                # Product nodes, while a record's DECLARED_BY edge reaches only one of them: a record also belongs to the
+                # owner of the product it recognizes, matched by label within the same document.
+                owned_products = {
+                    (graph.nodes[edge["source_entity_id"]]["source_id"], normalize(graph.nodes[edge["source_entity_id"]]["label"]))
+                    for edge in graph.edges
+                    if edge["relation_type"] == "OWNED_BY" and edge["target_entity_id"] in orgs
+                }
                 declared = {
                     edge["source_entity_id"]
                     for edge in graph.edges
-                    if edge["relation_type"] == "DECLARED_BY" and edge["target_entity_id"] in orgs
+                    if (edge["relation_type"] == "DECLARED_BY" and edge["target_entity_id"] in orgs)
+                    or (
+                        edge["relation_type"] == "RECOGNIZES"
+                        and (
+                            graph.nodes[edge["target_entity_id"]]["source_id"],
+                            normalize(graph.nodes[edge["target_entity_id"]]["label"]),
+                        )
+                        in owned_products
+                    )
                 }
                 nodes = [n for n in nodes if n["node_id"] in declared]
             scoped_units = None
@@ -887,8 +1011,8 @@ class ToolRegistry:
                 if name == "lookup_form"
                 else slots.get("product_name")
             )
-            if name == "lookup_recognition":
-                needle = None  # Keep all source cells of the matched record, including its owner.
+            if name == "lookup_recognition" or linked:
+                needle = None  # Keep all source cells of the matched record (owner included) or of the linked sheet.
             requested_criterion = slots.get("criterion_id") if name == "lookup_criterion" else None
             if document_code:
                 rows = [row for row in rows if row["source_id"] == resolved_source]
@@ -1161,7 +1285,7 @@ class ToolRegistry:
             checked_nodes = [
                 n
                 for n in records(graph_path / "nodes.jsonl")
-                if n.get("check") in {"passed", "human_verified"}
+                if n["node_id"] in source_graph.nodes
             ]
             if not seed:
                 seed = graph_seeds(
@@ -1170,10 +1294,10 @@ class ToolRegistry:
                     slots.get("product_name"),
                     source_filter,
                 )
-            if not seed and context.get("retrieved_evidence_ids"):
+            if context.get("retrieved_evidence_ids"):
                 source_ids = list(context["retrieved_evidence_ids"])
                 # Link BM25 evidence hits to graph node identities; no LLM alias guesses.
-                seed = list(
+                passage_seeds = list(
                     dict.fromkeys(
                         n["node_id"]
                         for uid in source_ids
@@ -1181,6 +1305,10 @@ class ToolRegistry:
                         if n.get("node_type") == "EvidenceUnit" and uid in n.get("evidence_unit_ids", [])
                     )
                 )[:6]
+                seed = list(dict.fromkeys([*seed, *passage_seeds]))
+            # The question names a star level or a score ("nâng lên 5 sao", "chấm được 92 điểm"): the graph hops start at
+            # that level too, whatever product the retrieved passages are about.
+            seed = list(dict.fromkeys([*seed, *self._star_level_seeds(checked_nodes, query, slots)]))
             semantic = (
                 "HAS_ARTICLE",
                 "HAS_CLAUSE",
@@ -1207,7 +1335,11 @@ class ToolRegistry:
                 "HAS_RECORD",
                 "DECLARED_BY",
                 "SUPPORTED_BY",
+                *sorted(LINK_RELATIONS),
             )
+            from ai_core.graph.ocop.semantics import SEMANTIC_ENDPOINTS, MODEL_ENDPOINTS
+
+            semantic = tuple(dict.fromkeys([*semantic, *SEMANTIC_ENDPOINTS, *MODEL_ENDPOINTS]))
             requested = []
             folded = normalize(query)
             language = get_language()
@@ -1216,56 +1348,114 @@ class ToolRegistry:
                     requested.append(predicate)
             if requested and slots.get("document_code"):
                 semantic = tuple(requested)
+            language = get_language()
+            asked_words = set(language.content_words(query, accent_aware=True))
+
+            def relevance(node: dict) -> float:
+                """Question words found in a node's label and quotes: a table row is about the products it names."""
+                text = " ".join([str(node.get("label") or ""), *(str(c.get("quote") or "") for c in node.get("citations", []))])
+                return float(len(asked_words & set(language.content_words(text, accent_aware=True))))
+
             graph = traverse(
                 graph_path,
                 list(seed),
                 hops=get_settings().agent.graph_hops,
                 relations=list(semantic),
-                verified_only=False,
                 limit=get_settings().agent.graph_node_limit,
                 direction="both",
                 allow_partial_debug=context.get("allow_partial_debug") is True,
+                semantic_first=True,
+                relevance=relevance,
+                entry_limit=get_settings().agent.graph_entry_nodes,
+                pagerank=get_settings().agent.graph_pagerank and not requested,
             )
             # Only checked assertions enter generation. Source text is linked as
             # provenance, never reintroduced wholesale as an accepted relation.
             by_node = {n["node_id"]: n for n in graph["nodes"]}
             facts = []
-            preferred = {"OWNED_BY": 0, "RECOGNIZES": 1, "DECLARED_BY": 2, "HAS_RECORD": 3}
+            # Links across units and documents are the point of a graph hop: they come before in-document structure.
+            preferred = {
+                "OWNED_BY": 0,
+                "RECOGNIZES": 1,
+                "DECLARED_BY": 2,
+                "HAS_RECORD": 3,
+                **{relation: -1 for relation in LINK_RELATIONS},
+            }
+            entered = {node_id for node_id in by_node if node_id in seed}
             ranked = sorted(
-                graph["edges"],
+                [e for e in graph["edges"] if e["relation_type"] not in {"SUPPORTED_BY", "IN_VERSION"}],
                 key=lambda e: (
                     e["relation_type"] == "SUPPORTED_BY",
-                    e["source_entity_id"] not in seed and e["target_entity_id"] not in seed,
+                    e["relation_type"] not in LINK_RELATIONS,
+                    -relevance(by_node[e["source_entity_id"]]) - relevance(by_node[e["target_entity_id"]]),
+                    e["source_entity_id"] not in entered and e["target_entity_id"] not in entered,
                     preferred.get(e["relation_type"], 4),
                     e["edge_id"],
                 ),
             )
+            hop_first = {}
             for edge in ranked:
+                hop = max(graph["node_hops"].get(edge["source_entity_id"], 0),
+                          graph["node_hops"].get(edge["target_entity_id"], 0))
+                hop_first.setdefault(hop, edge)
+            reserved = [hop_first[hop] for hop in sorted(hop_first)]
+            reserved_ids = {e["edge_id"] for e in reserved}
+            ranked = reserved + [e for e in ranked if e["edge_id"] not in reserved_ids]
+            per_relation: dict[str, int] = {}
+            shown_units: set[str] = set()
+            proof_by_unit: dict[str, dict] = {}
+            shown_facts: set[tuple] = set()
+            for edge in ranked:
+                # One kind of relation must not fill the context with the same row seen from many entities.
+                if per_relation.get(edge["relation_type"], 0) >= get_settings().agent.graph_facts_per_relation:
+                    continue
+                per_relation[edge["relation_type"]] = per_relation.get(edge["relation_type"], 0) + 1
                 source, target = by_node[edge["source_entity_id"]], by_node[edge["target_entity_id"]]
+                hop = max(graph["node_hops"].get(source["node_id"], 0),
+                          graph["node_hops"].get(target["node_id"], 0))
                 refs = edge["citations"]
+                for ref in refs:
+                    previous = proof_by_unit.get(ref["evidence_unit_id"])
+                    if previous is not None:
+                        previous["graph_hops"] = sorted(set(previous["graph_hops"]) | {hop})
+                proofs = [
+                    proof
+                    for proof in source_graph.evidence(
+                        refs,
+                        node_ids=[source["node_id"], target["node_id"]],
+                        edge_ids=[edge["edge_id"]],
+                        check=edge["check"],
+                        review_status=edge["review_status"],
+                    )
+                    if proof["evidence_unit_id"] not in shown_units
+                ]
+                statement = (edge["relation_type"], source["label"], target["label"])
+                if not proofs and statement in shown_facts:
+                    continue  # a fact already shown whose proof is already in the context
+                shown_facts.add(statement)
                 facts.append(
                     {
                         "chunk_id": "graph:" + edge["edge_id"],
-                        "evidence_unit_id": edge["evidence_unit_id"],
+                        "evidence_unit_id": edge.get("evidence_unit_id") or edge["evidence_unit_ids"][0],
                         "source_id": edge["source_id"],
                         "text": source["label"] + " [" + edge["relation_type"] + "] " + target["label"],
                         "source_spans": refs,
                         "review_status": "machine_extracted",
                         "validation": edge["validation"],
                         "graph_edge_id": edge["edge_id"],
+                        "graph_hop": hop,
                         "check": edge["check"],
                         "graph_node_ids": [source["node_id"], target["node_id"]],
                         "corpus_version": graph_manifest["source_knowledge_version"],
                     }
                 )
-                for proof in source_graph.evidence(
-                    refs,
-                    node_ids=[source["node_id"], target["node_id"]],
-                    edge_ids=[edge["edge_id"]],
-                    check=edge["check"],
-                    review_status=edge["review_status"],
-                ):
+                for proof in proofs:
                     proof["graph_edge_id"] = edge["edge_id"]
+                    proof["graph_relation"] = edge["relation_type"]
+                    proof["graph_hop"] = hop
+                    proof["graph_hops"] = [hop]
+                    proof_by_unit[proof["evidence_unit_id"]] = proof
+                    shown_units.add(proof["evidence_unit_id"])
                     facts.append(proof)
                 if len(facts) >= get_settings().agent.graph_max_facts:
                     break

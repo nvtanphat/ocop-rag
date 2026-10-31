@@ -58,7 +58,6 @@ def test_complete_dataset_builds_and_serves_source_bound_answers(tmp_path, monke
     built = run("tools/cli.py", "run", "--root", str(tmp_path), "--no-semantic-extract", "--build-only")
     assert built["pipeline"]["state"] == "ready"
     assert run("tools/cli.py", "status", "--root", str(tmp_path))["state"] == "ready"
-    assert "total" in run("tools/cli.py", "review", "stats", "--root", str(tmp_path))
 
     monkeypatch.setattr(ocop_routes, "ROOT", tmp_path)
     monkeypatch.setattr(ocop_routes, "DATA", tmp_path / "data/processed/ocop")

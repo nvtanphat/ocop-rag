@@ -395,6 +395,36 @@ def _with_following_chunks(
 
 
 @traced("ocop.retrieval.search")
+def _title_seeds(query: str, ordered: list[dict], allowed) -> list[str]:
+    """Passages whose own heading the question names ("hiệu lực thi hành"), best match first.
+
+    The heading's title is the text after its label number ("Điều 3." / "Phụ lục II"); a passage is seeded when enough of
+    the title's words appear in the question. Seeds are one more ranked list for fusion, never a final answer.
+    """
+    import re
+
+    from ai_core.orchestration.ocop.language import fold
+
+    settings = get_settings().retrieval
+    if settings.title_seed_max < 1:
+        return []
+    asked = set(re.findall(r"[a-z0-9]+", fold(query)))
+    scored = []
+    for chunk in ordered:
+        heading = (chunk.get("context") or {}).get("legal_heading")
+        if not heading or not allowed(chunk["chunk_id"]):
+            continue
+        match = re.match(r"^\D*?(?:\d+[a-z]?|[IVXLC]+)\b[.:)]?\s*(?P<title>\S.*)$", str(heading).strip())
+        words = set(re.findall(r"[a-z0-9]+", fold(match["title"]))) if match else set()
+        words = {w for w in words if not w.isdigit()}
+        if len(words) < 2:
+            continue
+        share = len(words & asked) / len(words)
+        if share >= settings.title_seed_min_share:
+            scored.append((-share, -len(words), chunk["chunk_id"]))
+    return [cid for _, _, cid in sorted(scored)[: settings.title_seed_max]]
+
+
 def search(
     index_dir: Path,
     query: str,
@@ -482,8 +512,13 @@ def search(
                     cid = ordered[pos]["chunk_id"]
                     sparse.append(cid)
                     sparse_scores[cid] = score
+    seeds = _title_seeds(query, ordered, allowed)
     if mode == "hybrid":
-        fused = rrf([sparse, dense], weights=[settings.rrf_weight_sparse, settings.rrf_weight_dense])
+        fused = rrf([sparse, dense, seeds],
+                    weights=[settings.rrf_weight_sparse, settings.rrf_weight_dense, settings.rrf_weight_title])
+    elif seeds:
+        first = sparse if mode == "sparse" else dense
+        fused = rrf([first, seeds], weights=[1.0, settings.rrf_weight_title])
     else:
         fused = dict(sparse_scores) if mode == "sparse" else dense_scores
     items = sorted(fused.items(), key=lambda x: (-x[1], x[0]))[:pool_size]
@@ -515,6 +550,10 @@ def search(
         if fallback_reason:
             results[-1]["retrieval_fallback_reason"] = fallback_reason
         results[-1].update(dense_meta)
+    if rerank and results and settings.rerank_skip_on_agreement and sparse and dense and sparse[0] == dense[0]:
+        for row in results:
+            row["ranking_reason"] = "deterministic_" + mode + "_order; reranker_skipped_first_stage_agrees"
+        rerank = False
     if rerank and results:
         try:
             first_stage = [row["chunk_id"] for row in results[:rerank_candidates]]

@@ -1,7 +1,7 @@
-"""Claim-level grounding evaluation over questions whose evidence a human has reviewed.
+"""Claim-level grounding evaluation over questions whose evidence comes from reviewed OCR text.
 
-A question is eligible when every page it targets has at least one EvidenceUnit node with
-``check: human_verified`` in the current graph (the ledger written by the review CLI). The evaluation never
+A question is eligible when every page it targets has at least one EvidenceUnit node that passed the source
+checks and carries reviewed OCR text (``review_status: verified``) in the current graph. The evaluation never
 marks anything verified and never relaxes a gate: it reports, per question, what the unchanged gates
 published, what they dropped and why.
 """
@@ -17,14 +17,15 @@ PARTIAL = "partial_claims_verified"
 
 
 def reviewed_pages(root: Path) -> dict[str, set[int]]:
-    """source_id -> pages that carry at least one human_verified EvidenceUnit node."""
+    """source_id -> pages that carry at least one checked EvidenceUnit node with reviewed OCR text."""
     from ai_core.graph.ocop.builder import records
 
     graph = Path(root) / "data/processed/ocop/graph"
     manifest = json.loads((graph / "manifest.json").read_text(encoding="utf-8"))
     pages: dict[str, set[int]] = {}
     for node in records(graph / "snapshots" / manifest["graph_version"] / "nodes.jsonl"):
-        if node.get("node_type") == "EvidenceUnit" and node.get("check") == "human_verified":
+        if (node.get("node_type") == "EvidenceUnit" and node.get("check") == "passed"
+                and node.get("review_status") == "verified"):
             for ref in node.get("citations", []):
                 if isinstance(ref.get("pdf_page"), int):
                     pages.setdefault(node["source_id"], set()).add(ref["pdf_page"])

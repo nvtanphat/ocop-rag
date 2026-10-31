@@ -192,9 +192,9 @@ def test_valid_business_relation_is_preserved_and_provenance_verified(tmp_path):
     out = tmp_path / "out"
     build_graph(k, out)
     result = traverse(
-        out, ["decision"], hops=1, relations=["HAS_RECORD"], verified_only=True, direction="out"
+        out, ["decision"], hops=1, relations=["HAS_RECORD"], direction="out"
     )
-    assert result["nodes"] == []  # Input status is not a ledger decision.
+    assert result["edges"] == []  # The unchecked link is never traversed.
     raw = [json.loads(line) for line in (out / "edges.jsonl").read_text(encoding="utf-8").splitlines()]
     record = next(e for e in raw if e["relation_type"] == "HAS_RECORD")
     assert record["check"] == "failed" and record["evidence_unit_id"] == "u1"
@@ -385,19 +385,35 @@ def test_graph_tool_fails_closed_on_tampering(tmp_path):
 
 
 class FakeCursor:
+    def __init__(self, count=0):
+        self.count = count
+
     def consume(self):
         return None
+
+    def single(self):
+        return {"count": self.count}
 
 
 class FakeTx:
     def __init__(self, fail_on_edge=False):
         self.calls = []
         self.fail_on_edge = fail_on_edge
+        self.node_ids = set()
+        self.edge_ids = set()
 
     def run(self, query, **params):
-        if self.fail_on_edge and "MERGE (a)-[r:" in query:
+        if self.fail_on_edge and "MERGE (n:OcopNode" in query:
             raise RuntimeError("simulated remote writer failure")
         self.calls.append((query, params))
+        if "MERGE (n:OcopNode" in query:
+            self.node_ids.update(row["node_id"] for row in params["rows"])
+        if "MERGE (a)-[r:" in query:
+            self.edge_ids.update(row["edge_id"] for row in params["rows"])
+        if "count(n) AS count" in query:
+            return FakeCursor(len(self.node_ids))
+        if "count(r) AS count" in query:
+            return FakeCursor(len(self.edge_ids))
         return FakeCursor()
 
 
@@ -417,9 +433,9 @@ class FakeSession:
         self.setup.append(query)
         return FakeCursor()
 
-    def execute_write(self, callback):
+    def execute_write(self, callback, *args):
         self.executed += 1
-        return callback(self.tx)
+        return callback(self.tx, *args)
 
 
 class FakeDriver:
@@ -442,7 +458,7 @@ def fake_backend(monkeypatch, *, fail_on_edge=False):
     return session, driver
 
 
-def test_neo4j_publication_is_one_snapshot_transaction(monkeypatch, tmp_path):
+def test_neo4j_publication_uses_bounded_batches_and_activates_snapshot_last(monkeypatch, tmp_path):
     k = make_knowledge(tmp_path)
     g = tmp_path / "graph"
     dump(
@@ -455,10 +471,11 @@ def test_neo4j_publication_is_one_snapshot_transaction(monkeypatch, tmp_path):
     outcome = publish_neo4j(g, password="unused", batch_size=1)
     assert outcome["graph_version"] == manifest["graph_version"]
     assert outcome["snapshot_id"].endswith(":checked")
-    assert session.executed == 1 and driver.closed
+    assert session.executed == outcome["node_count"] + outcome["edge_count"] + 1 and driver.closed
     txcalls = session.tx.calls
-    assert any("MERGE (a)-[r:LOCATED_IN" in q for q, _ in txcalls)
-    assert not any("MERGE (a)-[r:HAS_RECORD" in q for q, _ in txcalls)
+    # Neo4j holds the role view: role labels and relation types, never the stored types.
+    assert any(q.endswith(", n:Document") for q, _ in txcalls)
+    assert not any("MERGE (a)-[r:LOCATED_IN" in q or "MERGE (a)-[r:HAS_RECORD" in q for q, _ in txcalls)
     assert all("snapshot_id:$snapshot_id" in q for q, _ in txcalls[:-1])
     assert "OcopGraphActive" in txcalls[-1][0]  # active pointer updated LAST
     assert all(v["snapshot_id"] == outcome["snapshot_id"] for _, v in txcalls)
@@ -476,7 +493,19 @@ def test_neo4j_publication_failure_does_not_switch_active(monkeypatch, tmp_path)
     session, driver = fake_backend(monkeypatch, fail_on_edge=True)
     with pytest.raises(RuntimeError, match="simulated remote writer failure"):
         publish_neo4j(g, password="unused")
-    assert session.executed == 1 and driver.closed
+    assert session.executed >= 1 and driver.closed
+    assert all("OcopGraphActive" not in q for q, _ in session.tx.calls)
+
+
+def test_neo4j_count_mismatch_does_not_activate_a_partial_or_extra_snapshot(monkeypatch, tmp_path):
+    k = make_knowledge(tmp_path)
+    g = tmp_path / "graph"
+    build_graph(k, g)
+    session, driver = fake_backend(monkeypatch)
+    session.tx.node_ids.add("unexpected")
+    with pytest.raises(RuntimeError, match="staged snapshot counts differ"):
+        publish_neo4j(g, password="unused", batch_size=1)
+    assert driver.closed
     assert all("OcopGraphActive" not in q for q, _ in session.tx.calls)
 
 def test_publishing_the_reviewed_graph_records_the_upload_in_the_manifest(monkeypatch, tmp_path):

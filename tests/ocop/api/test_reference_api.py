@@ -138,7 +138,7 @@ def test_unit_that_does_not_cover_the_cited_page_cannot_publish_a_reference(refe
     assert client.get("/api/ocop/criteria").json()["items"] == []
 
 
-def _graph_node(node_id, node_type, label, citation, *, check="human_verified", status="verified"):
+def _graph_node(node_id, node_type, label, citation, *, check="passed", status="verified"):
     return {
         "node_id": node_id,
         "node_type": node_type,

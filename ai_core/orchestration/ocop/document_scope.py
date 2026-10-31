@@ -83,6 +83,31 @@ class DocumentResolver:
             found.append(source)
         return found
 
+    def years_of(self, code: str | None) -> set[str]:
+        """Years written in the registry identity of the one document a code resolves to (none when ambiguous)."""
+        found = self.candidates(str(code)) if code else []
+        if len({source["source_id"] for source in found}) != 1:
+            return set()
+        source = found[0]
+        return set(re.findall(r"(?<!\d)(20\d{2})(?!\d)", f"{source.get('document_number') or ''} {source['source_id']}"))
+
+    def ocop_rules_of_year(self, year: str, kinds: list[str] | None = None) -> str | None:
+        """Number of the one national OCOP rule document of a year: "quy trình năm 2023" is the 2023 decision.
+
+        Rule documents are the registry's ``ocop_*`` kinds (framework, its amendments, the superseded framework);
+        local recognition lists and guidance carry their own kinds and are never chosen by a year alone. A document
+        type the question names ("Luật ... 2023") must be the type of the document found.
+        """
+        found = [
+            source
+            for source in self._sources()
+            if str(source.get("source_kind") or "").startswith("ocop_")
+            and all(self._matches_kind(source, kind) for kind in kinds or [])
+            and str(year)
+            in re.findall(r"(?<!\d)(20\d{2})(?!\d)", f"{source.get('document_number') or ''} {source['source_id']}")
+        ]
+        return (found[0].get("document_number") or found[0]["source_id"]) if len(found) == 1 else None
+
     def resolve(self, code: str | None):
         if not code:
             return None

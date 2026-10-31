@@ -100,7 +100,6 @@ def test_graph_build_and_repeat(tmp_path):
     graph = traverse(out, ["doc"], hops=2)
     assert any(n["node_id"] == "paragraph" for n in graph["nodes"])
     assert all(e["check"] == "passed" for e in graph["edges"])
-    assert not traverse(out, ["doc"], verified_only=True)["nodes"]
     assert validate_edge("AMENDS", "SourceDocument", "SourceDocument").ok
     assert not validate_edge("ARBITRARY", "SourceDocument", "SourceDocument").ok
     with pytest.raises(ValueError):

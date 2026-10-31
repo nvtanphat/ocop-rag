@@ -23,6 +23,9 @@ class ContextSettings(BaseModel):
     min_term_coverage: float = Field(0.25, ge=0, le=1)
     max_source_blocks: int = Field(12, ge=1)
     max_table_siblings: int = Field(3, ge=0)
+    max_link_blocks: int = Field(3, ge=0)
+    max_enrichment_blocks: int = Field(3, ge=0)
+    max_blocks_per_document: int = Field(3, ge=1)
     grounding_min_term_coverage: float = Field(0.8, ge=0, le=1)
     min_quote_chars: int = Field(15, ge=5)  # a quote shorter than this proves nothing about the claim it backs
     max_quote_parts: int = Field(4, ge=1, le=8)  # lines of one quote: one passage per cited source of a comparison
@@ -35,10 +38,17 @@ class RetrievalSettings(BaseModel):
     rrf_k: int = Field(60, ge=1)
     rrf_weight_sparse: float = Field(1.0, gt=0)
     rrf_weight_dense: float = Field(1.0, gt=0)
+    rrf_weight_title: float = Field(1.0, gt=0)
+    rrf_tool_weights: dict[str, float] = Field(default_factory=dict)
+    title_seed_min_share: float = Field(0.5, gt=0, le=1)
+    title_seed_max: int = Field(3, ge=0)
     rerank_candidates: int = Field(12, ge=1, le=200)
     # Weight of the first-stage rank when the cross-encoder's order is merged with it (reciprocal-rank fusion); 0 = the
     # cross-encoder alone decides the order of the candidates it re-scored.
     rerank_first_stage_weight: float = Field(0.0, ge=0)
+    # The cross-encoder is skipped when sparse and dense retrieval put the same chunk first and no other candidate is
+    # ranked near the top of both: it re-scores what the first stage already agrees on, at ~0.7 s per candidate on CPU.
+    rerank_skip_on_agreement: bool = False
     rerank_batch_size: int = Field(4, ge=1)
     rerank_threads: int = Field(6, ge=1)
     tensor_reader_backend: Literal["auto", "mmap", "pread"] = "auto"
@@ -49,8 +59,11 @@ class RetrievalSettings(BaseModel):
 
 class AgentSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    graph_definition_max_words: int = Field(12, ge=1)
     max_tool_calls: int = Field(5, ge=1, le=8)
     lookup_max_rows: int = Field(15, ge=1)
+    compound_pair_min_share: float = Field(0.01, ge=0, le=1)
+    link_word_max_share: float = Field(0.05, ge=0, le=1)
     grader_min_relevance: float = Field(0.13, ge=0, le=1)
     scope_min_bigram_coverage: float = Field(0.60, ge=0, le=1)
     part_min_coverage: float = Field(0.34, ge=0, le=1)  # share of a question part's words one evidence row must hold
@@ -61,6 +74,14 @@ class AgentSettings(BaseModel):
     graph_hops: int = Field(2, ge=1, le=4)
     graph_node_limit: int = Field(75, ge=1)
     graph_max_facts: int = Field(32, ge=1)
+    graph_entry_nodes: int = Field(8, ge=1)
+    graph_document_seed_nodes: int = Field(1, ge=0)
+    graph_pagerank: bool = True
+    graph_pagerank_damping: float = Field(0.85, gt=0, lt=1)
+    graph_pagerank_iterations: int = Field(30, ge=1, le=200)
+    graph_pagerank_tolerance: float = Field(0.000001, gt=0)
+    graph_secondary: bool = True
+    graph_facts_per_relation: int = Field(5, ge=1)
     memory_evidence_reuse: bool = True  # follow-ups re-read evidence the conversation already cited
 
 

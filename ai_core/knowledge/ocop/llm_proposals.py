@@ -94,6 +94,8 @@ _STATE_AGENCY = re.compile(
 )
 _GENERIC_LABEL = re.compile(r"^\s*(?:các|những|mọi)\s", re.I)
 RULE_KINDS = ("obligation", "prohibition", "permission", "exemption", "scoring", "temporal")
+# Norm frame of a rule: each value is a verbatim span of the rule sentence, empty when the sentence does not say it.
+FRAME_FIELDS = ("actor", "action", "object", "condition", "exception", "time")
 
 
 # Group/subgroup hierarchy comes from sheet headings (deterministic); prose lists mislead the LLM.
@@ -157,7 +159,11 @@ def response_schema() -> dict:
             "rules": {
                 "type": "array",
                 "items": obj(
-                    {"kind": {"type": "string", "enum": list(RULE_KINDS)}, "anchor": {"type": "string"}}
+                    {
+                        "kind": {"type": "string", "enum": list(RULE_KINDS)},
+                        "anchor": {"type": "string"},
+                        **{name: {"type": "string"} for name in FRAME_FIELDS},
+                    }
                 ),
             },
         }
@@ -167,7 +173,8 @@ def response_schema() -> dict:
 _EXAMPLE_INPUT = (
     "2.1. Bao bì sản phẩm\n- Bao bì đẹp, có nhãn đúng quy định\n"
     "Hồ sơ gồm: Phiếu kiểm nghiệm do đơn vị được công nhận cấp\n"
-    "Sản phẩm: Mật ong hoa nhãn, đóng chai thủy tinh, chủ thể: HTX Ong Mật Bình Minh"
+    "Sản phẩm: Mật ong hoa nhãn, đóng chai thủy tinh, chủ thể: HTX Ong Mật Bình Minh\n"
+    "Chủ thể phải nộp hồ sơ cho Ủy ban nhân dân cấp xã trong thời hạn 15 ngày, trừ trường hợp được miễn."
 )
 _EXAMPLE_OUTPUT = {
     "entities": [
@@ -188,7 +195,18 @@ _EXAMPLE_OUTPUT = {
         {"type": "REQUIRES_EVIDENCE", "source": 0, "target": 1},
         {"type": "OWNED_BY", "source": 2, "target": 3},
     ],
-    "rules": [],
+    "rules": [
+        {
+            "kind": "obligation",
+            "anchor": "Chủ thể phải nộp hồ sơ cho Ủy ban nhân dân cấp xã trong thời hạn 15 ngày, trừ trường hợp được miễn.",
+            "actor": "Chủ thể",
+            "action": "nộp hồ sơ",
+            "object": "Ủy ban nhân dân cấp xã",
+            "condition": "",
+            "exception": "trừ trường hợp được miễn",
+            "time": "trong thời hạn 15 ngày",
+        }
+    ],
 }
 for _entity in _EXAMPLE_OUTPUT["entities"]:
     _entity["attributes"] = [{"key": k, "value": v} for k, v in _entity.get("attributes", {}).items()]
@@ -215,7 +233,11 @@ def _system_prompt() -> str:
         '"target": index of the target entity}; only when the source text directly states it. '
         "Do not copy text into relations.\n"
         f"Allowed relation types (source kind -> target kind): {triples}.\n"
-        f'Rule: {{"kind": one of {"|".join(RULE_KINDS)}, "anchor": VERBATIM rule sentence}}.\n'
+        f'Rule: {{"kind": one of {"|".join(RULE_KINDS)}, "anchor": VERBATIM rule sentence, '
+        '"actor": who must/may/must not act, "action": what they do, "object": what or whom it is about, '
+        '"condition": when or if it applies, "exception": what is excluded, "time": deadline or period}. '
+        "Each frame value is a VERBATIM span of the anchor, or an empty string when the sentence does not "
+        "state it.\n"
         "Never output point scores, star levels, legal dates, producers or evidence types that are not "
         "written in the source. List items in order of appearance. Output only JSON.\n"
         f"Example input:\n{_EXAMPLE_INPUT}\nExample output:\n{json.dumps(_EXAMPLE_OUTPUT, ensure_ascii=False)}"
@@ -743,8 +765,14 @@ def propose(
                 stats["dropped_rules"] += 1
                 continue
             rid = stable_id("llm_rule", sid, [uid, kind, norm_label(ev.quote)], revision="business")
+            frame = {}
+            for name in FRAME_FIELDS:
+                value = obj.get(name)
+                hits = _align(ev.quote, value, min_len=2) if isinstance(value, str) and value.strip() else []
+                if hits:
+                    frame[name] = ev.quote[hits[0][0] : hits[0][1]]
             rules[rid] = BusinessRule(
-                rule_id=rid, source_id=sid, kind=kind, statement=ev.quote, evidence=[ev]
+                rule_id=rid, source_id=sid, kind=kind, statement=ev.quote, evidence=[ev], frame=frame
             )
     validate_business_graph(list(ent.values()), list(rel.values()))
     chunk_counts = Counter(u["unit_id"] for u, _, _ in jobs)

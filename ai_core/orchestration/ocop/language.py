@@ -145,9 +145,27 @@ class Language(BaseModel):
     def stop(self) -> frozenset[str]:
         return frozenset(fold(w) for w in [*self.stopwords, *self.instruction_words])
 
-    def content_words(self, text: str) -> list[str]:
-        stop = self.stop
-        return [w for w in re.findall(r"[a-z0-9]+", fold(text)) if len(w) > 1 and w not in stop]
+    @property
+    def stop_accented(self) -> frozenset[str]:
+        return frozenset(
+            unicodedata.normalize("NFC", w).casefold() for w in [*self.stopwords, *self.instruction_words]
+        )
+
+    def content_words(self, text: str, *, accent_aware: bool = False) -> list[str]:
+        """Folded content words. With ``accent_aware`` a word typed with accents is a stop word only in its accented
+        form ("cả" is, "cá" is not), and a word typed without accents is a stop word only when the list spells it so.
+        Used to tell table rows apart by their names, where folding "cá"/"cả" or "thu"/"thứ" would erase the name."""
+        stop, exact = self.stop, self.stop_accented
+        if not accent_aware:
+            return [w for w in re.findall(r"[a-z0-9]+", fold(text)) if len(w) > 1 and w not in stop]
+        words = []
+        for token in re.findall(r"\w+", unicodedata.normalize("NFC", text).casefold()):
+            folded = fold(token)
+            if len(folded) > 1 and re.fullmatch(r"[a-z0-9]+", folded):
+                if token in exact:
+                    continue
+                words.append(folded)
+        return words
 
 
 def _find(root: Path | None) -> Path:

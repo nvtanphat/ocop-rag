@@ -180,6 +180,8 @@ def _product_from_marker(query: str, folded: str, p: _Patterns) -> str | None:
     key = fold(raw)
     if not raw or p.non_entity.match(key) or re.match(r"^(?:20\d{2}|\d+)\b", key) or len(raw.split()) > 9:
         return None
+    if not get_language().content_words(raw, accent_aware=True):
+        return None  # only function words ("sản phẩm phải được ...") name nothing
     return raw
 
 
@@ -219,6 +221,27 @@ def _document_by_title_year(
     return None
 
 
+def _years_naming_a_document(lang: Language, text: str, folded: str) -> list[str]:
+    """Years that can name a document: a year the question scopes to an event or an assessment ("công nhận năm
+    2025") dates that event, not a decision of that year."""
+    scoped = {
+        m.group(1)
+        for key in ("event_year_scope", "assessment_year_scope")
+        for m in re.finditer(r"(?:" + _alt(lang.cues[key]) + r").{0,90}?\bnam\s+(20\d{2})\b", folded)
+    }
+    return [year for year in YEAR.findall(text) if year not in scoped - _version_years(lang, folded)]
+
+
+def _version_years(lang: Language, folded: str) -> set[str]:
+    """Years written right after a name of the rules' version: "theo quy trình năm 2023", "bộ quy định 2026"."""
+    return {
+        m.group(1)
+        for m in re.finditer(
+            r"(?<![a-z])(?:" + _alt(lang.cues["version_reference"]) + r")(?:\s+ocop)?\s+(?:nam\s+)?(20\d{2})\b", folded
+        )
+    }
+
+
 def extract_slots(
     query: str, *, catalog: EntityCatalog | None = None, language: Language | None = None
 ) -> dict:
@@ -234,7 +257,7 @@ def extract_slots(
     elif m := p.bare_number.search(folded):
         slots["document_code"] = text[m.start() : m.end()]
     elif catalog is not None and (
-        code := _document_by_title_year(lang, p, catalog, folded, years_found=YEAR.findall(text))
+        code := _document_by_title_year(lang, p, catalog, folded, years_found=_years_naming_a_document(lang, text, folded))
     ):
         slots["document_code"] = code
     # Several documents named in one question (a comparison): every one is searched, none is dropped.
@@ -350,16 +373,54 @@ def extract_slots(
     assessment = re.search(
         r"(?:" + _alt(lang.cues["assessment_year_scope"]) + r").{0,90}?\bnam\s+(20\d{2})\b", folded
     )
-    if event:
+    versions = _version_years(lang, folded)
+    if event and event.group(1) not in versions:
         slots["recognition_year"] = int(event.group(1))
-    if assessment:
+    if assessment and assessment.group(1) not in versions:
         slots["assessment_year"] = int(assessment.group(1))
-    if only_year_in_code:
+    if only_year_in_code and years[0] not in versions:
         if lang.hit(text, "assessment_year_marker"):
             slots["assessment_year"] = int(years[0])
         if lang.hit(text, "recognition_year_marker"):
             slots["recognition_year"] = int(years[0])
     return slots
+
+
+def _scope_years_to_rule_versions(route: Route, query: str, language: Language | None = None) -> Route:
+    """A year with no document named mostly names the version of the OCOP rules ("quy trình năm 2023", "bộ quy định
+    2026"): the routed question is scoped to that year's rule document.
+
+    It runs on the final route, after scope and follow-up decisions, so a derived document never makes a question
+    in-domain nor reads as a document the user pinned. The year is an event year instead when the question dates a
+    recognition or an assessment, or asks about a locality, whose documents are local decisions.
+    """
+    slots = route.slots
+    lang = language or get_language()
+    text = _nfc(query)
+    if (
+        route.needs_clarification
+        or route.intent in (Intent.CLARIFY, Intent.OUT_OF_SCOPE, Intent.CONVERSATION)
+        or not slots.get("years")
+        or slots.get("document_code")
+        or slots.get("region")
+        or slots.get("recognition_year")
+        or slots.get("assessment_year")
+        or lang.hit(text, "recognition")
+    ):
+        return route
+    folded = fold(text)
+    kinds = [kind for kind, rx in _patterns(lang).type_words.items() if rx.search(folded)]
+    years = [y for y in _years_naming_a_document(lang, text, folded) if y in slots["years"]] or slots["years"]
+    resolver = DocumentResolver(language=lang)
+    codes = [resolver.ocop_rules_of_year(year, kinds) for year in years]
+    if not codes or not all(codes):
+        return route
+    codes = list(dict.fromkeys(codes))
+    slots["document_code"] = codes[0]
+    slots["document_from_year"] = True
+    if len(codes) > 1:
+        slots["document_codes"] = codes
+    return route
 
 
 def _merge_followup(prior: dict, updates: dict) -> dict:
@@ -382,11 +443,22 @@ def _merge_followup(prior: dict, updates: dict) -> dict:
             and all(isinstance(x, str) and len(x) <= (128 if key == "product_names" else 12) for x in value)
         )
     }
+    if raw.get("document_from_year"):
+        # The document was read off the previous turn's year, not named: the new turn's year decides it again.
+        slots = {key: value for key, value in slots.items() if key not in ("document_code", "document_codes")}
     new_doc = updates.get("document_code")
     if new_doc and fold(str(new_doc)) != fold(str(slots.get("document_code") or "")):
         slots = {
             key: value for key, value in slots.items() if key not in TARGET_KEYS
         }  # another document: its Điều/Mẫu/Phiếu are not the old one's
+    new_region = updates.get("region")
+    if new_region and not new_doc and fold(str(new_region)) != fold(str(slots.get("region") or "")):
+        # A decision belongs to one locality: asking the same thing "for Hải Phòng" does not stay on Huế's decision.
+        slots = {
+            key: value
+            for key, value in slots.items()
+            if key not in {"document_code", "article_id", "form_id", "sheet_number", "pdf_page"}
+        }
     if (
         set(updates) & TARGET_KEYS
     ):  # a new thing asked about replaces the old one ("Còn mẫu số 02?" is no longer Điều 6)
@@ -426,8 +498,10 @@ class Facets:
             )
         )
         stars = bool(slots.get("star_rating"))
+        # "sản phẩm bên mình đã được 3 sao": the asker states their own unnamed product's level; no record names it.
+        own = h("own_subject") and not (slots.get("product_name") or slots.get("organization_name"))
         self.normative_star = stars and h("normative_star") and not h("recognition_listing_negative")
-        self.rating_assertion = stars and h("rating_assertion")
+        self.rating_assertion = stars and h("rating_assertion") and not own
         # A star level together with a named place, producer or product asks about recorded recognitions even when
         # the question never says "công nhận"; a rule about reaching that level (normative) or a deadline does not.
         star_record = (
@@ -437,7 +511,7 @@ class Facets:
             and not self.procedure
             and not h("deadline")
         )
-        self.recognition = not self.authority and (h("recognition") or star_record)
+        self.recognition = not self.authority and not own and (h("recognition") or star_record)
         self.criteria = (
             h("criteria")
             or self.normative_star
@@ -528,10 +602,11 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
     primary: list[str] = []
     secondary: list[str] = []
     located = Capability.EXACT_ARTICLE in explicit
+    # A pinned document names where to read, not which criterion: with a star level asked and no criterion, sheet or
+    # product ("theo QĐ 148, hạng 4 sao bao nhiêu điểm") the answer is the document's rating-class text, not sheet rows.
     criterion_scope = any(
-        slots.get(k)
-        for k in ("criterion_id", "product_name", "product_group", "document_code", "sheet_number")
-    )
+        slots.get(k) for k in ("criterion_id", "product_name", "product_group", "sheet_number")
+    ) or bool(slots.get("document_code") and not slots.get("star_rating"))
     for cap in caps:
         tools = list(CAPABILITY_TO_TOOLS[cap])
         target = primary
@@ -565,6 +640,26 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
         secondary.append(
             "search_regulations"
         )  # the decision's own articles explain a list of recognised products
+    if (
+        explicit & {Capability.CRITERIA, Capability.OVERVIEW}
+        and not located
+        and "lookup_product_subgroup" not in primary
+        and len(primary) + len(secondary) < MAX_TOOL_CALLS
+    ):
+        # Criteria are kept per product set: a product named in passing ("mình làm nước mắm") is linked to its set,
+        # which answers nothing when no set is named.
+        secondary.append("lookup_product_subgroup")
+    if (
+        get_settings().agent.graph_secondary
+        and not located
+        and (len(caps) > 1 or explicit & {Capability.RECOGNITION, Capability.TEMPORAL, Capability.SECTOR_COMPLIANCE})
+        and "search_graph" not in primary + secondary
+        and len(primary) + len(secondary) < MAX_TOOL_CALLS
+    ):
+        # What one passage points at lies in another document or unit (the framework that classifies a recognised
+        # product, the provision an amendment changes, the body that grants a star level): the graph hops from the
+        # evidence found by the other tools, as an enrichment that never blocks the answer.
+        secondary.append("search_graph")
     if explicit == {Capability.EXACT_ARTICLE} and not facets.authority:
         primary = ["lookup_legal_unit"]
     if facets.authority:
@@ -1031,7 +1126,7 @@ def route_query(
         resumed = _route_business(pending_query + " " + task, **options)
         resumed.reason_codes.append("clarification_resumed")
         resumed.dialogue = decision.model_copy(update={"action": "resume"})
-        return resumed
+        return _scope_years_to_rule_versions(resumed, pending_query + " " + task, language)
     business_query = task or query
     if "correction" in decision.acts and prior.get("last_query"):
         business_query = (language or get_language()).followup.openers[0] + " " + business_query
@@ -1054,7 +1149,7 @@ def route_query(
                 reason_codes=["dialogue_structured_abstention_fallback"],
             )
     choice.dialogue = decision
-    return choice
+    return _scope_years_to_rule_versions(choice, business_query, language)
 
 
 def _repair_route(decision, prior: dict, options: dict) -> Route:

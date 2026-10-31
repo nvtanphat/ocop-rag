@@ -5,8 +5,7 @@ Việc gắn chặt mã nguồn với một thư viện nội bộ hoặc nhúng
 
 ## Quyết định
 * Tách biệt hoàn toàn tầng điều phối LLM thông qua giao diện API đồng nhất (`ai_core/orchestration/ocop/llm.py`):
-  * **Cục bộ (mặc định)**: Kết nối tới Ollama API (`http://127.0.0.1:11434`) với mô hình `qwen3.5:2b`.
-  * **API tương thích OpenAI**: Cho phép cấu hình qua `OCOP_ANSWER_OPENAI_BASE_URL` và `OCOP_EXTRACT_OPENAI_BASE_URL`.
+  * **API tương thích OpenAI (duy nhất)**: Mô hình mặc định `gpt-6-sol`. Cấu hình cấu hình qua `OCOP_ANSWER_OPENAI_BASE_URL` và `OCOP_EXTRACT_OPENAI_BASE_URL`.
 * Khi LLM không sẵn sàng hoặc gặp lỗi kết nối, hệ thống trả bằng chứng với `model_unavailable_retrieval_only`. CLI mặc định không sinh bằng LLM; cờ `--with-llm` bật sinh câu trả lời.
 
 ## Hệ quả

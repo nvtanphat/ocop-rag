@@ -44,7 +44,7 @@ python tools/evaluate_reviewed_claims.py --help
 | Gọi công cụ bị cấm | 0 |
 | Hồi quy so với baseline | `recall_at_10`, `tool_recall`, `publish_rate` không giảm quá 0,03 |
 
-Đánh giá claim chỉ chạy trên câu hỏi có EvidenceUnit đã được người duyệt và cần LLM thật.
+Đánh giá claim chỉ chạy trên câu hỏi có EvidenceUnit lấy từ chữ OCR đã duyệt và cần LLM thật.
 
 ## Đọc kết quả
 
@@ -56,4 +56,4 @@ python tools/evaluate_reviewed_claims.py --help
 
 Marker hoặc đúng trang chưa chứng minh entailment. Claim về điểm/sao cần kiểm số và nguồn verified; nội dung từ nguồn chưa duyệt phải giữ nhãn phù hợp. Không báo một ca bị chặn hoặc không có dữ liệu là PASS chất lượng trả lời.
 
-Đánh giá claim verified chỉ nhận câu có EvidenceUnit đã duyệt; không có nguồn đủ điều kiện thì công cụ báo thiếu điều kiện. Quy trình duyệt nằm trong [RUNBOOK](RUNBOOK.md). Evaluation gate kiểm phiên bản corpus và kết quả; không dùng kết quả của commit/corpus cũ làm bằng chứng phát hành hiện tại.
+Đánh giá claim verified chỉ nhận câu có EvidenceUnit từ chữ OCR đã duyệt; không có nguồn đủ điều kiện thì công cụ báo thiếu điều kiện. Cách sửa chữ OCR nằm trong [RUNBOOK](RUNBOOK.md). Evaluation gate kiểm phiên bản corpus và kết quả; không dùng kết quả của commit/corpus cũ làm bằng chứng phát hành hiện tại.

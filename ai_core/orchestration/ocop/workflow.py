@@ -14,16 +14,17 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
-from ai_core.orchestration.ocop import memory, scope_model, semantic_route
+from ai_core.orchestration.ocop import aspects, memory, scope_model, semantic_route
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
+from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
 from ai_core.system.telemetry import traced
 from ai_core.system.checkpoints import SQLiteCheckpoint, thread_key, should_checkpoint
 from ai_core.orchestration.ocop.evidence_grader import grade_evidence, bounded_rewrite, tokens as grade_tokens
-from ai_core.orchestration.ocop.llm import OllamaClient
+from ai_core.orchestration.ocop.llm import OpenAICompatClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.orchestration.ocop.catalog import load_catalog
@@ -32,6 +33,8 @@ from ai_core.orchestration.ocop.privacy import redact
 
 
 MEMORY_ROWS = 3  # remembered evidence rows added to a follow-up turn at most
+# Record lookups that found nothing in scope: in a compound question they leave only their own part unanswered.
+PART_SCOPED_STATUSES = frozenset({"recognition_scope_unverified", "entity_not_found"})
 
 
 class OcopState(TypedDict, total=False):
@@ -67,7 +70,7 @@ class OcopAgent:
         self,
         root: Path,
         *,
-        llm: OllamaClient | None = None,
+        llm: OpenAICompatClient | None = None,
         retrieval_mode: str = "sparse",
         rerank: bool = False,
         allow_partial_debug: bool = False,
@@ -205,6 +208,14 @@ class OcopAgent:
             "allow_partial_debug": self.allow_partial_debug,
             "business_intent": Route.model_validate(state["route"]).intent.value,
         }
+        # A compound question is restated as self-contained sub-questions once per question (model, validated).
+        query = state.get("effective_query", state["query"])
+        if self.llm is not None and self._compound(query, Route.model_validate(state["route"])):
+            cache = self.__dict__.setdefault("_aspect_cache", {})
+            if query not in cache:
+                cache[query] = aspects.propose(self.llm, query)
+            if cache[query]:
+                context["aspects"] = cache[query]
         if slots.get("as_of_date"):
             context["as_of_date"] = slots["as_of_date"]
         elif isinstance(provided.get("as_of_date"), str) and re.fullmatch(
@@ -327,7 +338,15 @@ class OcopAgent:
                 break
             if task.optional:
                 primary = [entry for entry in results if not entry.get("optional")]
-                blocked = any((entry.get("output") or {}).get("status") in RECOVERY_BLOCKING_STATUSES for entry in primary)
+                blocking = {
+                    (entry.get("output") or {}).get("status") for entry in primary
+                } & RECOVERY_BLOCKING_STATUSES
+                # A record lookup that found nothing in scope settles only its own part of a compound question.
+                blocked = bool(blocking) and not (
+                    name == "search_regulations"
+                    and blocking <= PART_SCOPED_STATUSES
+                    and self._compound(state.get("effective_query", state["query"]), route)
+                )
                 grade = grade_evidence(
                     state.get("effective_query", state["query"]), primary,
                     slots=route.slots, expected_tools=list(plan.required_names),
@@ -548,6 +567,29 @@ class OcopAgent:
             }
         )
         return {"results": results, "trace": trace}
+
+    @classmethod
+    def _passages_state_year(cls, items: list[dict], slots: dict) -> bool:
+        """Text may stand in for an undated record only when the passages themselves name the year asked about; a year
+        no passage mentions (a future year, another cycle) stays a refusal rather than being answered from a neighbour."""
+        years = {
+            str(slots[key]) for key in ("recognition_year", "assessment_year") if slots.get(key)
+        } or {str(y) for y in slots.get("years") or []}
+        text = " ".join(
+            str(row.get("text") or row.get("evidence_text") or "")
+            for item in items
+            if cls._usable_rows(item)
+            for row in (item.get("output") or {}).get("results", [])
+            if isinstance(row, dict)
+        )
+        return bool(years) and all(re.search(r"(?<!\d)" + re.escape(year) + r"(?!\d)", text) for year in years)
+
+    @staticmethod
+    def _compound(query: str, route: Route) -> bool:
+        """The question asks several things: the router found several capabilities or the retriever splits it."""
+        from ai_core.retrieval.ocop.decompose import sub_queries
+
+        return len(route.capabilities) > 1 or bool(sub_queries(query))
 
     @staticmethod
     def _usable_rows(item: dict) -> bool:
@@ -880,7 +922,20 @@ class OcopAgent:
             if (item.get("output") or {}).get("status") == "entity_not_found"
             for name in (item.get("output") or {}).get("entity") or []
         ]
-        if missing_entity:
+        # In a compound question the other parts may still be answered from source text: the record gap becomes a
+        # notice naming the unanswered part, never an assertion drawn from that text.
+        answered_elsewhere = self._compound(state.get("effective_query", state["query"]), route) and any(
+            self._usable_rows(item)
+            for item in every
+            if (item.get("output") or {}).get("status") not in PART_SCOPED_STATUSES
+        )
+        if missing_entity and answered_elsewhere:
+            notices.append(
+                "Không tìm thấy sản phẩm “" + "”, “".join(dict.fromkeys(missing_entity)) + "” trong các quyết định "
+                "công nhận đã lập chỉ mục, nên phần hỏi về sản phẩm này chưa được trả lời; nội dung dưới đây chỉ trả "
+                "lời các ý còn lại từ văn bản nguồn."
+            )
+        elif missing_entity:
             return {
                 "answer": {
                     "answer": "Không tìm thấy sản phẩm “" + "”, “".join(dict.fromkeys(missing_entity)) + "” trong các quyết định "
@@ -889,9 +944,15 @@ class OcopAgent:
                     "citations": [],
                 }
             }
-        if any(
+        scope_gap = any(
             (item.get("output") or {}).get("status") == "recognition_scope_unverified" for item in outputs
-        ):
+        )
+        if scope_gap and answered_elsewhere:
+            notices.append(
+                "Chưa có bản ghi công nhận đã xác minh khớp đầy đủ địa phương và mức sao được yêu cầu, nên phần hỏi "
+                "về hạng/công nhận chưa được trả lời; nội dung dưới đây chỉ trả lời các ý còn lại từ văn bản nguồn."
+            )
+        elif scope_gap:
             return {
                 "answer": {
                     "answer": "Chưa có bản ghi công nhận đã xác minh khớp đầy đủ "
@@ -900,11 +961,32 @@ class OcopAgent:
                     "citations": [],
                 }
             }
-        if any(
-            (item.get("output") or {}).get("status")
-            in ("recognition_year_scope_unverified", "assessment_year_scope_unverified")
+        year_gap = [
+            item
             for item in outputs
+            if (item.get("output") or {}).get("status")
+            in ("recognition_year_scope_unverified", "assessment_year_scope_unverified")
+        ]
+        if (
+            year_gap
+            and all(
+                (item.get("output") or {}).get("status")
+                in ("recognition_year_scope_unverified", "assessment_year_scope_unverified")
+                for item in year_gap
+            )
+            and (
+                self._passages_state_year([item for item in every if item not in year_gap], route.slots)
+                or answered_elsewhere
+            )
         ):
+            # No record carries a verified event year, but the documents themselves may state it in their own text
+            # ("công nhận ... năm 2025"). Answer from those passages and say the structured record could not be dated.
+            notices.append(
+                "Chưa có bản ghi hay biểu mẫu đã gắn đúng năm được hỏi; nội dung dưới đây lấy từ chính đoạn văn bản nguồn "
+                "và nêu rõ văn bản nào, không suy từ năm ban hành."
+            )
+            outputs = [item for item in outputs if item not in year_gap]
+        elif year_gap:
             return {
                 "answer": {
                     "answer": "Chưa có bản ghi đã xác minh đúng năm sự kiện/đánh giá "
@@ -927,6 +1009,7 @@ class OcopAgent:
             item["tool"]
             for item in outputs
             if item.get("optional")
+            and item["tool"] not in ENRICHMENT_TOOLS
             and (item.get("output") or {}).get("status") != "not_needed"
             and (
                 item.get("skipped")

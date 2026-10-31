@@ -5,6 +5,19 @@ import json
 
 from ai_core.orchestration.ocop.language import fold
 from ai_core.orchestration.ocop.semantic import normalize as _fold
+from ai_core.orchestration.ocop.context import graph_hops
+
+
+def merge_graph_provenance(target, row):
+    """Combine traversal metadata when two rows share the same source proof."""
+    for field in ("graph_node_ids", "graph_edge_ids"):
+        target[field] = list(dict.fromkeys(target.get(field, []) + row.get(field, [])))
+    hops = graph_hops(target) | graph_hops(row)
+    if hops:
+        target["graph_hops"] = sorted(hops)
+    for field in ("graph_edge_id", "graph_relation"):
+        if not target.get(field) and row.get(field):
+            target[field] = row[field]
 
 
 def criterion_facets(question):
@@ -65,6 +78,34 @@ def query_facets(question):
     return list(dict.fromkeys(facets))
 
 
+def fuse_tool_rows(records):
+    """One order for the rows of every tool: weighted reciprocal-rank fusion over each tool's own ranking.
+
+    Tools score on different scales (BM25, cross-encoder, graph relevance, table lookups), so only ranks are compared,
+    as in ViCAS-RAG's global fusion. A passage several tools return collects several contributions. Rows keep their
+    content; only their order changes. ``row["tool"]`` names the family; rows without it count as one family.
+    """
+    from ai_core.retrieval.ocop.settings import get_settings
+
+    cfg = get_settings().retrieval
+    rank_in_tool = {}
+    scores = {}
+    first_seen = {}
+    for index, row in enumerate(records):
+        tool = row.get("tool") or "unknown"
+        key = (row.get("source_id"), row.get("evidence_unit_id") or row.get("unit_id"), row.get("chunk_id"))
+        rank = rank_in_tool.get(tool, 0)
+        rank_in_tool[tool] = rank + 1
+        scores[key] = scores.get(key, 0.0) + cfg.rrf_tool_weights.get(tool, 1.0) / (cfg.rrf_k + rank + 1)
+        first_seen.setdefault(key, index)
+
+    def key_of(row):
+        return (row.get("source_id"), row.get("evidence_unit_id") or row.get("unit_id"), row.get("chunk_id"))
+
+    order = sorted(range(len(records)), key=lambda i: (-scores[key_of(records[i])], first_seen[key_of(records[i])], i))
+    return [records[i] for i in order]
+
+
 def order_evidence(question, records):
     records = deduplicate(records)
     facets = query_facets(question)
@@ -103,8 +144,7 @@ def deduplicate(records):
             unique.append(dict(row))
         else:
             target = unique[seen[key]]
-            for field in ("graph_node_ids", "graph_edge_ids"):
-                target[field] = list(dict.fromkeys(target.get(field, []) + row.get(field, [])))
+            merge_graph_provenance(target, row)
     retained = []
     for row in unique:
         refs = row.get("source_spans") or row.get("spans") or []
@@ -141,6 +181,5 @@ def deduplicate(records):
         if parent is None:
             retained.append(row)
         else:
-            for field in ("graph_node_ids", "graph_edge_ids"):
-                parent[field] = list(dict.fromkeys(parent.get(field, []) + row.get(field, [])))
+            merge_graph_provenance(parent, row)
     return retained

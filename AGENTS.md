@@ -12,6 +12,16 @@
 - A valid citation marker is NOT evidence of semantic entailment; verified score/star assertions need extra deterministic checks.
 - This is one end-to-end system; do not create development stages in runtime or frontend.
 
+## Working style
+The repository owner reviews the result afterwards, so favour progress over caution.
+- Act on the request directly. Do not ask for confirmation on local, reversible work: editing code, config and docs, rebuilding the graph or index, re-embedding, deleting generated data under `data/processed`, and running the test suite.
+- Changing the ontology, builder, grounding or other fingerprinted code is allowed when the goal needs it. Say what will be rebuilt, then do it.
+- There is no approval step. After extraction the owner edits one file (`data/extraction/entities-relations.md`); apply what it says and do not invent edits the owner did not make.
+- Prefer one simple design over several defensive layers. Do not add guards, fallbacks or flags for cases that cannot happen.
+- Report limits and failures plainly, then continue with the next step instead of stopping to ask.
+
+Hard limits that stay: source PDFs stay unchanged, private data never enters the public index, and provenance (page, bbox, evidence ID, SHA-256) is never fabricated.
+
 ## Agent skills
 
 ### Issue tracker

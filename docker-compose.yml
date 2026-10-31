@@ -6,7 +6,6 @@ services:
       args:
         OCOP_PROFILE: ${OCOP_PROFILE:-sparse}
     environment:
-      OCOP_OLLAMA_URL: ${OCOP_OLLAMA_URL:-http://host.docker.internal:11434}
       OCOP_OCR_DATASET: /app/ocr-dataset
     extra_hosts:
       - "host.docker.internal:host-gateway"

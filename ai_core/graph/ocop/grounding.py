@@ -25,19 +25,28 @@ from ai_core.knowledge.ocop.contracts import (
 
 
 _LLM_PROVENANCE_KEYS = {"extraction_method", "llm_enriched_attributes"}
-USABLE_CHECKS = frozenset({"passed", "human_verified"})
+USABLE_CHECKS = frozenset({"passed"})
 
 
 def usable(row):
     return row.get("check") in USABLE_CHECKS
 
 
+def relation_usable(edge, nodes):
+    if not usable(edge):
+        return False
+    source, target = nodes.get(edge.get("source_entity_id")), nodes.get(edge.get("target_entity_id"))
+    if not source or not target or not usable(source) or not usable(target):
+        return False
+    return True
+
+
 def public_record(row):
-    """Consumers never receive the unchecked originals retained for reviewers."""
+    """Consumers never receive the unchecked originals."""
     return {
         key: value
         for key, value in row.items()
-        if key not in {"machine_candidate", "attribute_candidates", "human_review"}
+        if key not in {"machine_candidate", "attribute_candidates"}
     }
 
 
@@ -107,6 +116,41 @@ def norm(text):
 def _literal(node):
     label = norm(node["label"])
     return len(label) >= 3 and any(label in norm(c.get("quote")) for c in node.get("citations", []))
+
+
+def _star_band_literal(node):
+    """A star level is accepted when one citation states its label and every point bound it carries."""
+    props = node.get("properties", {})
+    bounds = [str(props[k]) for k in ("min_points", "max_points") if isinstance(props.get(k), int)]
+    label = norm(node["label"])
+    return bool(label) and any(
+        label in quote and all(re.search(r"(?<!\d)" + bound + r"(?!\d)", quote) for bound in bounds)
+        for quote in _quotes(node)
+    )
+
+
+_NUMBER_KEYS = {
+    "StarLevel": ("star_level", "min_points", "max_points"),
+    "ScoreOption": ("points_candidate",),
+    "Criterion": ("max_points_candidate",),
+}
+_BOUND_FLAGS = ("min_inclusive", "max_inclusive")
+
+
+def _literal_numbers(node):
+    """Score/star numbers of a node whose value is literally written in one of its citations (suffix dropped)."""
+    props = node.get("properties", {})
+    quotes = _quotes(node)
+    found = {}
+    for key in _NUMBER_KEYS.get(node["node_type"], ()):
+        value = props.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and any(
+            re.search(r"(?<!\d)" + str(value) + r"(?!\d)", quote) for quote in quotes
+        ):
+            found[key.removesuffix("_candidate")] = value
+    if node["node_type"] == "StarLevel" and found:
+        found.update({flag: props[flag] for flag in _BOUND_FLAGS if flag in props})
+    return found
 
 
 def _quotes(row):
@@ -302,8 +346,14 @@ def _entity_typed(node, units):
                 any(norm(label) == item.strip() for item in match[1].split(";"))
                 for text in contexts
                 for match in re.finditer(r"\d+ nhóm sản phẩm\s*:\s*(.*?)\.\s*danh mục", text)
-            )
+            ) or _listed_product_group(node, units)
         return False
+    if kind == "StarLevel":
+        return bool(re.match(r"\d\s*sao$", norm(label)))
+    if kind == "Condition":
+        # A criterion note is a condition only inside a criterion table.
+        return any(units[uid].get("unit_kind") in {"table", "criterion_table_candidate"}
+                   for uid in node.get("evidence_unit_ids", []) if uid in units)
     if kind == "FormTemplate":
         return bool(re.search(r"mẫu\s*(?:số\s*)?\d+", norm(label)))
     if kind == "EvidenceType":
@@ -315,6 +365,27 @@ def _entity_typed(node, units):
     if kind == "ProcedureStep":
         return bool(_procedure_actor_labels(node, units))
     return kind in {"EvidenceUnit", "Authority", "FormField"}
+
+
+def _listed_product_group(node, units):
+    """A row of a product-group catalogue table: the label is a whole cell of a table on a page headed as one."""
+    label = norm(node["label"])
+    for uid in node.get("evidence_unit_ids", []):
+        unit = units.get(uid)
+        if not unit or unit.get("unit_kind") not in {"table", "criterion_table_candidate"}:
+            continue
+        if not any(norm(cell.get("text")) == label for cell in unit.get("structured", {}).get("cells", [])):
+            continue
+        pages = {int(s["pdf_page"]) for s in unit.get("spans", [])}
+        if any(
+            other.get("source_id") == unit["source_id"]
+            and other.get("unit_kind") == "page"
+            and pages & {int(s["pdf_page"]) for s in other.get("spans", [])}
+            and re.search(r"nhóm sản phẩm", norm(other.get("text")))
+            for other in units.values()
+        ):
+            return True
+    return False
 
 
 def _has_citations(row):
@@ -559,7 +630,18 @@ def _entails(edge, source, target, units):
             ):
                 return True
         return False
-    # Temporal interpretation, stars, awards and free-text conditions need stronger
+    if relation == "MINIMUM_FOR":
+        # The option text carries the star marker and the sheet legend maps that same marker to the target level.
+        props = edge.get("properties") or {}
+        marker, level = props.get("marker_observed") or "", (target.get("properties") or {}).get("star_level")
+        if props.get("marker_observed_in") != "ocr_text" or not marker or set(marker) != {"*"} or not isinstance(level, int):
+            return False
+        run = r"(?<!\*)" + re.escape(marker) + r"(?!\*)"
+        quotes = [str(c.get("quote") or "") for c in edge.get("citations", [])]
+        return any(re.search(run + r"\s*$", q) for q in quotes) and any(
+            re.search(run + r"\s*-\s*" + str(level) + r"\s*sao", norm(q)) for q in quotes
+        )
+    # Temporal interpretation, awards and free-text conditions need stronger
     # domain-specific verification. A citation or deterministic origin is insufficient.
     return False
 
@@ -608,7 +690,6 @@ def _prune_invalid_parents(accepted, edges, exclude):
     for edge in edges:
         if (
             edge["relation_type"] == "OWNED_BY"
-            and edge.get("check") != "human_verified"
             and not _entails(edge, accepted[edge["source_entity_id"]], accepted[edge["target_entity_id"]], {})
             and not _checked_ownership_proof(edge, edges, accepted)
         ):
@@ -621,17 +702,15 @@ def _prune_invalid_parents(accepted, edges, exclude):
 def _node_exclusion_reason(node, units, registry):
     kind = node["node_type"]
     reason = None
-    if node.get("review_status") == "rejected":
-        reason = "rejected_assertion"
-    elif kind in {
+    if kind in {
         "RuleCandidate",
         "CandidateFact",
         "CriterionRowCandidate",
         "Mention",
-        "StarLevel",
-        "Condition",
     }:
         reason = "no_automatic_domain_verifier"
+    elif kind == "StarLevel":
+        reason = None if _star_band_literal(node) else "star_band_not_in_citation"
     elif kind == "SourceDocument":
         props = node.get("properties", {})
         if props.get("reference_only"):
@@ -729,17 +808,14 @@ def check_graph(nodes, edges, units, *, registry=None):
     }
     for node in nodes:
         identity, kind = node["node_id"], node["node_type"]
-        human = node.get("check") == "human_verified"
-        reason = node.get("construction_error") or (
-            None if human and _has_citations(node) else _node_exclusion_reason(node, units, registry)
-        )
+        reason = node.get("construction_error") or _node_exclusion_reason(node, units, registry)
         if reason:
             exclude("node", identity, reason)
             continue
         view = {
             k: deepcopy(v)
             for k, v in node.items()
-            if k not in {"machine_candidate", "human_review", "attribute_candidates", "attribute_claims"}
+            if k not in {"machine_candidate", "attribute_candidates", "attribute_claims"}
         }
         view["properties"] = {
             k.removesuffix("_candidate"): v
@@ -750,11 +826,9 @@ def check_graph(nodes, edges, units, *, registry=None):
             view["label"] = "Dòng " + str(node["properties"]["row_number"]) + " — " + node["source_id"]
         elif kind == "SourceDocument":
             view["label"] = registry.get(node["source_id"], {}).get("document_number") or node["source_id"]
-        # Keep verified business values in the reviewed view only; this automatic
-        # view deliberately exposes observations, not legal/scoring decisions.
+        # Points and star bounds are exposed only when the number is written in the node's own citation.
+        view["properties"].update(_literal_numbers(node))
         _add_supported_attributes(view, node, nodes, exclude)
-        if human:
-            view["properties"] = deepcopy(node.get("properties", {}))
         if kind == "EvidenceUnit" and len(node.get("evidence_unit_ids", [])) == 1:
             # Copy the backing transcription, never candidate business attributes.
             # Runtime lookup no longer needs a parallel candidates/evidence store.
@@ -784,13 +858,11 @@ def check_graph(nodes, edges, units, *, registry=None):
         reason = None
         if edge.get("construction_error"):
             reason = edge["construction_error"]
-        elif edge.get("review_status") == "rejected":
-            reason = "rejected_assertion"
         elif src not in accepted or dst not in accepted:
             reason = "endpoint_not_accepted"
         elif not _has_citations(edge):
             reason = "incomplete_provenance"
-        elif edge.get("check") != "human_verified" and not (
+        elif not (
             ownership_proof
             or (
                 _document_relation_supported(edge, by_id[src], by_id[dst], registry)
@@ -805,7 +877,7 @@ def check_graph(nodes, edges, units, *, registry=None):
         view = {
             k: deepcopy(v)
             for k, v in edge.items()
-            if k not in {"properties", "attribute_candidates", "machine_candidate", "human_review"}
+            if k not in {"properties", "attribute_candidates", "machine_candidate"}
         }
         view["properties"] = {
             k: deepcopy(v) for k, v in edge.get("properties", {}).items() if k in _LLM_PROVENANCE_KEYS
@@ -842,18 +914,15 @@ def check_graph(nodes, edges, units, *, registry=None):
             row["check"] = "failed"
             row["check_reason"] = reasons[(kind, identity)]
         else:
-            row["check"] = "human_verified" if original.get("check") == "human_verified" else "passed"
-            # Keep the exact reviewed content/hash while exposing only checked
-            # properties to consumers. There is still one row per assertion.
+            row["check"] = "passed"
+            # Keep the extracted content while exposing only checked properties to consumers.
             row["machine_candidate"] = deepcopy(original.get("machine_candidate") or original)
-        if original.get("human_review"):
-            row["human_review"] = deepcopy(original["human_review"])
         return row
 
     checked_nodes = [annotate(n, accepted.get(n["node_id"]), "node", n["node_id"]) for n in nodes]
     checked_relations = [annotate(e, checked_edges.get(e["edge_id"]), "edge", e["edge_id"]) for e in edges]
-    summary = {"policy": "source_predicate_and_ledger_checks", "nodes": {}, "edges": {}}
+    summary = {"policy": "source_predicate_checks", "nodes": {}, "edges": {}}
     for category, rows in (("nodes", checked_nodes), ("edges", checked_relations)):
         counts = Counter(row["check"] for row in rows)
-        summary[category] = {status: counts[status] for status in ("passed", "failed", "human_verified")}
+        summary[category] = {status: counts[status] for status in ("passed", "failed")}
     return checked_nodes, checked_relations, summary

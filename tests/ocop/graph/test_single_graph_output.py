@@ -53,10 +53,9 @@ def test_builder_writes_one_graph_with_checks_and_preserves_failed_rows(tmp_path
     nodes, edges = list(records(graph / "nodes.jsonl")), list(records(graph / "edges.jsonl"))
     assert nodes and edges
     for row in nodes + edges:
-        assert row["check"] in {"passed", "failed", "human_verified"}
+        assert row["check"] in {"passed", "failed"}
         assert ("check_reason" in row) == (row["check"] == "failed")
         assert row["origin"] == "deterministic" or row["origin"].startswith("llm:")
-        assert row["check"] != "human_verified"
     product = next(n for n in nodes if n["node_type"] == "Product")
     assert product["origin"] == "llm:offline"
     ownership = next(e for e in edges if e["relation_type"] == "OWNED_BY")
@@ -82,13 +81,11 @@ def test_verified_input_is_not_a_human_ledger_decision(tmp_path):
         "".join(json.dumps(r) + "\n" for r in units), encoding="utf-8"
     )
     build_graph(knowledge, graph)
-    assert all(n["check"] != "human_verified" for n in records(graph / "nodes.jsonl"))
+    assert all(n["check"] in {"passed", "failed"} for n in records(graph / "nodes.jsonl"))
 
 
 def test_invalid_construction_is_retained_but_never_traversed(tmp_path):
     from tests.ocop.graph.test_operational_graph import build, write
-    from ai_core.graph.ocop.review import load_queue
-
     graph, _ = build(tmp_path)
     knowledge = graph.parent / "knowledge"
     write(
@@ -118,7 +115,6 @@ def test_invalid_construction_is_retained_but_never_traversed(tmp_path):
     assert bad["check"] == "failed"
     assert bad["check_reason"] == "business_entity_missing_evidence"
     assert not traverse(graph, ["bad-product"])["nodes"]
-    assert next(i for i in load_queue(tmp_path) if i["target_id"] == "bad-product")["check"] == "failed"
 
 
 def test_negated_submission_is_not_a_checked_evidence_requirement(tmp_path):

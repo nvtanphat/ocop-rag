@@ -19,6 +19,8 @@ data/processed/
 data/ocr-dataset/
 data/runtime/
 data/review/
+data/models/
+data/stores/
 reports/
 *.sqlite
 *.sqlite3

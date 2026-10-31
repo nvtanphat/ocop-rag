@@ -26,7 +26,7 @@ _MODULE_COMMANDS: dict[str, tuple[str, str]] = {
     ),
     "ask-ocop": (
         "ai_core.orchestration.ocop.cli",
-        "OCOP agent: routed GraphRAG answer with optional Qwen3.5 2B and LangGraph",
+        "OCOP agent: routed GraphRAG answer with an OpenAI-compatible LLM",
     ),
     "extract-ocop": (
         "ai_core.processing.ocop.knowledge_extract",

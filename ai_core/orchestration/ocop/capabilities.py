@@ -127,4 +127,6 @@ TOOL_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "search_graph": ("search_regulations",),
 }
 
+# Tools that only enrich an answer: finding nothing is not a gap in what was asked, so it is not reported as one.
+ENRICHMENT_TOOLS = frozenset({"search_graph"})
 PRIVATE_TOOLS = frozenset(name for name, spec in TOOL_REGISTRY.items() if spec.requires_auth)

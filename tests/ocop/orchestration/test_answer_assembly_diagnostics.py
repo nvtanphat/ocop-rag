@@ -4,7 +4,6 @@ import json
 import pytest
 
 from ai_core.orchestration.ocop.answer import assemble
-from ai_core.orchestration.ocop.llm import OllamaClient
 
 
 def outputs():
@@ -47,39 +46,6 @@ def test_unverified_source_failure_reports_actual_layer_without_score_claim():
     assert answer["generation_diagnostics"]["layer"] == "claim_verification"
     assert answer["generation_diagnostics"]["reasons"] == ["source_not_verified"]
     assert "source_not_verified" in answer["answer"]
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        None,
-        [],
-        {"message": None},
-        {"message": {"content": None}},
-        {"message": {"content": {"unexpected": "object"}}},
-    ],
-)
-def test_ollama_invalid_response_schema_is_controlled_failure(monkeypatch, payload):
-    from ai_core.orchestration.ocop import llm
-
-    monkeypatch.setattr(
-        llm.urllib.request, "urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(payload).encode())
-    )
-    with pytest.raises(RuntimeError, match="unavailable"):
-        OllamaClient().chat("system", "question")
-
-
-def test_ollama_truncation_is_diagnosed_separately_from_connection_failure(monkeypatch):
-    from ai_core.orchestration.ocop import llm
-
-    payload = {"message": {"content": "unfinished"}, "done_reason": "length"}
-    monkeypatch.setattr(
-        llm.urllib.request, "urlopen", lambda *args, **kwargs: io.BytesIO(json.dumps(payload).encode())
-    )
-    answer = assemble("?", outputs(), llm=OllamaClient())
-    assert answer["generation_diagnostics"]["reasons"] == ["model_output_truncated"]
-    assert answer["generation_diagnostics"]["layer"] == "generation"
-    assert "unfinished" not in answer["answer"]
 
 
 def test_sheet_evidence_scope_filters_before_bm25_top_k(tmp_path):
@@ -177,9 +143,9 @@ def test_checked_sheet_tool_keeps_cross_page_option_despite_other_sheet_text(tmp
 @pytest.mark.parametrize(
     "payload,reason",
     [
-        ({"message": None}, "model_unavailable"),
-        ({"message": {"content": "unfinished"}, "done_reason": "length"}, "model_output_truncated"),
-        ({"message": {"content": "Synthetic OCOP excerpt [S1]."}}, "source_not_verified"),
+        ({"choices": [{"message": None}]}, "model_unavailable"),
+        ({"choices": [{"message": {"content": "unfinished"}, "finish_reason": "length"}]}, "model_output_truncated"),
+        ({"choices": [{"message": {"content": "Synthetic OCOP excerpt [S1]."}, "finish_reason": "stop"}]}, "source_not_verified"),
     ],
 )
 def test_public_api_preserves_generation_failure_diagnostics(
@@ -188,6 +154,7 @@ def test_public_api_preserves_generation_failure_diagnostics(
     from ai_core.orchestration.ocop import llm
     from ai_core.retrieval.ocop.index_pipeline import create_bm25
 
+    monkeypatch.setenv("OCOP_ANSWER_OPENAI_API_KEY", "test-key")
     index = tmp_path / "data/processed/ocop/index"
     index.mkdir(parents=True, exist_ok=True)
     row = {

@@ -1,4 +1,3 @@
-import io
 import json
 import pytest
 from ai_core.orchestration.ocop.router import route_query
@@ -45,20 +44,6 @@ def test_local_deadline_is_not_a_temporal_applicability_verdict():
     route = route_query("Hạn nộp hồ sơ OCOP tại phường Thành Sen năm 2026 là ngày nào?")
     assert route.slots["region"] == "Thành Sen"
     assert "resolve_temporal_applicability" not in route.required_tools
-
-
-def test_ollama_answer_does_not_spend_budget_on_hidden_thinking(monkeypatch):
-    from ai_core.orchestration.ocop import llm
-
-    seen = {}
-
-    def request(req, timeout):
-        seen.update(json.loads(req.data))
-        return io.BytesIO(b'{"message":{"content":"answer"},"done_reason":"stop"}')
-
-    monkeypatch.setattr(llm.urllib.request, "urlopen", request)
-    assert llm.OllamaClient().chat("system", "question") == "answer"
-    assert seen["think"] is False
 
 
 def test_missing_requested_page_cannot_recover_into_other_pages(tmp_path):

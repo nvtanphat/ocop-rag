@@ -77,21 +77,11 @@ def main() -> None:
     eval_cmd.add_argument("arguments", nargs=argparse.REMAINDER)
     status = sub.add_parser("status", help="Validate current unified corpus readiness")
     status.add_argument("--root", type=Path, default=ROOT)
-    review = sub.add_parser(
-        "review", help="Export human review queue, record one decision, or show statistics"
-    )
-    review.add_argument("action", choices=["queue", "decide", "stats", "refresh-index", "publish-neo4j", "export-references"])
-    review.add_argument("--neo4j-uri", default="bolt://localhost:7687")
-    review.add_argument("--neo4j-user", default="neo4j")
-    review.add_argument("--root", type=Path, default=ROOT)
-    review.add_argument("--out", type=Path)
-    review.add_argument("--render", action="store_true", help="Render source-checked crops when exporting")
-    review.add_argument("--target-id")
-    review.add_argument("--content-hash")
-    review.add_argument("--decision", choices=["approve", "reject", "correct"])
-    review.add_argument("--reviewer")
-    review.add_argument("--correction-file", type=Path)
-    review.add_argument("--notes", default="")
+    graph = sub.add_parser("graph", help="Refresh the graph or index, publish to Neo4j, export the editable extraction file or reference lists")
+    graph.add_argument("action", choices=["refresh-graph", "refresh-index", "publish-neo4j", "export-references", "export-extraction"])
+    graph.add_argument("--neo4j-uri", default="bolt://localhost:7687")
+    graph.add_argument("--neo4j-user", default="neo4j")
+    graph.add_argument("--root", type=Path, default=ROOT)
     debug = sub.add_parser("debug", help="Developer commands for inspecting individual internal components")
     debug.add_argument("arguments", nargs=argparse.REMAINDER)
     if len(sys.argv) > 1 and sys.argv[1] == "evaluate":
@@ -100,41 +90,16 @@ def main() -> None:
         )
         raise SystemExit(completed.returncode)
     args = cli.parse_args()
-    if args.command == "review":
-        from ai_core.graph.ocop.review import (
-            load_queue,
-            statistics,
-            record_decision,
-            render_queue_crops,
-            rebuild_reviewed_graph,
-        )
-
+    if args.command == "graph":
         try:
-            if args.action == "decide":
-                if not all([args.target_id, args.content_hash, args.decision, args.reviewer]):
-                    cli.error("decide requires --target-id, --content-hash, --decision, --reviewer")
-                correction = (
-                    json.loads(args.correction_file.read_text(encoding="utf-8"))
-                    if args.correction_file
-                    else None
-                )
-                event = record_decision(
-                    args.root,
-                    args.target_id,
-                    args.content_hash,
-                    args.decision,
-                    args.reviewer,
-                    correction=correction,
-                    notes=args.notes,
-                )
-                graph = rebuild_reviewed_graph(args.root)
+            if args.action == "refresh-graph":
+                from ai_core.system.graph_publication import rebuild_additive_graph
+
+                result = rebuild_additive_graph(args.root)
+            elif args.action == "refresh-index":
                 from ai_core.system.index_refresh import refresh_index_after_graph_change
 
-                result = {
-                    "decision": event,
-                    "graph": graph["counts"],
-                    "index": refresh_index_after_graph_change(args.root),
-                }
+                result = refresh_index_after_graph_change(args.root)
             elif args.action == "publish-neo4j":
                 from ai_core.graph.ocop.store import publish_reviewed_graph
                 from ai_core.orchestration.ocop.llm import load_env_file
@@ -145,29 +110,17 @@ def main() -> None:
                 result = publish_reviewed_graph(
                     args.root, uri=args.neo4j_uri, user=args.neo4j_user, password=os.environ["NEO4J_PASSWORD"]
                 )
-            elif args.action == "export-references":
+            elif args.action == "export-extraction":
+                from ai_core.graph.ocop.extraction_file import export_file
+
+                result = export_file(args.root / "data/processed/ocop/graph", args.root / "data/extraction")
+            else:
                 from ai_core.graph.ocop.store import export_reference_files
 
                 result = export_reference_files(args.root)
-            elif args.action == "refresh-index":
-                from ai_core.system.index_refresh import refresh_index_after_graph_change
-
-                result = refresh_index_after_graph_change(args.root)
-            else:
-                items = load_queue(args.root)
-                result = statistics(items)
-                if args.action == "queue":
-                    target = args.out or args.root / "data/review/ocop_review_queue.jsonl"
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    if args.render:
-                        result["unique_crops"] = render_queue_crops(args.root, items)
-                    target.write_text(
-                        "".join(json.dumps(i, ensure_ascii=False) + "\n" for i in items), encoding="utf-8"
-                    )
-                    result["output"] = str(target)
             print(json.dumps(result, ensure_ascii=False, indent=2))
         except (ValueError, OSError, RuntimeError) as exc:
-            print("OCOP review error: " + str(exc), file=sys.stderr)
+            print("OCOP graph error: " + str(exc), file=sys.stderr)
             raise SystemExit(1) from exc
         return
     if args.command == "debug":
@@ -186,16 +139,6 @@ def main() -> None:
     if args.build_only and args.query:
         cli.error("--build-only and --query are mutually exclusive")
     try:
-        if args.full:
-            from ai_core.orchestration.ocop.llm import answer_provider
-
-            if answer_provider() == "ollama":
-                from ai_core.system.runtime import verify_ollama_model
-
-                verify_ollama_model(
-                    os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"),
-                    os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"),
-                )
         if args.reviewed_text:
             if not args.ocr_dataset:
                 cli.error("--reviewed-text requires --ocr-dataset")

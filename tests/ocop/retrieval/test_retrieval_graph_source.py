@@ -18,7 +18,7 @@ def test_recognition_lookup_reads_checked_graph_without_candidate_index(tmp_path
         "lookup_recognition", query=product["label"], slots={"product_name": product["label"]}
     )
     assert result["results"]
-    assert all(row["check"] in {"passed", "human_verified"} for row in result["results"])
+    assert all(row["check"] == "passed" for row in result["results"])
     assert all(row["source_spans"] and row["graph_node_ids"] for row in result["results"])
     assert any("HTX Sen Huế" in row["text"] for row in result["results"])
 
@@ -73,8 +73,10 @@ def test_fusion_covers_multiple_criterion_facets_beyond_first_eight():
 
 def test_excerpt_budget_is_tokens_and_not_a_four_or_eight_row_cutoff():
     from ai_core.orchestration.ocop.answer import assemble
+    from ai_core.retrieval.ocop.settings import get_settings
     from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
 
+    limit = get_settings().context.max_source_blocks
     rows = [
         {
             "source_id": "SYN",
@@ -82,12 +84,12 @@ def test_excerpt_budget_is_tokens_and_not_a_four_or_eight_row_cutoff():
             "text": f"Short synthetic paragraph {i}",
             "spans": [{"pdf_page": i + 1, "bbox": [0, 0, 10, 10], "source_sha256": "a" * 64}],
         }
-        for i in range(12)
+        for i in range(limit + 4)
     ]
     result = assemble("?", [{"output": {"results": rows + rows}}])
-    assert result["evidence_fusion"]["excerpt_count"] == 12
+    assert result["evidence_fusion"]["excerpt_count"] == limit
     assert estimated_tokens(result["answer"]) < 3600
-    assert len(result["citations"]) == 12
+    assert len(result["citations"]) == limit
 
 
 def test_uncovered_facet_is_explicit_instead_of_answering_one_half():
@@ -301,3 +303,17 @@ def test_authority_lookup_picks_the_clause_that_recognises_the_requested_star_le
     assert [n["node_id"] for n in authority_nodes(nodes, star_rating=5)] == ["n2"]
     assert [n["node_id"] for n in authority_nodes(nodes, star_rating=4)] == ["n1"]
     assert [n["node_id"] for n in authority_nodes(nodes, star_rating=None)] == ["n1", "n2"]
+
+
+def test_a_passage_whose_heading_the_question_names_is_seeded():
+    from ai_core.retrieval.ocop.search import _title_seeds
+
+    ordered = [
+        {"chunk_id": "a", "context": {"legal_heading": "Điều 3. Hiệu lực thi hành"}},
+        {"chunk_id": "b", "context": {"legal_heading": "Điều 4. Trách nhiệm thi hành"}},
+        {"chunk_id": "c", "context": {"legal_heading": "Phụ lục III"}},
+        {"chunk_id": "d", "context": {}},
+    ]
+    seeds = _title_seeds("Từ ngày nào Nghị định này bắt đầu có hiệu lực thi hành?", ordered, lambda cid: True)
+    assert seeds[0] == "a" and "c" not in seeds and "d" not in seeds
+    assert _title_seeds("Ai chịu trách nhiệm?", ordered, lambda cid: cid != "b") == []

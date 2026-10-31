@@ -22,6 +22,11 @@ MIN_EXCERPT_CHARS = 300
 _SENTENCE = re.compile(r'(?<=[.;:!?])\s+(?=[\wÀ-ỹ(\[“"-])')
 
 
+def graph_hops(row):
+    values = row.get("graph_hops", [row.get("graph_hop")])
+    return {value for value in values if type(value) is int and value >= 0} if isinstance(values, list) else set()
+
+
 @dataclass(frozen=True)
 class Excerpt:
     display: str
@@ -245,7 +250,20 @@ def fit_budget(
         if caps[longest] > MIN_EXCERPT_CHARS * 2:
             caps[longest] = max(MIN_EXCERPT_CHARS, int(caps[longest] * 0.7))
         elif len(keep) > 1:
-            keep.pop()  # lowest-ranked row goes first
+            counts = Counter(hop for i in keep for hop in graph_hops(rows[i]))
+            removable = [i for i in keep if all(counts[hop] > 1 for hop in graph_hops(rows[i]))]
+            if removable:
+                keep.remove(removable[-1])
+            elif any(caps[i] > 120 for i in keep):
+                longest = max(keep, key=lambda i: caps[i])
+                caps[longest] = max(120, int(caps[longest] * 0.7))
+                rendered[longest] = render_row(rows[longest], terms, cfg, table_backed=flags[longest],
+                                            max_chars=caps[longest])
+                cost[longest] = estimated_tokens(rendered[longest].display) + label_tokens[longest]
+            else:
+                # A chain that cannot fit even one minimum block per hop is
+                # withheld together, rather than presenting a broken chain.
+                keep = [i for i in keep if not graph_hops(rows[i])]
             continue
         elif caps[longest] > 120:
             caps[longest] = max(120, int(caps[longest] * 0.7))

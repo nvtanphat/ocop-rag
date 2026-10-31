@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 from ai_core.orchestration.ocop.contracts import Intent, Route
+from ai_core.orchestration.ocop.document_scope import DocumentResolver
 from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath, choose_retrieval_path
 from ai_core.orchestration.ocop.capabilities import (
     TOOL_REGISTRY,
@@ -35,8 +36,6 @@ RECOVERY_BLOCKING_STATUSES = frozenset(
         "index_unavailable",
         "not_ready",
         "document_not_found_or_ambiguous",
-        "recognition_year_scope_unverified",
-        "assessment_year_scope_unverified",
         "recognition_scope_unverified",
         "entity_not_found",
         "local_guidance_not_in_corpus",
@@ -64,7 +63,10 @@ def recovery_safe(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
     # Router may extract the issuance year inside an explicit decision code.
     # That is not a separate historical event-year constraint, and the text
     # retriever still enforces the requested document's source ID.
-    document_years = set(re.findall(r"20\d{2}", str(route.slots.get("document_code") or "")))
+    codes = route.slots.get("document_codes") or [route.slots.get("document_code")]
+    document_years = {year for code in codes for year in re.findall(r"20\d{2}", str(code or ""))}
+    # "148/QĐ-TTg" carries no year in its number; the registry identity of the resolved document does.
+    document_years |= {year for code in codes for year in DocumentResolver().years_of(code)}
     requested_years = {str(y) for y in (route.slots.get("years") or [])}
     if requested_years - document_years:
         return False

@@ -1,9 +1,8 @@
-# OCOP local model profile; model loading is demand-driven.
-# Model loading is optional, model files are never downloaded implicitly.
+# OCOP model profile. The LLM is an OpenAI-compatible API (endpoint and key in .env); embedding and reranker load locally on demand.
 profile: laptop_small
 llm:
-  provider: ollama
-  model_id: qwen3.5:2b
+  provider: openai
+  model_id: gpt-6-sol
   answer_and_router_shared: true
   router_policy: deterministic_first
   context_tokens: 8192

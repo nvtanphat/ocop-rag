@@ -8,7 +8,7 @@ import pytest
 from ai_core.knowledge.ocop import llm_proposals
 from ai_core.knowledge.ocop.llm_proposals import propose
 from ai_core.orchestration.ocop import llm as llm_mod
-from ai_core.orchestration.ocop.llm import OllamaClient, OpenAICompatClient, make_extraction_client
+from ai_core.orchestration.ocop.llm import OpenAICompatClient, make_extraction_client
 
 SHA = "a" * 64
 
@@ -25,9 +25,10 @@ def _no_env_file(monkeypatch):
         monkeypatch.delenv(key, raising=False)
 
 
-def test_default_extraction_provider_is_local_ollama():
+def test_default_extraction_provider_is_the_openai_compatible_api(monkeypatch):
+    monkeypatch.setenv("OCOP_EXTRACT_OPENAI_API_KEY", "k")
     client = make_extraction_client()
-    assert isinstance(client, OllamaClient) and client.model == "qwen3.5:2b"
+    assert isinstance(client, OpenAICompatClient) and client.model == "gpt-6-sol"
 
 
 def test_openai_provider_requires_key(monkeypatch):
@@ -512,13 +513,14 @@ def test_graph_keeps_llm_provenance_only_for_llm_rows():
     }
 
 
-def test_answer_client_defaults_to_local_ollama(monkeypatch):
+def test_answer_client_defaults_to_the_openai_compatible_api(monkeypatch):
     from ai_core.orchestration.ocop.llm import make_answer_client
 
-    for key in ("OCOP_ANSWER_LLM_PROVIDER", "OCOP_ANSWER_LLM_MODEL", "OCOP_LLM_MODEL"):
+    for key in ("OCOP_ANSWER_LLM_PROVIDER", "OCOP_ANSWER_LLM_MODEL", "OCOP_EXTRACT_LLM_MODEL"):
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OCOP_EXTRACT_OPENAI_API_KEY", "k")
     client = make_answer_client()
-    assert isinstance(client, OllamaClient) and client.model == "qwen3.5:2b"
+    assert isinstance(client, OpenAICompatClient) and client.model == "gpt-6-sol"
 
 
 def test_answer_client_reuses_the_extraction_api_when_openai(monkeypatch):

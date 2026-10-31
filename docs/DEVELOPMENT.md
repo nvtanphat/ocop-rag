@@ -62,7 +62,9 @@ Danh sách tệp quyết định phiên bản nằm ngay tại nơi khai báo:
 - `SCHEMA_REVISION` trong [builder.py](../ai_core/graph/ocop/builder.py).
 - `INDEX_VERSION` trong [index_pipeline.py](../ai_core/retrieval/ocop/index_pipeline.py).
 
-Chỉ thay đổi tệp thuộc các danh sách này mới làm đổi vân tay tương ứng. Không
-format, sửa comment hoặc dọn mã trong đó khi cần giữ nguyên corpus. Thay mã
-runtime ngoài danh sách không tự yêu cầu dựng lại dữ liệu. Kiểm phiên bản và
-trạng thái bằng `python tools/cli.py status`; không sửa manifest để bỏ kiểm tra.
+Các mã này dùng để phát hiện dẫn xuất không khớp mã tạo, không cấm sửa mã.
+Khi thay graph builder/ontology, dùng đường cập nhật graph có kiểm tương thích
+chỉ mục tại [ADR-011](adr/011-first-class-norms-and-concept-identity.md); không
+tự bỏ kiểm toàn vẹn hoặc ghi đè phiên bản trong manifest. Thay mã runtime ngoài
+danh sách không tự yêu cầu dựng lại dữ liệu. Kiểm phiên bản và trạng thái bằng
+`python tools/cli.py status`. Markdown OCR và PDF nguồn giữ nguyên.

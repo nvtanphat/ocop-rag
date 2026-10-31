@@ -1,12 +1,11 @@
-"""Run claim-level generation only on questions whose evidence a human has reviewed.
+"""Run claim-level generation only on questions whose evidence comes from reviewed OCR text.
 
     python tools/evaluate_reviewed_claims.py --root <corpus root> --questions questions.json [--limit N]
 
-A question is eligible when every page it targets has at least one EvidenceUnit node with ``check: human_verified``
-in the current graph (the ledger written by the review CLI). The tool never marks anything verified and
-never relaxes a gate: it reports, per question, what the unchanged gates published, what they dropped and why, so a
-reviewer can see whether grounded paraphrase works once sources are approved. With no reviewed evidence it stops
-and says what to review instead of running the model.
+A question is eligible when every page it targets has at least one checked EvidenceUnit node with reviewed OCR text
+(``review_status: verified``) in the current graph. The tool never marks anything verified and never relaxes a
+gate: it reports, per question, what the unchanged gates published, what they dropped and why. With no reviewed
+evidence it stops instead of running the model.
 """
 
 from __future__ import annotations

@@ -1,0 +1,60 @@
+# Graph roles (docs/adr/012-simple-graph-roles-like-vicas.md): the closed set the answer path and Neo4j read.
+# A stored node or edge type that is not listed here has no role and stays out of the answer view.
+
+nodes:
+  Document: [SourceDocument, DocumentVersion, Regulation, LocalGuidance]
+  Provision: [Article, Clause, Point, Annex]
+  Norm: [Obligation, Permission, Prohibition, Exemption, Transition]
+  Concept: [Concept]
+  Subject: [SubjectType]
+  Authority: [Authority]
+  ProductGroup: [ProductGroup, ProductSubgroup, ProductSet]
+  CriterionSheet: [CriterionSheet, FormTemplate]
+  Criterion: [Criterion]
+  StarLevel: [StarLevel]
+  Procedure: [ProcedureStep, Procedure]
+  Record: [RecognitionRecord, RecognitionDecision, Certificate]
+  Product: [Product]
+  Organization: [Organization, AdministrativeArea]
+
+# A child node that is a property of its parent in the answer view: parent.<name> = [child label and properties].
+properties:
+  options: {relation: HAS_OPTION, child: ScoreOption}
+  conditions: {relation: HAS_CONDITION, child: Condition}
+  evidence_types: {relation: REQUIRES_EVIDENCE, child: EvidenceType}
+  fields: {relation: HAS_FIELD, child: FormField}
+  deadline: {relation: HAS_DEADLINE, child: Deadline}
+  score_range: {relation: SCORE_MAPS_TO_RATING, child: ScoreBand, parent_side: target}
+
+edges:
+  CONTAINS: [HAS_ARTICLE, HAS_CLAUSE, HAS_POINT, HAS_ANNEX, HAS_SUBGROUP, HAS_RECORD, DEFINES_GROUP]
+  EXPRESSES: [HAS_NORM]
+  APPLIES_TO: [HAS_SUBJECT, ELIGIBLE_SUBJECT, APPLIES_IN, SUBMITS_FOR_EVALUATION]
+  GOVERNS: [HAS_OBJECT, MUST_MEET, EXEMPT_FROM, REQUIRES_FORM, REQUIRES_DECLARATION, REQUIRES_LABEL,
+            REQUIRES_RECALL, REQUIRES_TRACEABILITY, GRANTS_BRAND_USE, CERT_VALID_FOR]
+  HANDLED_BY: [HAS_AUTHORITY, CERTIFIED_BY, SUBMITTED_AT]
+  DEFINES: [DEFINES]
+  REFERENCES: [CITES, REFERENCES, SAME_CONCEPT]
+  AMENDS: [AMENDS, AMENDS_PROVISION, SUSPENDS, PRESERVES_UNDER_TRANSITION]
+  SUPERSEDES: [REPLACES, SUPERSEDES, APPLIES_INSTEAD]
+  BASED_ON: [BASED_ON]
+  USES_SHEET: [USES_SHEET]
+  HAS_CRITERION: [HAS_CRITERION, HAS_SUBCRITERION]
+  SCORES_TO: [MINIMUM_FOR]
+  RECOGNIZES: [RECOGNIZES]
+  HAS_STAR: [HAS_STAR]
+  OWNED_BY: [OWNED_BY, DECLARED_BY]
+  CLASSIFIED_AS: [CLASSIFIED_AS, CLASSIFIED_UNDER]
+  RESPONSIBLE_FOR: [RESPONSIBLE_FOR]
+  DEFINED_IN: [AUTHORITY_RULE]
+
+# An edge that ends at an evidence unit (a citation, an amendment, an authority rule) is lifted to the deepest provision
+# whose evidence includes that unit.
+# EXPRESSES keeps only the nearest provision of a norm: the deepest level wins.
+provision_depth: [Article, Clause, Point]
+
+# Stored types and relations that are never part of the answer view: provenance, candidates waiting to be resolved,
+# and links whose target is folded into a property. Every stored type is a role, a folded property or listed here.
+not_answer:
+  nodes: [EvidenceUnit, Mention, CandidateFact, RuleCandidate, CriterionRowCandidate, RegulatoryClaim]
+  edges: [SUPPORTED_BY, LOCATED_IN, MENTIONS, CONTAINS, IN_VERSION, REFERS_TO, HAS_CRITERION_CANDIDATE, MEETS_SCORE_BAND]

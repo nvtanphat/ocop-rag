@@ -186,6 +186,8 @@ class BusinessRule(Strict):
     kind: Literal["obligation", "prohibition", "permission", "exemption", "scoring", "temporal"]
     statement: str = Field(min_length=1)
     evidence: list[EvidenceRef] = Field(min_length=1)
+    # Norm frame: each field is a verbatim span of the statement (actor, action, object, condition, exception, time).
+    frame: dict[str, str] = Field(default_factory=dict)
     status: Status = Status.CANDIDATE
     # Only a source-backed, *reviewed* formalization may have executable conditions.
     if_all: list[Condition] = Field(default_factory=list)

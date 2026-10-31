@@ -32,6 +32,7 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         "OCOP_EXTRACT_LLM_WORKERS",
     ):
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OCOP_EXTRACT_OPENAI_API_KEY", "test-key")
     system = OcopSystemPipeline(tmp_path)
     monkeypatch.setattr(OcopSystemPipeline, "source_snapshot", lambda self, **kwargs: (12, "approved-snapshot"))
     calls = []
@@ -122,14 +123,14 @@ def fixture_pipeline(tmp_path: Path, monkeypatch, *, fail_graph=False):
         (index_dir / "bm25.json.gz").write_bytes(b"TEST")
         return manifest
 
-    def graph(knowledge, output, *, review_decisions=None):
+    def graph(knowledge, output, *, extraction_dir=None):
         assert (knowledge / "manifest.json").exists()
         calls.append("graph")
         if fail_graph:
             raise RuntimeError("graph failure")
         # Exercise the real graph snapshot contract, including automatic acceptance
         # files and hashes; only expensive OCR/index services remain mocked.
-        return real_build_graph(knowledge, output, review_decisions=review_decisions)
+        return real_build_graph(knowledge, output, extraction_dir=extraction_dir)
 
     import ai_core.processing.ocop.knowledge_extract as knowledge_mod
     import ai_core.retrieval.ocop.index_pipeline as index_mod
@@ -264,8 +265,8 @@ def test_invalid_new_bundle_rolls_back_after_directory_promotion(tmp_path, monke
 
     real_graph = graph_mod.build_graph
 
-    def malformed_graph(knowledge, output, *, review_decisions=None):
-        result = real_graph(knowledge, output, review_decisions=review_decisions)
+    def malformed_graph(knowledge, output, *, extraction_dir=None):
+        result = real_graph(knowledge, output, extraction_dir=extraction_dir)
         result["source_knowledge_version"] = "knowledge-fixture"
         # Force a post-rename lineage failure not caught by the preflight.
         result["status"] = "broken_state"

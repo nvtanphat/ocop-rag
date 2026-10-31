@@ -1,6 +1,6 @@
 """Contracts for graph identity, document-first retrieval, router and auth.
 
-These tests use synthetic fixtures and do not require Ollama/Neo4j/Qdrant.
+These tests use synthetic fixtures and do not require an LLM, Neo4j or Qdrant.
 """
 
 from __future__ import annotations
@@ -98,7 +98,12 @@ def test_graph_does_not_duplicate_document_and_evidence_nodes(tmp_path):
     edges = load_rows(output / "edges.jsonl")
     assert len([x for x in nodes if x["node_type"] == "SourceDocument"]) == 1
     assert len([x for x in nodes if x["node_type"] == "EvidenceUnit"]) == 1
-    assert {x["node_id"] for x in nodes} == {"doc-old", "u-old"}
+    base_nodes = [x for x in nodes if x["node_type"] != "DocumentVersion"]
+    assert {x["node_id"] for x in base_nodes} == {"doc-old", "u-old"}
+    versions = [x for x in nodes if x["node_type"] == "DocumentVersion"]
+    assert len(versions) == 1
+    assert versions[0]["properties"]["document_id"] == "doc-old"
+    assert versions[0]["derived"] and versions[0]["check"] == "passed"
     assert any(
         x["relation_type"] == "LOCATED_IN"
         and x["source_entity_id"] == "u-old"
@@ -241,10 +246,10 @@ def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
                 "node_id": "d",
                 "node_type": "RecognitionDecision",
                 "review_status": "verified",
-                "check": "human_verified",
+                "check": "passed",
             },
-            {"node_id": "p1", "node_type": "Product", "review_status": "verified", "check": "human_verified"},
-            {"node_id": "p2", "node_type": "Product", "review_status": "verified", "check": "human_verified"},
+            {"node_id": "p1", "node_type": "Product", "review_status": "verified", "check": "passed"},
+            {"node_id": "p2", "node_type": "Product", "review_status": "verified", "check": "passed"},
         ],
     )
     save_rows(
@@ -256,7 +261,7 @@ def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
                 "source_entity_id": "d",
                 "target_entity_id": "p1",
                 "review_status": "verified",
-                "check": "human_verified",
+                "check": "passed",
             },
             {
                 "edge_id": "e2",
@@ -264,13 +269,13 @@ def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
                 "source_entity_id": "d",
                 "target_entity_id": "p2",
                 "review_status": "verified",
-                "check": "human_verified",
+                "check": "passed",
             },
         ],
     )
-    from_product = traverse(graph, ["p1"], hops=2, relations=["RECOGNIZES"], verified_only=True)
+    from_product = traverse(graph, ["p1"], hops=2, relations=["RECOGNIZES"])
     assert "p2" not in {x["node_id"] for x in from_product["nodes"]}
     from_decision = traverse(
-        graph, ["d"], hops=1, relations=["RECOGNIZES"], verified_only=True, direction="out"
+        graph, ["d"], hops=1, relations=["RECOGNIZES"], direction="out"
     )
     assert {"p1", "p2"} <= {x["node_id"] for x in from_decision["nodes"]}

@@ -1,6 +1,6 @@
 """Publish immutable, version-scoped OCOP graph snapshots to Neo4j.
 
-A single write transaction creates the snapshot and advances its active pointer.
+Bounded transactions stage a snapshot; a final count-checked transaction activates it.
 Consumers MUST select the version through :OcopGraphActive rather than querying
 all :OcopNode nodes, which can contain retained historical snapshots.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 from ai_core.graph.ocop.ontology import EDGE_ENDPOINTS
-from ai_core.graph.ocop.grounding import usable, public_record
+from ai_core.graph.ocop.grounding import usable, public_record, relation_usable
 
 
 def publish_neo4j(
@@ -21,7 +21,6 @@ def publish_neo4j(
     user: str = "neo4j",
     password: str,
     database: str = "neo4j",
-    verified_only: bool = False,
     batch_size: int = 300,
 ) -> dict:
     if batch_size < 1 or batch_size > 10000:
@@ -41,14 +40,12 @@ def publish_neo4j(
     expected = manifest["counts"]
     if len(nodes) != expected["nodes"] or len(edges) != expected["edges"]:
         raise ValueError("graph snapshot row counts differ from manifest")
-    nodes = [
-        public_record(n) for n in nodes if usable(n) and (not verified_only or n["check"] == "human_verified")
-    ]
+    nodes = [public_record(n) for n in nodes if usable(n)]
     edges = [public_record(e) for e in edges if usable(e)]
     allowed = {n["node_id"] for n in nodes}
-    # An orphan in the full snapshot is corruption; verified-only mode may
-    # intentionally omit lower-trust endpoints and their incident edges.
-    if not verified_only and any(
+    node_map = {n["node_id"]: n for n in nodes}
+    # An orphan in the snapshot is corruption.
+    if any(
         e["source_entity_id"] not in allowed or e["target_entity_id"] not in allowed for e in edges
     ):
         raise ValueError("graph snapshot contains dangling edge")
@@ -57,13 +54,17 @@ def publish_neo4j(
         for e in edges
         if e["source_entity_id"] in allowed
         and e["target_entity_id"] in allowed
-        and (not verified_only or e["check"] == "human_verified")
+        and relation_usable(e, node_map)
     ]
     invalid = {e["relation_type"] for e in edges} - EDGE_ENDPOINTS.keys()
     if invalid:
         raise ValueError(f"Unsafe relation types: {sorted(invalid)}")
+    from ai_core.graph.ocop.roles import project
+
+    # Neo4j holds the role view (docs/adr/012): the closed role labels and relation types, not the stored types.
+    nodes, edges = project(nodes, edges)
     version = manifest["graph_version"]
-    mode = "verified" if verified_only else "checked"
+    mode = "checked"
     snapshot_id = f"{version}:{mode}"
     scope = f"ocop:{mode}"
     try:
@@ -71,37 +72,20 @@ def publish_neo4j(
     except ImportError as exc:
         raise RuntimeError("Install neo4j driver to publish OCOP graph") from exc
 
-    def write_snapshot(tx):
-        # Every MATCH/MERGE is constrained to this immutable snapshot. No
-        # relationship can accidentally connect different corpus versions.
-        for offset in range(0, len(nodes), batch_size):
-            group = nodes[offset : offset + batch_size]
-            rows = [_properties(n) for n in group]
-            tx.run(
-                "UNWIND $rows AS row "
-                "MERGE (n:OcopNode {snapshot_id:$snapshot_id,node_id:row.node_id}) "
-                "SET n += row",
-                rows=rows,
-                snapshot_id=snapshot_id,
-            ).consume()
-        for relation in sorted({e["relation_type"] for e in edges}):
-            group = [e for e in edges if e["relation_type"] == relation]
-            # Relation interpolation is safe ONLY because it is allowlisted.
-            cypher = (
-                "UNWIND $rows AS row "
-                "MATCH (a:OcopNode {snapshot_id:$snapshot_id,node_id:row.source_entity_id}) "
-                "MATCH (b:OcopNode {snapshot_id:$snapshot_id,node_id:row.target_entity_id}) "
-                f"MERGE (a)-[r:{relation} {{snapshot_id:$snapshot_id,edge_id:row.edge_id}}]->(b) "
-                "SET r += row"
-            )
-            for offset in range(0, len(group), batch_size):
-                tx.run(
-                    cypher,
-                    rows=[_properties(e) for e in group[offset : offset + batch_size]],
-                    snapshot_id=snapshot_id,
-                ).consume()
-        # Activation happens only after all writes complete, within the SAME
-        # transaction. Exceptions abort both publication and pointer switch.
+    def write_batch(tx, query, rows):
+        tx.run(query, rows=rows, snapshot_id=snapshot_id).consume()
+
+    def activate(tx):
+        node_count = tx.run("MATCH (n:OcopNode {snapshot_id:$snapshot_id}) RETURN count(n) AS count",
+                            snapshot_id=snapshot_id).single()["count"]
+        edge_count = tx.run(
+            "MATCH (:OcopNode {snapshot_id:$snapshot_id})-[r {snapshot_id:$snapshot_id}]->"
+            "(:OcopNode {snapshot_id:$snapshot_id}) RETURN count(r) AS count",
+            snapshot_id=snapshot_id).single()["count"]
+        if node_count != len(nodes) or edge_count != len(edges):
+            raise RuntimeError("Neo4j staged snapshot counts differ; active pointer unchanged")
+        # A failed batch leaves only an inactive version. Activation and its
+        # completeness check share one transaction; existing snapshots stay live.
         tx.run(
             "MERGE (a:OcopGraphActive {scope:$scope}) "
             "SET a.snapshot_id=$snapshot_id, a.graph_version=$version, "
@@ -123,7 +107,25 @@ def publish_neo4j(
                 "CREATE CONSTRAINT ocop_graph_active_scope IF NOT EXISTS "
                 "FOR (a:OcopGraphActive) REQUIRE a.scope IS UNIQUE"
             ).consume()
-            session.execute_write(write_snapshot)
+            node_query = ("UNWIND $rows AS row "
+                          "MERGE (n:OcopNode {snapshot_id:$snapshot_id,node_id:row.node_id}) SET n += row")
+            for role in sorted({n["role"] for n in nodes}):
+                group = [n for n in nodes if n["role"] == role]
+                # The label is interpolated, so it is only ever a role name from the validated vocabulary.
+                labelled = node_query + f", n:{role}"
+                for offset in range(0, len(group), batch_size):
+                    session.execute_write(write_batch, labelled, [_properties(n) for n in group[offset:offset + batch_size]])
+            for relation in sorted({e["relation_type"] for e in edges}):
+                group = [e for e in edges if e["relation_type"] == relation]
+                # Interpolation remains restricted to the validated ontology.
+                query = ("UNWIND $rows AS row "
+                         "MATCH (a:OcopNode {snapshot_id:$snapshot_id,node_id:row.source_entity_id}) "
+                         "MATCH (b:OcopNode {snapshot_id:$snapshot_id,node_id:row.target_entity_id}) "
+                         f"MERGE (a)-[r:{relation} {{snapshot_id:$snapshot_id,edge_id:row.edge_id}}]->(b) SET r += row")
+                for offset in range(0, len(group), batch_size):
+                    session.execute_write(write_batch, query,
+                                          [_properties(e) for e in group[offset:offset + batch_size]])
+            session.execute_write(activate)
         return {
             "status": "uploaded",
             "node_count": len(nodes),
@@ -131,7 +133,6 @@ def publish_neo4j(
             "graph_version": version,
             "snapshot_id": snapshot_id,
             "active_scope": scope,
-            "verified_only": verified_only,
         }
     finally:
         drv.close()
@@ -146,16 +147,11 @@ def publish_reviewed_graph(root, *, uri: str, user: str, password: str) -> dict:
     import json
 
     from ocop_contracts.locking import process_lock
-    from ai_core.graph.ocop.review import _write_lock
-
     root = Path(root)
     base = root / "data/processed/ocop"
-    with (
-        process_lock(base / ".system.lock", wait_timeout=900),
-        _write_lock(root / "data/review/ocop_graph_projection"),
-    ):
+    with process_lock(base / ".system.lock", wait_timeout=900):
         manifest_path = base / "graph" / "manifest.json"
-        outcome = publish_neo4j(base / "graph", uri=uri, user=user, password=password, verified_only=False)
+        outcome = publish_neo4j(base / "graph", uri=uri, user=user, password=password)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         manifest["neo4j"] = outcome
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
@@ -204,7 +200,7 @@ def export_reference_files(root) -> dict:
                         "id": node["node_id"],
                         "label": label,
                         "corpus_version": version,
-                        "review_status": "human_verified",
+                        "review_status": "verified",
                         "visibility": "public",
                         "citations": citations,
                     },

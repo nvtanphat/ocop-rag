@@ -9042,7 +9042,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
 | Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
-| c) Phong cách, ghi nhãn | 3 |
+| c) Phong cách, ghi nhãn hàng | 3 |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm, có truy xuất nguồn gốc điện tử | 3 |
@@ -9069,7 +9069,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| - e) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
@@ -9079,7 +9079,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
 | Thị trường quốc tế (có hợp đồng); hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và vận hành ổn định ít nhất 6 tháng) | 5 |
-| b) Tổ chức phân (Gồm: Tổ chức kinh doanh phân phối sản phẩm) | 4 |
+| b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
@@ -9115,7 +9115,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | Có đầy đủ các yếu tố của câu chuyện sản phẩm | 1 |
 | Ngắn gọn, xúc tích và có các thông điệp đặc sắc về sản phẩm/văn hóa/trí tuệ/bản sắc địa phương***** | 2 |
 | Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
-| 6. CHỈ TIÊU CẨM QUAN | 13 |
+| 6. CHỈ TIÊU CẢM QUAN | 13 |
 | a)Kích thước, hình dạng bề ngoài | 2 |
 | Không đồng đều | 0 |
 | Không đồng đều, chấp nhận được | 1 |
@@ -9153,7 +9153,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | Các tiêu chí | Thang điểm |
 | --- | --- |
 | 9. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM | 5 |
-| a) Công bố tiêu chuẩn sản phẩm của cơ sở sản xuất Khuyển khích cơ sở xây dựng công bố Tiêu chuẩn sản phẩm) | 2 |
+| a) Công bố tiêu chuẩn sản phẩm của cơ sở sản xuất (Khuyến khích cơ sở xây dựng, công bố Tiêu chuẩn sản phẩm) | 2 |
 | Không có bản công bố tiêu chuẩn sản phẩm/chất lượng | 0 |
 | Có tiêu chuẩn chất lượng sản phẩm | 1 |
 | Có công bố tiêu chuẩn/chất lượng sản phẩm theo quy định*** | 2 |
@@ -9172,7 +9172,7 @@ phẩm không đúng theo quy định; hoặc không đáp ứng quy định H�
 | Ghi chú: Không đánh giá các bước tiếp theo nếu Chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
 | 11. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
-| Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
+| Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 12. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
@@ -9232,7 +9232,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
 | Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết KIệm nguyên liệu, nhiên liệu hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,....) | 1 |
-| 2. PHÁT TRIỂN SẢN PHĂM | 10 |
+| 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được nuôi trồng đánh bắt phổ biến ở nhiều tỉnh, thành phố | 0 |
 | Sản phẩm được trồng phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện đất đai, thời tiết, kỹ thuật bản địa | 1 |
@@ -9579,21 +9579,21 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Không có | 0 |
 | Có, nhưng không đạt | 1 |
 | Có, đạt nhưng không đủ | 2 |
-| Có, đạt đầy đủ (vi sinh, kim loại nặng dư lượng thuốc BVTV, phụ gia, chất không mong muốn,....) theo quy định | 3 |
+| Có, đạt đầy đủ (vi sinh, kim loại nặng, dư lượng thuốc BVTV, phụ gia, hóa chất không mong muốn,...) theo quy định | 3 |
 | 10. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |
 | Có kế hoạch kiểm soát nội bộ chất lượng sản phẩm | 1 |
 | Có kế hoạch kiểm soát nội bộ gắn với truy xuất nguồn gốc theo quy định*** | 2 |
-| Có Chứng nhận quản lý chất lượng tiên tiến của việt nam (VietGAP/hữu cơ/..) | 3 |
+| Có Chứng nhận quản lý chất lượng tiên tiến của Việt Nam (VietGAP/hữu cơ/..) | 3 |
 | Có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện ATTP cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích***** | 5 |
 | Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
-| 11. HƯỚNG DẪN SỬ DỤNG ĐÊ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| 11. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
-| Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
+| Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 12. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
-| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU..) | 3 |
+| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 3 |
 | TỔNG CỘNG | 100 |
 
 Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp độ sao (`***` - 3 sao; `****` - 4 sao; `*****` - 5 sao).
@@ -9647,24 +9647,24 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | --- | --- |
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp.....) | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp.....) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
-| a) nguồn gốc ý tưởng sản phẩm | 4 |
+| a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được trồng phổ biến ở nhiều tỉnh, thành phố | 0 |
-| Sản phẩm được trồng phổ biến ở nhiều tỉnh thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện đất đai, thời tiết, kỹ thuật bản địa | 1 |
+| Sản phẩm được trồng phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện đất đai, thời tiết, kỹ thuật bản địa | 1 |
 | Sản phẩm được trồng ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tỉnh, có chất lượng nổi trội | 3 |
-| Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý.eses | 4 |
+| Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý.**** | 4 |
 | Ghi chú: Không đánh giá những sản phẩm có tính phổ biến của nhóm sản phẩm chủ lực cấp quốc gia, cấp tỉnh mà không có sự nổi trội và đặc sắc. |  |
 | b) Đóng gói, bao bì sản phẩm | 3 |
 | Đóng gói theo hình thức thông thường, không có bao bì | 0 |
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
 | Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
-| c) Phong cách, Ghi nhãn hàng | 3 |
-| (Gồm: Hình ảnh, màu sắc; nghi nhãn sản phẩm...) |  |
+| c) Phong cách, ghi nhãn hàng hóa | 3 |
+| (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
-| Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm, có truy xuất nguồn gốc điện tử | 3 |
+| Ghi nhãn hàng hóa đầy đủ, đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm, có truy xuất nguồn gốc điện tử | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ gia đình có đăng ký kinh doanh, trang trại, tổ hợp tác (có giấy đăng ký kinh doanh của tổ trưởng), Công ty Trách nhiệm hữu hạn (TNHH) 1 thành viên, doanh nghiệp tư nhân (DNTN) | 1 |
@@ -9673,7 +9673,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | b) Đại diện pháp luật của chủ thể là nữ/đồng bào dân tộc thiểu số | 1 |
 | Đại diện pháp luật của chủ thể không phải nữ/đồng bào dân tộc thiểu số | 0 |
 | Đại diện pháp luật của chủ thể là nữ/đồng bào dân tộc thiểu số | 1 |
-| c) sử dụng lao động địa phương | 3 |
+| c) Sử dụng lao động địa phương | 3 |
 | Có sử dụng từ 50% đến 75% lao động là người trên địa bàn cấp huyện | 1 |
 | Có sử dụng ≥ 75% lao động là người trên địa bàn cấp huyện | 3 |
 | d) Tăng trưởng sản xuất kinh doanh | 2 |
@@ -9698,7 +9698,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
 | Thị trường quốc tế (có hợp đồng); hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và vận hành ổn định ít nhất 6 tháng) | 5 |
-| b) Tổ chức phân (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) | 4 |
+| b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
@@ -9777,7 +9777,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| b) Kiểm tra định kỳ các chỉ tiêu ATTP theo quy định Phiếu kiểm nghiệm định kỳ các chỉ tiêu ATTP) | 3 |
+| b) Kiểm tra định kỳ các chỉ tiêu ATTP theo quy định (Phiếu kiểm nghiệm định kỳ các chỉ tiêu ATTP) | 3 |
 | Không có | 0 |
 | Có, nhưng không đạt | 1 |
 | Có, đạt nhưng không đủ | 2 |
@@ -9849,7 +9849,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường, hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu, hoạt động xử lý/tái chế chất thải, tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,............ mm. nghiệp, người trị thuy nghị thị thị thị thị nhấnh | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,...) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
@@ -9863,7 +9863,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
 | c) Phong cách, ghi nhãn hàng | 3 |
-| (Gồm: Hình ảnh, màu sắc; nghi nhãn sản phẩm...) |  |
+| (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm, có truy xuất nguồn gốc điện tử | 3 |
@@ -9900,7 +9900,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
 | Thị trường quốc tế (có hợp đồng); hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và vận hành ổn định ít nhất 6 tháng) | 5 |
-| b) Tổ chức phân (Gồm: Tổ chức kinh doanh phân phối sản phẩm) | 4 |
+| b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
@@ -10065,7 +10065,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
 | Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
-| c) phong cách, Ghi nhãn hàng | 3 |
+| c) Phong cách, ghi nhãn hàng | 3 |
 | (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
@@ -10133,43 +10133,43 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
 | Có câu chuyện riêng, gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
-| C) Cấu trúc câu chuyện | 2 |
-| Chỉ áp dụng khi có cấu chuyện |  |
+| c) Cấu trúc câu chuyện | 2 |
+| Chỉ áp dụng khi có câu chuyện |  |
 | Đơn giản | 0 |
 | Có đầy đủ các yếu tố của câu chuyện sản phẩm | 1 |
 | Ngắn gọn, xúc tích và có các thông điệp đặc sắc về sản phẩm/văn hóa/trí tuệ/bản sắc địa phương***** | 2 |
-| Phần C CHẤT LƯỢNG sản phẩm (35 Điểm) | 35 |
-| 6. CHỈ TIÊU CĂM QUAN | 16 |
+| Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
+| 6. CHỈ TIÊU CẢM QUAN | 16 |
 | a) Tạp chất | 2 |
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất | 2 |
-| Ghi chú: Nếu có tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: đất, côn trùng, lông, len, mốc nguy hại, - sẽ không đánh giá các bước tiếp theo. |  |
-| b) ngoại hình, đồng đều | 3 |
+| Ghi chú: Nếu có tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: đất, côn trùng, lông, len, mốc nguy hại... sẽ không đánh giá các bước tiếp theo. |  |
+| b) Ngoại hình, đồng đều | 3 |
 | Không đồng đều | 0 |
-| Không đồng đều chấp nhận được | 1 |
+| Không đồng đều, chấp nhận được | 1 |
 | Tương đối đồng đều | 2 |
 | Đồng đều | 3 |
 | c) Màu sắc | 3 |
 | Chấp nhận được | 0 |
 | Tương đối phù hợp với đặc tính sản phẩm | 1 |
 | Phù hợp với đặc tính sản phẩm | 2 |
-| o rất phù hợp với đặc tính sản phẩm | 3 |
+| Rất phù hợp với đặc tính sản phẩm | 3 |
 | d) Mùi | 3 |
 | Có mùi lạ (như khét...) | 0 |
 | Có mùi chấp nhận được | 1 |
 | Mùi phù hợp đặc trưng của sản phẩm | 2 |
 | Mùi phù hợp đặc trưng của sản phẩm, hấp dẫn | 3 |
-| đ) vị | 5 |
+| đ) Vị | 5 |
 | Vị khác thường | 0 |
 | Chấp nhận được | 1 |
 | Phù hợp với đặc trưng của sản phẩm**** | 3 |
 | Phù hợp với đặc trưng của sản phẩm, hấp dẫn | 5 |
-| 7, TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
+| 7. TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
-| o Rất độc đáo và có tính đặc trưng | 5 |
+| Rất độc đáo và có tính đặc trưng | 5 |
 
 ## VN.OCOP.QD148.2023 — trang 52
 **Bảng 1**
@@ -10183,11 +10183,11 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tiêu chuẩn chất lượng sản phẩm | 1 |
 | Có công bố tiêu chuẩn/chất lượng sản phẩm theo quy định*** | 2 |
 | Ghi chú: Bản tiêu chuẩn sản phẩm cần có phiếu kiểm nghiệm các chỉ tiêu ATTP |  |
-| b) Kiểm tra định kỳ các chỉ tiêu ATTP theo quy định Phiếu kiểm nghiệm định kỳ các chỉ tiêu ATTP) | 2 |
+| b) Kiểm tra định kỳ các chỉ tiêu ATTP theo quy định (Phiếu kiểm nghiệm định kỳ các chỉ tiêu ATTP) | 2 |
 | Có, nhưng không đạt | 0 |
 | Có, đạt nhưng không đủ | 1 |
 | Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn...) theo quy định | 2 |
-| 9, ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
+| 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |
 | Có kế hoạch kiểm soát nội bộ chất lượng sản phẩm | 1 |
 | Có kế hoạch kiểm soát nội bộ gắn với truy xuất nguồn gốc theo quy định | 2 |
@@ -10196,7 +10196,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
 | 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
-| Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
+| Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
@@ -10240,8 +10240,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Không có liên kết hoặc có nhưng không rõ ràng | 0 |
 | Có hợp đồng liên kết sản xuất từ 50% đến dưới 75% sản lượng nguyên liệu đầu vào cho chế biến | 1 |
 | Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến**** | 2 |
-| Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở | 3 |
-| đ) Bảo vệ môi trường trong quá trình sản xuất | 3. |
+| Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở lên | 3 |
+| đ) Bảo vệ môi trường trong quá trình sản xuất | 3 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
 
 ## VN.OCOP.QD148.2023 — trang 54
@@ -10253,7 +10253,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu, hoạt động xử lý/tái chế chất thải, tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,.............. mm. nghiệp, ngoại trị thuy nghị thuận nghiện thiện nhiện minh | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,...) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
@@ -10397,7 +10397,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
-| 11. CƠ HỘI THỊ TRƯỜNG TOÀN CÂU | 3 |
+| 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
 | Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 3 |
@@ -10423,7 +10423,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 
 | Các tiêu chí | Thang điểm (Điểm) |  |
 | --- | --- | --- |
-| Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40. |  |
+| Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |  |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |  |
 | a) nguồn nguyên liệu | 5 |  |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |  |
@@ -10473,7 +10473,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | c) Phong cách, Ghi nhãn hàng hóa | 3 |
 | (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
-| 1 Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
+| Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
@@ -10519,7 +10519,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh | 3 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội hoạt động thường xuyên, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh và quốc tế | 4 |
-| 5. CÂU CHUYỆN VÊ SẢN PHẨM | 12 |
+| 5. CÂU CHUYỆN VỀ SẢN PHẨM | 12 |
 | a) Câu chuyện về sản phẩm | 5 |
 | Không có câu chuyện, hoặc có nhưng không được tư liệu hóa | 0 |
 | Có tài liệu giới thiệu về sản phẩm | 1 |
@@ -10632,7 +10632,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
 | Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
-| Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 7S% | 3 |
+| Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | o sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
 | Ghi chú: Bị loại nếu sử dụng toàn bộ nguyên liệu nhập khẩu hoặc không rõ nguồn gốc |  |
 | b) Gia tăng giá trị | 3 |
@@ -10722,7 +10722,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh | 3 |
 | Có nhiều hoạt động quảng bá có website của cơ sở/quảng bá trên mạng xã hội hoạt động thường xuyên, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh và quốc tế | 4 |
-| 5. CÂU CHUYỆN VÊ SẢN PHẨM | 12 |
+| 5. CÂU CHUYỆN VỀ SẢN PHẨM | 12 |
 | a) Câu chuyện về sản phẩm | 5 |
 | Không có câu chuyện, hoặc có nhưng không được tư liệu hóa | 0 |
 | Có tài liệu giới thiệu về sản phẩm | 1 |
@@ -10751,24 +10751,24 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | a) Tạp chất | 2 |
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
-| Sạch, không phát hiện tạp chất | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẫu gỗ, cát, nhựa . sẽ không đánh giá các bước saa tiếp theo |  |
+| Sạch, không phát hiện tạp chất**** | 2 |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
 | b) Thể chất | 3 |
 | Không phù hợp | 0 |
 | Tương đối phù hợp với tính chất của sản phẩm | 1 |
 | Phù hợp với tính chất của sản phẩm | 2 |
 | Rất phù hợp với tính chất của sản phẩm | 3 |
-|  | 3 |
-| 3) Máp nhận được | 0 |
+| c) Màu sắc | 3 |
+| Chấp nhận được | 0 |
 | Tương đối phù hợp với đặc tính sản phẩm | 1 |
 | Phù hợp với đặc tính sản phẩm**** | 2 |
 | Rất phù hợp với đặc tính sản phẩm | 3 |
-| đ) Mùi | 3 |
+| d) Mùi | 3 |
 | Có mùi lạ (như khét,...) | 0 |
 | Có mùi chấp nhận được | 1 |
-| Mùi phù hợp đặc trưng của sản phẩm | 2 |
-| Mùi phù hợp đặc trưng của sản phẩm, hấp dẫn | 3 |
-| đ) vị | 5 |
+| Mùi phù hợp đặc trưng của sản phẩm**** | 2 |
+| Mùi phù hợp đặc trưng của sản phẩm, hấp dẫn***** | 3 |
+| đ) Vị | 5 |
 | Vị khác thường | 0 |
 | Chấp nhận được | 1 |
 | Phù hợp với đặc trưng của sản phẩm**** | 3 |
@@ -10777,7 +10777,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
-| Tổ Rất độc đáo và có tính đặc trưng | 5 |
+| Rất độc đáo và có tính đặc trưng***** | 5 |
 
 ## VN.OCOP.QD148.2023 — trang 67
 **Bảng tiêu chí đánh giá (tiếp theo)**
@@ -10878,7 +10878,7 @@ Người đánh giá (Ký và ghi rõ họ tên)
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
-| a) Loại hình tổ chức sản xuất - kinh doanh skiin | 3 |
+| a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ gia đình có đăng ký kinh doanh trang trại, tổ hợp tác (có giấy đăng ký kinh 1 doanh của tổ trưởng), Công ty Trách nhiệm hữu hạn (TNHH) 1 thành viên, doanh nghiệp tư nhân (DNTN) | 1 |
 | Công ty TNHH hai thành viên trở lên, công ty cổ phần có vốn góp của cộng đồng địa phương <51% | 2 |
 | HTX tổ chức, hoạt động theo Luật HTX 2012 hoặc công ty cổ phần có vốn góp của cộng đồng địa phương ≥ 51% | 3 |
@@ -10945,13 +10945,13 @@ Người đánh giá (Ký và ghi rõ họ tên)
 | Đơn giản | 0 |
 | Có đầy đủ các yếu tố của câu chuyện sản phẩm | 1 |
 | Ngắn gọn, xúc tích và có các thông điệp đặc sắc về sản phẩm/văn hóa/trí tuệ/bản sắc địa phương***** | 2 |
-| Phần C CHẤT LƯỢNG SẢN PHẨM (35.Điểm) | 35 |
+| Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
 | 6. CHỈ TIÊU CĂM QUAN | 16 |
 | a) Tạp chất | 2 |
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mâu gỗ, cát, nhựa... sẽ không đánh giá các bước 410 tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
 | b) Thể chất | 3 |
 | Không phù hợp | 0 |
 | Tương đối phù hợp với tính chất của sản phẩm | 1 |
@@ -10972,7 +10972,7 @@ Người đánh giá (Ký và ghi rõ họ tên)
 | Chấp nhận được | 1 |
 | Phù hợp với đặc trưng của sản phẩm**** | 3 |
 | Phù hợp với đặc trưng của sản phẩm, hấp dẫn | 5 |
-| 7. TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết tõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
+| 7. TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
@@ -11143,39 +11143,39 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
 | Có câu chuyện riêng, gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
-| C) Cấu trúc câu chuyện | 2 |
-| Chỉ áp dụng khi có cậu chuyện |  |
+| c) Cấu trúc câu chuyện | 2 |
+| Chỉ áp dụng khi có câu chuyện |  |
 | Đơn giản | 0 |
 | Có đầy đủ các yếu tố của câu chuyện sản phẩm | 1 |
 | Ngắn gọn, xúc tích và có các thông điệp đặc sắc về sản phẩm/văn hóa/trí tuệ/bản sắc địa phương***** | 2 |
-| Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35.1 |
-| 6. CHỈ TIÊU CĂM QUAN | 13 |
+| Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
+| 6. CHỈ TIÊU CẢM QUAN | 13 |
 | a) Ngoại hình | 4 |
-| Tạp chất | 2 |
+| - Tạp chất | 2 |
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp-chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẫu gỗ, cát, nhựa . sẽ không đánh giá các bước wc tiếp theo |  |
-| Hình dạng, màu sắc cánh chè | 2 |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
+| - Hình dạng, màu sắc cánh chè | 2 |
 | Hình dạng/màu không phù hợp | 0 |
 | Đồng đều, màu tự nhiên, tương đối phù hợp với tính chất sản phẩm | 1 |
 | Đồng đều, màu tự nhiên, phù hợp với tính chất sản phẩm | 2 |
 | b) Nước pha | 9 |
-| bị Nước pha | 3 |
-| Hơi đục, màu nhạt chấp nhận được | 0 |
+| - Màu nước | 3 |
+| Hơi đục, màu nhạt, chấp nhận được | 0 |
 | Trong sáng, phù hợp (với tính chất sản phẩm) | 1 |
 | Trong sáng, rất phù hợp | 2 |
-| Trong sáng, rất phù hợp bền màu | 3 |
+| Trong sáng, rất phù hợp, bền màu | 3 |
 | - Mùi nước | 3 |
 | Có mùi lạ (chấp nhận được) hoặc không rõ mùi | 0 |
 | Thơm tự nhiên, nhẹ | 1 |
 | Thơm tự nhiên, mạnh | 2 |
 | Thơm tự nhiên, mạnh, bền mùi | 3 |
-| Vị nước | 3 |
+| - Vị nước | 3 |
 | Vị khác thường (chấp nhận được) hoặc không rõ vị | 0 |
 | Tương đối đậm phù hợp (với tính chất sản phẩm) | 1 |
 | Vị đậm, dịu, phù hợp | 2 |
-| Vị đậm, dịu, phù hợp có hậu vị ngọt | 3 |
+| Vị đậm, dịu, phù hợp, có hậu vị ngọt | 3 |
 
 ## VN.OCOP.QD148.2023 — trang 77
 **Bảng 1**
@@ -11196,8 +11196,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Ghi chú: Bản tiêu chuẩn sản phẩm cần có phiếu kiểm nghiệm các chỉ tiêu ATTP |  |
 | b) Kiểm tra định kỳ các chỉ tiêu ATTP theo quy định (Phiếu kiểm nghiệm định kỳ các chỉ tiêu ATTP) | 2 |
 | Có, nhưng không đạt | 0 |
-| Có, đạt nhưng không đủ |  |
-| Có, đạt đầy đủ (vi sinh kim loại nặng, phụ gia, hóa chất không mong muốn...) theo quy định | 2 |
+| Có, đạt nhưng không đủ | 1 |
+| Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn,...) theo quy định | 2 |
 | 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |
 | Có kế hoạch kiểm soát nội bộ chất lượng sản phẩm | 1 |
@@ -11256,7 +11256,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
 | Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,....) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
-| a) Nguồn gốc ý tướng sản phẩm | 4 |
+| a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện về nguyên liệu, kỹ thuật truyền thống | 1 |
 | Sản phẩm được sản xuất ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tỉnh, có chất lượng nổi trội/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương | 3 |
@@ -11346,7 +11346,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất**** | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẫu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ không đạt ATTP) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
 | b) Hình dạng (Của ngoại hình trà, trà thảo mộc,...) | 2 |
 | Không đồng đều, chấp nhận được | 0 |
 | Tương đối đồng đều, phù hợp | 1 |
@@ -11356,7 +11356,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Trong sáng, phù hợp (với tính chất sản phẩm) | 1 |
 | Trong sáng, rất phù hợp**** | 2 |
 | Trong sáng, rất phù hợp, bền màu | 3 |
-| đ) Mùi nước | 3 |
+| d) Mùi nước | 3 |
 | Có mùi lạ (chấp nhận được) hoặc không rõ mùi | 0 |
 | Thơm tự nhiên, nhẹ | 1 |
 | Thơm tự nhiên, mạnh**** | 2 |
@@ -11379,7 +11379,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Rất độc đáo và có tính đặc trưng***** | 5 |
 | 8. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM, KIỂM TRA ĐỊNH KỲ | 4 |
 | a) Công bố chất lượng sản phẩm theo quy định | 2 |
-| (Khuyến khích cơ sở xây dựng công bố tiêu chuẩn sản phẩm) |  |
+| (Khuyến khích cơ sở xây dựng, công bố tiêu chuẩn sản phẩm) |  |
 | Không có Bản công bố tiêu chuẩn sản phẩm/chất lượng | 0 |
 | Có tiêu chuẩn chất lượng sản phẩm | 1 |
 | Có công bố tiêu chuẩn/chất lượng sản phẩm theo quy định*** | 2 |
@@ -11394,10 +11394,10 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Có kế hoạch kiểm soát nội bộ gắn với truy xuất nguồn gốc theo quy định*** | 2 |
 | Có chứng nhận quản lý chất lượng tiên tiến (ISO/GMP/HACCP/...)**** | 3 |
 | Có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện ATTP cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích***** | 5 |
-| Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận dù điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐẾ đảm bảo Sản phẩm có CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
-| Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
+| Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
@@ -11442,27 +11442,27 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,....) | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,...) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
-| a) nguồn gốc ý tưởng sản phẩm | 4 |
+| a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện về nguyên liệu, kỹ thuật truyền thống | 1 |
 | Sản phẩm được sản xuất ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tỉnh, có chất lượng nổi trội/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương | 3 |
-| Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý/sản phẩm mới được chế biến tử nguyễn liêu Actinocial Anhma Arm thmno mai ản đinh itnhst 36 tháng k% 4 nguyên liệu đặc trưng của địa phương được thương mại ổn định ít nhất 36 tháng | 4 |
+| Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương được thương mại ổn định ít nhất 36 tháng | 4 |
 | Ghi chú: Bị loại nếu phát hiện giống hệt sản phẩm của nhà sản xuất khác, chỉ thay đổi tên sản phẩm, nhà sản xuất |  |
-| b) Đóng gói, bao bì sản phẩm | 3.1. |
-| Đóng gói theo hình thức thông thường, không có.bao bì | 0 |
+| b) Đóng gói, bao bì sản phẩm | 3 |
+| Đóng gói theo hình thức thông thường, không có bao bì | 0 |
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
-| Đóng gói sáng tạo bao bì đẹp | 2 |
-| Đóng gói sáng tạo, tiện lợi bao bì đẹp, sang trọng***** | 3 |
-| c) Phong cách, ghi nhãn hàng | 3 |
-| (Gồm: Hình ảnh, màu sắc; nghi nhãn sản phẩm...) |  |
+| Đóng gói sáng tạo, bao bì đẹp | 2 |
+| Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
+| c) Phong cách, ghi nhãn hàng hóa | 3 |
+| (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
-| Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử | 3 |
+| Ghi nhãn hàng hóa đầy đủ, đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
-| a) Loại hình tố chức sản xuất- kinh doanh | 3 |
-| Hộ gia đình có đăng ký kinh doanh trang trại, tổ hợp tác (có giấy đăng ký kinh doanh của tổ trưởng), Công ty Trách nhiệm hữu hạn (TNHH) 1 thành viên, doanh nghiệp tư nhân (DNTN) | 1 |
+| a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
+| Hộ gia đình có đăng ký kinh doanh, trang trại, tổ hợp tác (có giấy đăng ký kinh doanh của tổ trưởng), Công ty Trách nhiệm hữu hạn (TNHH) 1 thành viên, doanh nghiệp tư nhân (DNTN) | 1 |
 | Công ty TNHH hai thành viên trở lên, công ty cổ phần có vốn góp của cộng đồng địa phương <51% | 2 |
 | HTX tổ chức, hoạt động theo Luật HTX 2012 hoặc công ty cổ phần có vốn góp của cộng đồng địa phương ≥ 51% | 3 |
 | b) Đại diện pháp luật của chủ thể là nữ/đồng bào dân tộc thiểu số | 1 |
@@ -11478,7 +11478,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Các tiêu chí | Thang điểm |
 | --- | --- |
 | d) Tăng trưởng sản xuất kinh doanh | 2 |
-| Hợp tác xã xếp loại trung bình các loại hình khác có lợi nhuận tăng trưởng dương so với năm trước liền kề | 1 |
+| Hợp tác xã xếp loại trung bình, các loại hình khác có lợi nhuận tăng trưởng dương so với năm trước liền kề | 1 |
 | Hợp tác xã xếp loại khá, các loại hình khác có 2 năm liên tiếp tăng trưởng dương về lợi nhuận**** | 2 |
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
@@ -11497,14 +11497,14 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
-| Có.bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản lý | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh | 3 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội hoạt động thường xuyên, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh và quốc tế | 4 |
-| 5. CÂU CHUYỆN VÊ SẢN PHẨM | 12 |
+| 5. CÂU CHUYỆN VỀ SẢN PHẨM | 12 |
 | a) Câu chuyện về sản phẩm | 5 |
 | Không có câu chuyện, hoặc có nhưng không được tư liệu hóa | 0 |
 | Có tài liệu giới thiệu về sản phẩm | 1 |
@@ -11545,7 +11545,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Đồng đều, tự nhiên, tương đối phù hợp (với tính chất sản phẩm) | 1 |
 | Đồng đều, tự nhiên, phù hợp | 2 |
 | - Mùi | 2 |
-| Có mùi lạ (chấp nhận được) hoặc không | 0 |
+| Có mùi lạ (chấp nhận được) hoặc không rõ mùi | 0 |
 | Thơm tự nhiên đặc trưng nhẹ | 1 |
 | Thơm tự nhiên đặc trưng, mạnh | 2 |
 | Vị | 2 |
@@ -11558,7 +11558,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Đậm, sánh, phù hợp (với tính chất sản phẩm) | 1 |
 | Đậm, sánh, rất phù hợp | 2 |
 | - Mùi, vị | 2 |
-| Khác thường (chấp nhận được) hoặc không rõ vị | 0 |
+| Vị khác thường (chấp nhận được) hoặc không rõ vị | 0 |
 | Mùi, vị phù hợp với đặc tính sản phẩm | 1 |
 | Mùi vị hấp dẫn, đặc sắc | 2 |
 
@@ -11637,7 +11637,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Không có liên kết hoặc có nhưng không rõ ràng | 0 |
 | Có hợp đồng liên kết sản xuất từ 50% đến dưới 75% sản lượng nguyên liệu đầu vào cho chế biến | 1 |
 | Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến**** | 2 |
-| Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở | 3 |
+| Có hợp đồng liên kết trên 75% sản lượng nguyên liệu đầu vào cho chế biến và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở lên | 3 |
 | đ) Bảo vệ môi trường trong quá trình sản xuất | 3 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường và hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định | 2 |
@@ -11666,7 +11666,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | c) Phong cách, Ghi nhãn hàng hóa | 3 |
 | (Gồm: Hình ảnh, màu sắc, ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
-| Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chính sản phẩm | 2 |
+| Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử nơn noác Aiên | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
@@ -11745,7 +11745,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | b) Màu sắc | 3 |
 | Không trong suốt chấp nhận được | 0 |
 | Tương đối trong suốt | 1 |
-| Trong suốt, không màu | 3. |
+| Trong suốt, không màu | 3 |
 | c) Mùi | 5 |
 | Khác thường hoặc không rõ mùi | 0 |
 | Mùi nhẹ, phù hợp (với đặc trưng nguyên liệu sử dụng, loại sản phẩm) | 1 |
@@ -11765,7 +11765,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Rất độc đáo và có tính đặc trưng***** | 5 |
 | 8. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM, KIÊM tra định kỳ | 4 |
 | a) Công bố chất lượng sản phẩm theo quy định | 2 |
-| (Khuyến khích cơ sở xây dựng. công bố tiêu chuẩn sản phẩm) |  |
+| (Khuyến khích cơ sở xây dựng, công bố tiêu chuẩn sản phẩm) |  |
 | Không có bản công bố tiêu chuẩn sản phẩm/chất lượng | 0 |
 | Có tiêu chuẩn chất lượng sản phẩm | 1 |
 | Có công bố tiêu chuẩn/chất lượng sản phẩm theo quy định*** | 2 |
@@ -11857,7 +11857,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
 | c) Phong cách, Ghi nhãn hàng hóa | 3 |
-| (Gồm: Hình ảnh, màu sắc; ghi nhân sản phẩm...) |  |
+| (Gồm: Hình ảnh, màu sắc; ghi nhãn sản phẩm...) |  |
 | Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử**** | 3 |
@@ -11916,7 +11916,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện, đánh giá nội dung câu chuyện: | 5 |
 | Giống với câu chuyện sản phẩm ở nơi khác | 0 |
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
-| - Có câu chuyện riêng, gắn với nguồn gốc xuất xứtts | 3 |
+| - Có câu chuyện riêng, gắn với nguồn gốc xuất xứ*** | 3 |
 
 ## VN.OCOP.QD148.2023 — trang 96
 **Bảng 1**
@@ -11933,26 +11933,26 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 6. CHỈ TIÊU CẢM QUAN | 16 |
 | a) Tạp chất lạ | 3 |
 | Có tạp chất | 0 |
-| Có rất ít tạp chất/có cặn chấp nhận được | 1 |
+| Có rất ít tạp chất/có cặn, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất/cặn | 3 |
-| Ghi chú: Nếu có tạp chất lạ có nguy cơ gây mất an toàn thực phẩm như đất, côn trùng, lông, len.. sẽ không đánh giá các bước tiếp theo. |  |
+| Ghi chú: Nếu có tạp chất lạ có nguy cơ gây mất an toàn thực phẩm như đất, côn trùng, lông, len ... sẽ không đánh giá các bước tiếp theo. |  |
 | b) Màu sắc | 3 |
 | Màu sắc không phù hợp với đặc tính sản phẩm | 0 |
-| Màu sắc phù hợp với đặc tính sản phẩm | 1 |
+| Màu sắc không phù hợp với đặc tính sản phẩm | 1 |
 | Màu sắc đẹp, rất phù hợp với đặc tính sản phẩm | 3 |
 | c) Mùi | 5 |
-| Khác thường hoặc không | 5 |
+| Khác thường hoặc không rõ mùi | 0 |
 | Mùi nhẹ, phù hợp (với đặc trưng nguyên liệu sử dụng, loại sản phẩm) | 1 |
 | Mùi mạnh, phù hợp | 2 |
 | Mùi mạnh, phù hợp, hấp dẫn | 3 |
 | Mùi mạnh, phù hợp, rất hấp dẫn | 5 |
-| d) vị | 5 |
+| d) Vị | 5 |
 | Vị khác thường hoặc không rõ vị | 0 |
 | Tương đối rõ, chấp nhận được | 1 |
 | Vị đậm, phù hợp (với đặc trưng nguyên liệu sử dụng, loại sản phẩm) | 2 |
-| Vị đậm, địu, phù hợp, không sốc | 3 |
-| Vị đậm, dịu, phù hợp không sốc, hấp dẫn | 5 |
-| 7. TÍNH ĐỘC ĐÁO (Chất lượng Có nét riêng, khác biệt; có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
+| Vị đậm, dịu, phù hợp, không sốc | 3 |
+| Vị đậm, dịu, phù hợp, không sốc, hấp dẫn | 5 |
+| 7. TÍNH ĐỘC ĐÁO (Chất lượng: Có nét riêng, khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
@@ -11973,14 +11973,14 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
 | Có, đạt nhưng không đủ | 1 |
-| Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn....) theo quy định | 2 |
+| Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn,...) theo quy định | 2 |
 | 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |
 | Có kế hoạch kiểm soát nội bộ chất lượng sản phẩm | 1 |
 | Có kế hoạch kiểm soát nội bộ gắn với truy xuất nguồn gốc theo quy định*** | 2 |
 | Có chứng nhận quản lý chất lượng tiên tiến (ISO/GMP/HACCP/...)**** | 3 |
 | Có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện ATTP cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích***** | 5 |
-| Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điề ATTP (hoặc tương dương) không phù hợp theo quy định |  |
+| Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
 | 10. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 5 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 3 |
@@ -12090,7 +12090,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh; phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
-| Có bộ phận/phòng quản lý phân phối | 3. |
+| Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản lý | 4 |
 | C) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
@@ -12165,7 +12165,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) | 1 |
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy | 3 |
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực); được kiểm tra, đánh giả của cơ quan có thẩm quyền sau cấp giấy và có tài liệu chứng minh áp dụng dây chuyền sản xuất tiên tiến, hiện đại. | 5 |
-| 10. CƠ HỘI THỊ TRƯỞNG TOÀN CẦU | 5 |
+| 10. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 5 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 3 |
 | Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 5 |
@@ -12250,7 +12250,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có sử dụng từ 50% đến 75% lao động là người trên địa bàn cấp huyện | 1 |
 | Có sử dụng ≥ 75% lao động là người trên địa bàn cấp huyện | 3 |
 | d) Tăng trưởng sản xuất kinh doanh | 2 |
-| Hợp tác xã xếp loại trung bình các loại hình khác có lợi nhuận tăng trưởng dương so với năm trước liền | 1 |
+| Hợp tác xã xếp loại trung bình, các loại hình khác có lợi nhuận tăng trưởng dương so với năm trước liền kề | 1 |
 | Hợp tác xã xếp loại khá, các loại hình khác có 2 năm liên tiếp tăng trưởng dương về lợi nhuận**** | 2 |
 | đ) kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
@@ -12293,7 +12293,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện đánh giá nội dung câu chuyện: | 5 |
 | Giống với câu chuyện sản phẩm ở nơi khác | 0 |
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
-| Có câu chuyện riêng gắn với nguồn gốc xuất xứtts | 3 |
+| Có câu chuyện riêng gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
 
 ## VN.OCOP.QD148.2023 — trang 106
@@ -12312,27 +12312,27 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất/cặn | 3 |
-| Ghi chú: Nếu có tạp chất lạ có nguy cơ không đạt quy định ATTP như đất, côn trùng, lộng, len., sẽ không đánh giá các bước tiếp theo |  |
+| Ghi chú: Nếu có tạp chất lạ có nguy cơ không đạt quy định ATTP như đất, côn trùng, lông, len ... sẽ không đánh giá các bước tiếp theo |  |
 | b) Màu sắc | 3 |
 | Màu sắc không phù hợp với đặc tính sản phẩm | 0 |
 | Màu sắc phù hợp với đặc tính sản phẩm**** | 3 |
 | Màu sắc đẹp, rất phù hợp với đặc tính sản phẩm |  |
-| C) Mùi | 5 |
+| c) Mùi | 5 |
 | Khác thường hoặc không rõ mùi | 0 |
 | Mùi nhẹ, phù hợp (với đặc trưng nguyên liệu sử dụng, loại sản phẩm) | 1 |
 | Mùi mạnh, phù hợp | 2 |
-| o mùi mạnh, phù hợp, hấp dẫn | 3 |
+| Mùi mạnh, phù hợp, hấp dẫn | 3 |
 | Mùi mạnh, phù hợp, rất hấp dẫn | 5 |
-| d) vị | 3 |
+| d) Vị | 3 |
 | Có vị lạ | 0 |
 | Tương đối phù hợp với sản phẩm | 1 |
 | Phù hợp với sản phẩm | 2 |
-| Phù hợp với sản phẩm "ấn tượng", hấp dẫn | 3 |
+| Phù hợp với sản phẩm, "ấn tượng", hấp dẫn | 3 |
 | 7. TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương) | 5 |
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
-| Rất độc đáo và có tính đặc trưng***** | 5.1 |
+| Rất độc đáo và có tính đặc trưng***** | 5 |
 | 8. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM, KIỂM TRA ĐỊNH KỲ | 6 |
 | a) Công bố chất lượng sản phẩm theo quy định | 3 |
 | (Khuyến khích cơ sở xây dựng, công bố tiêu chuẩn sản phẩm) |  |
@@ -12349,7 +12349,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn...) theo quy định | 3 |
+| Có, đạt đầy đủ (vi sinh, kim loại nặng, phụ gia, hóa chất không mong muốn,...) theo quy định | 3 |
 | 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |
 | Có kế hoạch kiểm soát nội bộ chất lượng sản phẩm | 1 |
@@ -12372,7 +12372,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | --- | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |  |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |  |
-| A) Nguồn nguyên liệu | 5 |  |
+| a) Nguồn nguyên liệu | 5 |  |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50% |  |  |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |  |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |  |
@@ -12382,7 +12382,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Chế biến đơn giản | 1 |  |
 | Chế biến | 2 |  |
 | Chế biến sâu từ vùng nguyên liệu địa phương (tạo ra sản phẩm chất lượng cao theo nhu cầu của thị trường) | 3 |  |
-| c) Năng lực sản xuất để đáp ứng yêu cầu phân (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |  |
+| c) Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |  |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |  |
 | Có năng lực, quy mô sản xuất trung bình**** | 2 |  |
 | Có năng lực, quy mô sản xuất lớn, có thể đáp ứng thị trường xuất khẩu | 3 |  |
@@ -12400,26 +12400,26 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Các tiêu chí | Thang điểm |
 | --- | --- |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường và hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định | 2 |
-| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; 1 hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng báo gói thân thiện với môi trường | 3 |
+| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 | e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,.....) | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp,.....) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | a) Nguồn gốc ý tưởng sản phẩm | 4 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện về nguyên liệu, kỹ thuật truyền thống | 1 |
 | Sản phẩm được sản xuất ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tỉnh, có chất lượng nổi trội/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương | 3 |
-| Sản phẩm là đặc sản, truyền thống chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương, được thương mại ổn định ít nhất 36 tháng |  |
+| Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của huyện, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương, được thương mại ổn định ít nhất 36 tháng |  |
 | b) Đóng gói, bao bì sản phẩm | 3 |
 | Đóng gói theo hình thức thông thường, không có bao bì | 0 |
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
-| Đóng gói sáng tạo bao bì đẹp | 2. |
+| Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng***** | 3 |
-| c) Phong cách, Ghi nhãn hàng | 3 |
+| c) Phong cách, ghi nhãn hàng hóa | 3 |
 | (Gồm: Hình ảnh, màu sắc, ghi nhãn sản phẩm...) |  |
-| o có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
+| Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định | 1 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, thể hiện được thông điệp/câu chuyện sản phẩm | 2 |
-| Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn nguỗn gốc điện tử | 3 |
+| Ghi nhãn hàng hóa đầy đủ đúng quy định, đẹp, thể hiện được thông điệp/câu chuyện sản phẩm; có truy xuất nguồn gốc điện tử | 3 |
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | a) Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ gia đình có đăng ký kinh doanh, trang trại, tổ hợp tác (có giấy đăng ký kinh doanh của tổ trưởng), Công ty Trách nhiệm hữu hạn (TNHH) 1 thành viên, doanh nghiệp tư nhân (DNTN) | 1 |
@@ -12494,10 +12494,10 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | 6. CHẤT LƯỢNG AN TOÀN THỰC PHẢM | 5 |
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm bảo vệ sức khỏe hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực). | 1 |
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm bảo vệ sức khỏe hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy | 3 |
-| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực nghĩng tin, về siên, khác hoác nhưng đương, theo đồng quy đình cấp trêm quan có thẩm quyền cấp, còn hiệu lực); được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy và có tài liệu chứng minh áp dụng dây chuyền sản xuất tiên tiến, hiện đại | 5 |
+| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm bảo vệ sức khỏe hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực); được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy và có tài liệu chứng minh áp dụng dây chuyền sản xuất tiên tiến, hiện đại | 5 |
 | 7. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM | 4 |
 | Có Bản đăng ký công bố chất lượng sản phẩm; ghi nhãn sản phẩm, quảng cáo sản phẩm (nếu có) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) | 2 |
-| Có Bản đăng ký công bố chất lượng sản phẩm; ghi nhãn sản phẩm, quảng cáo thực phẩm (nếu có) theo đúng quy định (do cơ quan có thầm quyền cấp, còn hiệu lực) và có đủ hồ sơ lưu trữ theo đúng quy định | 4 |
+| Có Bản đăng ký công bố chất lượng sản phẩm; ghi nhãn sản phẩm, quảng cáo thực phẩm (nếu có) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và có đủ hồ sơ lưu trữ theo đúng quy định | 4 |
 | 8. SỰ TIỆN LỢI KHI SỬ DỤNG, BẢO QUẢN | 5 |
 | Không tiện lợi | 0 |
 | Tương đối tiện lợi | 1 |
@@ -12560,7 +12560,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) 1 | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
 | Nguồn nguyên liệu | 5 |
-| o sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50 | 1 |
+| Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50% | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
 | Ghi chú: Bị loại nếu sử dụng toàn bộ nguyên liệu nhập khẩu hoặc không rõ nguồn gốc |  |
@@ -12679,7 +12679,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | 6. CÔNG BỐ CHẤT LƯỢNG | 5 |
 | Không có hồ sơ công bố tiêu chuẩn sản phẩm | 0 |
 | Có hồ sơ công bố tiêu chuẩn sản phẩm | 1 |
-| Có hồ sơ công bố tiêu chuẩn sản phẩm tiêu chuẩn nguyên liệu/tiêu chuẩn bao bì sản phẩm | 3. |
+| Có hồ sơ công bố tiêu chuẩn sản phẩm tiêu chuẩn nguyên liệu/tiêu chuẩn bao bì sản phẩm | 3 |
 | Có hồ sơ công bố tiêu chuẩn sản phẩm tiêu chuẩn nguyên liệu, tiêu chuẩn bao bì; phiếu kiểm nghiệm theo tiêu chuẩn tại cơ quan kiểm nghiệm độc lập | 5 |
 | Ghi chú: Không đánh giá các bước tiếp theo nếu không có Phiếu công bố sản phẩm mỹ phẩm theo quy định |  |
 | 7.CHỈ TIÊU CẢM QUAN (Kiểm tra theo tiêu chuẩn công bố) | 3 |
@@ -12691,7 +12691,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Tương đối tiện lợi | 1 |
 | Tiện lợi | 3 |
 | Rất tiện lợi | 5 |
-| 9, HIỆU QUẢ SỬ DỤNG (Sử dụng trực tiếp sản phẩm hoặc thông qua tài liệu chính thống/kết quả nghiên cứu, minh chứng người sử dụng) | 4 |
+| 9. HIỆU QUẢ SỬ DỤNG (Sử dụng trực tiếp sản phẩm hoặc thông qua tài liệu chính thống/kết quả nghiên cứu, minh chứng người sử dụng) | 4 |
 | Thấp, không rõ | 0 |
 | Có hiệu quả tương đối rõ | 1 |
 | Hiệu quả tốt | 2 |
@@ -12718,10 +12718,10 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Có chứng nhận quản lý chất lượng tiên tiến (ISO - GMP/HACCP/...)**** | 3 |
 | Có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện ATTP cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích***** | 5 |
 | Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
-| 13, HƯỚNG DÂN SỬ DỤNG ĐỀ Đảm BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| 13, HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chỉ tiết, cụ thể để đảm bảo chất lượng sản phẩm, tránh tác dụng phụ (nếu có) | 2 |
-| 14. CỢ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
+| 14. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
 | Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 3 |
@@ -12828,7 +12828,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
 | Thị trường quốc tế (có hợp đồng); hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và vận hành ổn định ít nhất 6 tháng) | 5 |
-| bị b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) | 4 |
+| b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
@@ -12856,7 +12856,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện, đánh giá nội dung câu chuyện | 5 |
 | Giống với câu chuyện sản phẩm ở nơi khác | 0 |
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
-| Có câu chuyện riêng, gắn với nguồn gốc xuất xứtts | 3 |
+| Có câu chuyện riêng, gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
 | c) Cấu trúc câu chuyện | 2 |
 | Chỉ áp dụng khi có câu chuyện |  |
@@ -12906,7 +12906,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Có chứng nhận quản lý chất lượng tiên tiến (ISO/GMP/HACCP/...)**** | 3 |
 | Có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện ATTP cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích***** | 5 |
 | Ghi chú: Không đánh giá các bước tiếp theo nếu Giấy chứng nhận đủ điều kiện ATTP (hoặc tương đương) không phù hợp theo quy định |  |
-| 13. HƯỚNG DẪN SỬ DỤNG ĐÊ ĐẢM BẢO SẢn phẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| 13. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm, tránh tác dụng phụ (nếu có)***** | 2 |
 | 14. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
@@ -13052,7 +13052,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Khéo léo/nhã nhặn có thể bán được, có giá trị mỹ thuật, kỹ thuật | 3 |
 | Tinh xảo, có giá trị mỹ thuật, kỹ thuật, có thể bán được trong các cửa hàng lớn và xuất khẩu | 5 |
 | b) Thiết kế độc đáo | 5 |
-| Phong cách thiết kế phổ | 1 |
+| Phong cách thiết kế phổ biến | 1 |
 | Phong cách độc đáo riêng nhưng là dạng thông thường | 3 |
 | Phong cách độc đáo riêng, thể hiện trí tuệ địa phương? Ghi chú: Nếu sản phẩm vi phạm sở hữu trí tuệ, sẽ bị loại bỏ | 5 |
 | c) Các yếu tố tích hợp lên giá trị của sản phẩm (Kiểu dáng, hoa văn hài hòa, cân đối; màu sắc đều, đẹp mắt, kết cấu cân đối, chắc chắn, bền vững, kích thước, tỷ lệ phù hợp;....) | 3 |
@@ -13095,18 +13095,18 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 
 ## VN.OCOP.QD148.2023 — trang 128
 22. Bộ sản phẩm: Vải, may mặc
-(Sản phẩm: Hàng thủ công mỹ nghệ. Nhóm: Vải, may mặc
+(Sản phẩm: Hàng thủ công mỹ nghệ. Nhóm: Vải, may mặc)
 
-'Tên sản phẩm: ............................. v.
-Mã số sản phẩm.(T).-.(H).-.(STT).-20........
-T: Mã tỉnh-H: Mã huyện- STT: Sổ thứ tự sản phẩm do huyện lập thống kê - Năm đánh giá. Mã đơn
+Tên sản phẩm: ................................
+Mã số sản phẩm: (T).-.(H).-.(STT).-20........
+T: Mã tỉnh - H: Mã huyện - STT: Số thứ tự sản phẩm do huyện lập thống kê - Năm đánh giá. Mã đơn
 vị hành chính theo Quyết định số 124/2004/QĐ-TTg ngày 08 tháng 7 năm 2004.
 
-'Tên chủ thể sản xuất:
+Tên chủ thể sản xuất:
 
 Số điện thoại:.......
 Địa chỉ: ....
-Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo quy định, hoặc không
+Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo quy định; hoặc không
 đáp ứng quy định Hồ sơ dự thi theo quy định
 
 **Bảng 1**
@@ -13115,7 +13115,7 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 Điểm) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -13123,7 +13123,7 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | Phân loại, chế tác giản đơn | 1 |
 | Chế tác/tạo dựng gắn với kỹ năng nghề truyền thống | 2 |
 | Ứng dụng công nghệ phù hợp gắn với kỹ năng nghề truyền thống, tạo ra sản phẩm tinh xảo, chất lượng cao hơn | 3 |
-| c) Năng lực sản xuất để đáp ứng yêu cầu phân (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |
+| c) Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình**** | 2 |
 | Có năng lực, quy mô sản xuất lớn, có thể đáp ứng thị trường xuất khẩu***** | 3 |
@@ -13142,9 +13142,9 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| e) sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
+| e) Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp.....) | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải; tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp.....) | 1 |
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | a) Nguồn gốc ý tưởng sản phẩm | 5 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố | 0 |
@@ -13167,7 +13167,7 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | c) Sử dụng lao động địa phương | 3 |
 | Có sử dụng từ 50% đến 75% lao động là người trên địa bàn cấp huyện | 1 |
 | Có sử dụng ≥ 75% lao động là người trên địa bàn cấp huyện | 3 |
-| d) Tăng trường sản xuất kinh doanh | 2 |
+| d) Tăng trưởng sản xuất kinh doanh | 2 |
 | Hợp tác xã xếp loại trung bình, các loại hình khác có lợi nhuận tăng trưởng dương so với năm trước liền kề | 1 |
 | Hợp tác xã xếp loại khá các loại hình khác có 2 năm liên tiếp tăng trưởng dương về lợi nhuận**** | 2 |
 | đ) Kế toán | 1 |
@@ -13183,8 +13183,8 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | --- | --- |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
-| 4, TIẾP THỊ | 13 |
-| Ba) Khu vực phân phối chính | 5 |
+| 4. TIẾP THỊ | 13 |
+| a) Khu vực phân phối chính | 5 |
 | Thị trường trong huyện | 1 |
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
@@ -13200,7 +13200,7 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh | 3 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội hoạt động thường xuyên, có tham gia hoạt động xúc tiến thương mại ngoài tỉnh và quốc tế | 4 |
-| 5. CÂU CHUYỆN VỀ sản phẩm | 12 |
+| 5. CÂU CHUYỆN VỀ SẢN PHẨM | 12 |
 | a) Câu chuyện về sản phẩm | 5 |
 | Không có câu chuyện, hoặc có nhưng không được tư liệu hóa | 0 |
 | Có tài liệu giới thiệu về sản phẩm | 1 |
@@ -13208,10 +13208,10 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | Có câu chuyện được tư liệu hóa, trình bày trên nhãn/tờ rơi | 3 |
 | Có câu chuyện được tư liệu hóa, trình bày trên nhãn/tờ rơi và website | 4 |
 | Có câu chuyện được tư liệu hóa, trình bày trên nhãn/tờ rơi, website (dưới dạng hình ảnh, clip,...) | 5 |
-| b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện đánh giá nội dung câu chuyện: | 5 |
+| b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện, đánh giá nội dung câu chuyện: | 5 |
 | Giống với câu chuyện sản phẩm ở nơi khác | 0 |
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
-| Có câu chuyện riêng, gắn với nguồn gốc xuất xứtts | 3 |
+| Có câu chuyện riêng, gắn với nguồn gốc xuất xứ**** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
 | c) Cấu trúc câu chuyện | 2 |
 | Chỉ áp dụng khi có câu chuyện |  |
@@ -13227,12 +13227,12 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
 | 6. CÁC CHỈ TIÊU | 25 |
 | a) Mức độ tinh xảo/sắc nét của sản phẩm | 5 |
-| Không khéo léo/nhã nhặn không thể bán được | 0 |
+| Không khéo léo/nhã nhặn, không thể bán được | 0 |
 | Khá khéo léo/nhã nhặn, có thể bán được | 1 |
 | Khéo léo/nhã nhặn, có thể bán được, có giá trị mỹ thuật, kỹ thuật | 3 |
 | Tinh xảo, có giá trị mỹ thuật, kỹ thuật có thể bán được trong các cửa hàng lớn và xuất khẩu | 5 |
 | b) Thiết kế độc đáo (Chất lượng: Có nét riêng, khác biệt, không lẫn với sản phẩm khác,...) | 5 |
-| o Phong cách thiết kế phổ biến | 1 |
+| Phong cách thiết kế phổ biến | 1 |
 | Phong cách độc đáo riêng, nhưng là dạng thông thường | 3 |
 | Phong cách độc đáo riêng, thể hiện trí tuệ địa phương*****; Ghi chú: Nếu sản phẩm vi phạm sở hữu trí tuệ, sẽ bị loại bỏ | 5 |
 | c) Các yếu tố tích hợp lên giá trị của sản phẩm (Kiểu dáng, hoa văn hài hòa, cân đối, màu sắc đều, đẹp mắt; kết cấu cân đối, chắc chắn, bền vững; kích thước, tỷ lệ phù hợp;....) | 5 |
@@ -13240,7 +13240,7 @@ Hồ sơ bị mạo hồ sơ hoặc ghi nhãn sản phẩm không đúng theo qu
 | Giá trị sản phẩm được tích hợp hài hòa, phù hợp | 1 |
 | Giá trị sản phẩm được tích hợp hài hòa, phù hợp các yếu tố văn hóa, dân tộc | 3 |
 | Giá trị sản phẩm được tích hợp hài hòa, phù hợp các yếu tố văn hóa, dân tộc truyền thống, hình thành sản phẩm đặc trưng | 5 |
-| d) Các tính năng của sản phẩm (Giá trị sử dụng của sản phẩm: Tranh ảnh trang trí, túi đựng mỹ phẩm; lắc tay | 5 |
+| d) Các tính năng của sản phẩm (Giá trị sử dụng của sản phẩm: Tranh ảnh trang trí; túi đựng mỹ phẩm; lắc tay;...) | 5 |
 | Sản phẩm không có các tính năng cơ bản | 0 |
 | Sản phẩm có đủ các tính năng cơ bản để bán ở thị trường địa phương | 1 |
 | Sản phẩm có đủ các tính năng cơ bản để bán ở thị trường trong nước | 3 |
@@ -13304,7 +13304,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Sơ chế (làm sạch, phân loại, đóng gói...) thủ công | 1 |
 | Ứng dụng máy móc trong đóng gói, bảo quản sản phẩm | 2 |
 | Ứng dụng công nghệ cao trong sơ chế, bảo quản (nâng cao chất lượng sản phẩm/ kéo dài thời gian bảo quản và giữ chất lượng ổn định trong quá trình bảo quản...) | 4 |
-| C) Nănăng lực sản xuất đế đáp ứng yêu cầu phân phối (Khả nằng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |
+| c) Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình**** | 2 |
 | Có năng lực, quy mô sản xuất lớn, có thể đáp ứng thị trường xuất khẩu***** | 3 |
@@ -13392,7 +13392,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | b) Trí tuệ/bản sắc địa phương Chỉ áp dụng khi có câu chuyện đánh giá nội dung câu chuyện: | 5 |
 | Giống với câu chuyện sản phẩm ở nơi khác | 0 |
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
-| Có câu chuyện riêng gắn với nguồn gốc xuất xứtts | 3 |
+| Có câu chuyện riêng gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
 | c) Cấu trúc câu chuyện | 2 |
 | Chỉ áp dụng khi có câu chuyện |  |
@@ -13483,7 +13483,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Trồng, chăm sóc, cắt tia | 2 |
 | Trồng, chăm sóc, cắt tia, tạo dáng kỹ thuật tay nghề cao | 4 |
 | c) Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương) | 3 |
-| o có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
+| Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình**** | 2 |
 | Có năng lực, quy mô sản xuất lớn, có thể đáp ứng thị trường xuất khẩu***** | 3 |
 | d) Liên kết chuỗi trong sản xuất | 3 |
@@ -13662,7 +13662,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | đ) Bảo vệ môi trường trong quá trình sản xuất | 3 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường và hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định | 2 |
-| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3. |
+| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 
 ## VN.OCOP.QD148.2023 — trang 143
 **Bảng 1**
@@ -13802,7 +13802,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 
 | Các tiêu chí | Thang điểm (Điểm) |
 | --- | --- |
-| Phần A SẢN PHẨM VÀ SỨC MẠNH CỘNG ĐỒNG (40 ĐIỂM) | 40 |
+| Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |
 | 1. TỔ CHỨC DỊCH VỤ CỘNG ĐỒNG | 15 |
 | a) Bộ phận điều phối quản lý và điều hành dịch vụ | 3 |
 | Có Bộ phận điều phối quản lý và điều hành dịch vụ | 1 |
@@ -13897,7 +13897,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | c) Sản phẩm dịch vụ du lịch trên địa bàn đạt chuẩn nông thôn mới | 2 |
 | Cộng đồng du lịch/Điểm du lịch trên địa bàn xã hoặc thôn, bản, ấp chưa được công nhận đạt chuẩn nông thôn mới hoặc không thuộc khu vực nông thôn | 1 |
 | Cộng đồng du lịch/Điểm du lịch trên địa bàn xã hoặc thôn, bản, ấp đã được công nhận đạt chuẩn nông thôn mới | 2 |
-| Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
+| Phần C CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
 | 6. VỊ TRÍ | 3 |
 | Thuận lợi, dễ tiếp cận | 1 |
 | Thuận lợi, dễ tiếp cận, liền kề khu vực có lợi thế phát triển du lịch | 2 |
@@ -13908,33 +13908,33 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| 7. KIẾN TRÚC VÀ CĂNH QUAN MÔI TRƯỜNG | 3 |
+| 7. KIẾN TRÚC VÀ CẢNH QUAN MÔI TRƯỜNG | 3 |
 | Cảnh quan môi trường sạch đẹp | 1 |
-| Cảnh quan môi trường sạch đẹp kiến trúc mang đặc trưng vùng miền có tính dân tộc | 2 |
-| Cảnh quan môi trường sạch đẹp kiến trúc mang đặc trưng vùng miền, có tính dân tộc; xã/thôn đạt tiêu chí sáng - xanh - sạch đẹp trong xây dựng nông thôn mới | 3 |
+| Cảnh quan môi trường sạch đẹp, kiến trúc mang đặc trưng vùng miền, có tính dân tộc | 2 |
+| Cảnh quan môi trường sạch đẹp, kiến trúc mang đặc trưng vùng miền, có tính dân tộc; xã/thôn đạt tiêu chí sáng - xanh - sạch đẹp trong xây dựng nông thôn mới | 3 |
 | 8. CHẤT LƯỢNG VỀ ĐIỀU KIỆN KINH DOANH DỊCH VỤ | 3 |
 | Lựa chọn một trong hai trường hợp sau: |  |
-| a. Trường hợp 1: cộng đồng dịch vụ du lịch |  |
-| Dưới 50% cơ sở dịch vụ được cấp chứng nhận đủ điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển |  |
-| Có từ 50% đến dưới 75% cơ sở dịch vụ được chứng nhận đu điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển,...) | 2 |
-| Có trên 75% cơ sở dịch vụ được cấp chứng nhận đủ điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển | 3 |
+| a. Trường hợp 1: Cộng đồng dịch vụ du lịch |  |
+| Dưới 50% cơ sở dịch vụ được cấp chứng nhận đủ điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển,...) |  |
+| Có từ 50% đến dưới 75% cơ sở dịch vụ được chứng nhận đủ điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển,...) | 2 |
+| Có trên 75% cơ sở dịch vụ được cấp chứng nhận đủ điều kiện kinh doanh theo quy định (dịch vụ lưu trú, vận chuyển,...) | 3 |
 | b. Trường hợp 2: Điểm dịch vụ du lịch |  |
 | Có đăng ký kinh doanh dịch vụ du lịch |  |
 | Có đăng ký kinh doanh và đáp ứng đủ điều kiện kinh doanh | 2 |
-| Có đăng ký kinh doanh đáp ứng đủ điều kiện kinh doanh và được công nhận cơ sở kinh doanh dịch vụ du lịch đạt tiêu chuẩn phục vụ khách du lịch | 3 |
+| Có đăng ký kinh doanh, đáp ứng đủ điều kiện kinh doanh và được công nhận cơ sở kinh doanh dịch vụ du lịch đạt tiêu chuẩn phục vụ khách du lịch | 3 |
 | 9. CHẤT LƯỢNG AN TOÀN VÀ AN NINH TRẬT TỰ | 2 |
 | Lựa chọn một trong hai trường hợp sau: |  |
-| a. Trường hợp 1: cộng đồng dịch vụ du lịch |  |
+| a. Trường hợp 1: Cộng đồng dịch vụ du lịch |  |
 | Có ít nhất 75% số cơ sở kinh doanh dịch vụ đáp ứng điều kiện về an ninh, trật tự, an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật |  |
 | Có 100% số cơ sở kinh doanh dịch vụ đáp ứng điều kiện về an ninh, trật tự, an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật | 2 |
 | b. Trường hợp 2: Điểm dịch vụ du lịch |  |
-| Đáp ứng điều kiện về an ninh, trật tự an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật |  |
-| Đáp ứng điều kiện về an ninh, trật tự an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật và có thực hiện hướng dẫn, tập huấn thường xuyên/định kỳ cho nhân viên | 2 |
+| Đáp ứng điều kiện về an ninh, trật tự, an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật |  |
+| Đáp ứng điều kiện về an ninh, trật tự, an toàn về phòng cháy và chữa cháy, bảo vệ môi trường, an toàn thực phẩm theo quy định của pháp luật và có thực hiện hướng dẫn, tập huấn thường xuyên/định kỳ cho nhân viên | 2 |
 | 10. TÍNH HOÀN THIỆN CỦA QUÁ TRÌNH DỊCH VỤ | 3 |
-| Có điểm trưng bày giới thiệu và bán sản phẩm truyền thống địa phương |  |
+| Có điểm trưng bày, giới thiệu và bán sản phẩm truyền thống địa phương |  |
 | Có điểm trưng bày, giới thiệu và bán sản phẩm truyền thống và sản phẩm OCOP của địa phương, có tài liệu giới thiệu về sản phẩm, dịch vụ | 2 |
 | Có điểm trưng bày, giới thiệu và bán sản phẩm truyền thống và sản phẩm OCOP của địa phương, có tài liệu giới thiệu về sản phẩm, dịch vụ, địa điểm bán có hạ tầng (bãi đỗ, nhà vệ sinh, khu giới thiệu về dịch vụ) được bố trí hài hòa | 3 |
-| 11. HOẠT ĐỘNG TRÃI NGHIỆM | 2 |
+| 11. HOẠT ĐỘNG TRẢI NGHIỆM | 2 |
 | Có hoạt động trải nghiệm | 1 |
 | Có mô hình hoạt động trải nghiệm | 2 |
 | 12. QUẢN LÝ VÀ NHÂN VIÊN | 3 |
@@ -14713,8 +14713,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | 3.1. Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ sản xuất/hộ gia đình có đăng ký kinh doanh; hoặc trang trại; hoặc tổ hợp tác (có giấy đăng ký kinh doanh theo quy định) | 1 |
-| Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương 51% | 2 |
-| HTX tổ chức, hoạt động theo đúng quy định của pháp luật; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương 2.51%; | 3 |
+| Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương <51% | 2 |
+| HTX tổ chức, hoạt động theo đúng quy định của pháp luật; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương ≥ 51%; | 3 |
 | 3.2. Đại diện pháp luật của chủ thể là nữ; hoặc đồng bào dân tộc thiểu số; hoặc người khuyết tật | 1 |
 | Đại diện pháp luật của chủ thể không phải nữ, không phải là đồng bào dân tộc thiểu số, không phải là người khuyết tật | 0 |
 | Đại diện pháp luật của chủ thể là nữ; hoặc là đồng bào dân tộc thiểu số; hoặc là, người khuyết tật | 1 |
@@ -14815,7 +14815,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Độc đáo, mang tính đặc trưng % ực 4 | 3 |
 | Rất độc đáo và có tính đặc trưng | 5 |
 | 9. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM | 5 |
-| Có công bố chất lượng sản phẩm % 4 | 2 |
+| Có công bố chất lượng sản phẩm*** | 2 |
 | Có công bố chất lượng sản phẩm theo quy định (trường hợp sản phẩm có quy chuẩn kỹ thuật quốc gia thì bắt buộc áp dụng) và áp dụng các tiêu chuẩn quốc gia | 4 |
 | Có công bố chất lượng sản phẩm theo quy định và áp dụng các tiêu chuẩn quốc tế | 5 |
 | Ghi chú: Bản Tiêu chuẩn sản phẩm phải có phiếu kiểm nghiệm các chỉ tiêu an toàn thực phẩm |  |
@@ -14824,7 +14824,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Cơ sở sơ chế, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...) | 3 |
 | Cơ sở sơ chế, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
 | 11, HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
-| Có hướng dần sử dụng sản phẩm đơn giản | 1 |
+| Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 12. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
@@ -14938,7 +14938,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Thị trường ngoài địa bàn cấp xã, có ≥ 5 đại diện/đại lý phân phối**** | 3 |
 | Thị trường quốc tế (có hợp đồng và tài liệu minh chứng thực hiện hợp đồng) hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và tài liệu minh chứng thực hiện hợp đồng, đường dẫn gian hàng điện tử)***** | 5 |
 | 4.2. Tổ chức phân phối | 3 |
-| (Gồm: Tổ chức kinh doanh, phán phối sản phẩm) |  |
+| (Gồm: Tổ chức kinh doanh, phân phối sản phẩm) |  |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 2 |
@@ -14978,7 +14978,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất, chấp nhận được | 1 |
 | Có rất ít tạp chất, chấp nhận được | 2 |
 | Sạch, không phát hiện tạp chất***** | 4 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa - sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
 | 6.2. Kích thước, hình dạng bề ngoài | 3 |
 | Không đồng đều | 0 |
 | Không đồng đều, chấp nhận được | 1 |
@@ -15060,7 +15060,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 1.3. Gia tăng giá trị | 3 |
 | Sơ chế (rửa, làm sạch, phân loại, đóng gói...) thủ công | 1 |
 | Ứng dụng máy móc trong sơ chế, đóng gói sản phẩm | 2 |
-| Úng dụng công nghệ tiên tiến trong sơ chế, bảo quản (nâng cao chất lượng sản phẩm/ kéo dài thời gian bảo quản và giữ chất lượng ổn định trong quá trình bảo quản...)***** | 3 |
+| Ứng dụng công nghệ tiên tiến trong sơ chế, bảo quản (nâng cao chất lượng sản phẩm/ kéo dài thời gian bảo quản và giữ chất lượng ổn định trong quá trình bảo quản...)***** | 3 |
 | 1.4. Năng lực sản xuất để đáp ứng yêu cầu phân phối | 3 |
 | (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) |  |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
@@ -15069,7 +15069,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 1.5. Liên kết chuỗi trong sản xuất | 3 |
 | Không có liên kết hoặc có liên kết nhưng không rõ ràng | 0 |
 | Có hợp đồng liên kết từ 50% đến dưới 75% sản lượng tiêu thụ | 1 |
-| Có hợp đồng liên kết trên 75% sản lượng tiêu thụ % %**** | 2 |
+| Có hợp đồng liên kết trên 75% sản lượng tiêu thụ**** | 2 |
 | Có hợp đồng liên kết trên 75% sản lượng tiêu thụ và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở lên tính đến thời điểm đăng ký đánh giá, phân hạng OCOP***** | 3 |
 | 1.6. Bảo vệ môi trường trong quá trình sản xuất | 3 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
@@ -15103,7 +15103,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | 3.1. Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ sản xuất/hộ gia đình có đăng ký kinh doanh; hoặc trang trại; hoặc tổ hợp tác (có giấy đăng ký kinh doanh theo quy định) | 1 |
-| Công ty TNHH; hoặc doanh nghiệp tư nhiệp tư nha hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương <51% | 2 |
+| Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương <51% | 2 |
 | HTX tổ chức, hoạt động theo đúng quy định của pháp luật, hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương ≥ 51% | 3 |
 | 3.2. Đại diện pháp luật của chủ thể là nữ; hoặc đồng bào dân tộc thiểu số; hoặc người khuyết tật | 1 |
 | Đại diện pháp luật của chủ thể không phải nữ, không phải là đồng bào dân tộc thiểu số, không phải là người khuyết tật | 0 |
@@ -15173,7 +15173,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất, chấp nhận được | 1 |
 | Có rất ít tạp chất, chấp nhận được | 2 |
 | Sạch, không phát hiện tạp chất | 3 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẫu gỗ, cát, nhựa -sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
 | 6.2. Kích thước, độ đồng đều | 3 |
 | Không đồng đều | 0 |
 | Không đồng đều, chấp nhận được | 1 |
@@ -15499,7 +15499,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương <51% | 2 |
 | HTX tổ chức, hoạt động theo đúng quy định của pháp luật; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương ≥ 51% | 3 |
 | 3.2. Đại diện pháp luật của chủ thể là nữ; hoặc đồng bào dân tộc thiểu số; hoặc người khuyết tật | 1 |
-| Đại diện pháp luật của chủ thể không phải nữ, không phải là đồng bào dân tộc thiểu số, không là người khuyết tật | 0 |
+| Đại diện pháp luật của chủ thể không phải nữ, không phải là đồng bào dân tộc thiểu số, không phải là người khuyết tật | 0 |
 | Đại diện pháp luật của chủ thể là nữ; hoặc là đồng bào dân tộc thiểu số; hoặc là người khuyết tật | 1 |
 | 3.3. Sử dụng lao động địa phương | 3 |
 | Có sử dụng từ 25% đến dưới 50% lao động là người trên địa bàn cấp xã | 1 |
@@ -15761,7 +15761,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất | 3 |
-| Ghi chú: Nếu có tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phám) như: đất, côn trùng, lông, len, mốc nguy hại,.. sẽ không đánh giá các bước tiếp theo. |  |
+| Ghi chú: Nếu có tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: đất, côn trùng, lông, len, mốc nguy hại,.. sẽ không đánh giá các bước tiếp theo. |  |
 | 6.2. Ngoại hình, đồng đều | 3 |
 | Không đồng đều | 0 |
 | Không đồng đều, chấp nhận được | 1 |
@@ -15847,7 +15847,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Chế biến đơn giản | 1 |
 | Chế biến | 2 |
 | Chế biến sâu từ vùng nguyên liệu địa phương (tạo ra sản phẩm chất lượng cao theo nhu cầu của thị trường) | 3 |
-| 1.4. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cẫu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) | 3 |
+| 1.4. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình | 2 |
 | Có năng lực, quy mô sản xuất lớn | 3 |
@@ -15998,14 +15998,14 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐẾ ĐẢM BẢo sản phẩm CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
-| Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
+| Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
 | Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
-| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (mỹ, nhật, EU...) | 3 |
+| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 3 |
 | TỔNG CỘNG | 100 |
 
 Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp độ sao (`***` - 3 sao; `****` - 4 sao; `*****` - 5 sao).
@@ -16069,7 +16069,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 2. PHÁT TRIỂN SẢN PHẨM | 10 |
 | 2.1. Nguồn gốc ý tưởng sản phẩm | 3 |
 | Sản phẩm được sản xuất phổ biến ở nhiều tỉnh, thành phố nhưng có chất lượng nổi trội, khác biệt do điều kiện về nguyên liệu, kỹ thuật truyền thống | 1 |
-| Sản phẩm được sản xuất ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tinh, có chất lượng nổi trội/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phúc p | 2 |
+| Sản phẩm được sản xuất ở nhiều nơi trên địa bàn, là sản phẩm đặc trưng của tỉnh, có chất lượng nổi trội/sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương | 2 |
 | Sản phẩm là đặc sản, truyền thống, chỉ sản xuất trên địa bàn của xã, có chất lượng đặc sắc, thương mại gắn với chỉ dẫn nguồn gốc địa lý hoặc sản phẩm mới được chế biến từ nguyên liệu đặc trưng của địa phương, được thương mại ổn định ít nhất 36 tháng**** | 3 |
 | Ghi chú: Bị loại nếu phát hiện giống hệt sản phẩm của nhà sản xuất khác, chi thay đổi tên sản phẩm, nhà sản xuất |  |
 | 2.2. Đóng gói, bao bì sản phẩm | 3 |
@@ -16200,8 +16200,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỀ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DUNG | 2 |
-| Có hướng dẫn sử dụng sản phẩm đơn | 1 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
@@ -16351,7 +16351,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất**** | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẫu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
 | 6.2. Thể chất | 3 |
 | Không phù hợp | 0 |
 | Tương đối phù hợp với tính chất của sản phẩm | 1 |
@@ -16392,14 +16392,14 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ đảm bảo sản phẩm CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
-| Có thể xuất khẩu đến thị trường khu vực Đông Nam A | 1 |
+| Có thể xuất khẩu đến thị trường khu vực Đông Nam Á | 1 |
 | Có thể xuất khẩu các thị trường ngoài khu vực Đông Nam Á | 2 |
-| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (mỹ, nhật, EU...) | 3 |
+| Có thể xuất khẩu đến các thị trường có tiêu chuẩn cao (Mỹ, Nhật, EU...) | 3 |
 | TỔNG CỘNG | 100 |
 
 Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp độ sao (`***` - 3 sao; `****` - 4 sao; `*****` - 5 sao).
@@ -16447,7 +16447,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có hợp đồng liên kết trên 75% sản lượng tiêu thụ**** | 2 |
 | Có hợp đồng liên kết trên 75% sản lượng tiêu thụ và tổ chức thực hiện hợp đồng ổn định từ 12 tháng trở lên tính đến thời điểm đăng ký đánh giá, phân hạng OCOP***** | 3 |
 | 1.6. Bảo vệ môi trường trong quá trình sản xuất | 3 |
-| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vê môi trườno% % vệ môi trường | 1 |
+| Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
 
 ## VN.OCOP.QD26.2026 — trang 64
 **Bảng tiêu chí đánh giá**
@@ -16496,7 +16496,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có sử dụng ≥ 75% lao động là người trên địa bàn cấp xã | 3 |
 | 3.4. Tăng trưởng sản xuất kinh doanh | 2 |
 | Hợp tác xã xếp loại trung bình hoặc năm trước liền kề năm đánh giá có lợi nhuận cao hơn so với năm trước liền kề; các loại hình khác: năm trước liền kề năm đánh giá có lợi nhuận cao hơn so với năm trước liền kề. | 1 |
-| Hợp tác xã xếp loại khá trở lên hoặc có 02 năm liên tiếp tăng trưởng dương về lợi nhuận tính từ năm trước liền kề năm đánh giá, các loại hình khác: Có 02 năm liên tiếp tăng trường dương về lợi nhuận tính từ năm trước liền kề năm đánh giá**** | 2 |
+| Hợp tác xã xếp loại khá trở lên hoặc có 02 năm liên tiếp tăng trưởng dương về lợi nhuận tính từ năm trước liền kề năm đánh giá, các loại hình khác: Có 02 năm liên tiếp tăng trưởng dương về lợi nhuận tính từ năm trước liền kề năm đánh giá**** | 2 |
 | 3.5. Sở hữu trí tuệ | 3 |
 | Đơn đăng ký nhãn hiệu đã được cơ quan có thẩm quyền chấp nhận hoặc công bố (đã qua vòng thẩm định hình thức)*** | 1 |
 | Các nhãn hiệu sử dụng trên bao bì, nhãn của sản phẩm được cấp Giấy chứng nhận đăng ký nhãn hiệu và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (trường hợp sản phẩm đã được nhà nước bảo hộ chỉ dẫn địa lý, nhãn hiệu tập thể, nhãn hiệu chứng nhận thì phải có văn bản ghi nhận quyền sử dụng)**** | 2 |
@@ -16519,7 +16519,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm, có website của cơ sở (hoặc quảng bá trên mạng xã hội) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm trong tỉnh | 2 |
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm, có website của cơ sở (hoặc quảng bá trên mạng xã hội) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm ngoài tỉnh | 3 |
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm và có website của cơ sở (hoặc quảng bá trên mạng xã hội hoạt động thường xuyên) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm ngoài tỉnh và quốc tế | 5 |
-| 5. CÂU CHUYỆN VỀ SẢN PHÁM | 12 |
+| 5. CÂU CHUYỆN VỀ SẢN PHẨM | 12 |
 | 5.1. Câu chuyện sản phẩm | 5 |
 | Không có câu chuyện sản phẩm | 0 |
 | Có câu chuyện sản phẩm | 1 |
@@ -16539,7 +16539,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Ngắn gọn, xúc tích và có văn phong kể chuyện | 2 |
 | 5.3. Trí tuệ/bản sắc địa phương Yêu cầu: Nội dung câu chuyện sản phẩm OCOP phải thể hiện rõ nguồn gốc, tài nguyên bản địa, văn hóa, bản sắc địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục. | 5 |
 | Giống với câu chuyện sản phẩm của chủ thể khác, hoặc sản phẩm khác của cùng chủ thể | 0 |
-| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm 4% | 1 |
+| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm*** | 1 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương và giá trị đặc trưng của sản phẩm | 3 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục | 5 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
@@ -16548,7 +16548,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẫu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
 | 6.2. Thể chất | 3 |
 | Không phù hợp | 0 |
 | Tương đối phù hợp với tính chất của sản phẩm | 1 |
@@ -16562,8 +16562,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 6.4. Mùi | 3 |
 | Có mùi lạ (như khét,...) | 0 |
 | Có mùi chấp nhận được | 1 |
-| Mùi phù hợp đặc trưng của sản phẩm 44 điệ | 2 |
-| Mùi phù hợp đặc trưng của sản phẩm, hấp dẫn 4% % | 3 |
+| Mùi phù hợp đặc trưng của sản phẩm | 2 |
+| Mùi phù hợp đặc trưng của sản phẩm, hấp dẫn***** | 3 |
 | 6.5. Vị | 4 |
 | Vị khác thường | 0 |
 | Chấp nhận được | 1 |
@@ -16584,12 +16584,12 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có công bố chất lượng sản phẩm*** | 2 |
 | Có công bố chất lượng sản phẩm theo quy định (trường hợp sản phẩm có quy chuẩn kỹ thuật quốc gia thì bắt buộc áp dụng) và áp dụng các tiêu chuẩn quốc gia | 4 |
 | Có công bố chất lượng sản phẩm theo quy định và áp dụng các tiêu chuẩn quốc tế | 5 |
-| Ghi chú: Bản tiêu chuẩn sản phẩm phải có phiếu kiểm nghiệm các chỉ tiêu an toàn thực phầm |  |
+| Ghi chú: Bản tiêu chuẩn sản phẩm phải có phiếu kiểm nghiệm các chỉ tiêu an toàn thực phẩm |  |
 | 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
@@ -16667,10 +16667,10 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 2.2. Đóng gói, bao bì sản phẩm | 3 |
 | Đóng gói theo hình thức thông thường, không có bao bì | 0 |
 | Đóng gói theo hình thức thông thường, bao bì đơn giản | 1 |
-| Đóng gói sáng tạo, bao bì đẹp% % x | 2 |
+| Đóng gói sáng tạo, bao bì đẹp | 2 |
 | Đóng gói sáng tạo, tiện lợi, bao bì đẹp, sang trọng | 3 |
 | 2.3. Phong cách, ghi nhãn hàng hóa | 3 |
-| Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định% 4 | 1 |
+| Có nhãn, ghi nhãn hàng hóa đầy đủ, theo đúng quy định*** | 1 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định và thể hiện được thông điệp câu chuyện sản phẩm (hình ảnh hoặc lời giới thiệu) | 2 |
 | Ghi nhãn hàng hóa đầy đủ, đúng quy định, đẹp và thể hiện được thông điệp câu chuyện sản phẩm (hình ảnh hoặc lời giới thiệu) và có mã truy xuất nguồn gốc điện tử**** | 3 |
 | 2.4. Ghi nhãn hàng hóa có sử dụng song ngữ (Việt - Anh hoặc ngôn ngữ nước ngoài khác) | 1 |
@@ -16717,7 +16717,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm, có website của cơ sở (hoặc quảng bá trên mạng xã hội) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm trong tỉnh | 2 |
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm, có website của cơ sở (hoặc quảng bá trên mạng xã hội) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm ngoài tỉnh | 3 |
 | Có nhiều hơn 03 hoạt động quảng bá sản phẩm và có website của cơ sở (hoặc quảng bá trên mạng xã hội hoạt động thường xuyên) và có tham gia hoạt động xúc tiến thương mại, hội chợ, triển lãm ngoài tỉnh và quốc tế | 5 |
-| 5. CÂU CHUYỆN SẢN PHÁM | 12 |
+| 5. CÂU CHUYỆN SẢN PHẨM | 12 |
 | 5.1. Câu chuyện sản phẩm | 5 |
 | Không có câu chuyện sản phẩm | 0 |
 
@@ -16747,7 +16747,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
 | Sạch, không phát hiện tạp chất**** | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa - sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa ... sẽ không đánh giá các bước tiếp theo |  |
 | 6.1.2. Hình dạng, màu sắc cánh chè | 2 |
 | Hình dạng/màu không phù hợp | 0 |
 | Đồng đều, màu tự nhiên, tương đối phù hợp với tính chất sản phẩm | 1 |
@@ -16783,12 +16783,12 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có công bố chất lượng sản phẩm*** | 2 |
 | Có công bố chất lượng sản phẩm theo quy định (trường hợp sản phẩm có quy chuẩn kỹ thuật quốc gia thì bắt buộc áp dụng) và áp dụng các tiêu chuẩn quốc gia | 4 |
 | Có công bố chất lượng sản phẩm theo quy định và áp dụng các tiêu chuẩn quốc tế | 5 |
-| Ghi chú: Bản tiêu chuẩn sản phẩm phải có phiếu kiểm nghiệm các chỉ tiêu an toàn thực phám |  |
+| Ghi chú: Bản tiêu chuẩn sản phẩm phải có phiếu kiểm nghiệm các chỉ tiêu an toàn thực phẩm |  |
 | 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO Sản phẩm CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO Sản phẩm CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
@@ -16932,7 +16932,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được 1 | 1 |
 | Sạch, không phát hiện tạp chất | 2 |
-| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng mẫu gỗ, cát, nhựa - sẽ không đánh giá các bước tiếp theo |  |
+| Chú ý: Nếu có các tạp chất không chấp nhận được (các tạp chất có nguy cơ gây mất an toàn thực phẩm) như: Lông, côn trùng, mẩu gỗ, cát, nhựa... sẽ không đánh giá các bước tiếp theo |  |
 | 6.2. Hình dạng (Của ngoại hình trà, trà thào mộc,...) | 2 |
 | Không đồng đều, chấp nhận được | 0 |
 | Tương đối đồng đều, phù hợp | 1 |
@@ -16972,8 +16972,8 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỀ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DUNG | 2 |
-| Có hướng dần sử dụng sản phẩm đơn giản | 1 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
+| Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
@@ -17005,7 +17005,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Chế biến sâu từ vùng nguyên liệu địa phương (tạo ra sản phẩm chất lượng cao theo nhu cầu của thị trường) | 3 |
 | 1.4. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
-| Có năng lực, quy mô sản xuất trung | 2 |
+| Có năng lực, quy mô sản xuất trung bình | 2 |
 | Có năng lực, quy mô sản xuất lớn | 3 |
 | 1.5. Liên kết chuỗi trong sản xuất | 3 |
 | Không có liên kết hoặc có liên kết nhưng không rõ ràng | 0 |
@@ -17105,7 +17105,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Ngắn gọn, xúc tích và có văn phong kể chuyện | 2 |
 | 5.3. Trí tuệ/bản sắc địa phương Yêu cầu: Nội dung câu chuyện sản phẩm OCOP phải thể hiện rõ nguồn gốc, tài nguyên bản địa, văn hóa, bản sắc địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục. | 5 |
 | Giống với câu chuyện sản phẩm của chủ thể khác, hoặc sản phẩm khác của cùng chủ thể | 0 |
-| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm4% | 1 |
+| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm*** | 1 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương và giá trị đặc trưng của sản phẩm | 3 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục | 5 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
@@ -17134,7 +17134,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Vị đậm đà, hấp dẫn | 2 |
 | 6.2 Nước pha | 5 |
 | 6.2.1 Mà | 2 |
-| Hõi đục, màu nhạt chấp nhận được | 0 |
+| Hơi đục, màu nhạt, chấp nhận được | 0 |
 | Đậm, sánh, phù hợp (với tính chất sản phẩm) | 1 |
 | Đậm, sánh, rất phù hợp | 2 |
 
@@ -17161,7 +17161,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
-| 10. HƯỚNG DẪN SỬ DỤNG ĐỀ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| 10. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết cụ thể để đảm bảo chất lượng sản phẩm | 2 |
 | 11. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
@@ -17332,7 +17332,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Trung bình | 0 |
 | Tương đối độc đáo | 1 |
 | Độc đáo, mang tính đặc trưng**** | 3 |
-| Rất độc đáo và có tính đặc trưng % 4 % % | 5 |
+| Rất độc đáo và có tính đặc trưng***** | 5 |
 | 8. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Có công bố chất lượng sản phẩm*** | 2 |
 | Có công bố chất lượng sản phẩm theo quy định (trường hợp sản phẩm có quy chuẩn kỹ thuật quốc gia thì bắt buộc áp dụng) và áp dụng các tiêu chuẩn quốc gia | 4 |
@@ -17358,7 +17358,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp độ sao (`***` - 3 sao; `****` - 4 sao; `*****` - 5 sao).
 
 ## VN.OCOP.QD26.2026 — trang 88
-15. Bộ sản phẩm: Đồ uống có cồn khác -
+15. Bộ sản phẩm: Đồ uống có cồn khác
 (Sản phẩm: Đồ uống. Nhóm: Đồ uống có cồn)
 
 Tên sản phẩm: ........................................................
@@ -17448,7 +17448,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ; hoặc không tuân thủ đầy
 | Hợp tác xã xếp loại khá trở lên hoặc có 02 năm liên tiếp tăng trưởng dương về lợi nhuận tính từ năm trước liền kề năm đánh giá; các loại hình khác: Có 02 năm liên tiếp tăng trưởng dương về lợi nhuận tính từ năm trước liền kề năm đánh giá**** | 2 |
 | 3.5. Sở hữu trí tuệ | 3 |
 | Đơn đăng ký nhãn hiệu đã được cơ quan có thẩm quyền chấp nhận hoặc công bố (đã qua vòng thẩm định hình thức)*** | 1 |
-| Các các nhiệu vận, xã dụng trên bao bị, nhân của sản phẩm phầm đấn, cấp, chứng nhân đăng địa phương (trường hợp sản phẩm đã được nhà nước bảo hộ chỉ dẫn địa lý, nhãn hiệu tập thể, nhãn hiệu chứng nhận thì phải có văn bản ghi nhận quyền sử dụng) | 2 |
+| Các nhãn hiệu sử dụng trên bao bì, nhãn của sản phẩm được cấp Giấy chứng nhận đăng ký nhãn hiệu và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (trường hợp sản phẩm đã được nhà nước bảo hộ chỉ dẫn địa lý, nhãn hiệu tập thể, nhãn hiệu chứng nhận thì phải có văn bản ghi nhận quyền sử dụng)**** | 2 |
 | Các nhãn hiệu sử dụng trên bao bì, nhãn của sản phẩm được cấp Giấy chứng nhận đăng ký nhãn hiệu và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (trường hợp sản phẩm đã được nhà nước bảo hộ chỉ dẫn địa lý, nhãn hiệu tập thể, nhãn hiệu chứng nhận thì phải có văn bản ghi nhận quyền sử dụng) và có Bằng độc quyền kiểu dáng công nghiệp, hoặc Bằng sáng chế, hoặc Bằng độc quyền giải pháp hữu ích, hoặc Giấy chứng nhận đăng ký quyền tác giả (trừ Giấy chứng nhận đăng ký quyền tác giả đối với nhãn hiệu). | 3 |
 | Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
 | 4. TIẾP THỊ | 13 |
@@ -17587,7 +17587,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
 | 1.6. Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
-| Có áp dụng công nghệ theo hướng bến vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải, tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp | 1 |
+| Có áp dụng công nghệ theo hướng bền vững môi trường (công nghệ tiết kiệm nguyên liệu, nhiên liệu; hoạt động xử lý/tái chế chất thải, tận thu tái sử dụng, tái chế phụ phẩm nông nghiệp | 1 |
 
 ## VN.OCOP.QD26.2026 — trang 94
 **Bảng 1**
@@ -17661,7 +17661,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có câu chuyện sản phẩm được tư liệu hóa, thể hiện trên tờ rơi và website (dưới dạng hình ảnh, clip,...) | 3 |
 | Có câu chuyện sản phẩm được tư liệu hóa, thể hiện trên tờ rơi, website (dưới dạng hình ảnh, clip,...) và đưa vào nội dung truy xuất nguồn gốc điện tử**** | 5 |
 | 5.2. Cấu trúc câu chuyện sản phẩm | 2 |
-| Chỉ áp dụng khi có cáu chuyện sản phẩm |  |
+| Chỉ áp dụng khi có câu chuyện sản phẩm |  |
 | Đơn giản | 0 |
 | Ngắn gọn, xúc tích | 1 |
 | Ngắn gọn, xúc tích và có văn phong kể chuyện | 2 |
@@ -17856,7 +17856,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương và giá trị đặc trưng của sản phẩm | 3 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục | 5 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
-| 6. CHỈ TIỂU CẢM QUAN | 15 |
+| 6. CHỈ TIÊU CẢM QUAN | 15 |
 | 6.1. Tạp chất lạ | 3 |
 | Có tạp chất | 0 |
 | Có rất ít tạp chất, chấp nhận được | 1 |
@@ -17893,9 +17893,9 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| 9, ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
+| 9. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
-| Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)%4% | 3 |
+| Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP, BRC, Halal, FDA...) | 5 |
 | 10. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 5 |
 | Ghi chú: Đánh giá dựa trên các hợp đồng xuất khẩu đã thực hiện, hoặc các chứng nhận chất lượng đã được cấp, hoặc các thông tin về đánh giá thị trường, kết quả xúc tiến thương mại ở các thị trường tiềm năng. |  |
@@ -17981,7 +17981,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | 3. SỨC MẠNH CỘNG ĐỒNG | 12 |
 | 3.1. Loại hình tổ chức sản xuất - kinh doanh | 3 |
 | Hộ sản xuất/hộ gia đình có đăng ký kinh doanh; hoặc trang trại; hoặc tổ hợp tác (có giấy đăng ký kinh doanh theo quy định) | 1 |
-| Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương 51% | 2 |
+| Công ty TNHH; hoặc doanh nghiệp tư nhân; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương <51% | 2 |
 | HTX tổ chức, hoạt động theo đúng quy định của pháp luật; hoặc công ty cổ phần có vốn góp của cộng đồng người địa phương ≥ 51% | 3 |
 | 3.2. Đại diện pháp luật của chủ thể là nữ; hoặc đồng bào dân tộc thiểu số; hoặc người khuyết tật | 1 |
 | Đại diện pháp luật của chủ thể không phải nữ, không phải là đồng bào dân tộc thiểu số, không phải là người khuyết tật | 0 |
@@ -18047,8 +18047,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
 | 6. CHẤT LƯỢNG AN TOÀN THỰC PHẨM | 5 |
 | Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm chức năng hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) | 1 |
-| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm chức năng hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giầy | 3 |
-| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm chức năng hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp. còn hiệu lực); được kiểm tra, đánh giá của cơ quan có thẩm quyển sau cấp giấy và có tài liệu chứng minh áp dụng dây chuyển sản xuất tiên tiến, hiện đại. | 5 |
+| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm chức năng hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy***** | 3 |
+| Có giấy chứng nhận cơ sở đủ điều kiện an toàn sản xuất sản phẩm (GMP đối với thực phẩm chức năng hoặc tương đương) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực); được kiểm tra, đánh giá của cơ quan có thẩm quyền sau cấp giấy và có tài liệu chứng minh áp dụng dây chuyền sản xuất tiên tiến, hiện đại. | 5 |
 | 7. CÔNG BỐ CHẤT LƯỢNG SẢN PHẨM | 4 |
 | Có Bản đăng ký công bố chất lượng sản phẩm; ghi nhãn sản phẩm; quảng cáo sản phẩm (nếu có) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) | 2 |
 | Có Bàn đăng ký công bố chất lượng sản phẩm, ghi nhãn sản phẩm, quảng cáo thực phẩm (nếu có) theo đúng quy định (do cơ quan có thẩm quyền cấp, còn hiệu lực) và có dù hồ sơ lưu trữ theo đúng quy định | 4 |
@@ -18099,7 +18099,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 Tên sản phẩm: ..
 Mã số sản phẩm.(T).-.(X).-.(STT, *
 
-T: Mã tỉnh- X: Mã xã- STT: Số Thứ tự sản phẩm do xã lập thắng kê - Năm đánh giá. Mã đơn vị hành chính
+T: Mã tỉnh- X: Mã xã- STT: Số Thứ tự sản phẩm do xã lập thống kê - Năm đánh giá. Mã đơn vị hành chính
 theo Quyết định số 19/2023/QĐ-TTg ngày 30/6/2025
 
 Tên chủ thể sản xuất
@@ -18228,7 +18228,7 @@ lý chuyên ngành của Bộ Y tế; hoặc không có Bản công bố sản p
 | Giống với câu chuyện sản phẩm của chủ thể khác, hoặc sản phẩm khác của cùng chủ thể | 0 |
 | Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm*** | 1 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương và giá trị đặc trưng của sản phẩm | 3 |
-| Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm phẩm, có tính truyền cảm và thuyết phục | 5 |
+| Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục | 5 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
 | 6. CÔNG BỐ CHẤT LƯỢNG | 5 |
 | Không có hồ sơ công bố tiêu chuẩn sản phẩm | 0 |
@@ -18454,8 +18454,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | 12. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Cơ sở chế biến, đóng gói có giấy chứng nhận đủ điều kiện an toàn thực phẩm theo quy định*** | 1 |
 | Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc gia (ISO, HACCP,...)**** | 3 |
-| Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thú tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP Halal, FDA...) | 5 |
-| 13. HƯỚNG DẪN SỬ DỤNG ĐÊ Đảm bảo SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIỂU DÙNG | 2 |
+| Cơ sở chế biến, đóng gói có chứng nhận quản lý chất lượng theo tiêu chuẩn quốc tế, đủ điều kiện an toàn thực phẩm cho xuất khẩu và các thủ tục pháp lý khác theo yêu cầu của thị trường đích (ISO, HACCP Halal, FDA...) | 5 |
+| 13. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 2 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để đảm bảo chất lượng sản phẩm, tránh tác dụng phụ (nếu có) | 2 |
 | 14. CƠ HỘI THỊ TRƯỜNG TOÀN CẦU | 3 |
@@ -18491,12 +18491,12 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | 1.2. Gia tăng giá trị | 3 |
 | Phân loại, chế tác giản đơn | 1 |
 | Chế tác/tạo dựng gắn với kỹ năng nghề truyền thống | 2 |
-| Ứng dụng công nghệ phù hợp gắn với kỹ năng nghề truyền thống, tạo ra sản.phẩm tinh xảo, chất lượng cao hơn | 3 |
+| Ứng dụng công nghệ phù hợp gắn với kỹ năng nghề truyền thống, tạo ra sản phẩm tinh xảo, chất lượng cao hơn | 3 |
 | 1.3. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình | 2 |
 | Có năng lực, quy mô sản xuất lớn | 3 |
-| 1.4. Liên kết chuỗi trong sản x | 4 |
+| 1.4. Liên kết chuỗi trong sản xuất | 4 |
 | Không có liên kết hoặc có liên kết nhưng không rõ ràng | 0 |
 | Có hợp đồng liên kết từ 50% đến dưới 75% sản lượng tiêu thụ | 1 |
 | Có hợp đồng liên kết trên 75% sản lượng tiêu thụ**** | 2 |
@@ -18776,7 +18776,8 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | 6.2. Thiết kế độc đáo (Chất lượng: có nét riêng, khác biệt, không lẫn với sản phẩm khác,...) | 5 |
 | Phong cách thiết kế phổ biến | 1 |
 | Phong cách độc đáo riêng, nhưng là dạng thông thường | 3 |
-| Phong cách độc đáo riêng đã thể hiện trí tuệ địa phươn Ghi chú: Nếu sản phẩm vi phạm sở hữu trí tuệ, sẽ bị loại bò | 5 |
+| Phong cách độc đáo riêng, thể hiện trí tuệ địa phương***** | 5 |
+| Ghi chú: Nếu sản phẩm vi phạm sở hữu trí tuệ, sẽ bị loại bỏ |  |
 | 6.3. Các yếu tố tích hợp lên giá trị của sản phẩm (Kiểu dáng, hoa văn hài hòa, cân đổi; màu sắc đều, đẹp mắt; két cấu cân đối, chắc chắn, bền vững, kích thước tỷ lệ phù hợp;....) | 5 |
 | Không thể hiện rõ nét về giá trị sản phẩm | 0 |
 | Giá trị sản phẩm được tích hợp hài hòa, phù hợp | 1 |
@@ -18801,7 +18802,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| 8. HƯỚNG DẪN SỬ DỤNG ĐỀ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 3 |
+| 8. HƯỚNG DẪN SỬ DỤNG ĐỂ ĐẢM BẢO SẢN PHẨM CÓ CHẤT LƯỢNG TỐT NHẤT CHO NGƯỜI TIÊU DÙNG | 3 |
 | Có hướng dẫn sử dụng sản phẩm đơn giản | 1 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để sử dụng đúng tính năng của sản phẩm | 2 |
 | Có hướng dẫn sử dụng chi tiết, cụ thể để sử dụng đúng tính năng của sản phẩm, phát huy các giá trị văn hóa, chất lượng sản phẩm | 3 |
@@ -18855,7 +18856,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật và các quy định khác về bảo vệ môi trường**** | 1 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường và hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định | 2 |
 | Có Hồ sơ, thủ tục về môi trường theo quy định của pháp luật về bảo vệ môi trường; hồ sơ minh chứng về công trình thu gom và xử lý chất thải theo quy định và hồ sơ minh chứng về sử dụng bao gói thân thiện với môi trường | 3 |
-| Thị 1.6. Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
+| 1.6. Sử dụng công nghệ theo hướng bền vững trong sản xuất | 1 |
 | Không sử dụng công nghệ theo hướng bền vững trong sản xuất | 0 |
 
 ## VN.OCOP.QD26.2026 — trang 129
@@ -19018,11 +19019,11 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | Trồng, chăm sóc đơn giản | 1 |
 | Trồng, chăm sóc, cắt tia | 2 |
 | Trồng, chăm sóc, cắt tia, tạo dáng kỹ thuật tay nghề cao | 4 |
-| 1.3. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô (Khả năng sản xuất đáp tăng nhu cầu về số lượmg/quy môn của thì của thii to sánh với guy mô | 3 |
+| 1.3. Năng lực sản xuất để đáp ứng yêu cầu phân phối (Khả năng sản xuất đáp ứng nhu cầu về số lượng/quy mô của thị trường, so sánh với quy mô trung bình ở cùng đối tượng sản xuất tại địa phương về sản lượng hoặc giá trị sản xuất) | 3 |
 | Có năng lực, quy mô sản xuất mức độ nhỏ | 1 |
 | Có năng lực, quy mô sản xuất trung bình | 2 |
 | Có năng lực, quy mô sản xuất lớn | 3 |
-| 1.4. Liên kết chuỗi trong sản x | 4 |
+| 1.4. Liên kết chuỗi trong sản xuất | 4 |
 | Không có liên kết hoặc có liên kết nhưng không rõ ràng | 0 |
 | Có hợp đồng liên kết từ 50% đến dưới 75% sản lượng tiêu thụ | 1 |
 | Có hợp đồng liên kết trên 75% sản lượng tiêu thụ**** | 2 |
@@ -19291,7 +19292,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm%44 | 1 |
+| Có câu chuyện riêng gắn với nguồn gốc xuất xứ sản phẩm*** | 1 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương và giá trị đặc trưng của sản phẩm | 3 |
 | Nội dung câu chuyện mang sắc thái truyền thống, văn hóa địa phương, giá trị đặc trưng của sản phẩm, có tính truyền cảm và thuyết phục | 5 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm) | 35 |
@@ -19299,7 +19300,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | 6.1. Hình dáng so với loại sản phẩm | 5 |
 | Trung bình | 1 |
 | Đẹp, ấn tượng | 3 |
-| Rất đẹp và ấn tượng %44% | 5 |
+| Rất đẹp và ấn tượng***** | 5 |
 | 6.2. Màu sắc | 5 |
 | Phù hợp với đặc tính sản phẩm | 1 |
 | Đẹp, bắt mắt so với đặc tính sản phẩm | 3 |
@@ -19312,7 +19313,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không đáp ứng quy đ�
 | 7. TÍNH ĐỘC ĐÁO Chất lượng: có nét riêng khác biệt, có dấu hiệu nhận biết rõ ràng so với sản phẩm khác, tiềm năng thành thương hiệu của địa phương | 10 |
 | Trung bình | 2 |
 | Tương đối độc đáo | 5 |
-| Độc đáo, mang tính đặc trưng%% 4 | 7 |
+| Độc đáo, mang tính đặc trưng**** | 7 |
 | Rất độc đáo và có tính đặc trưng % đặc xặ | 10 |
 | 8. ĐẢM BẢO CHẤT LƯỢNG SẢN PHẨM | 5 |
 | Không có hoạt động kiểm soát chất lượng sản phẩm | 0 |

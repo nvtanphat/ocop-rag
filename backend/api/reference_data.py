@@ -57,7 +57,7 @@ def read_references(root: Path, kind: Literal["criteria", "products"], *, ready:
     units = {r["unit_id"]: r for r in _records(data / "knowledge/evidence_units.jsonl")}
     for record in _records(path):
         if (
-            record.get("review_status") not in {"verified", "human_verified"}
+            record.get("review_status") != "verified"
             or record.get("visibility") != "public"
             or record.get("corpus_version") != version
             or any(record.get(k) for k in ("tenant_id", "dossier_id", "private"))

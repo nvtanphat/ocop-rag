@@ -64,7 +64,7 @@ def test_subgraph_returns_checked_neighbourhood_with_provenance(tmp_path, monkey
     body = response.json()
     assert body["status"] == "ok" and body["graph_version"]
     assert body["nodes"] and set(body["seed_ids"]) <= {n["node_id"] for n in body["nodes"]}
-    assert {n["check"] for n in body["nodes"]} <= {"passed", "human_verified"}
+    assert {n["check"] for n in body["nodes"]} <= {"passed"}
     assert all("machine_candidate" not in n for n in body["nodes"])
     cited = [c for n in body["nodes"] for c in n["citations"]]
     assert cited and all(c["pdf_page"] == 3 and c["source_sha256"] == "a" * 64 for c in cited)

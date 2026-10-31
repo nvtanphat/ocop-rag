@@ -18,7 +18,6 @@ def main():
     p.add_argument("--neo4j", action="store_true")
     p.add_argument("--neo4j-uri", default="bolt://localhost:7687")
     p.add_argument("--neo4j-user", default="neo4j")
-    p.add_argument("--verified-only", action="store_true")
     a = p.parse_args()
     knowledge = a.knowledge if a.knowledge.is_absolute() else ROOT / a.knowledge
     output = a.output if a.output.is_absolute() else ROOT / a.output
@@ -28,7 +27,7 @@ def main():
         if not password:
             raise RuntimeError("NEO4J_PASSWORD required")
         result["neo4j"] = publish_neo4j(
-            output, uri=a.neo4j_uri, user=a.neo4j_user, password=password, verified_only=a.verified_only
+            output, uri=a.neo4j_uri, user=a.neo4j_user, password=password
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

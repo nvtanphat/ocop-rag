@@ -160,7 +160,6 @@ class OcopSystemPipeline:
 
         business_consistent = knowledge.get("pipeline_version") == KNOWLEDGE_VERSION and business_ready
         from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION
-        from ai_core.graph.ocop.review import ledger_path, ledger_digest
         from ai_core.graph.ocop.builder import SCHEMA_REVISION
         from ai_core.graph.ocop.integrity import graph_index_mismatch
 
@@ -171,9 +170,6 @@ class OcopSystemPipeline:
             ) == _semantic_profile(PipelineOptions())
         except (RuntimeError, ValueError):
             matches_config = None  # the extraction configuration itself is unusable
-        review_current = graph.get("human_review", {}).get(
-            "ledger_sha256", ledger_digest(None)
-        ) == ledger_digest(ledger_path(self.root))
         lineage_ok = bool(
             business_consistent
             and page.get("schema_version") == SCHEMA_VERSION
@@ -193,7 +189,6 @@ class OcopSystemPipeline:
             and index.get("status") in ("sparse_ready", "hybrid_ready")
             and graph.get("status") == "local_ready"
             and files_ok
-            and review_current
             and graph.get("schema_revision") == SCHEMA_REVISION
             and bool(graph.get("checks"))
             and all((self.data / "graph" / name).is_file() for name in ("nodes.jsonl", "edges.jsonl"))
@@ -215,13 +210,12 @@ class OcopSystemPipeline:
             "dense_ready": bool(index.get("dense", {}).get("enabled", False)),
             "graph_ready": graph.get("status") == "local_ready",
             "automatic_graph": graph.get("checks", {}),
-            "human_review_current": review_current,
             "business_semantics_ready": business_ready,
             "semantic_proposals": knowledge.get("semantic_proposals", {}),
             "semantic": semantic,
             "semantic_matches_config": matches_config,
             "neo4j_ready": graph.get("neo4j", {}).get("status") == "uploaded",
-            "model_generation": "qwen3.5:2b (optional Ollama service)",
+            "model_generation": "OpenAI-compatible API (OCOP_ANSWER_LLM_*)",
             "provenance_status": "machine_extracted_not_legally_verified",
             "last_build": manifest.get("built_at"),
         }
@@ -344,22 +338,16 @@ class OcopSystemPipeline:
                             f", failed chunks by error: {dict(errors.most_common(5))})"
                         )
                     old_graph = _load_json(self.data / "graph" / "manifest.json")
-                    from ai_core.graph.ocop.review import ledger_path, ledger_digest
-
                     if (
                         reuse_knowledge
                         and old_graph.get("status") == "local_ready"
                         and old_graph.get("schema_revision") == SCHEMA_REVISION
                         and old_graph.get("checks")
                         and old_graph.get("source_knowledge_version") == knowledge.get("corpus_version")
-                        and old_graph.get("human_review", {}).get("ledger_sha256", ledger_digest(None))
-                        == ledger_digest(ledger_path(self.root))
                     ):
                         shutil.copytree(self.data / "graph", staging_dir / "graph")
                         graph = old_graph
                     else:
-                        from ai_core.graph.ocop.review import ledger_path
-
                         prior_graph = self.data / "graph"
                         if (prior_graph / "snapshots").is_dir():
                             shutil.copytree(
@@ -372,9 +360,8 @@ class OcopSystemPipeline:
                                     prior_graph / "manifest.json", staging_dir / "graph" / "manifest.json"
                                 )
                         graph = build_graph(
-                            staging_dir / "knowledge",
-                            staging_dir / "graph",
-                            review_decisions=ledger_path(self.root),
+                            staging_dir / "knowledge", staging_dir / "graph",
+                            extraction_dir=self.root / "data" / "extraction",
                         )
                     index = build_index(
                         knowledge=staging_dir / "knowledge",
@@ -406,7 +393,6 @@ class OcopSystemPipeline:
                             uri=options.neo4j_uri,
                             user=options.neo4j_user,
                             password=password,
-                            verified_only=False,
                         )
                         _write_json(staging_dir / "graph" / "manifest.json", graph)
                     self._promote(staging_dir)

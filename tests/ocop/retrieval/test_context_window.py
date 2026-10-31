@@ -137,3 +137,28 @@ def test_the_kind_of_document_a_question_points_at_is_not_a_term_to_find_in_the_
 
     assert question_terms("Điều 2 Quyết định 525 quy định gì?") == []
     assert question_terms("Quyết định về nhãn hàng hóa là gì?") == ["nhan", "hang", "hoa"]
+
+
+def test_rows_of_all_tools_are_ordered_by_rank_fusion_and_corroboration_wins():
+    from ai_core.retrieval.ocop.fusion import fuse_tool_rows
+
+    rows = [
+        {"tool": "search_regulations", "source_id": "A", "evidence_unit_id": "a1", "chunk_id": "a1"},
+        {"tool": "search_regulations", "source_id": "B", "evidence_unit_id": "b1", "chunk_id": "b1"},
+        {"tool": "lookup_criterion", "source_id": "C", "evidence_unit_id": "c1", "chunk_id": "c1"},
+        {"tool": "lookup_criterion", "source_id": "B", "evidence_unit_id": "b1", "chunk_id": "b1"},
+    ]
+    order = [row["evidence_unit_id"] for row in fuse_tool_rows(rows)]
+    assert order[:2] == ["b1", "b1"] and order.index("a1") < len(order)
+
+
+def test_free_places_follow_the_retrieval_order_with_document_diversity():
+    from ai_core.orchestration.ocop.answer import _most_relevant
+    from ai_core.retrieval.ocop.settings import get_settings
+
+    cap = get_settings().context.max_blocks_per_document
+    same = [(("A", p, "a" + str(p), None), {"raw_text": "hiệu lực nghị định"}, {"pdf_page": p}, False)
+            for p in range(1, cap + 3)]
+    other = (("B", 1, "b1", None), {"raw_text": "hiệu lực nghị định"}, {"pdf_page": 1}, False)
+    kept = _most_relevant([*same, other], ["hieu", "luc", "nghi", "dinh"], cap + 1)
+    assert kept[:cap] == same[:cap] and other in kept

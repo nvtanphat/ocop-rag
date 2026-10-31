@@ -1,5 +1,5 @@
-"""LLM adapters: local Ollama or an OpenAI-compatible API, chosen separately for candidate
-extraction (OCOP_EXTRACT_*) and for answers/routing (OCOP_ANSWER_*). No hidden model download."""
+"""LLM adapter for an OpenAI-compatible API, configured separately for candidate extraction (OCOP_EXTRACT_*)
+and for answers/routing (OCOP_ANSWER_*)."""
 
 from __future__ import annotations
 import json
@@ -24,20 +24,9 @@ def _endpoint(url: str) -> str:
     return f"{parts.scheme}://{host}{':' + str(parts.port) if parts.port else ''}{parts.path.rstrip('/')}"
 
 
-OLLAMA_TEMPERATURE = 0.1
-OLLAMA_NUM_CTX = 8192
 OPENAI_TEMPERATURE = 0.1
 OPENAI_REASONING_BUDGET = 2048
-
-
-def _ollama_identity(model: str, url: str, revision: str = "") -> dict:
-    return {
-        "provider": "ollama",
-        "endpoint": _endpoint(url),
-        "model": model,
-        "revision": revision,
-        "params": {"temperature": OLLAMA_TEMPERATURE, "num_ctx": OLLAMA_NUM_CTX},
-    }
+DEFAULT_MODEL = "gpt-6-sol"
 
 
 def _openai_identity(model: str, base_url: str, reasoning_budget: int, revision: str = "") -> dict:
@@ -63,64 +52,6 @@ class _RouteMixin:
             return json.loads(self.chat(_ROUTER_SYSTEM, question, format_json=True, max_tokens=180))
         except (json.JSONDecodeError, RuntimeError):
             return {}
-
-
-class OllamaClient(_RouteMixin):
-    def __init__(self, model: str = "qwen3.5:2b", url: str = "http://127.0.0.1:11434", timeout: float = 75):
-        self.model = model
-        self.url = url.rstrip("/")
-        self.timeout = timeout
-        self.revision = ""
-
-    def identity(self) -> dict:
-        """Everything about this client that can change what it returns (never the API key)."""
-        return _ollama_identity(self.model, self.url, self.revision)
-
-    @traced("ocop.llm.ollama_chat")
-    def chat(
-        self,
-        system: str,
-        user: str,
-        *,
-        format_json: bool = False,
-        max_tokens: int = 1024,
-        schema: dict | None = None,
-    ) -> str:
-        data = {
-            "model": self.model,
-            "stream": False,
-            "think": False,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "options": {
-                "temperature": OLLAMA_TEMPERATURE,
-                "num_ctx": OLLAMA_NUM_CTX,
-                "num_predict": max_tokens,
-            },
-        }
-        if schema is not None:
-            data["format"] = schema
-            data["think"] = False
-        elif format_json:
-            data["format"] = "json"
-        req = urllib.request.Request(
-            self.url + "/api/chat",
-            data=json.dumps(data, ensure_ascii=False).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
-                out = json.load(response)
-            if not isinstance(out, dict) or not isinstance(out.get("message"), dict):
-                raise ValueError("Invalid Ollama response schema")
-            if out.get("done_reason") == "length":
-                raise ModelOutputTruncated("Configured Ollama response truncated")
-            content = out["message"].get("content")
-            if not isinstance(content, str) or not content.strip():
-                raise ValueError("Invalid Ollama text content")
-            return content
-        except (urllib.error.URLError, TimeoutError, OSError, KeyError, ValueError) as exc:
-            raise RuntimeError("Configured Ollama model unavailable") from exc
 
 
 class OpenAICompatClient(_RouteMixin):
@@ -261,13 +192,12 @@ def load_env_file(path: Path | None = None) -> None:
 
 def extraction_provider() -> str:
     load_env_file()
-    return os.getenv("OCOP_EXTRACT_LLM_PROVIDER", "ollama").strip().lower()
+    return os.getenv("OCOP_EXTRACT_LLM_PROVIDER", "openai").strip().lower()
 
 
 def extraction_model_name() -> str:
     """Model id of the extraction client, without needing credentials."""
-    default = "gpt-5.6-sol" if extraction_provider() == "openai" else "qwen3.5:2b"
-    return os.getenv("OCOP_EXTRACT_LLM_MODEL", default)
+    return os.getenv("OCOP_EXTRACT_LLM_MODEL", DEFAULT_MODEL)
 
 
 def extraction_workers() -> int:
@@ -288,61 +218,44 @@ def extraction_revision() -> str:
 
 def extraction_identity() -> dict:
     """Identity of the configured extraction client without building it (no API key needed)."""
-    provider = extraction_provider()
-    model = extraction_model_name()
-    if provider == "openai":
-        return _openai_identity(
-            model,
-            os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
-            OPENAI_REASONING_BUDGET,
-            extraction_revision(),
-        )
-    if provider != "ollama":
-        raise RuntimeError(f"Unsupported OCOP_EXTRACT_LLM_PROVIDER: {provider}")
-    return _ollama_identity(
-        model, os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"), extraction_revision()
+    _require_openai("OCOP_EXTRACT_LLM_PROVIDER", extraction_provider())
+    return _openai_identity(
+        extraction_model_name(),
+        os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        OPENAI_REASONING_BUDGET,
+        extraction_revision(),
     )
 
 
-def make_extraction_client() -> OllamaClient | OpenAICompatClient:
-    """Client used ONLY for candidate entity/feature extraction (enabled by default):
-    OCOP_EXTRACT_LLM_PROVIDER=ollama (default, local qwen3.5:2b) or openai (OpenAI-compatible API)."""
-    provider = extraction_provider()
-    model = extraction_model_name()
-    if provider == "openai":
-        client = OpenAICompatClient(
-            model=model,
-            base_url=os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
-            api_key=os.getenv("OCOP_EXTRACT_OPENAI_API_KEY", ""),
-        )
-    elif provider == "ollama":
-        client = OllamaClient(model=model, url=os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"))
-    else:
-        raise RuntimeError(f"Unsupported OCOP_EXTRACT_LLM_PROVIDER: {provider}")
+def _require_openai(variable: str, provider: str) -> None:
+    if provider != "openai":
+        raise RuntimeError(f"Unsupported {variable}: {provider}; only an OpenAI-compatible API is supported")
+
+
+def make_extraction_client() -> OpenAICompatClient:
+    """Client used ONLY for candidate entity/feature extraction (OpenAI-compatible API)."""
+    _require_openai("OCOP_EXTRACT_LLM_PROVIDER", extraction_provider())
+    client = OpenAICompatClient(
+        model=extraction_model_name(),
+        base_url=os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        api_key=os.getenv("OCOP_EXTRACT_OPENAI_API_KEY", ""),
+    )
     client.revision = extraction_revision()
     return client
 
 
 def answer_provider() -> str:
     load_env_file()
-    return os.getenv("OCOP_ANSWER_LLM_PROVIDER", "ollama").strip().lower()
+    return os.getenv("OCOP_ANSWER_LLM_PROVIDER", "openai").strip().lower()
 
 
-def make_answer_client() -> OllamaClient | OpenAICompatClient:
-    """Client for routing and answer generation: OCOP_ANSWER_LLM_PROVIDER=ollama (default, local
-    OCOP_LLM_MODEL) or openai. The OpenAI-compatible endpoint and key default to the extraction ones,
+def make_answer_client() -> OpenAICompatClient:
+    """Client for routing and answer generation. The endpoint and key default to the extraction ones,
     so one configured API serves both."""
-    provider = answer_provider()
-    if provider == "openai":
-        return OpenAICompatClient(
-            model=os.getenv("OCOP_ANSWER_LLM_MODEL") or os.getenv("OCOP_EXTRACT_LLM_MODEL", "gpt-6-sol"),
-            base_url=os.getenv("OCOP_ANSWER_OPENAI_BASE_URL")
-            or os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
-            api_key=os.getenv("OCOP_ANSWER_OPENAI_API_KEY") or os.getenv("OCOP_EXTRACT_OPENAI_API_KEY", ""),
-        )
-    if provider != "ollama":
-        raise RuntimeError(f"Unsupported OCOP_ANSWER_LLM_PROVIDER: {provider}")
-    return OllamaClient(
-        model=os.getenv("OCOP_LLM_MODEL", "qwen3.5:2b"),
-        url=os.getenv("OCOP_OLLAMA_URL", "http://127.0.0.1:11434"),
+    _require_openai("OCOP_ANSWER_LLM_PROVIDER", answer_provider())
+    return OpenAICompatClient(
+        model=os.getenv("OCOP_ANSWER_LLM_MODEL") or os.getenv("OCOP_EXTRACT_LLM_MODEL", DEFAULT_MODEL),
+        base_url=os.getenv("OCOP_ANSWER_OPENAI_BASE_URL")
+        or os.getenv("OCOP_EXTRACT_OPENAI_BASE_URL", "https://api.openai.com/v1"),
+        api_key=os.getenv("OCOP_ANSWER_OPENAI_API_KEY") or os.getenv("OCOP_EXTRACT_OPENAI_API_KEY", ""),
     )

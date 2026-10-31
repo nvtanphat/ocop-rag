@@ -64,10 +64,8 @@ Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stabl
 
 | Biến | Ý nghĩa |
 | --- | --- |
-| `OCOP_ANSWER_LLM_PROVIDER` | `ollama` hoặc `openai`; mặc định Ollama |
-| `OCOP_LLM_MODEL` | Tên model Ollama cho trả lời; mặc định `qwen3.5:2b` |
-| `OCOP_OLLAMA_URL` | URL Ollama; mặc định `http://127.0.0.1:11434` |
-| `OCOP_ANSWER_LLM_MODEL` | Model của endpoint OpenAI-compatible cho trả lời |
+| `OCOP_ANSWER_LLM_PROVIDER` | `openai` (API tương thích OpenAI; giá trị duy nhất được hỗ trợ) |
+| `OCOP_ANSWER_LLM_MODEL` | Model cho trả lời; mặc định dùng `OCOP_EXTRACT_LLM_MODEL` (mặc định `gpt-6-sol`) |
 | `OCOP_ANSWER_OPENAI_BASE_URL`, `OCOP_ANSWER_OPENAI_API_KEY` | Endpoint và key cho trả lời; thiếu thì dùng cấu hình extraction tương ứng |
 | `OCOP_EXTRACT_LLM_PROVIDER`, `OCOP_EXTRACT_LLM_MODEL` | Nhà cung cấp và model trích xuất ứng viên ngữ nghĩa |
 | `OCOP_EXTRACT_OPENAI_BASE_URL`, `OCOP_EXTRACT_OPENAI_API_KEY` | Endpoint/key trích xuất |

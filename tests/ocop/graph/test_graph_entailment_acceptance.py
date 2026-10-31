@@ -153,7 +153,7 @@ def test_ownership_accepts_checked_same_record_with_explicit_rowspan(tmp_path):
     assert any(n["node_type"] == "RecognitionRecord" for n in accepted)
 
 
-def test_ownership_cannot_borrow_another_record_or_unchecked_link(tmp_path):
+def test_ownership_cannot_borrow_another_record(tmp_path):
     nodes, edges, units = recognition_graph(tmp_path)
     registry = {
         next(n["source_id"] for n in nodes if n["node_type"] == "RecognitionRecord"): {
@@ -171,10 +171,6 @@ def test_ownership_cannot_borrow_another_record_or_unchecked_link(tmp_path):
         products[0],
         owners[1],
     ]
-    _, accepted, _, _ = accepted_graph(nodes, edges, units, registry=registry)
-    assert not any(e["relation_type"] == "OWNED_BY" for e in accepted)
-    owners[1]["review_status"] = "rejected"
-    edges.append(owners[0] | {"review_status": "rejected"})
     _, accepted, _, _ = accepted_graph(nodes, edges, units, registry=registry)
     assert not any(e["relation_type"] == "OWNED_BY" for e in accepted)
 

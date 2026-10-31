@@ -117,18 +117,6 @@ def test_control_verified_graph_traversal_works(tmp_path):
     got = traverse(g, ["doc-a"], hops=1)
     assert any(x["node_id"] == "doc-a" for x in got["nodes"])
     assert all(x["check"] == "passed" for x in got["nodes"])
-    assert traverse(g, ["doc-a"], verified_only=True)["nodes"] == []
-
-
-def test_verified_only_must_not_return_unverified_seed(tmp_path):
-    k = root(tmp_path)
-    entities = [json.loads(s) for s in (k / "entities.jsonl").read_text(encoding="utf-8").splitlines()]
-    entities[0]["review_status"] = "needs_review"
-    put(k / "entities.jsonl", entities)
-    g = tmp_path / "g"
-    build_graph(k, g)
-    got = traverse(g, ["doc-a"], hops=0, verified_only=True)
-    assert got["nodes"] == [], "verified_only must filter seed nodes themselves"
 
 
 def test_graph_version_changes_when_evidence_label_changes(tmp_path):

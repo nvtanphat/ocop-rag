@@ -24,11 +24,11 @@ Một ngữ cảnh miền thống nhất cho nguồn OCOP, bằng chứng, tri t
 
 **origin**: Nguồn hình thành tri thức: trích xuất tất định (`deterministic`), đề xuất mô hình (`llm`) hoặc con người (`human`). Nguồn hình thành không phải mức độ xác minh.
 
-**check**: Kết quả kiểm kỹ thuật của đối tượng đồ thị: `passed`, `failed` hoặc `human_verified`. Đạt kiểm kỹ thuật không tự đồng nghĩa được xác minh về nghiệp vụ.
+**check**: Kết quả kiểm kỹ thuật của đối tượng đồ thị: `passed` hoặc `failed`. Đạt kiểm kỹ thuật (câu trích nguyên văn, đúng loại đầu mút) không tự đồng nghĩa được xác minh về nghiệp vụ.
 
-**review_status**: Trạng thái duyệt nội dung: ứng viên/chưa duyệt (`candidate`, `needs_review`), đã xác minh (`verified`, `human_verified`) hoặc bị bác bỏ (`rejected`). Điểm/sao chưa được duyệt không dùng để kết luận xếp hạng.
+**review_status**: Trạng thái văn bản nguồn của đơn vị bằng chứng: `verified` khi trang đã có chữ OCR đã duyệt, ngược lại `needs_review`. Điểm/sao từ nguồn chưa duyệt không dùng để kết luận xếp hạng.
 
-**Review Ledger**: Nhật ký nối tiếp các quyết định duyệt, bác bỏ hoặc hiệu chỉnh, gắn với người duyệt và đúng nội dung được đối soát. Quyết định mới không xoá lịch sử cũ.
+**File sửa trích xuất**: `data/extraction/entities-relations.md`, file duy nhất chủ dự án sửa sau bước trích xuất (sửa nhãn hoặc xóa dòng), kèm nhật ký `corrections.jsonl`. Không có bước duyệt.
 
 **Claim**: Một nhận định có căn cứ trích dẫn, được kiểm và công bố độc lập trong câu trả lời.
 
@@ -43,6 +43,16 @@ Một ngữ cảnh miền thống nhất cho nguồn OCOP, bằng chứng, tri t
 **Danh mục thực thể**: Danh sách văn bản, địa danh, sản phẩm, chủ thể, cơ quan, phiếu và mẫu có căn cứ từ corpus.
 
 **Chuỗi cha**: Ngữ cảnh tổ tiên trực tiếp của một đoạn nguồn, ví dụ Điều và khoản; phân biệt với nội dung nguyên văn của đoạn.
+
+**Quy phạm (Norm)**: Mệnh đề quy định nghĩa vụ, quyền, điều cấm, miễn trừ hoặc chuyển tiếp cho một đối tượng trong những điều kiện và phạm vi áp dụng xác định. Một điều văn bản có thể chứa nhiều quy phạm hoặc không chứa quy phạm.
+
+**Provision**: Phần văn bản có vị trí định danh, như điều, khoản, điểm, phụ lục hoặc mục biểu mẫu; phân biệt với quy phạm được phát biểu trong phần đó.
+
+**Concept**: Khái niệm có nghĩa xác định trong một phạm vi văn bản và thời gian, có thể được biểu đạt bằng nhiều tên. Hai tên gần nhau không tự chứng minh cùng một khái niệm.
+
+**Danh tính chuẩn**: Một thực thể được phân biệt với các thực thể khác, thống nhất các tên và lần xuất hiện cùng chỉ về nó; không gộp các thực thể trùng tên nhưng khác phạm vi.
+
+**SubjectType**: Loại chủ thể mà một quy định áp dụng tới; khác với một hộ, tổ chức hoặc doanh nghiệp cụ thể thuộc loại đó.
 
 **Năng lực chính / phụ**: Năng lực chính trả lời yêu cầu; năng lực phụ chỉ bổ sung và không được tự tạo căn cứ còn thiếu.
 

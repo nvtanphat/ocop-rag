@@ -8,7 +8,7 @@ Hệ thống có một corpus đang hoạt động. `ocop_main.py` phục vụ A
 - `ocop_contracts`: hợp đồng nguồn, trang, EvidenceUnit, dataset OCR, khoá tiến trình.
 - `ocr/ocop_ocr`: đọc PDF/OCR và xuất dataset độc lập. RAG chỉ đọc dataset, không tự chạy OCR.
 - `ai_core/processing/ocop`: tạo EvidenceUnit và ứng viên tri thức. Mỗi span giữ trang, bbox và SHA nguồn; ứng viên OCR không được nâng thành dữ liệu verified tự động.
-- `ai_core/graph/ocop`: dựng `nodes.jsonl`, `edges.jsonl`, `manifest.json`, kiểm ontology/căn cứ, snapshot và quyết định review. Bản ghi thất bại không được dùng trong truy xuất công khai.
+- `ai_core/graph/ocop`: dựng `nodes.jsonl`, `edges.jsonl`, `manifest.json`, kiểm ontology/căn cứ, snapshot, và áp dụng file sửa trích xuất. Bản ghi thất bại không được dùng trong truy xuất công khai.
 - `ai_core/retrieval/ocop`: chunk theo cấu trúc, chuỗi cha, BM25, dense tùy chọn, RRF và rerank có ngân sách. Index giữ phiên bản tri thức và graph.
 - `ai_core/system/pipeline.py`: kiểm tính nhất quán, dựng dẫn xuất trong thư mục tạm rồi hoán đổi dưới khoá. Thất bại không được giả thành bản dựng thành công. Dựng, khoá và phát hành luôn băm lại byte của PDF; các endpoint `/health`, `/criteria`, `/products`, `/query` dùng lại mã băm khi kích thước và thời điểm sửa của tệp không đổi, và băm lại ngay khi một trong hai thay đổi.
 
@@ -57,7 +57,7 @@ Mặc định phiên nằm trong bộ nhớ một tiến trình (TTL 1 giờ, t�
 
 Request hỏi đáp gồm `query`, `session_id`, `retrieval_mode`, `use_llm`; không nhận trường thừa. Response giữ nguyên citation, bao gồm `source_id`, `pdf_page`, `bbox`, `evidence_unit_id`, `source_sha256` và các span liên quan. HTTP 503 có thông báo hạ tầng được giới hạn để không lộ bí mật.
 
-Hai endpoint reference đọc `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` do server quản lý; `python tools/cli.py review export-references` tạo chúng từ các node `Criterion`/`Product` trong nhóm `human_verified` của graph, ràng với corpus index hiện hành và gộp các nhãn trùng trong cùng văn bản. Chỉ trả trường cho phép từ bản ghi `verified`/`human_verified`, `visibility=public`, đúng corpus active, không mang tenant/hồ sơ. Citation phải thuộc một EvidenceUnit của đúng nguồn có span ở trang được trích, PDF khoá SHA và vùng nằm trong trang; nhãn chứa điểm/sao phải có hỗ trợ số tương ứng. Thiếu dữ liệu hoặc corpus chưa nhất quán: `status=no_verified_data`, `items=[]`; UI hiện “Chưa có dữ liệu xác minh”. Chúng không biến OCR candidates thành quy tắc đánh giá.
+Hai endpoint reference đọc `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` do server quản lý; `python tools/cli.py graph export-references` tạo chúng từ các node `Criterion`/`Product` đã qua kiểm tra của graph, ràng với corpus index hiện hành và gộp các nhãn trùng trong cùng văn bản. Chỉ trả trường cho phép từ bản ghi `verified`/`human_verified`, `visibility=public`, đúng corpus active, không mang tenant/hồ sơ. Citation phải thuộc một EvidenceUnit của đúng nguồn có span ở trang được trích, PDF khoá SHA và vùng nằm trong trang; nhãn chứa điểm/sao phải có hỗ trợ số tương ứng. Thiếu dữ liệu hoặc corpus chưa nhất quán: `status=no_verified_data`, `items=[]`; UI hiện “Chưa có dữ liệu xác minh”. Chúng không biến OCR candidates thành quy tắc đánh giá.
 
 ## Frontend
 
@@ -77,11 +77,11 @@ Giao diện React (Vite) là một ứng dụng một trang, bố cục fluid: n
 
 Tài liệu, sản phẩm, tiêu chí, trang và vị trí citation đều đến từ API; FE chỉ giữ nhãn giao diện. Thiếu dữ liệu xác minh thì hiện trạng thái rỗng, không hiện điểm/sao. Truy vết công cụ lấy từ response thực tế.
 
-Review thực hiện qua CLI; không có API hay màn hình ghi quyết định review. Xem [RUNBOOK](RUNBOOK.md). Các quyết định nền tảng nằm trong [ADR](adr/README.md).
+Việc sửa kết quả trích xuất làm qua một file (không có API hay màn hình duyệt). Xem [RUNBOOK](RUNBOOK.md). Các quyết định nền tảng nằm trong [ADR](adr/README.md).
 
 ## Giới hạn đã biết
 
 - Hai file reference không tự cập nhật: sau mỗi lần dựng lại graph hoặc index phải chạy lại
-  `review export-references`, nếu không corpus lệch và endpoint trả danh sách rỗng.
+  `graph export-references`, nếu không corpus lệch và endpoint trả danh sách rỗng.
 - LLM có thể cho verdict kiểm nghĩa khác nhau giữa các lượt dù cùng bằng chứng;
   một lần trả lời đạt không bảo đảm các lần chạy sau cho cùng kết quả.

@@ -59,7 +59,7 @@ python tools/cli.py run --ocr-dataset data/ocr-dataset --reviewed-text data/ocr-
 
 Bước nạp thay `extracted_text` và ô bảng bằng chữ đã duyệt, giữ chữ OCR gốc (`ocr_extracted_text`, `ocr_text`), `ocr_hash` và bbox, ghép từng dòng đã duyệt với khối OCR nguồn (`line_blocks`) để mọi trích dẫn giữ bbox, và ghi mỗi trang đổi chữ vào `review/corrections.jsonl`. Trang không khớp tập trang của dataset làm lệnh dừng. Bước extraction LLM dùng cache theo nội dung đoạn, nên chỉ đoạn có chữ đổi mới gọi lại API. Sửa dòng md rồi chạy lại đúng lệnh trên là đủ.
 
-Quyết định duyệt node/cạnh nằm ở `data/review/ocop_review_decisions.jsonl`, gắn với `content_hash`; sau khi dựng lại, quyết định cũ còn hiệu lực với mục có hash không đổi, mục có chữ hoặc bbox đổi quay về chưa duyệt.
+Sau bước trích xuất thực thể và quan hệ có một file duy nhất để sửa, tương tự file OCR: xem [Sửa kết quả trích xuất](#sửa-kết-quả-trích-xuất).
 
 Kiểm trạng thái và danh mục lệnh:
 
@@ -68,28 +68,42 @@ python tools/cli.py status
 python tools/cli.py --help
 ```
 
+## Bố cục `data/`
+
+Mọi dữ liệu của dự án nằm trong `data/`; phần không dựng lại được tách khỏi phần sinh ra:
+
+| Thư mục | Nội dung | Dựng lại được |
+|---|---|---|
+| `data/raw/ocop` | PDF nguồn bất biến | không |
+| `data/ocr-dataset`, `data/ocr-review` | Markdown OCR và bản đã duyệt | một phần |
+| `data/extraction` | file sửa thực thể và quan hệ (`entities-relations.md`) và nhật ký sửa | không |
+| `data/evaluations` | bộ gold | không |
+| `data/processed/ocop` | `pages`, `knowledge`, `graph`, `index`, `cache` | có |
+| `data/models` | trọng số model cục bộ (VietOCR: đặt `OCOP_VIETOCR_WEIGHTS=data/models/vietocr/vgg_transformer.pth`) | không |
+
+Schema graph (loại nút, quan hệ và đầu mút hợp lệ) chỉ khai báo một nơi: `ai_core/graph/ocop/ontology.py`; mô hình không tự thêm loại.
+
 ## Đối soát citation
 
 Hỏi một câu có dữ liệu trong corpus. Bấm marker hoặc thẻ nguồn của chính câu trả lời: viewer phải hiển thị đúng `source_id`, trang, evidence ID, bbox và SHA. Bật/tắt highlight rồi mở PDF gốc; fragment phải giữ trang đã chọn. Ảnh evidence phải trả PNG từ PDF khoá nguồn, không phải thumbnail minh hoạ.
 
 Kiểm `/api/ocop/health`, `/sources`, `/criteria`, `/products` bằng trình duyệt hoặc OpenAPI tại `/docs`. Danh sách reference rỗng có trạng thái `no_verified_data` là thiếu dữ liệu xác minh, không phải lý do đưa OCR candidates lên thành verified. Không dùng dữ liệu chưa xác minh để công nhận sao/điểm.
 
-## Review qua CLI
+## Sửa kết quả trích xuất
 
-Không có review endpoint hoặc màn hình ghi quyết định. Xem các tham số và thống kê hiện tại:
+Sau khi dựng xong, xuất file để sửa (một lệnh, không có bước duyệt):
 
 ```powershell
-python tools/cli.py review --help
-python tools/cli.py review stats
+python tools/cli.py graph export-extraction
 ```
 
-`review queue` xuất hàng đợi; `--render` tạo crop từ PDF đã kiểm SHA. Người duyệt đối chiếu trang và vùng bằng chứng trước khi gọi `review decide` với `--target-id`, `--content-hash`, `--decision`, `--reviewer`; chỉ dùng ID/hash thực lấy từ hàng đợi. Quyết định `correct` cần tệp correction hợp lệ. Không sao chép ID/hash của ví dụ vào corpus thật.
+File `data/extraction/entities-relations.md` liệt kê thực thể và quan hệ dùng được theo từng trang (`## <source_id> — trang N`): `[Norm] <mã> | nhãn` và `[GOVERNS] <mã> <đầu> -> <cuối>`. Sửa chữ sau dấu `|` để sửa nhãn, xóa cả dòng để bỏ thực thể (cùng các quan hệ của nó) hoặc bỏ quan hệ. Dựng lại bằng `python tools/cli.py graph refresh-graph` (chỉ dựng lại graph) hoặc `run`; hệ thống không đổi câu trích, trang, bbox và SHA nguồn, giữ nhãn gốc trong `properties.extracted_label` và ghi mỗi thay đổi vào `data/extraction/corrections.jsonl`. Dòng nào chưa từng được xuất thì không bị coi là đã xóa.
 
-Xuất bản graph hiện hành sang Neo4j (idempotent, theo snapshot bất biến, ghi trạng thái vào manifest của graph): `docker compose --profile stores up -d neo4j`, sau đó `python tools/cli.py review publish-neo4j` (đọc `NEO4J_PASSWORD` từ môi trường hoặc `.env`). Dựng lại graph sẽ xoá trạng thái này, tức bản trên Neo4j đã cũ: chạy lại lệnh. `run --neo4j` dựng lại cả corpus và xuất bản graph vừa dựng, không phải graph hiện hành, nên không dùng cho mục đích này.
+Trạng thái kiểm tra của mỗi nút và cạnh chỉ có hai giá trị tự động: `passed` (câu trích nằm nguyên văn trong đơn vị bằng chứng, đúng loại đầu mút) hoặc `failed`. Nút và cạnh `failed` không được dùng khi trả lời và không vào Neo4j.
 
-Danh sách cho `/criteria` và `/products`: `python tools/cli.py review export-references` ghi `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` từ graph hiện hành. Chạy lại sau mỗi lần dựng lại graph hoặc index.
+Xuất bản graph hiện hành sang Neo4j (idempotent, theo snapshot bất biến, ghi trạng thái vào manifest của graph): `docker compose --profile stores up -d neo4j`, sau đó `python tools/cli.py graph publish-neo4j` (đọc `NEO4J_PASSWORD` từ môi trường hoặc `.env`). Dựng lại graph xoá trạng thái này, tức bản trên Neo4j đã cũ: chạy lại lệnh.
 
-Ledger tại `data/review/ocop_review_decisions.jsonl` chỉ ghi nối tiếp. Duyệt thực thể không tự động duyệt mọi cạnh và bằng chứng. `decide` dựng graph và làm mới index; nếu graph đã đổi nhưng làm mới index lỗi, giữ ledger và chạy `review refresh-index` sau khi khắc phục hạ tầng. Không xoá lịch sử review.
+Danh sách cho `/criteria` và `/products`: `python tools/cli.py graph export-references` ghi `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` từ graph hiện hành. Chạy lại sau mỗi lần dựng lại graph hoặc index.
 
 ## Quan sát
 
@@ -104,8 +118,8 @@ Span OpenTelemetry (`ocop.agent.ask`, `ocop.agent.tool_dispatch`, `ocop.retrieva
 | FE báo không kết nối được | Backend có chạy, đúng cổng, Vite proxy tới 8000 |
 | HTTP 503 hoặc health chưa ready | Dataset đầy đủ, source lock, fingerprint extraction/index/graph, cờ promoting |
 | HTTP 422 khi mở evidence | Số trang, thứ tự/bounds bbox, SHA của citation so với PDF |
-| Reference rỗng | Chạy `review export-references`; tệp verified phải đúng corpus index, visibility public, citation khớp EvidenceUnit và PDF khoá SHA |
+| Reference rỗng | Chạy `graph export-references`; tệp verified phải đúng corpus index, visibility public, citation khớp EvidenceUnit và PDF khoá SHA |
 | LLM không khả dụng | Provider, endpoint, model, key; tắt sinh LLM để tra bằng chứng thuần |
-| Graph/index version mismatch | Dựng lại đồng bộ hoặc làm mới index sau review |
+| Graph/index version mismatch | Dựng lại đồng bộ hoặc làm mới index sau khi sửa |
 
 Không log key, nội dung hồ sơ riêng tư hay exception thô ra response. Không xoá file ignored hoặc dữ liệu người dùng để làm test xanh.

@@ -15,7 +15,6 @@ def _env(monkeypatch):
         "OCOP_EXTRACT_OPENAI_BASE_URL",
         "OCOP_EXTRACT_OPENAI_API_KEY",
         "OCOP_EXTRACT_LLM_REVISION",
-        "OCOP_OLLAMA_URL",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -34,7 +33,7 @@ def _identity(**changes):
 @pytest.mark.parametrize(
     "change",
     [
-        {"provider": "ollama"},
+        {"provider": "other"},
         {"endpoint": "https://other.example/v1"},
         {"model": "m2"},
         {"revision": "r2"},
@@ -63,8 +62,3 @@ def test_identity_of_a_client_equals_the_identity_read_from_the_environment(monk
     text = repr(llm_mod.extraction_identity())
     assert "sk-secret-key" not in text and "pw" not in text and "token=abc" not in text
     assert llm_mod.extraction_identity()["endpoint"] == "https://gateway.example/v1"
-
-
-def test_ollama_identity_without_credentials_needs_no_client_construction():
-    assert llm_mod.extraction_identity()["provider"] == "ollama"
-    assert client_identity(llm_mod.make_extraction_client()) == llm_mod.extraction_identity()

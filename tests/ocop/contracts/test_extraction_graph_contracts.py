@@ -173,36 +173,6 @@ def test_names_alone_do_not_merge_products_or_businesses_across_units():
     assert len(result["entities"]) == 4
 
 
-def test_ollama_schema_disables_thinking_and_preserves_schema(monkeypatch):
-    import io
-    from ai_core.orchestration.ocop import llm
-    from ai_core.knowledge.ocop.llm_proposals import response_schema
-
-    seen = {}
-
-    def post(request, timeout):
-        seen.update(json.loads(request.data))
-        return io.BytesIO(b'{"message":{"content":"{}"},"done_reason":"stop"}')
-
-    monkeypatch.setattr(llm.urllib.request, "urlopen", post)
-    llm.OllamaClient().chat_structured("s", "u", schema=response_schema())
-    assert seen["format"] == response_schema()
-    assert seen["think"] is False
-
-
-def test_truncated_provider_output_is_not_treated_as_a_complete_extraction(monkeypatch):
-    import io
-    from ai_core.orchestration.ocop import llm
-
-    monkeypatch.setattr(
-        llm.urllib.request,
-        "urlopen",
-        lambda *args, **kwargs: io.BytesIO(b'{"message":{"content":"{}"},"done_reason":"length"}'),
-    )
-    with pytest.raises(RuntimeError, match="truncated"):
-        llm.OllamaClient().chat_structured("s", "u", schema={})
-
-
 def test_compact_schema_attributes_and_malformed_relation_are_checked():
     output = propose(
         [unit("Sản phẩm: Mật ong đóng chai thủy tinh")],

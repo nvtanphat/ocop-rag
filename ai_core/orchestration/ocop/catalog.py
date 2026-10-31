@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ai_core.orchestration.ocop.language import Language, fold, get_language, has_diacritics
+from ai_core.graph.ocop.grounding import usable
 
 CATALOG_FILE = "entity_catalog.json"
 KINDS = ("document", "region", "product", "product_group", "organization", "authority", "sheet", "form")
@@ -102,7 +103,7 @@ def build_catalog(registry_path: Path, nodes: list[dict], *, language: Language 
         for label in _region_labels(str(source.get("jurisdiction") or ""), lang):
             add("region", label, source_id=source["source_id"])
     for node in nodes:
-        if node.get("check") not in {"passed", "human_verified"}:
+        if not usable(node):
             continue
         kind = _ENTITY_NODE_KINDS.get(node["node_type"])
         if kind:

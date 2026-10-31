@@ -97,12 +97,62 @@ def _stated_in(assertion: str, verified: str) -> bool:
     )
 
 
-def _row_text(rows: list[dict]) -> str:
-    text = " ".join(
-        str(row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
-        for row in rows
-        if approved(row)
+@lru_cache(maxsize=1)
+def _source_table_headers() -> dict[str, str]:
+    """Header line of the tables of each source that has exactly one table schema (a continuation chunk of such a
+    table, cut away from its header, takes its column names from here; sources with several schemas stay unlabelled)."""
+    path = Path(__file__).resolve().parents[3] / "data/processed/ocop/index/evidence_units.jsonl"
+    seen: dict[str, set[str]] = {}
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                unit = json.loads(line)
+                if unit.get("unit_kind") == "table":
+                    seen.setdefault(unit["source_id"], set()).add(str(unit.get("text") or "").split("\n")[0])
+    except (OSError, ValueError, KeyError):
+        return {}
+    return {source: next(iter(heads)) for source, heads in seen.items() if len(heads) == 1}
+
+
+def label_table_rows(text: str, fallback_header: str | None = None) -> str:
+    """Rewrite a packed table ("Cột: A | B | C" then one row per line) so every data line names its own columns.
+
+    A row quoted without its header line cannot say which cell is the score; with ``label: value`` pairs a score is
+    stated next to its label and a row binds to its own claim. Cells align from the right because merged cells
+    (rowspan) leave the leading cells out of the continuation rows. A chunk cut away from its header takes the single
+    header its source's tables have (``fallback_header``). Text that is not a table is returned unchanged."""
+    lines = text.split("\n")
+    head = re.sub(r"^[^|:\n]{1,20}:\s*", "", lines[0])
+    labels = [cell.strip() for cell in head.split(" | ")]
+    headed = len(lines) >= 2 and len(labels) >= 3 and all(labels)
+    if headed and fallback_header and not head.startswith(fallback_header.split(" | ")[0]):
+        headed = False  # the first line is a row cut from a table, not the table's own header
+    if headed:
+        body, out = lines[1:], [lines[0]]
+    elif fallback_header:
+        labels = [cell.strip() for cell in fallback_header.split(" | ")]
+        body, out = lines, []
+    else:
+        return text
+    for line in body:
+        cells = [cell.strip() for cell in line.strip().strip("|").split(" | ")]
+        if len(cells) >= 2 and (headed and len(cells) <= len(labels) or not headed):
+            cells = cells[-len(labels):]
+            offset = len(labels) - len(cells)
+            line = " | ".join(f"{labels[offset + i]}: {cell}" for i, cell in enumerate(cells))
+        out.append(line)
+    return "\n".join(out)
+
+
+def _labelled_text(row: dict) -> str:
+    return label_table_rows(
+        str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""),
+        _source_table_headers().get(str(row.get("source_id"))),
     )
+
+
+def _row_text(rows: list[dict]) -> str:
+    text = " ".join(_labelled_text(row) for row in rows if approved(row))
     return re.sub(r"\s+", " ", text.casefold())
 
 
@@ -127,12 +177,12 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
             identity = (row.get("source_id"), tuple(sorted(node_ids)))
         else:
             identity = (index,)
-        groups.setdefault(identity, []).append(str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""))
+        groups.setdefault(identity, []).append(_labelled_text(row))
     records = [part for texts in groups.values() for part in _split_claims(" ".join(texts))]
     lang = get_language()
-    terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)))
+    terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)), accent_aware=True)
              if not word.isdigit()}
-    scores = [len(terms & set(lang.content_words(record))) for record in records]
+    scores = [len(terms & set(lang.content_words(record, accent_aware=True))) for record in records]
     best = max(scores, default=0)
     candidates = [record for record, score in zip(records, scores) if score == best]
     squashed = [re.sub(r"\s+", " ", record.casefold()) for record in candidates]

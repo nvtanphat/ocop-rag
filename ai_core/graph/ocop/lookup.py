@@ -9,7 +9,7 @@ from ai_core.orchestration.ocop.language import get_language
 
 from ocop_contracts.ids import content_sha256
 from ai_core.graph.ocop.builder import SCHEMA_REVISION, records
-from ai_core.graph.ocop.grounding import public_record, USABLE_CHECKS
+from ai_core.graph.ocop.grounding import public_record, usable, relation_usable
 from ai_core.graph.ocop.integrity import graph_index_mismatch, validate_graph_snapshot
 
 
@@ -54,14 +54,15 @@ class GraphEvidence:
         self.nodes = {
             n["node_id"]: public_record(n)
             for n in records(path / "nodes.jsonl")
-            if n.get("check") in USABLE_CHECKS
+            if usable(n)
         }
         self.edges = [
             public_record(e)
             for e in records(path / "edges.jsonl")
-            if e.get("check") in USABLE_CHECKS
+            if usable(e)
             and e["source_entity_id"] in self.nodes
             and e["target_entity_id"] in self.nodes
+            and relation_usable(e, self.nodes)
         ]
         self.units = {
             uid: n

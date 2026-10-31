@@ -30,7 +30,8 @@ def sub_queries(question: str) -> list[str]:
         parts.append(text[cuts[-1] : match.start()])
         cuts.append(match.end())
     parts.append(text[cuts[-1] :])
-    parts.extend(x for x in re.split(r"[;?]", text) if x.strip())
+    # A sentence of its own ("Bọn mình làm du lịch cộng đồng. Hội ở địa phương có đứng tên không?") is a part too.
+    parts.extend(x for x in re.split(r"[;?]|(?<=[^\W\d_])\.\s+(?=[^\W\d_])", text) if x.strip())
     kept: list[str] = []
     for part in parts:
         part = part.strip(" ,.;:?!")

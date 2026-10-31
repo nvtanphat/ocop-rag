@@ -482,6 +482,8 @@ def _lines_duplicated_in_tables(page: dict) -> set[int]:
     dropped = set()
     source_lines = page.get("extracted_text", "").splitlines()
     for index, blocks in enumerate(line_blocks):
+        if not blocks:
+            continue  # a reviewed line with no OCR block has no position, so it cannot be shown to sit in a table
         # A joined line can span two cells, so each fragment must be found in the table on its own.
         fragments = [source_lines[index]] if len(blocks) == 1 else [b["text"] for b in blocks]
         for box, cell_text, cells in tables:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from ai_core.knowledge.ocop.contracts import EntityType, RELATION_TYPES
+from ai_core.graph.ocop.semantics import SEMANTIC_NODE_TYPES, SEMANTIC_ENDPOINTS, LINK_ENDPOINTS, MODEL_ENDPOINTS
 
 NODE_TYPES = frozenset(
     {
@@ -38,6 +39,7 @@ NODE_TYPES = frozenset(
     }
 )
 NODE_TYPES = NODE_TYPES | frozenset(kind.value for kind in EntityType)
+NODE_TYPES = NODE_TYPES | SEMANTIC_NODE_TYPES
 EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "CONTAINS": (frozenset(NODE_TYPES), frozenset(NODE_TYPES)),
     "MENTIONS": (frozenset(NODE_TYPES), frozenset(NODE_TYPES)),
@@ -84,6 +86,10 @@ def _kind_names(value):
 for _relation, (_source, _target) in RELATION_TYPES.items():
     _existing = EDGE_ENDPOINTS.get(_relation, (frozenset(), frozenset()))
     EDGE_ENDPOINTS[_relation] = (_existing[0] | _kind_names(_source), _existing[1] | _kind_names(_target))
+
+for _relation, (_source, _target) in [*SEMANTIC_ENDPOINTS.items(), *LINK_ENDPOINTS.items(), *MODEL_ENDPOINTS.items()]:
+    _existing = EDGE_ENDPOINTS.get(_relation, (frozenset(), frozenset()))
+    EDGE_ENDPOINTS[_relation] = (_existing[0] | _source, _existing[1] | _target)
 
 
 @dataclass(frozen=True)

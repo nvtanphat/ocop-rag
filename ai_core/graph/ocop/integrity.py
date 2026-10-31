@@ -23,13 +23,19 @@ def graph_index_mismatch(graph_manifest: dict, index_manifest: dict, *, strict: 
     return None
 
 
-def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False, allow_partial: bool = False) -> dict:
+def validate_graph_snapshot(path: Path, *, allow_legacy: bool = False, allow_partial: bool = False,
+                            check_semantic_config: bool = True) -> dict:
     manifest_file = path / "manifest.json"
     if not manifest_file.is_file():
         if allow_legacy:
             return {"status": "legacy_unverified"}
         raise ValueError("graph manifest missing")
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+    if check_semantic_config and manifest.get("semantic_projection"):
+        from ai_core.graph.ocop.semantics import config_digest
+
+        if manifest["semantic_projection"].get("config_sha256") != config_digest():
+            raise ValueError("graph semantic configuration changed; rebuild graph")
     status = manifest.get("status")
     if status != "local_ready" and not (
         allow_partial
