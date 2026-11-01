@@ -406,13 +406,19 @@ class ToolRegistry:
             found = self.search_part(
                 part, slots, {**context, **({"_scope_source": scope} if scope else {})}, auth
             )
-            hits = found.get("results", [])[:4]
-            earlier.extend(hits)
-            for row in hits:
+            earlier.extend(found.get("results", [])[:4])
+            # A part adds its best retrieval.part_new_pages pages the other searches did not find: rows already found and further
+            # chunks of an admitted page are free. Its first four rows were often chunks of the local guidance the whole
+            # question had already returned, and cut the national rule page it found at rank 5-8 (MH011: QĐ26 p.4, p.5).
+            pages: set = set()
+            for row in found.get("results", []):
                 key = self._hit_key(row)
-                if key not in seen:
-                    seen.add(key)
-                    extra.append({**row, "query_part": part})
+                page = (row.get("source_id"), row.get("pdf_page"))
+                if key in seen or (page not in pages and len(pages) >= get_settings().retrieval.part_new_pages):
+                    continue
+                pages.add(page)
+                seen.add(key)
+                extra.append({**row, "query_part": part})
         if not extra:
             return whole
         merged = {**whole, "results": [*whole.get("results", []), *extra]}

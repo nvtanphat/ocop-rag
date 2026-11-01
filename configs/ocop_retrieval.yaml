@@ -21,6 +21,7 @@ context:
 retrieval:
   top_k: 8                         # passages one search returns; the cross-encoder and the token budget choose what reaches the prompt
   max_hits_per_document: 3         # one search keeps at most this many pages of a document before filling with the rest (ViCAS diversify_hits)
+  part_new_pages: 4                # pages one part of a compound question adds that the other searches did not find
   candidate_pool_min: 40           # sparse/dense candidates before fusion
   rrf_k: 60
   rrf_weight_sparse: 1.0
