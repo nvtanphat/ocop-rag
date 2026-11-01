@@ -15,6 +15,8 @@ Các bộ dữ liệu đánh giá chuẩn (gold sets) được lưu tại `data/
 | Trích dẫn câu trả lời | `data/evaluations/ocop/ocop_answer_citation_gold_60.json` | 60 câu | Đối soát độ chính xác của trích dẫn `[S#]` và tính trung thực của claim |
 | Trí nhớ phiên | `data/evaluations/ocop/ocop_session_memory_gold_50.json` | 50 lượt | Đo lường độ chính xác tìm trang khi câu hỏi nối tiếp có từ trỏ ngược |
 
+Bộ giữ riêng (held-out) nằm ngoài repo, khoá bằng hash: chỉ xem số tổng, không điều chỉnh hệ thống theo từng ca của bộ này. Sáu bộ trên là bộ phát triển, chưa có file lock hash.
+
 Không thay gold để khớp output. Nếu gold bị soạn sai, cần quy trình sửa/khóa riêng trước khi chạy lại.
 
 ## Lưu ý kiểm tra hạ tầng trước khi đo (Docker Qdrant)
@@ -78,7 +80,7 @@ Marker hoặc đúng trang chưa chứng minh entailment. Claim về điểm/sao
 
 ## Kết quả đo lường đợt cải thiện (2026-11-01)
 
-Mọi phép đo được thực hiện ngày 2026-11-01 trên các bộ dữ liệu chuẩn đã ghim SHA:
+Mọi phép đo được thực hiện ngày 2026-11-01, chấm theo trang (mã nguồn, số trang PDF), với mô hình trả lời giả (`PromptCapture`) trừ khi ghi khác:
 
 ### 1. Truy xuất tự nhiên (dataset_version `1.2.1-natural-query`, 100 câu)
 Bộ đo: `data/evaluations/ocop/ocop_retrieval_gold_100_natural_final.json`
@@ -96,12 +98,14 @@ Bộ đo: `data/evaluations/ocop/ocop_graphrag_multihop_gold_25.json`
 | --- | --- | :---: | :---: | --- |
 | `7398e2d` | 14 khối nguồn, 6400 tokens | 46/64 → 51/64 | 13/25 → 15/25 | Mở rộng cửa sổ nhận đủ bằng chứng liên văn bản |
 | `61965b4` | 20 khối nguồn | 51/64 → 52/64 | 15/25 → 16/25 | Bổ sung thêm các khối nguồn cho chuỗi dài |
-| `207ef28` | Tìm kiếm cả aspects mô hình lẫn sub_queries theo luật | 50/64 → 52/64 | 13/25 → 16/25 | Thử nghiệm bỏ tách theo luật làm giảm xuống 50 bước |
+| `207ef28` | Tìm kiếm cả aspects mô hình lẫn sub_queries theo luật | 50/64 → 52/64 | 13/25 → 16/25 | Đo với mô hình tách câu thật (các dòng khác dùng mô hình giả, không có `aspects`); khi câu con của mô hình thay phần tách theo luật thì còn 50 bước, dùng cả hai thì về lại 52 |
 | `7d29544` | Cross-encoder toàn cục sau hợp nhất công cụ | 52/64 → 53/64 | 16/25 → 17/25 | Phân định đúng đoạn văn bản quy định dẫn đầu |
 | `ec73930` | Giới hạn 3 đoạn mỗi văn bản (`max_hits_per_document`) | - | - | MH013 tăng thêm 2 bước đạt (QĐ26 trang 3 lọt vào top); 5 câu phức hợp ngẫu nhiên không đổi |
 
 ### 3. Trí nhớ phiên hội thoại (Session Memory, 50 lượt)
 Bộ đo: `data/evaluations/ocop/ocop_session_memory_gold_50.json`
+
+Bước viết lại câu nối tiếp gọi mô hình thật; các bước khác dùng mô hình giả.
 
 | Commit | Thay đổi kỹ thuật | Trang vàng tìm đúng | Ghi chú |
 | --- | --- | :---: | --- |

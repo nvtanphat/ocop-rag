@@ -34,8 +34,8 @@ Trong hội thoại nhiều lượt, câu hỏi của người dùng được x�
 ### Luồng truy xuất và hợp nhất bằng chứng
 
 Luồng truy xuất vận hành theo chuỗi kiểm soát ngân sách và chất lượng:
-1. **Tìm kiếm đa góc độ và giới hạn mỗi văn bản (`search.py`)**:
-   - `_search_with_parts` tìm kiếm đồng thời cả câu con phân tích từ mô hình (`aspects`) và các phần câu hỏi chia theo liên từ (RAG-Fusion), bảo đảm không bỏ sót đoạn trúng.
+1. **Tìm kiếm đa góc độ (`tools.py`) và giới hạn mỗi văn bản (`search.py`)**:
+   - `_search_with_parts` trong `tools.py` tìm kiếm đồng thời cả câu con phân tích từ mô hình (`aspects`) và các phần câu hỏi chia theo liên từ (RAG-Fusion), bảo đảm không bỏ sót đoạn trúng.
    - Mỗi lần tìm kiếm áp dụng cơ chế `diversify_hits` (ViCAS-RAG): mỗi văn bản (`source_id`) chỉ được đóng góp tối đa `max_hits_per_document` đoạn (mặc định 3) vào danh sách ưu tiên; các đoạn còn lại xếp vào danh sách bù trước khi cắt theo `top_k`.
 2. **Hợp nhất đa công cụ (Tool Fusion)**: Các kết quả từ các công cụ khác nhau trong DAG (`search_regulations`, `lookup_product_subgroup`, `lookup_recognition`, `search_graph`) được hợp nhất bằng thuật toán Reciprocal Rank Fusion (RRF).
 3. **Chấm lại toàn cục bằng cross-encoder (`rerank_fused` trong `answer.py`)**:

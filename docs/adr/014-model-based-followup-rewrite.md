@@ -43,6 +43,6 @@ Các dự án tham khảo ViCAS-RAG và Legal-RAG giải quyết vấn đề nà
 ## Phương án đã cân nhắc
 
 - **Cho phép mô hình viết lại tự do không ràng buộc từ vựng**:
-  - Mô hình sinh thường thêm thông tin suy diễn (ví dụ: tự ý thêm năm "2024", thêm hạng "5 sao" hoặc bịa tên công ty đối thủ). Điều này làm sai lệch kết quả truy xuất và vi phạm quy tắc an toàn provenance. Phương án bị loại bỏ để áp dụng hàm `validate` chặn tuyệt đối.
+  - Một câu viết lại có thể chứa năm, hạng sao hay tên chủ thể mà hội thoại chưa nhắc; câu như vậy làm lệch truy xuất. Chưa đo tần suất trên bộ vàng, nhưng Legal-RAG và ViCAS-RAG đều chặn đúng loại lỗi này (cấm thêm thông tin, bác bỏ số điều luật bịa ra), nên `validate` chặn số và tên riêng mới trước khi dùng câu viết lại.
 - **Chỉ sử dụng quy tắc hoán đổi chuỗi**:
   - Tiết kiệm thời gian gọi LLM nhưng không thể xử lý các câu trỏ ngược phức tạp ("nó của đơn vị nào?", "quay lại sản phẩm lúc nãy"), dẫn đến việc từ chối trả lời hoặc tìm nhầm văn bản.

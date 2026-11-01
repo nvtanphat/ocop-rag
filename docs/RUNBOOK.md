@@ -53,10 +53,12 @@ Trên môi trường phát triển cục bộ, Docker daemon hoặc WSL có th�
      ```powershell
      docker compose --profile stores up -d
      ```
-   - Trường hợp ổ đĩa C bị đầy, dọn dẹp các cache/image không dùng:
+   - Trường hợp ổ đĩa C bị đầy, chỉ dọn image và build cache không dùng:
      ```powershell
-     docker system prune -f
+     docker image prune -f
+     docker builder prune -f
      ```
+     Không dùng `docker system prune`: lệnh này xoá cả container đang dừng, kể cả `ocop-qdrant` hoặc `ocop-graphrag-neo4j-1` vừa tự tắt. Dữ liệu trong volume vẫn còn nhưng phải tạo lại container bằng `docker compose --profile stores up -d`.
 
 3. **Tắt backend container khi chạy đo lường đánh giá**:
    Khi chạy các script đánh giá (`tools/evaluate_*.py`, `tools/cli.py evaluate`) trên máy host, phải dừng container backend để giải phóng bộ nhớ RAM, tránh tranh chấp CPU và khóa tải mô hình cục bộ:
