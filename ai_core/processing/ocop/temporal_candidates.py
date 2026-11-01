@@ -22,13 +22,17 @@ _REFS = re.compile(
     r"\b\d{1,4}/20\d{2}/(?:QĐ-TTg|QĐ-UBND|NĐ-CP|NQ-CP|QH\d+|TT-[A-ZĐ]+)\b",
     flags=re.IGNORECASE,
 )
-_TRIGGERS = (
-    ("effective_date_candidate", ("có hiệu lực", "hiệu lực thi hành")),
-    ("expiry_date_candidate", ("hết hiệu lực", "chấm dứt hiệu lực")),
-    ("transition_candidate", ("chuyển tiếp", "tiếp tục áp dụng", "sau 60 ngày")),
-    ("suspension_candidate", ("tạm ngưng", "tạm đình chỉ")),
-    ("amendment_candidate", ("sửa đổi", "bổ sung", "thay thế", "bãi bỏ")),
-    ("recognition_date_candidate", ("công nhận",)),
+# A transition period is any "sau N ngày/tháng/năm", not the one length a document happens to use.
+_TRIGGERS = tuple(
+    (name, re.compile("|".join(patterns), re.IGNORECASE))
+    for name, patterns in (
+        ("effective_date_candidate", (r"có hiệu lực", r"hiệu lực thi hành")),
+        ("expiry_date_candidate", (r"hết hiệu lực", r"chấm dứt hiệu lực")),
+        ("transition_candidate", (r"chuyển tiếp", r"tiếp tục áp dụng", r"sau\s+\d+\s+(?:ngày|tháng|năm)")),
+        ("suspension_candidate", (r"tạm ngưng", r"tạm đình chỉ")),
+        ("amendment_candidate", (r"sửa đổi", r"bổ sung", r"thay thế", r"bãi bỏ")),
+        ("recognition_date_candidate", (r"công nhận",)),
+    )
 )
 _INDEPENDENT_LINE = re.compile(
     r"^\s*(?:\d{1,2}[.)]\s|[a-zđ][.)]\s|\(\d+\)\s|"
@@ -108,14 +112,14 @@ def temporal_candidates(units: Iterable[dict]) -> list[dict]:
             [(m.start(), m.end(), _iso(m)) for pat in (_DMY, _VI_DATE) for m in pat.finditer(text)],
             key=lambda x: (x[0], x[1]),
         )
-        if not dates and not any(w in lowered for _, triggers in _TRIGGERS for w in triggers):
+        if not dates and not any(pattern.search(lowered) for _, pattern in _TRIGGERS):
             continue
         for start, end, iso_date in dates:
             if iso_date is None:
                 continue
             evidence = _local_context(text, start, end)
             low_context = evidence.casefold()
-            classes = [name for name, triggers in _TRIGGERS if any(t in low_context for t in triggers)]
+            classes = [name for name, pattern in _TRIGGERS if pattern.search(low_context)]
             # An isolated date is still a searchable date mention, not a legal effect.
             if not classes:
                 classes = ["date_mention"]

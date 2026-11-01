@@ -75,3 +75,14 @@ def test_a_table_is_chunked_under_the_heading_of_its_page():
 
     table = {"structured": {"legal_heading": "Phụ lục I", "legal_heading_origin": "same_page_previous_segment"}}
     assert _legal_heading(table, "") == "Phụ lục I"
+
+
+def test_any_transition_period_length_marks_a_transition():
+    from ai_core.processing.ocop.temporal_candidates import _TRIGGERS
+
+    def kinds(text):
+        return [name for name, pattern in _TRIGGERS if pattern.search(text)]
+
+    for text in ("có hiệu lực sau 90 ngày kể từ ngày ký", "áp dụng sau 6 tháng", "sau 60 ngày"):
+        assert "transition_candidate" in kinds(text), text
+    assert "transition_candidate" not in kinds("nộp hồ sơ trước ngày 30")
