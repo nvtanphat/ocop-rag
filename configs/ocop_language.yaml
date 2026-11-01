@@ -116,6 +116,8 @@ cues:
   recognition_score_attribute: [bao nhiêu điểm, mấy điểm, điểm đánh giá, tổng điểm]
   # Words that join or contrast the parts of one question; each part is searched on its own as well.
   part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc, rồi, vậy]
+  # Words that make a clause a question; two clauses that both ask, joined by a comma, are two questions.
+  question_words: [nào, gì, đâu, bao nhiêu, mấy, ai, bao giờ, ra sao, thế nào]
   in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
     nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
     điểm, mẫu, đăng ký, nộp hồ sơ, phiếu nào, phiếu số, được chấm, chấm điểm, chấm theo, phân hạng, hạng sao,

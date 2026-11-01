@@ -77,3 +77,13 @@ def test_a_part_that_says_that_document_inherits_the_source_that_holds_the_named
         is None
     )
     assert registry._anaphoric_source("văn bản đó do cơ quan nào ban hành", []) is None
+
+
+def test_clauses_that_each_ask_are_split_at_their_comma():
+    from ai_core.retrieval.ocop.decompose import sub_queries
+
+    parts = sub_queries("Hạn nộp hồ sơ là ngày nào, đăng ký lần đầu cần hai mẫu gì và nộp chỗ nào?")
+    assert "đăng ký lần đầu cần hai mẫu gì và nộp chỗ nào" in parts
+    assert not any(p.startswith("và ") for p in parts)
+    # a comma inside one question lists things; it does not make two questions
+    assert sub_queries("Sản phẩm mật ong, mứt khô thuộc nhóm nào trong bộ phiếu OCOP?") == []

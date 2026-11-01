@@ -32,6 +32,22 @@ def sub_queries(question: str) -> list[str]:
     parts.append(text[cuts[-1] :])
     # A sentence of its own ("Bọn mình làm du lịch cộng đồng. Hội ở địa phương có đứng tên không?") is a part too.
     parts.extend(x for x in re.split(r"[;?]|(?<=[^\W\d_])\.\s+(?=[^\W\d_])", text) if x.strip())
+    # So is each of several clauses that ask, joined by commas ("hạn nộp là ngày nào, cần hai mẫu gì và nộp chỗ
+    # nào?"); a comma inside one question ("mật ong, mứt và trà thuộc nhóm nào?") does not split it.
+    asks = lang.words("cue:question_words", lang.cues["question_words"])
+    clauses: list[str] = []
+    for segment in text.split(","):
+        if clauses and asks.search(fold(clauses[-1])) and asks.search(fold(segment)):
+            clauses.append(segment)
+        elif clauses:
+            clauses[-1] += "," + segment
+        else:
+            clauses.append(segment)
+    if len(clauses) > 1:
+        for clause in clauses:
+            clause = clause.strip()
+            joiner = separators.match(fold(clause))  # "và cơ quan nào..." is the part the joining word already cut
+            parts.append(clause[joiner.end() :] if joiner else clause)
     kept: list[str] = []
     for part in parts:
         part = part.strip(" ,.;:?!")
