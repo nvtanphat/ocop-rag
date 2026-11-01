@@ -852,9 +852,7 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
 
 
 def _row_key(row: dict) -> str:
-    return json.dumps(
-        [row.get("source_id"), row.get("evidence_unit_id") or row.get("unit_id"), row.get("chunk_id")], default=str
-    )
+    return f"{row.get('source_id')}:{row.get('evidence_unit_id') or row.get('unit_id')}:{row.get('chunk_id')}"
 
 
 def rerank_fused(question: str, records: list[dict]) -> list[dict]:
@@ -866,22 +864,23 @@ def rerank_fused(question: str, records: list[dict]) -> list[dict]:
 
     cfg = get_settings().retrieval
     head: list[dict] = []
+    seen: set[str] = set()
     for row in records:
         key = _row_key(row)
-        text = str(row.get("raw_text") or row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
-        if text.strip() and all(item["chunk_id"] != key for item in head):
+        text = str(row.get("raw_text") or row.get("text") or row.get("evidence_text") or row.get("row_text") or "").strip()
+        if text and key not in seen:
+            seen.add(key)
             head.append({"chunk_id": key, "text": text})
-        if len(head) >= cfg.rerank_candidates:
-            break
+            if len(head) >= cfg.rerank_candidates:
+                break
     if len(head) < 2:
         return records
     first_stage = [item["chunk_id"] for item in head]
     second = [item["chunk_id"] for item in _rerank(question, head, DEFAULT_RERANKER_MODEL, DEFAULT_RERANKER_REVISION)]
     merged = rrf([first_stage, second], weights=[cfg.rerank_first_stage_weight, 1.0])
-    # A tie is broken by the cross-encoder: the fused order between the first rows of different tools is only tool order.
-    place = {key: i for i, key in enumerate(sorted(merged, key=lambda k: (-merged[k], second.index(k))))}
-    order = sorted(range(len(records)), key=lambda i: (place.get(_row_key(records[i]), len(place)), i))
-    return [records[i] for i in order]
+    second_rank = {k: i for i, k in enumerate(second)}
+    place = {key: i for i, key in enumerate(sorted(merged, key=lambda k: (-merged[k], second_rank.get(k, 0))))}
+    return sorted(records, key=lambda r: place.get(_row_key(r), len(place)))
 
 
 def assemble(
