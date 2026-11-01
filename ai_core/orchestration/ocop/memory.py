@@ -310,21 +310,20 @@ def rewrite(
                 text = pattern.sub(" và ".join(_surface(lang, kind, v) for v in new), text, count=1)
                 replaced.append(kind)
         # another product/organisation than the one the previous question named ("Còn ST25?" after a question on HANA)
+        prev = previous_slots or {}
         for key in ("product_name", "organization_name"):
-            old, new = (previous_slots or {}).get(key), updates.get(key)
+            old, new = prev.get(key), updates.get(key)
             if old and new and old != new and old.casefold() in text.casefold():
                 text = re.sub(re.escape(old), lambda _: str(new), text, count=1, flags=re.I)
                 replaced.append("product" if key == "product_name" else "organization")
         # A new product/organisation the previous question does not spell out ("Còn hạt sen của HTX Sen Huế?" after a
-        # question written as "Siro của Hichagol..."): the old question would still ask about the old thing, so the
-        # user's own question is kept with its scope below instead.
-        unplaced = [
-            key
-            for key in ("product_name", "organization_name")
-            if updates.get(key)
-            and updates.get(key) != (previous_slots or {}).get(key)
+        # question written as "Siro của Hichagol..."): fall through so user's own question is kept with its scope.
+        unplaced = any(
+            updates.get(key)
+            and updates.get(key) != prev.get(key)
             and ("product" if key == "product_name" else "organization") not in replaced
-        ]
+            for key in ("product_name", "organization_name")
+        )
         if not unplaced:
             # a new article/form/sheet the earlier question never referred to: ask about it afresh inside the carried scope
             fresh = [
