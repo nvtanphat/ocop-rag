@@ -1,0 +1,561 @@
+{
+  "dataset_name": "OCOP-RAG Abstention Gold — 20 câu hỏi tự nhiên",
+  "dataset_version": "1.0.0",
+  "task": "corpus_grounded_abstention",
+  "language": "vi",
+  "corpus_version": "9e8f7e46a64a74e80dd8",
+  "evidence_id_fingerprint": "ocop-evidence-b531594eddc8",
+  "source_inventory_count": 12,
+  "counts": {
+    "questions": 20,
+    "unanswerable_in_corpus": 20,
+    "in_scope": 20,
+    "related_evidence_links": 24,
+    "reason_code_distribution": {
+      "missing_application_statistics": 2,
+      "missing_business_data": 1,
+      "missing_certification_record": 1,
+      "missing_criterion_breakdown": 1,
+      "missing_detailed_score": 2,
+      "missing_distribution_data": 1,
+      "missing_enforcement_event": 1,
+      "missing_followup_status": 1,
+      "missing_future_schedule": 1,
+      "missing_later_event": 2,
+      "missing_local_recognition_result": 1,
+      "missing_locality_data": 4,
+      "missing_product_metric": 1,
+      "missing_test_record": 1
+    }
+  },
+  "annotation_policy": {
+    "target": "Không có đủ bằng chứng trong 12 tài liệu hiện có để trả lời phần được hỏi, không kết luận rằng sự kiện không tồn tại ngoài thực tế.",
+    "all_questions_in_scope": true,
+    "gold_evidence_semantics": "Mảng rỗng vì không có bằng chứng đầy đủ cho sự kiện / thuộc tính được hỏi. partial_context_evidence chỉ minh họa thông tin đã có, không đủ để trả lời.",
+    "evaluation_expected_behavior": "Nêu rõ thiếu thông tin trong corpus, có thể cung cấp dữ kiện đã được chứng minh nhưng không tự suy đoán số lượng, ngày tháng, trạng thái, điểm số hoặc kết luận phủ định.",
+    "not_included": "Câu ngoài chủ đề, yêu cầu chấm điểm hồ sơ cá nhân, câu có thể giải trực tiếp từ tiêu chí pháp luật.",
+    "validation_scope": "Đối chiếu theo danh mục 12 nguồn và OCR đã rà soát; một số thuộc tính vắng mặt được kiểm tra ở trang đích, không kiểm chứng thực tế ngoài corpus."
+  },
+  "metrics": [
+    "correct_rejection_rate",
+    "false_answer_rate",
+    "hallucination_rate"
+  ],
+  "questions": [
+    {
+      "query": "Ở Đồng Nai năm 2026 có bao nhiêu sản phẩm OCOP được công nhận 5 sao vậy?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Mình chưa có danh sách hoặc quyết định công nhận OCOP năm 2026 của Đồng Nai trong bộ tài liệu, nên chưa xác định được con số.",
+      "reason_code": "missing_locality_data",
+      "missing_information": "Số sản phẩm OCOP 5 sao được công nhận tại Đồng Nai năm 2026",
+      "known_context": "",
+      "partial_context_evidence": [],
+      "tags": [
+        "regional_gap",
+        "count",
+        "natural"
+      ],
+      "verification_note": "Corpus không có quyết định công nhận sản phẩm OCOP Đồng Nai năm 2026.",
+      "id": "AB001",
+      "gold_evidence": []
+    },
+    {
+      "query": "Năm 2026 Đà Nẵng có những sản phẩm OCOP 4 sao nào rồi, bạn liệt kê giúp mình với.",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Các văn bản hiện có chưa gồm danh sách công nhận OCOP 4 sao của Đà Nẵng năm 2026, nên mình không thể liệt kê chính xác.",
+      "reason_code": "missing_locality_data",
+      "missing_information": "Danh sách sản phẩm OCOP 4 sao được công nhận tại Đà Nẵng trong năm 2026",
+      "known_context": "",
+      "partial_context_evidence": [],
+      "tags": [
+        "regional_gap",
+        "list",
+        "colloquial"
+      ],
+      "verification_note": "",
+      "id": "AB002",
+      "gold_evidence": []
+    },
+    {
+      "query": "Cho mình hỏi trong năm 2026 Cần Thơ đã công nhận những sản phẩm OCOP 3 sao nào?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Mình chưa tìm thấy quyết định hoặc phụ lục công nhận OCOP năm 2026 của Cần Thơ trong corpus này.",
+      "reason_code": "missing_locality_data",
+      "missing_information": "Danh sách công nhận OCOP 3 sao tại Cần Thơ năm 2026",
+      "known_context": "",
+      "partial_context_evidence": [],
+      "tags": [
+        "regional_gap",
+        "list"
+      ],
+      "verification_note": "",
+      "id": "AB003",
+      "gold_evidence": []
+    },
+    {
+      "query": "Lâm Đồng có sản phẩm nào lên OCOP 5 sao trong năm 2026 chưa nhỉ?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Bộ tài liệu chưa có kết quả công nhận sản phẩm OCOP 5 sao của Lâm Đồng năm 2026. Mình không thể khẳng định là có hay không.",
+      "reason_code": "missing_locality_data",
+      "missing_information": "Thông tin công nhận hoặc nâng hạng 5 sao tại Lâm Đồng năm 2026",
+      "known_context": "",
+      "partial_context_evidence": [],
+      "tags": [
+        "regional_gap",
+        "negative_premise",
+        "colloquial"
+      ],
+      "verification_note": "",
+      "id": "AB004",
+      "gold_evidence": []
+    },
+    {
+      "query": "Sau đợt công nhận theo Quyết định 525, Hải Phòng còn công bố thêm sản phẩm OCOP nào trong năm 2026 không?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Quyết định 525 chỉ công nhận sản phẩm của kỳ đánh giá năm 2025. Mình chưa có dữ liệu về các đợt công nhận tiếp theo trong năm 2026.",
+      "reason_code": "missing_later_event",
+      "missing_information": "Các quyết định công nhận OCOP Hải Phòng năm 2026 ban hành sau Quyết định 525",
+      "known_context": "Quyết định 525/QĐ-UBND ban hành năm 2026 công nhận kết quả OCOP năm 2025.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        }
+      ],
+      "tags": [
+        "time_sensitive",
+        "recognition",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB005",
+      "gold_evidence": []
+    },
+    {
+      "query": "Từ sau tháng 3/2026 tới tháng 10/2026, ở Huế có thêm sản phẩm OCOP 4 sao nào không?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Mình chỉ có quyết định công nhận của Huế ký ngày 04/3/2026, chưa có dữ liệu về đợt bổ sung đến tháng 10/2026.",
+      "reason_code": "missing_later_event",
+      "missing_information": "Các sản phẩm OCOP 4 sao được công nhận bổ sung ở Huế sau tháng 3/2026",
+      "known_context": "Quyết định 797/QĐ-UBND ngày 04/3/2026 công nhận kết quả đánh giá năm 2025.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ],
+      "tags": [
+        "time_sensitive",
+        "recognition",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB006",
+      "gold_evidence": []
+    },
+    {
+      "query": "Phường Thành Sen công bố danh sách sản phẩm OCOP được duyệt năm 2026 chưa, gồm những sản phẩm nào vậy?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Tài liệu Thành Sen mình có là thông báo hướng dẫn đăng ký và nộp hồ sơ, không phải quyết định công nhận sản phẩm. Vì vậy chưa thể nêu danh sách được duyệt.",
+      "reason_code": "missing_local_recognition_result",
+      "missing_information": "Danh sách sản phẩm đã được công nhận OCOP của phường Thành Sen năm 2026",
+      "known_context": "Văn bản Thành Sen năm 2026 hướng dẫn chủ thể đăng ký đánh giá, phân hạng.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d34db57b8cd81da672860604"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:341d3f1664eac41213343a76"
+        }
+      ],
+      "tags": [
+        "local_process",
+        "document_type_confusion",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB007",
+      "gold_evidence": []
+    },
+    {
+      "query": "Trong năm 2026 có sản phẩm OCOP nào bị thu hồi giấy chứng nhận không, tên sản phẩm là gì?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Các tài liệu đang có nêu quy định về thu hồi, nhưng không có danh sách các quyết định thu hồi thực tế trong năm 2026.",
+      "reason_code": "missing_enforcement_event",
+      "missing_information": "Tên sản phẩm bị thu hồi chứng nhận OCOP trên thực tế trong năm 2026",
+      "known_context": "Corpus có quy định về thu hồi giấy chứng nhận, không đồng nghĩa với việc có dữ liệu các vụ thu hồi.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:a79a45e55380a00df6ab19fa"
+        }
+      ],
+      "tags": [
+        "actual_event_vs_legal_rule",
+        "negative_premise",
+        "withdrawal"
+      ],
+      "verification_note": "",
+      "id": "AB008",
+      "gold_evidence": []
+    },
+    {
+      "query": "Hạt sen của HTX Sen Huế được bao nhiêu điểm khi chấm OCOP 3 sao thế?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Hạt sen của HTX Sen Huế được công nhận 3 sao, nhưng quyết định và phụ lục chỉ ghi hạng sao, không ghi điểm cụ thể.",
+      "reason_code": "missing_detailed_score",
+      "missing_information": "Số điểm cụ thể của sản phẩm Hạt sen thuộc HTX Sen Huế",
+      "known_context": "Hạt sen của HTX Sen Huế được công nhận OCOP 3 sao.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:4fd125a39ba20f34f854e4b5"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "score",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB009",
+      "gold_evidence": []
+    },
+    {
+      "query": "Siro Atiso đỏ bên Hichagol chấm được chính xác mấy điểm vậy?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Nguồn công nhận ở Huế xác nhận sản phẩm đạt 4 sao, nhưng không có số điểm đánh giá cụ thể để mình trả lời.",
+      "reason_code": "missing_detailed_score",
+      "missing_information": "Điểm đánh giá cụ thể của Siro Atiso đỏ của Hichagol",
+      "known_context": "Siro Atiso đỏ của Hichagol đạt OCOP 4 sao.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "score",
+        "colloquial",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB010",
+      "gold_evidence": []
+    },
+    {
+      "query": "Bột chuối của Ameii được bao nhiêu điểm riêng ở phần khả năng tiếp thị?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Quyết định công nhận ở Hải Phòng có điểm tổng của Bột chuối nhưng không công bố điểm riêng phần khả năng tiếp thị.",
+      "reason_code": "missing_criterion_breakdown",
+      "missing_information": "Điểm riêng của Phần B/khả năng tiếp thị cho sản phẩm Bột chuối của Ameii",
+      "known_context": "Bảng công nhận cho biết điểm tổng sản phẩm, không phải bảng chấm chi tiết từng phần.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:9389d4a597f0832525a7a2c5"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "criterion_score",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB011",
+      "gold_evidence": []
+    },
+    {
+      "query": "Nước mắm chắt mực nguyên chất của Song Hải có phiếu kiểm nghiệm an toàn thực phẩm gần nhất vào ngày nào?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Mình thấy sản phẩm trong danh sách công nhận Hải Phòng, nhưng chưa có phiếu kiểm nghiệm riêng của sản phẩm để xác định ngày kiểm nghiệm.",
+      "reason_code": "missing_test_record",
+      "missing_information": "Ngày của phiếu kiểm nghiệm an toàn thực phẩm gần nhất cho nước mắm chắt mực nguyên chất",
+      "known_context": "Sản phẩm có tên trong phụ lục danh sách công nhận, không kèm hồ sơ kiểm nghiệm.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "testing_document",
+        "missing_attachment"
+      ],
+      "verification_note": "",
+      "id": "AB012",
+      "gold_evidence": []
+    },
+    {
+      "query": "Gạo ruộng rươi ST25 của HTX Thụy Hương dùng bao nhiêu phần trăm nguyên liệu ở địa phương?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Bảng kết quả OCOP cho biết sản phẩm được công nhận, nhưng không ghi tỷ lệ nguyên liệu địa phương của riêng sản phẩm này.",
+      "reason_code": "missing_product_metric",
+      "missing_information": "Tỷ lệ nguyên liệu địa phương thực tế của sản phẩm Gạo ruộng rươi ST25 thuộc HTX Thụy Hương",
+      "known_context": "Bảng công nhận có tên sản phẩm và kết quả đánh giá, không có tỷ lệ nguồn gốc nguyên liệu chi tiết.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "production_details",
+        "partial_evidence"
+      ],
+      "verification_note": "",
+      "id": "AB013",
+      "gold_evidence": []
+    },
+    {
+      "query": "Bánh đậu xanh Gia Bảo hiện được bán ở những siêu thị nào?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Tài liệu có tên Bánh đậu xanh Gia Bảo trong danh sách sản phẩm OCOP, nhưng không có danh sách siêu thị đang bán sản phẩm.",
+      "reason_code": "missing_distribution_data",
+      "missing_information": "Các hệ thống siêu thị đang phân phối Bánh đậu xanh Gia Bảo",
+      "known_context": "Quyết định công nhận không cung cấp tình trạng phân phối bán lẻ thực tế.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:9389d4a597f0832525a7a2c5"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "commercial_data",
+        "current_status"
+      ],
+      "verification_note": "",
+      "id": "AB014",
+      "gold_evidence": []
+    },
+    {
+      "query": "Tổ hợp tác trồng táo Bàng La năm 2025 bán được khoảng bao nhiêu tấn táo?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Nguồn ở Hải Phòng có sản phẩm Táo Bàng La trong danh sách OCOP, nhưng không có báo cáo sản lượng tiêu thụ năm 2025 của tổ hợp tác.",
+      "reason_code": "missing_business_data",
+      "missing_information": "Sản lượng tiêu thụ năm 2025 của Tổ hợp tác trồng táo Bàng La",
+      "known_context": "Phụ lục công nhận có tên Tổ hợp tác trồng táo Bàng La, không có số liệu bán hàng.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:2056e6c5a5c298c66fce0ad0"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "business_data",
+        "numeric"
+      ],
+      "verification_note": "",
+      "id": "AB015",
+      "gold_evidence": []
+    },
+    {
+      "query": "Chuối sấy dẻo phủ Tiramisu của Ameii đã có chứng nhận HACCP hay ISO 22000 chưa?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Mình chưa có hồ sơ chứng nhận HACCP hoặc ISO 22000 của Ameii. Việc sản phẩm có tên trong quyết định OCOP không đủ để xác nhận hai chứng nhận này.",
+      "reason_code": "missing_certification_record",
+      "missing_information": "Tình trạng chứng nhận HACCP hoặc ISO 22000 của sản phẩm/cơ sở sản xuất Chuối sấy dẻo phủ Tiramisu",
+      "known_context": "Sản phẩm có trong bảng OCOP, nhưng bảng không liệt kê chứng nhận HACCP/ISO 22000 của cơ sở.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:9389d4a597f0832525a7a2c5"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "certificate",
+        "do_not_infer"
+      ],
+      "verification_note": "",
+      "id": "AB016",
+      "gold_evidence": []
+    },
+    {
+      "query": "Đợt đăng ký OCOP năm 2026 ở Thành Sen đã nhận được tổng cộng bao nhiêu hồ sơ rồi?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Thông báo của Thành Sen hướng dẫn nộp hồ sơ nhưng không có thống kê số hồ sơ đã tiếp nhận, nên mình chưa thể đưa ra con số.",
+      "reason_code": "missing_application_statistics",
+      "missing_information": "Tổng số hồ sơ OCOP thực tế đã tiếp nhận tại Thành Sen năm 2026",
+      "known_context": "Có thông báo mời đăng ký và hướng dẫn nơi nộp, không có số liệu tiếp nhận.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d34db57b8cd81da672860604"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:341d3f1664eac41213343a76"
+        }
+      ],
+      "tags": [
+        "local_process",
+        "missing_statistics"
+      ],
+      "verification_note": "",
+      "id": "AB017",
+      "gold_evidence": []
+    },
+    {
+      "query": "Có bao nhiêu hồ sơ OCOP ở Thành Sen bị trả về vì thiếu giấy tờ trong đợt 2026?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Nguồn hiện có chưa ghi nhận thống kê hồ sơ bị trả lại tại Thành Sen trong năm 2026.",
+      "reason_code": "missing_application_statistics",
+      "missing_information": "Số hồ sơ bị yêu cầu bổ sung hoặc trả lại do thiếu giấy tờ ở Thành Sen năm 2026",
+      "known_context": "Tài liệu nêu thành phần và cách kiểm tra hồ sơ, không có kết quả xử lý từng hồ sơ.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:341d3f1664eac41213343a76"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6"
+        }
+      ],
+      "tags": [
+        "local_process",
+        "missing_statistics",
+        "missing_outcome"
+      ],
+      "verification_note": "",
+      "id": "AB018",
+      "gold_evidence": []
+    },
+    {
+      "query": "Hạt sen của HTX Sen Huế sau khi được công nhận 3 sao đã nộp hồ sơ xin lên 4 sao chưa?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Quyết định công nhận cho biết Hạt sen đạt 3 sao, nhưng không có dữ liệu hồ sơ nâng hạng nộp sau đó. Mình không thể xác nhận đã nộp hay chưa.",
+      "reason_code": "missing_followup_status",
+      "missing_information": "Tình trạng nộp hồ sơ nâng hạng OCOP 4 sao của Hạt sen HTX Sen Huế sau công nhận",
+      "known_context": "Nguồn hiện có chỉ xác nhận kết quả công nhận 3 sao năm 2025.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:4fd125a39ba20f34f854e4b5"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ],
+      "tags": [
+        "recognized_product",
+        "latest_status",
+        "no_assumption"
+      ],
+      "verification_note": "",
+      "id": "AB019",
+      "gold_evidence": []
+    },
+    {
+      "query": "Sang năm 2027 ở Thành Sen thì hạn cuối nộp hồ sơ OCOP là ngày nào nhỉ?",
+      "answerable": false,
+      "in_scope": true,
+      "expected_behavior": "ABSTAIN",
+      "gold_answer": "Thông báo hiện có chỉ nêu hạn nộp năm 2026, chưa có lịch tiếp nhận cụ thể của Thành Sen năm 2027.",
+      "reason_code": "missing_future_schedule",
+      "missing_information": "Ngày chốt nhận hồ sơ OCOP của Thành Sen năm 2027",
+      "known_context": "Thông báo năm 2026 nêu hạn nhận hồ sơ năm 2026, không được suy ra hạn năm 2027.",
+      "partial_context_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d34db57b8cd81da672860604"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:341d3f1664eac41213343a76"
+        }
+      ],
+      "tags": [
+        "future_schedule",
+        "local_process",
+        "colloquial"
+      ],
+      "verification_note": "",
+      "id": "AB020",
+      "gold_evidence": []
+    }
+  ]
+}

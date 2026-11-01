@@ -1,0 +1,2475 @@
+{
+  "dataset_name": "OCOP Session Memory Gold — 10 hội thoại × 5 lượt",
+  "dataset_version": "1.0",
+  "task": "session_memory_context_resolution",
+  "language": "vi",
+  "corpus_version": "9e8f7e46a64a74e80dd8",
+  "evidence_id_fingerprint": "ocop-evidence-b531594eddc8",
+  "annotation_policy": [
+    "Nhãn gold được gán theo nội dung nguồn và logic hội thoại, không dựa trên kết quả router hiện tại.",
+    "history chứa các câu người dùng trước đó trong cùng hội thoại, không chứa câu trả lời của hệ thống.",
+    "gold_intent=FOLLOWUP chỉ khi cần kế thừa ngữ cảnh; business_intent là nghiệp vụ sau khi giải tham chiếu.",
+    "expected_standalone_query là cách diễn giải đầy đủ ý định của lượt hỏi, không đòi hỏi trùng nguyên văn.",
+    "forbidden_context_turn_ids chỉ rõ các lượt cũ không được làm nhiễm thực thể/văn bản/tỉnh của câu trả lời hiện tại.",
+    "Trường hợp CLARIFY thiếu referent phải hỏi lại, không đoán một trong hai mẫu.",
+    "gold_evidence chỉ liệt kê EvidenceUnit trong chỉ mục, không đảm bảo tất cả cạnh Graph đã tồn tại.",
+    "Không sửa gold theo output của hệ thống; đánh giá ngữ nghĩa và slot chuẩn hóa, không chỉ string matching."
+  ],
+  "metrics": {
+    "followup_accuracy": "Tỉ lệ lượt gold_intent FOLLOWUP được nhận dạng và xử lý đúng ngữ cảnh (chỉ tính trên FOLLOWUP).",
+    "context_resolution_accuracy": "Tỉ lệ lượt giải đúng referent/scope và tạo standalone query tương đương ý nghĩa gold; có thể bổ sung slot-F1.",
+    "memory_contamination_rate": "Tỉ lệ lượt có kiểm tra forbidden_context_turn_ids mà câu trả lời hoặc resolved slots lẫn thực thể/địa phương/văn bản bị cấm từ lượt cũ.",
+    "clarification_accuracy": "Tỉ lệ lượt mơ hồ thực sự được yêu cầu làm rõ và lượt kế tiếp khôi phục đúng câu hỏi đang chờ."
+  },
+  "counts": {
+    "conversations": 10,
+    "turns": 50,
+    "gold_intents": {
+      "CLARIFY": 1,
+      "CRITERIA_LOOKUP": 1,
+      "EXACT_LOOKUP": 2,
+      "FOLLOWUP": 35,
+      "MULTIHOP_REASONING": 1,
+      "PROCEDURE_FORM": 2,
+      "PRODUCT_CLASSIFICATION": 1,
+      "RECOGNITION_LOOKUP": 4,
+      "SECTOR_COMPLIANCE": 2,
+      "TEMPORAL_COMPARE": 1
+    },
+    "gold_lanes": {
+      "NONE": 1,
+      "PINPOINT": 26,
+      "TEXT": 23
+    },
+    "context_actions": {
+      "CLARIFY": 1,
+      "COMPARE_REFERENTS": 2,
+      "CONTINUE": 22,
+      "RESOLVE_CLARIFICATION": 1,
+      "RETURN": 4,
+      "START": 10,
+      "SWITCH_DOCUMENT": 1,
+      "SWITCH_REGION": 1,
+      "SWITCH_TARGET": 6,
+      "SWITCH_TOPIC": 2
+    },
+    "explicit_contamination_checks": 18,
+    "long_range_returns": 4,
+    "clarification_cases": 1,
+    "evidence_links": 59,
+    "unique_evidence_units": 26
+  },
+  "conversations": [
+    {
+      "conversation_id": "SM01",
+      "title": "Đăng ký OCOP tại Thành Sen: kế thừa địa phương và đổi loại hồ sơ",
+      "turn_ids": [
+        "SM01-1",
+        "SM01-2",
+        "SM01-3",
+        "SM01-4",
+        "SM01-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM02",
+      "title": "Gạo HANA và ST25: chuyển đối tượng rồi so sánh hai referent",
+      "turn_ids": [
+        "SM02-1",
+        "SM02-2",
+        "SM02-3",
+        "SM02-4",
+        "SM02-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM03",
+      "title": "Huế: đổi sản phẩm, lùi referent rồi quay về sản phẩm cũ",
+      "turn_ids": [
+        "SM03-1",
+        "SM03-2",
+        "SM03-3",
+        "SM03-4",
+        "SM03-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM04",
+      "title": "Quyết định 26: thời điểm, văn bản cũ và điều khoản chuyển tiếp",
+      "turn_ids": [
+        "SM04-1",
+        "SM04-2",
+        "SM04-3",
+        "SM04-4",
+        "SM04-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM05",
+      "title": "Nhóm nước mắm chuyển sang chè: không kéo theo bộ tiêu chí cũ",
+      "turn_ids": [
+        "SM05-1",
+        "SM05-2",
+        "SM05-3",
+        "SM05-4",
+        "SM05-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM06",
+      "title": "Bốn người mở cơ sở: hợp tác xã hay tổ hợp tác",
+      "turn_ids": [
+        "SM06-1",
+        "SM06-2",
+        "SM06-3",
+        "SM06-4",
+        "SM06-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM07",
+      "title": "Giấy an toàn thực phẩm và nhãn: đổi vấn đề rồi quay lại",
+      "turn_ids": [
+        "SM07-1",
+        "SM07-2",
+        "SM07-3",
+        "SM07-4",
+        "SM07-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM08",
+      "title": "Hai biểu mẫu và tình huống phải hỏi làm rõ",
+      "turn_ids": [
+        "SM08-1",
+        "SM08-2",
+        "SM08-3",
+        "SM08-4",
+        "SM08-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM09",
+      "title": "Hải Phòng và Huế: chuyển tỉnh rồi quay lại tỉnh cũ",
+      "turn_ids": [
+        "SM09-1",
+        "SM09-2",
+        "SM09-3",
+        "SM09-4",
+        "SM09-5"
+      ],
+      "turn_count": 5
+    },
+    {
+      "conversation_id": "SM10",
+      "title": "Chuyển văn bản pháp luật và quay lại điều đã hỏi",
+      "turn_ids": [
+        "SM10-1",
+        "SM10-2",
+        "SM10-3",
+        "SM10-4",
+        "SM10-5"
+      ],
+      "turn_count": 5
+    }
+  ],
+  "questions": [
+    {
+      "id": "SM001",
+      "conversation_id": "SM01",
+      "turn_index": 1,
+      "history": [],
+      "question": "Bên mình ở phường Thành Sen muốn đăng ký OCOP đợt 2026 thì nộp trước ngày nào vậy?",
+      "gold_intent": "PROCEDURE_FORM",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Thành Sen",
+        "years": [
+          "2026"
+        ]
+      },
+      "expected_standalone_query": "Hạn nộp hồ sơ OCOP năm 2026 tại phường Thành Sen là ngày nào?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Thành Sen yêu cầu nộp hồ sơ trước ngày 15/10/2026."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d34db57b8cd81da672860604"
+        }
+      ],
+      "tags": [
+        "deadline",
+        "locality",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM01-1"
+    },
+    {
+      "id": "SM002",
+      "conversation_id": "SM01",
+      "turn_index": 2,
+      "history": [
+        "Bên mình ở phường Thành Sen muốn đăng ký OCOP đợt 2026 thì nộp trước ngày nào vậy?"
+      ],
+      "question": "Nộp ở đâu vậy bạn?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Thành Sen",
+        "years": [
+          "2026"
+        ]
+      },
+      "expected_standalone_query": "Đăng ký OCOP năm 2026 tại phường Thành Sen thì nộp hồ sơ ở đâu?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM01-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "nộp": "hồ sơ OCOP Thành Sen năm 2026"
+      },
+      "expected_answer_facts": [
+        "Nơi tiếp nhận là UBND phường Thành Sen, qua Phòng Nông nghiệp và Môi trường."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        }
+      ],
+      "tags": [
+        "ellipsis",
+        "locality_carry",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM01-2"
+    },
+    {
+      "id": "SM003",
+      "conversation_id": "SM01",
+      "turn_index": 3,
+      "history": [
+        "Bên mình ở phường Thành Sen muốn đăng ký OCOP đợt 2026 thì nộp trước ngày nào vậy?",
+        "Nộp ở đâu vậy bạn?"
+      ],
+      "question": "Mình đăng ký lần đầu thì cần chuẩn bị những giấy tờ gì?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Thành Sen",
+        "years": [
+          "2026"
+        ]
+      },
+      "expected_standalone_query": "Đăng ký OCOP lần đầu ở phường Thành Sen năm 2026 cần hồ sơ gì?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM01-1",
+        "SM01-2"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hồ sơ lần đầu gồm Phiếu đăng ký Mẫu 01 và Báo cáo tự đánh giá Mẫu 02."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "forms",
+        "implicit_locality",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM01-3"
+    },
+    {
+      "id": "SM004",
+      "conversation_id": "SM01",
+      "turn_index": 4,
+      "history": [
+        "Bên mình ở phường Thành Sen muốn đăng ký OCOP đợt 2026 thì nộp trước ngày nào vậy?",
+        "Nộp ở đâu vậy bạn?",
+        "Mình đăng ký lần đầu thì cần chuẩn bị những giấy tờ gì?"
+      ],
+      "question": "Còn xin nâng hạng thì có phải bổ sung gì không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Thành Sen",
+        "years": [
+          "2026"
+        ]
+      },
+      "expected_standalone_query": "Nếu đăng ký nâng hạng sản phẩm OCOP tại Thành Sen năm 2026 thì hồ sơ bổ sung gì so với lần đầu?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM01-1",
+        "SM01-3"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Ngoài Mẫu 01 và 02, chủ thể cần tài liệu minh chứng thể hiện thay đổi so với sản phẩm đã được công nhận."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "contrast",
+        "missing_subject",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM01-4"
+    },
+    {
+      "id": "SM005",
+      "conversation_id": "SM01",
+      "turn_index": 5,
+      "history": [
+        "Bên mình ở phường Thành Sen muốn đăng ký OCOP đợt 2026 thì nộp trước ngày nào vậy?",
+        "Nộp ở đâu vậy bạn?",
+        "Mình đăng ký lần đầu thì cần chuẩn bị những giấy tờ gì?",
+        "Còn xin nâng hạng thì có phải bổ sung gì không?"
+      ],
+      "question": "Còn đánh giá lại, có phải y hệt hồ sơ nâng hạng không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Thành Sen",
+        "years": [
+          "2026"
+        ]
+      },
+      "expected_standalone_query": "Hồ sơ đăng ký đánh giá, phân hạng lại OCOP tại Thành Sen năm 2026 cần cập nhật gì, có giống hồ sơ nâng hạng không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM01-1",
+        "SM01-4"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Đánh giá lại cần Mẫu 01, Mẫu 02 và cập nhật các nội dung mới như nguyên liệu, công nghệ, nhãn, kiểm nghiệm, doanh thu và giấy tờ có thời hạn."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6"
+        }
+      ],
+      "tags": [
+        "contrast",
+        "natural",
+        "session_memory",
+        "subtype_shift"
+      ],
+      "turn_id": "SM01-5"
+    },
+    {
+      "id": "SM006",
+      "conversation_id": "SM02",
+      "turn_index": 1,
+      "history": [],
+      "question": "Gạo ruộng rươi HANA của HTX Thụy Hương được bao nhiêu điểm OCOP nhỉ?",
+      "gold_intent": "RECOGNITION_LOOKUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Gạo ruộng rươi giống HANA",
+        "organization_name": "Hợp tác xã Thụy Hương",
+        "region": "Hải Phòng"
+      },
+      "expected_standalone_query": "Điểm đánh giá OCOP của gạo ruộng rươi giống HANA do HTX Thụy Hương sản xuất tại Hải Phòng là bao nhiêu?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Gạo ruộng rươi giống HANA được 74,6 điểm."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "natural",
+        "recognition",
+        "session_memory",
+        "table"
+      ],
+      "turn_id": "SM02-1"
+    },
+    {
+      "id": "SM007",
+      "conversation_id": "SM02",
+      "turn_index": 2,
+      "history": [
+        "Gạo ruộng rươi HANA của HTX Thụy Hương được bao nhiêu điểm OCOP nhỉ?"
+      ],
+      "question": "Thế nó xếp mấy sao?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Gạo ruộng rươi giống HANA",
+        "region": "Hải Phòng"
+      },
+      "expected_standalone_query": "Gạo ruộng rươi giống HANA của HTX Thụy Hương được Hải Phòng công nhận mấy sao OCOP?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM02-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "nó": "Gạo ruộng rươi giống HANA"
+      },
+      "expected_answer_facts": [
+        "Sản phẩm gạo HANA được xếp OCOP 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "natural",
+        "pronoun",
+        "session_memory"
+      ],
+      "turn_id": "SM02-2"
+    },
+    {
+      "id": "SM008",
+      "conversation_id": "SM02",
+      "turn_index": 3,
+      "history": [
+        "Gạo ruộng rươi HANA của HTX Thụy Hương được bao nhiêu điểm OCOP nhỉ?",
+        "Thế nó xếp mấy sao?"
+      ],
+      "question": "Còn ST25 của cùng hợp tác xã thì sao?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Gạo ruộng rươi ST25",
+        "organization_name": "Hợp tác xã Thụy Hương",
+        "region": "Hải Phòng"
+      },
+      "expected_standalone_query": "Gạo ruộng rươi ST25 của HTX Thụy Hương ở Hải Phòng được công nhận mấy sao OCOP?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [
+        "SM02-1",
+        "SM02-2"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "cùng hợp tác xã": "Hợp tác xã Thụy Hương",
+        "thì sao": "điểm và hạng sao OCOP"
+      },
+      "expected_answer_facts": [
+        "Gạo ruộng rươi ST25 được công nhận OCOP 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "entity_switch",
+        "natural",
+        "same_producer",
+        "session_memory"
+      ],
+      "turn_id": "SM02-3"
+    },
+    {
+      "id": "SM009",
+      "conversation_id": "SM02",
+      "turn_index": 4,
+      "history": [
+        "Gạo ruộng rươi HANA của HTX Thụy Hương được bao nhiêu điểm OCOP nhỉ?",
+        "Thế nó xếp mấy sao?",
+        "Còn ST25 của cùng hợp tác xã thì sao?"
+      ],
+      "question": "Trong hai loại đó thì loại nào điểm cao hơn?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Hải Phòng",
+        "organization_name": "Hợp tác xã Thụy Hương"
+      },
+      "expected_standalone_query": "So điểm gạo HANA và gạo ST25 của HTX Thụy Hương tại Hải Phòng: loại nào cao hơn?",
+      "expected_context_action": "COMPARE_REFERENTS",
+      "required_context_turn_ids": [
+        "SM02-1",
+        "SM02-3"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "hai loại": "HANA và ST25"
+      },
+      "expected_answer_facts": [
+        "Gạo ST25 được 76,3 điểm, cao hơn gạo HANA 74,6 điểm."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        }
+      ],
+      "tags": [
+        "comparison",
+        "natural",
+        "plural_reference",
+        "session_memory"
+      ],
+      "turn_id": "SM02-4"
+    },
+    {
+      "id": "SM010",
+      "conversation_id": "SM02",
+      "turn_index": 5,
+      "history": [
+        "Gạo ruộng rươi HANA của HTX Thụy Hương được bao nhiêu điểm OCOP nhỉ?",
+        "Thế nó xếp mấy sao?",
+        "Còn ST25 của cùng hợp tác xã thì sao?",
+        "Trong hai loại đó thì loại nào điểm cao hơn?"
+      ],
+      "question": "Vậy theo mốc điểm 4 sao của bộ tiêu chí 2026, cả hai đều nằm trong khoảng đó đúng không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "MULTIHOP_REASONING",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "star_rating": 4,
+        "region": "Hải Phòng"
+      },
+      "expected_standalone_query": "Đối chiếu điểm OCOP của gạo HANA và ST25 của HTX Thụy Hương ở Hải Phòng với khoảng 4 sao theo Quyết định 26/2026: cả hai có nằm trong khoảng không?",
+      "expected_context_action": "COMPARE_REFERENTS",
+      "required_context_turn_ids": [
+        "SM02-1",
+        "SM02-3",
+        "SM02-4"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "cả hai": "gạo HANA và gạo ST25"
+      },
+      "expected_answer_facts": [
+        "Hạng 4 sao là từ 70 đến dưới 90 điểm; 74,6 và 76,3 đều nằm trong khoảng đó."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f"
+        }
+      ],
+      "tags": [
+        "cross_document",
+        "natural",
+        "plural_reference",
+        "session_memory",
+        "time_scope"
+      ],
+      "turn_id": "SM02-5"
+    },
+    {
+      "id": "SM011",
+      "conversation_id": "SM03",
+      "turn_index": 1,
+      "history": [],
+      "question": "Mứt Atiso đỏ của Hichagol ở Huế đạt mấy sao OCOP vậy?",
+      "gold_intent": "RECOGNITION_LOOKUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Mứt Atiso đỏ",
+        "region": "Huế"
+      },
+      "expected_standalone_query": "Mứt Atiso đỏ của Công ty Hichagol ở Huế được công nhận OCOP mấy sao?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Mứt Atiso đỏ của Hichagol đạt OCOP 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ],
+      "tags": [
+        "natural",
+        "recognition",
+        "session_memory"
+      ],
+      "turn_id": "SM03-1"
+    },
+    {
+      "id": "SM012",
+      "conversation_id": "SM03",
+      "turn_index": 2,
+      "history": [
+        "Mứt Atiso đỏ của Hichagol ở Huế đạt mấy sao OCOP vậy?"
+      ],
+      "question": "Siro của hãng đó thì sao bạn?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Siro Atiso đỏ",
+        "region": "Huế"
+      },
+      "expected_standalone_query": "Siro Atiso đỏ của Công ty Hichagol ở Huế được công nhận OCOP mấy sao?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [
+        "SM03-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "hãng đó": "Công ty Hichagol",
+        "Siro": "Siro Atiso đỏ"
+      },
+      "expected_answer_facts": [
+        "Siro Atiso đỏ của Hichagol cũng đạt 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ],
+      "tags": [
+        "ellipsis",
+        "natural",
+        "same_producer",
+        "session_memory"
+      ],
+      "turn_id": "SM03-2"
+    },
+    {
+      "id": "SM013",
+      "conversation_id": "SM03",
+      "turn_index": 3,
+      "history": [
+        "Mứt Atiso đỏ của Hichagol ở Huế đạt mấy sao OCOP vậy?",
+        "Siro của hãng đó thì sao bạn?"
+      ],
+      "question": "Còn hạt sen của HTX Sen Huế được mấy sao?",
+      "gold_intent": "RECOGNITION_LOOKUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Hạt sen",
+        "organization_name": "HTX Sen Huế",
+        "region": "Huế"
+      },
+      "expected_standalone_query": "Hạt sen của Hợp tác xã Sen Huế được công nhận OCOP mấy sao?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [
+        "SM03-1",
+        "SM03-2"
+      ],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hạt sen của HTX Sen Huế đạt OCOP 3 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ],
+      "tags": [
+        "entity_switch",
+        "natural",
+        "same_region",
+        "session_memory"
+      ],
+      "turn_id": "SM03-3"
+    },
+    {
+      "id": "SM014",
+      "conversation_id": "SM03",
+      "turn_index": 4,
+      "history": [
+        "Mứt Atiso đỏ của Hichagol ở Huế đạt mấy sao OCOP vậy?",
+        "Siro của hãng đó thì sao bạn?",
+        "Còn hạt sen của HTX Sen Huế được mấy sao?"
+      ],
+      "question": "Giấy chứng nhận của sản phẩm đó còn giá trị bao lâu?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Hạt sen",
+        "region": "Huế",
+        "document_code": "797/QĐ-UBND"
+      },
+      "expected_standalone_query": "Giấy chứng nhận OCOP của sản phẩm hạt sen HTX Sen Huế theo Quyết định 797/2026 có thời hạn bao lâu?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM03-3"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM03-1",
+        "SM03-2"
+      ],
+      "referent_resolution": {
+        "sản phẩm đó": "Hạt sen của HTX Sen Huế"
+      },
+      "expected_answer_facts": [
+        "Giấy chứng nhận có giá trị 36 tháng kể từ ngày ký Quyết định 797/QĐ-UBND."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:40ac677a47c582ec08f642bb"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ],
+      "tags": [
+        "duration",
+        "natural",
+        "pronoun",
+        "session_memory"
+      ],
+      "turn_id": "SM03-4"
+    },
+    {
+      "id": "SM015",
+      "conversation_id": "SM03",
+      "turn_index": 5,
+      "history": [
+        "Mứt Atiso đỏ của Hichagol ở Huế đạt mấy sao OCOP vậy?",
+        "Siro của hãng đó thì sao bạn?",
+        "Còn hạt sen của HTX Sen Huế được mấy sao?",
+        "Giấy chứng nhận của sản phẩm đó còn giá trị bao lâu?"
+      ],
+      "question": "Quay lại siro lúc nãy, nó của đơn vị nào và ở phường nào nhỉ?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Siro Atiso đỏ",
+        "region": "Huế"
+      },
+      "expected_standalone_query": "Siro Atiso đỏ được công nhận OCOP tại Huế thuộc công ty nào và ở phường nào?",
+      "expected_context_action": "RETURN",
+      "required_context_turn_ids": [
+        "SM03-2"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM03-3",
+        "SM03-4"
+      ],
+      "referent_resolution": {
+        "siro lúc nãy": "Siro Atiso đỏ của Hichagol",
+        "nó": "Siro Atiso đỏ"
+      },
+      "expected_answer_facts": [
+        "Siro Atiso đỏ do Hichagol sản xuất, địa chỉ phường Phong Thái, thành phố Huế."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ],
+      "tags": [
+        "long_range_reference",
+        "natural",
+        "negative_contamination",
+        "session_memory",
+        "topic_return"
+      ],
+      "turn_id": "SM03-5"
+    },
+    {
+      "id": "SM016",
+      "conversation_id": "SM04",
+      "turn_index": 1,
+      "history": [],
+      "question": "Quyết định 26/2026 về OCOP bắt đầu có hiệu lực từ ngày nào?",
+      "gold_intent": "TEMPORAL_COMPARE",
+      "business_intent": "TEMPORAL_COMPARE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg"
+      },
+      "expected_standalone_query": "Quyết định 26/2026/QĐ-TTg về OCOP có hiệu lực từ ngày nào?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Quyết định 26/2026/QĐ-TTg có hiệu lực từ 22/5/2026."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "effective_date",
+        "natural",
+        "session_memory",
+        "temporal"
+      ],
+      "turn_id": "SM04-1"
+    },
+    {
+      "id": "SM017",
+      "conversation_id": "SM04",
+      "turn_index": 2,
+      "history": [
+        "Quyết định 26/2026 về OCOP bắt đầu có hiệu lực từ ngày nào?"
+      ],
+      "question": "Vậy Quyết định 148 cũ hết hiệu lực ngay hôm đó luôn hả?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "TEMPORAL_COMPARE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg"
+      },
+      "expected_standalone_query": "Quyết định 148/QĐ-TTg năm 2023 có hết hiệu lực ngay ngày 22/5/2026 khi Quyết định 26/2026 có hiệu lực không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM04-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "hôm đó": "22/5/2026",
+        "Quyết định 148 cũ": "148/QĐ-TTg năm 2023"
+      },
+      "expected_answer_facts": [
+        "Quyết định 148/QĐ-TTg và Quyết định 1489/QĐ-TTg hết hiệu lực sau 60 ngày kể từ 22/5/2026, không phải ngay ngày đó."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "legal_transition",
+        "natural",
+        "session_memory",
+        "temporal_reference"
+      ],
+      "turn_id": "SM04-2"
+    },
+    {
+      "id": "SM018",
+      "conversation_id": "SM04",
+      "turn_index": 3,
+      "history": [
+        "Quyết định 26/2026 về OCOP bắt đầu có hiệu lực từ ngày nào?",
+        "Vậy Quyết định 148 cũ hết hiệu lực ngay hôm đó luôn hả?"
+      ],
+      "question": "Giấy OCOP 3 sao được công nhận từ năm 2025 thì có bị mất hiệu lực theo quy định mới không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "TEMPORAL_COMPARE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "star_rating": 3,
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "Giấy chứng nhận sản phẩm OCOP 3 sao được công nhận năm 2025 có còn giá trị sau khi Quyết định 26/2026 có hiệu lực không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM04-1",
+        "SM04-2"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Sản phẩm được công nhận từ 3 sao đến 5 sao trước khi Quyết định 26 có hiệu lực vẫn còn giá trị đến hết thời hạn của quyết định công nhận."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "do_not_conflate_validity",
+        "natural",
+        "session_memory",
+        "temporal_continuity"
+      ],
+      "turn_id": "SM04-3"
+    },
+    {
+      "id": "SM019",
+      "conversation_id": "SM04",
+      "turn_index": 4,
+      "history": [
+        "Quyết định 26/2026 về OCOP bắt đầu có hiệu lực từ ngày nào?",
+        "Vậy Quyết định 148 cũ hết hiệu lực ngay hôm đó luôn hả?",
+        "Giấy OCOP 3 sao được công nhận từ năm 2025 thì có bị mất hiệu lực theo quy định mới không?"
+      ],
+      "question": "Còn hồ sơ đăng ký lần đầu nộp trước 22/5 mà chưa được chấm thì xử lý sao?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "TEMPORAL_COMPARE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "as_of_date": "2026-05-22"
+      },
+      "expected_standalone_query": "Theo Quyết định 26/2026, hồ sơ OCOP đăng ký lần đầu nộp trước 22/5/2026 nhưng chưa được chấm được xử lý thế nào?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM04-1"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM04-3"
+      ],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hồ sơ lần đầu hoặc nâng hạng đã nộp trước ngày có hiệu lực tiếp tục theo quy định giai đoạn 2021–2025, hoàn thành đánh giá trong không quá 60 ngày từ ngày quyết định mới có hiệu lực."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "application_status",
+        "natural",
+        "session_memory",
+        "temporal_reference"
+      ],
+      "turn_id": "SM04-4"
+    },
+    {
+      "id": "SM020",
+      "conversation_id": "SM04",
+      "turn_index": 5,
+      "history": [
+        "Quyết định 26/2026 về OCOP bắt đầu có hiệu lực từ ngày nào?",
+        "Vậy Quyết định 148 cũ hết hiệu lực ngay hôm đó luôn hả?",
+        "Giấy OCOP 3 sao được công nhận từ năm 2025 thì có bị mất hiệu lực theo quy định mới không?",
+        "Còn hồ sơ đăng ký lần đầu nộp trước 22/5 mà chưa được chấm thì xử lý sao?"
+      ],
+      "question": "Nếu là hồ sơ đánh giá lại thì có được 60 ngày giống vậy không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "TEMPORAL_COMPARE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "as_of_date": "2026-05-22"
+      },
+      "expected_standalone_query": "Với hồ sơ OCOP đăng ký đánh giá lại đã nộp trước 22/5/2026 nhưng chưa được đánh giá, thời hạn giải quyết theo Quyết định 26 là bao lâu?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM04-4"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "60 ngày giống vậy": "mốc 60 ngày dành cho hồ sơ lần đầu hoặc nâng hạng"
+      },
+      "expected_answer_facts": [
+        "Hồ sơ đánh giá lại trong điều khoản chuyển tiếp phải hoàn thành trong không quá 30 ngày, không phải 60 ngày."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "contrast",
+        "natural",
+        "negative_contamination",
+        "session_memory",
+        "temporal_scope"
+      ],
+      "turn_id": "SM04-5"
+    },
+    {
+      "id": "SM021",
+      "conversation_id": "SM05",
+      "turn_index": 1,
+      "history": [],
+      "question": "Nhà mình làm nước mắm, muốn vào OCOP thì nó thuộc bộ sản phẩm nào?",
+      "gold_intent": "PRODUCT_CLASSIFICATION",
+      "business_intent": "PRODUCT_CLASSIFICATION",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Nước mắm"
+      },
+      "expected_standalone_query": "Nước mắm thuộc bộ sản phẩm nào trong bộ tiêu chí OCOP 2026?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Nước mắm thuộc bộ sản phẩm tương, nước mắm, gia vị dạng lỏng khác, nhóm gia vị."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        }
+      ],
+      "tags": [
+        "classification",
+        "natural",
+        "session_memory",
+        "small_business"
+      ],
+      "turn_id": "SM05-1"
+    },
+    {
+      "id": "SM022",
+      "conversation_id": "SM05",
+      "turn_index": 2,
+      "history": [
+        "Nhà mình làm nước mắm, muốn vào OCOP thì nó thuộc bộ sản phẩm nào?"
+      ],
+      "question": "Có phiếu chấm riêng cho nhóm đó không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PRODUCT_CLASSIFICATION",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Nước mắm"
+      },
+      "expected_standalone_query": "Bộ sản phẩm tương, nước mắm, gia vị dạng lỏng khác có phiếu đánh giá OCOP riêng không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM05-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "nhóm đó": "tương, nước mắm, gia vị dạng lỏng khác"
+      },
+      "expected_answer_facts": [
+        "Có bộ tiêu chí/phiếu đánh giá riêng cho nhóm tương, nước mắm, gia vị dạng lỏng khác trong Phụ lục II."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        }
+      ],
+      "tags": [
+        "classification",
+        "demonstrative",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM05-2"
+    },
+    {
+      "id": "SM023",
+      "conversation_id": "SM05",
+      "turn_index": 3,
+      "history": [
+        "Nhà mình làm nước mắm, muốn vào OCOP thì nó thuộc bộ sản phẩm nào?",
+        "Có phiếu chấm riêng cho nhóm đó không?"
+      ],
+      "question": "Muốn đạt 4 sao thì tổng điểm phải từ bao nhiêu?",
+      "gold_intent": "CRITERIA_LOOKUP",
+      "business_intent": "CRITERIA_LOOKUP",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "star_rating": 4
+      },
+      "expected_standalone_query": "Để sản phẩm được phân hạng OCOP 4 sao theo Quyết định 26/2026 cần tổng điểm bao nhiêu?",
+      "expected_context_action": "SWITCH_TOPIC",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [
+        "SM05-1",
+        "SM05-2"
+      ],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hạng 4 sao yêu cầu tổng điểm trung bình từ 70 đến dưới 90 điểm."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f"
+        }
+      ],
+      "tags": [
+        "business_question",
+        "natural",
+        "scope_reset",
+        "session_memory"
+      ],
+      "turn_id": "SM05-3"
+    },
+    {
+      "id": "SM024",
+      "conversation_id": "SM05",
+      "turn_index": 4,
+      "history": [
+        "Nhà mình làm nước mắm, muốn vào OCOP thì nó thuộc bộ sản phẩm nào?",
+        "Có phiếu chấm riêng cho nhóm đó không?",
+        "Muốn đạt 4 sao thì tổng điểm phải từ bao nhiêu?"
+      ],
+      "question": "À nếu chuyển sang làm chè khô thì có dùng luôn phiếu nước mắm đó không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PRODUCT_CLASSIFICATION",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Chè khô"
+      },
+      "expected_standalone_query": "Sản phẩm chè khô đăng ký OCOP 2026 có dùng phiếu đánh giá của nhóm nước mắm hay dùng bộ sản phẩm khác?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [
+        "SM05-1",
+        "SM05-2"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM05-3"
+      ],
+      "referent_resolution": {
+        "phiếu nước mắm đó": "phiếu cho bộ sản phẩm tương, nước mắm, gia vị dạng lỏng"
+      },
+      "expected_answer_facts": [
+        "Chè khô được xét theo bộ sản phẩm chè tươi, chè chế biến, không dùng phiếu nhóm tương, nước mắm, gia vị dạng lỏng khác."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 68,
+          "evidence_unit_id": "ocop:evidence:543723e66db14d0e31a3abfa"
+        }
+      ],
+      "tags": [
+        "natural",
+        "negative_contamination",
+        "product_switch",
+        "session_memory",
+        "topic_return"
+      ],
+      "turn_id": "SM05-4"
+    },
+    {
+      "id": "SM025",
+      "conversation_id": "SM05",
+      "turn_index": 5,
+      "history": [
+        "Nhà mình làm nước mắm, muốn vào OCOP thì nó thuộc bộ sản phẩm nào?",
+        "Có phiếu chấm riêng cho nhóm đó không?",
+        "Muốn đạt 4 sao thì tổng điểm phải từ bao nhiêu?",
+        "À nếu chuyển sang làm chè khô thì có dùng luôn phiếu nước mắm đó không?"
+      ],
+      "question": "Vậy nó nằm trong nhóm sản phẩm nào?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PRODUCT_CLASSIFICATION",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "product_name": "Chè khô"
+      },
+      "expected_standalone_query": "Chè khô thuộc nhóm sản phẩm OCOP nào theo Quyết định 26/2026?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM05-4"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM05-1",
+        "SM05-2"
+      ],
+      "referent_resolution": {
+        "nó": "chè khô"
+      },
+      "expected_answer_facts": [
+        "Chè khô nằm trong bộ sản phẩm chè tươi, chè chế biến, thuộc nhóm chè."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 68,
+          "evidence_unit_id": "ocop:evidence:543723e66db14d0e31a3abfa"
+        }
+      ],
+      "tags": [
+        "natural",
+        "product_switch",
+        "pronoun",
+        "session_memory"
+      ],
+      "turn_id": "SM05-5"
+    },
+    {
+      "id": "SM026",
+      "conversation_id": "SM06",
+      "turn_index": 1,
+      "history": [],
+      "question": "Tụi mình mới có bốn người, muốn lập hợp tác xã làm OCOP thì đủ điều kiện chưa?",
+      "gold_intent": "MULTIHOP_REASONING",
+      "business_intent": "MULTIHOP_REASONING",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {},
+      "expected_standalone_query": "Nhóm bốn người có đủ thành viên để thành lập hợp tác xã rồi tham gia OCOP không?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hợp tác xã cần ít nhất 5 thành viên chính thức; bốn người chưa đủ để thành lập hợp tác xã."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:1670087d6d0e452e72ed741d"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        }
+      ],
+      "tags": [
+        "legal_definition",
+        "multi_document",
+        "natural",
+        "session_memory",
+        "small_business"
+      ],
+      "turn_id": "SM06-1"
+    },
+    {
+      "id": "SM027",
+      "conversation_id": "SM06",
+      "turn_index": 2,
+      "history": [
+        "Tụi mình mới có bốn người, muốn lập hợp tác xã làm OCOP thì đủ điều kiện chưa?"
+      ],
+      "question": "Nếu lập tổ hợp tác thay vì hợp tác xã thì sao?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {},
+      "expected_standalone_query": "Bốn người có đủ điều kiện tối thiểu về số thành viên để lập tổ hợp tác theo Luật Hợp tác xã 2023 không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM06-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "bốn người": "nhóm dự định làm OCOP từ lượt trước"
+      },
+      "expected_answer_facts": [
+        "Tổ hợp tác hình thành theo hợp đồng hợp tác do ít nhất 2 thành viên tự nguyện thành lập; bốn người đáp ứng mức số lượng tối thiểu."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:0804f44b2a98fa4cc8994c83"
+        }
+      ],
+      "tags": [
+        "entity_type_switch",
+        "implicit_number",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM06-2"
+    },
+    {
+      "id": "SM028",
+      "conversation_id": "SM06",
+      "turn_index": 3,
+      "history": [
+        "Tụi mình mới có bốn người, muốn lập hợp tác xã làm OCOP thì đủ điều kiện chưa?",
+        "Nếu lập tổ hợp tác thay vì hợp tác xã thì sao?"
+      ],
+      "question": "Loại hình đó vẫn được đăng ký OCOP chứ?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "OCOP_OVERVIEW",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {},
+      "expected_standalone_query": "Tổ hợp tác có thuộc chủ thể được đăng ký tham gia đánh giá, phân hạng sản phẩm OCOP theo Quyết định 26/2026 không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM06-2"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "loại hình đó": "tổ hợp tác"
+      },
+      "expected_answer_facts": [
+        "Tổ hợp tác là một trong các loại chủ thể được đăng ký OCOP."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        }
+      ],
+      "tags": [
+        "demonstrative",
+        "eligibility",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM06-3"
+    },
+    {
+      "id": "SM029",
+      "conversation_id": "SM06",
+      "turn_index": 4,
+      "history": [
+        "Tụi mình mới có bốn người, muốn lập hợp tác xã làm OCOP thì đủ điều kiện chưa?",
+        "Nếu lập tổ hợp tác thay vì hợp tác xã thì sao?",
+        "Loại hình đó vẫn được đăng ký OCOP chứ?"
+      ],
+      "question": "Thế đăng ký lần đầu thì cần mẫu số mấy?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {},
+      "expected_standalone_query": "Tổ hợp tác đăng ký đánh giá OCOP lần đầu theo Quyết định 26/2026 cần dùng những mẫu số nào?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM06-2",
+        "SM06-3"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Chủ thể đăng ký lần đầu nộp Mẫu 01 và Mẫu 02."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "implicit_subject",
+        "natural",
+        "procedure",
+        "session_memory"
+      ],
+      "turn_id": "SM06-4"
+    },
+    {
+      "id": "SM030",
+      "conversation_id": "SM06",
+      "turn_index": 5,
+      "history": [
+        "Tụi mình mới có bốn người, muốn lập hợp tác xã làm OCOP thì đủ điều kiện chưa?",
+        "Nếu lập tổ hợp tác thay vì hợp tác xã thì sao?",
+        "Loại hình đó vẫn được đăng ký OCOP chứ?",
+        "Thế đăng ký lần đầu thì cần mẫu số mấy?"
+      ],
+      "question": "Sau này sản phẩm lên 4 sao thì cấp nào công nhận vậy?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "star_rating": 4
+      },
+      "expected_standalone_query": "Theo Quyết định 26/2026, sản phẩm OCOP đạt 4 sao do cấp nào quyết định công nhận và cấp giấy chứng nhận?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM06-3",
+        "SM06-4"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "UBND cấp tỉnh có thẩm quyền công nhận, cấp giấy chứng nhận OCOP 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        }
+      ],
+      "tags": [
+        "authority",
+        "natural",
+        "session_memory",
+        "topic_continuation"
+      ],
+      "turn_id": "SM06-5"
+    },
+    {
+      "id": "SM031",
+      "conversation_id": "SM07",
+      "turn_index": 1,
+      "history": [],
+      "question": "Mình kinh doanh thực phẩm nhỏ lẻ, có bắt buộc xin giấy đủ điều kiện an toàn thực phẩm không?",
+      "gold_intent": "SECTOR_COMPLIANCE",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "15/2018/NĐ-CP"
+      },
+      "expected_standalone_query": "Cơ sở kinh doanh thực phẩm nhỏ lẻ có thuộc diện bắt buộc xin Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm theo Nghị định 15/2018 không?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Kinh doanh thực phẩm nhỏ lẻ thuộc nhóm không phải cấp Giấy chứng nhận theo Điều 12 Nghị định 15/2018."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        }
+      ],
+      "tags": [
+        "exemption",
+        "food_safety",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM07-1"
+    },
+    {
+      "id": "SM032",
+      "conversation_id": "SM07",
+      "turn_index": 2,
+      "history": [
+        "Mình kinh doanh thực phẩm nhỏ lẻ, có bắt buộc xin giấy đủ điều kiện an toàn thực phẩm không?"
+      ],
+      "question": "Miễn giấy rồi thì có phải bảo đảm vệ sinh nữa không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "15/2018/NĐ-CP"
+      },
+      "expected_standalone_query": "Cơ sở kinh doanh thực phẩm nhỏ lẻ được miễn Giấy chứng nhận đủ điều kiện an toàn thực phẩm có phải tuân thủ điều kiện bảo đảm an toàn thực phẩm không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM07-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "miễn giấy": "không thuộc diện cấp Giấy chứng nhận cơ sở đủ điều kiện ATTP"
+      },
+      "expected_answer_facts": [
+        "Cơ sở thuộc diện không phải cấp Giấy chứng nhận vẫn phải tuân thủ các yêu cầu bảo đảm an toàn thực phẩm tương ứng."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 11,
+          "evidence_unit_id": "ocop:evidence:4e61f334f7c7cb822ca7a0d4"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        }
+      ],
+      "tags": [
+        "ellipsis",
+        "exemption_vs_obligation",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM07-2"
+    },
+    {
+      "id": "SM033",
+      "conversation_id": "SM07",
+      "turn_index": 3,
+      "history": [
+        "Mình kinh doanh thực phẩm nhỏ lẻ, có bắt buộc xin giấy đủ điều kiện an toàn thực phẩm không?",
+        "Miễn giấy rồi thì có phải bảo đảm vệ sinh nữa không?"
+      ],
+      "question": "À, sản phẩm đóng gói bán ra thì trên nhãn cần ghi những gì?",
+      "gold_intent": "SECTOR_COMPLIANCE",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "43/2017/NĐ-CP"
+      },
+      "expected_standalone_query": "Theo quy định về ghi nhãn hàng hóa tại Nghị định 43/2017, hàng đóng gói lưu thông cần thể hiện các nội dung bắt buộc nào?",
+      "expected_context_action": "SWITCH_TOPIC",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [
+        "SM07-1",
+        "SM07-2"
+      ],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Nhãn phải có tên hàng hóa, tên và địa chỉ của tổ chức/cá nhân chịu trách nhiệm, xuất xứ và nội dung khác theo loại hàng."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7c38d1d9466bc27231b59587"
+        }
+      ],
+      "tags": [
+        "labeling",
+        "natural",
+        "session_memory",
+        "topic_switch"
+      ],
+      "turn_id": "SM07-3"
+    },
+    {
+      "id": "SM034",
+      "conversation_id": "SM07",
+      "turn_index": 4,
+      "history": [
+        "Mình kinh doanh thực phẩm nhỏ lẻ, có bắt buộc xin giấy đủ điều kiện an toàn thực phẩm không?",
+        "Miễn giấy rồi thì có phải bảo đảm vệ sinh nữa không?",
+        "À, sản phẩm đóng gói bán ra thì trên nhãn cần ghi những gì?"
+      ],
+      "question": "Tên với địa chỉ cơ sở của mình có bắt buộc ghi không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "43/2017/NĐ-CP"
+      },
+      "expected_standalone_query": "Trên nhãn hàng hóa của thực phẩm đóng gói, tên và địa chỉ tổ chức hoặc cá nhân chịu trách nhiệm về hàng hóa có bắt buộc ghi không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM07-3"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM07-1",
+        "SM07-2"
+      ],
+      "referent_resolution": {
+        "ghi": "ghi trên nhãn hàng hóa đóng gói"
+      },
+      "expected_answer_facts": [
+        "Tên và địa chỉ tổ chức/cá nhân chịu trách nhiệm là nội dung bắt buộc trên nhãn."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7c38d1d9466bc27231b59587"
+        }
+      ],
+      "tags": [
+        "context_carry",
+        "ellipsis",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM07-4"
+    },
+    {
+      "id": "SM035",
+      "conversation_id": "SM07",
+      "turn_index": 5,
+      "history": [
+        "Mình kinh doanh thực phẩm nhỏ lẻ, có bắt buộc xin giấy đủ điều kiện an toàn thực phẩm không?",
+        "Miễn giấy rồi thì có phải bảo đảm vệ sinh nữa không?",
+        "À, sản phẩm đóng gói bán ra thì trên nhãn cần ghi những gì?",
+        "Tên với địa chỉ cơ sở của mình có bắt buộc ghi không?"
+      ],
+      "question": "Quay lại chuyện miễn giấy nhé, cơ sở sơ chế nhỏ lẻ có nằm trong diện đó không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "15/2018/NĐ-CP"
+      },
+      "expected_standalone_query": "Cơ sở sơ chế thực phẩm nhỏ lẻ có thuộc diện không phải cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm theo Nghị định 15/2018 không?",
+      "expected_context_action": "RETURN",
+      "required_context_turn_ids": [
+        "SM07-1",
+        "SM07-2"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM07-3",
+        "SM07-4"
+      ],
+      "referent_resolution": {
+        "diện đó": "diện không phải cấp Giấy chứng nhận đủ điều kiện an toàn thực phẩm"
+      },
+      "expected_answer_facts": [
+        "Sơ chế nhỏ lẻ cũng thuộc diện không phải cấp Giấy chứng nhận, nhưng vẫn phải bảo đảm điều kiện an toàn thực phẩm tương ứng."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 11,
+          "evidence_unit_id": "ocop:evidence:4e61f334f7c7cb822ca7a0d4"
+        }
+      ],
+      "tags": [
+        "natural",
+        "negative_contamination",
+        "regulation_switch",
+        "session_memory",
+        "topic_return"
+      ],
+      "turn_id": "SM07-5"
+    },
+    {
+      "id": "SM036",
+      "conversation_id": "SM08",
+      "turn_index": 1,
+      "history": [],
+      "question": "Đăng ký OCOP lần đầu theo Quyết định 26 thì phải dùng mẫu nào bạn?",
+      "gold_intent": "PROCEDURE_FORM",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg"
+      },
+      "expected_standalone_query": "Đăng ký OCOP lần đầu theo Quyết định 26/2026 cần dùng các mẫu nào?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hồ sơ lần đầu cần Mẫu 01 và Mẫu 02 của Phụ lục III."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "forms",
+        "natural",
+        "plural_referents",
+        "session_memory"
+      ],
+      "turn_id": "SM08-1"
+    },
+    {
+      "id": "SM037",
+      "conversation_id": "SM08",
+      "turn_index": 2,
+      "history": [
+        "Đăng ký OCOP lần đầu theo Quyết định 26 thì phải dùng mẫu nào bạn?"
+      ],
+      "question": "Mẫu đó phải điền những gì?",
+      "gold_intent": "CLARIFY",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "NONE",
+      "in_scope": true,
+      "gold_clarify": true,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg"
+      },
+      "expected_standalone_query": null,
+      "expected_context_action": "CLARIFY",
+      "required_context_turn_ids": [
+        "SM08-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "mẫu đó": "không rõ Mẫu 01 hay Mẫu 02"
+      },
+      "expected_answer_facts": [],
+      "gold_evidence": [],
+      "tags": [
+        "ambiguous_reference",
+        "ask_clarify",
+        "natural",
+        "session_memory"
+      ],
+      "expected_clarification_question": "Bạn muốn hỏi Mẫu 01 (phiếu đăng ký) hay Mẫu 02 (báo cáo tự đánh giá)?",
+      "turn_id": "SM08-2"
+    },
+    {
+      "id": "SM038",
+      "conversation_id": "SM08",
+      "turn_index": 3,
+      "history": [
+        "Đăng ký OCOP lần đầu theo Quyết định 26 thì phải dùng mẫu nào bạn?",
+        "Mẫu đó phải điền những gì?"
+      ],
+      "question": "Mẫu 01 ấy, mình hỏi cái phiếu đăng ký.",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "form_id": "1"
+      },
+      "expected_standalone_query": "Mẫu số 01, Phiếu đăng ký đánh giá phân hạng sản phẩm OCOP theo Quyết định 26/2026, cần điền những thông tin nào?",
+      "expected_context_action": "RESOLVE_CLARIFICATION",
+      "required_context_turn_ids": [
+        "SM08-1",
+        "SM08-2"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "mẫu 01 ấy": "Mẫu 01 đã được chọn thay cho Mẫu 02"
+      },
+      "expected_answer_facts": [
+        "Mẫu 01 là Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP, điền thông tin chủ thể và sản phẩm đăng ký theo biểu mẫu."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 148,
+          "evidence_unit_id": "ocop:evidence:31b097b5b638199fa9d71770"
+        }
+      ],
+      "tags": [
+        "clarification_recovery",
+        "natural",
+        "referent_disambiguation",
+        "session_memory"
+      ],
+      "turn_id": "SM08-3"
+    },
+    {
+      "id": "SM039",
+      "conversation_id": "SM08",
+      "turn_index": 4,
+      "history": [
+        "Đăng ký OCOP lần đầu theo Quyết định 26 thì phải dùng mẫu nào bạn?",
+        "Mẫu đó phải điền những gì?",
+        "Mẫu 01 ấy, mình hỏi cái phiếu đăng ký."
+      ],
+      "question": "Còn mẫu 02 thì là báo cáo gì?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "form_id": "2"
+      },
+      "expected_standalone_query": "Mẫu số 02 trong Phụ lục III Quyết định 26/2026 là báo cáo gì, do ai thực hiện?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [
+        "SM08-1"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM08-3"
+      ],
+      "referent_resolution": {
+        "mẫu 02": "mẫu còn lại trong hai mẫu hồ sơ lần đầu"
+      },
+      "expected_answer_facts": [
+        "Mẫu 02 là Báo cáo tự đánh giá về sản phẩm, dành cho chủ thể có sản phẩm đăng ký đánh giá OCOP."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 150,
+          "evidence_unit_id": "ocop:evidence:81033a3f4e7472c7fe3367e7"
+        }
+      ],
+      "tags": [
+        "contrast",
+        "form_switch",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM08-4"
+    },
+    {
+      "id": "SM040",
+      "conversation_id": "SM08",
+      "turn_index": 5,
+      "history": [
+        "Đăng ký OCOP lần đầu theo Quyết định 26 thì phải dùng mẫu nào bạn?",
+        "Mẫu đó phải điền những gì?",
+        "Mẫu 01 ấy, mình hỏi cái phiếu đăng ký.",
+        "Còn mẫu 02 thì là báo cáo gì?"
+      ],
+      "question": "Thế mẫu 03 là của bên xã làm, đúng không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "form_id": "3"
+      },
+      "expected_standalone_query": "Theo Quyết định 26/2026, Mẫu số 03 trong Phụ lục III là báo cáo do UBND cấp xã thực hiện phải không?",
+      "expected_context_action": "SWITCH_TARGET",
+      "required_context_turn_ids": [
+        "SM08-1"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM08-3",
+        "SM08-4"
+      ],
+      "referent_resolution": {
+        "mẫu 03": "mẫu báo cáo đánh giá của UBND cấp xã"
+      },
+      "expected_answer_facts": [
+        "Mẫu 03 là báo cáo đánh giá một số nội dung hồ sơ đăng ký tham gia đánh giá, phân hạng OCOP của UBND cấp xã."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 154,
+          "evidence_unit_id": "ocop:evidence:f4a040ffc7fc0afbc95a43a4"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+        }
+      ],
+      "tags": [
+        "form_switch",
+        "natural",
+        "role_boundary",
+        "session_memory"
+      ],
+      "turn_id": "SM08-5"
+    },
+    {
+      "id": "SM041",
+      "conversation_id": "SM09",
+      "turn_index": 1,
+      "history": [],
+      "question": "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 4 sao trong đợt năm 2025 vậy?",
+      "gold_intent": "RECOGNITION_LOOKUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Hải Phòng",
+        "star_rating": 4,
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "Quyết định 525/QĐ-UBND công nhận bao nhiêu sản phẩm OCOP 4 sao của Hải Phòng năm 2025?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hải Phòng công nhận 26 sản phẩm 4 sao năm 2025."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        }
+      ],
+      "tags": [
+        "counts",
+        "locality",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM09-1"
+    },
+    {
+      "id": "SM042",
+      "conversation_id": "SM09",
+      "turn_index": 2,
+      "history": [
+        "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 4 sao trong đợt năm 2025 vậy?"
+      ],
+      "question": "Còn 3 sao thì được bao nhiêu sản phẩm?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Hải Phòng",
+        "star_rating": 3,
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 3 sao trong năm 2025 theo Quyết định 525/QĐ-UBND?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM09-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Hải Phòng công nhận 32 sản phẩm 3 sao năm 2025."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        }
+      ],
+      "tags": [
+        "locality_carry",
+        "natural",
+        "rating_switch",
+        "session_memory"
+      ],
+      "turn_id": "SM09-2"
+    },
+    {
+      "id": "SM043",
+      "conversation_id": "SM09",
+      "turn_index": 3,
+      "history": [
+        "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 4 sao trong đợt năm 2025 vậy?",
+        "Còn 3 sao thì được bao nhiêu sản phẩm?"
+      ],
+      "question": "Vậy Huế ở đợt công nhận năm 2025 có tất cả bao nhiêu sản phẩm?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Huế",
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "Huế công nhận tổng cộng bao nhiêu sản phẩm OCOP năm 2025 theo Quyết định 797/QĐ-UBND?",
+      "expected_context_action": "SWITCH_REGION",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [
+        "SM09-1",
+        "SM09-2"
+      ],
+      "referent_resolution": {
+        "đợt công nhận năm 2025": "đợt phê duyệt kết quả OCOP 2025"
+      },
+      "expected_answer_facts": [
+        "Quyết định 797 của Huế phê duyệt 3 sản phẩm đạt 3 sao và 4 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        }
+      ],
+      "tags": [
+        "natural",
+        "negative_contamination",
+        "region_switch",
+        "session_memory"
+      ],
+      "turn_id": "SM09-3"
+    },
+    {
+      "id": "SM044",
+      "conversation_id": "SM09",
+      "turn_index": 4,
+      "history": [
+        "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 4 sao trong đợt năm 2025 vậy?",
+        "Còn 3 sao thì được bao nhiêu sản phẩm?",
+        "Vậy Huế ở đợt công nhận năm 2025 có tất cả bao nhiêu sản phẩm?"
+      ],
+      "question": "Trong số đó có hạt sen không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Huế",
+        "product_name": "Hạt sen",
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "Trong danh sách OCOP được Huế công nhận cho năm 2025 có sản phẩm hạt sen của HTX Sen Huế không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM09-3"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM09-1",
+        "SM09-2"
+      ],
+      "referent_resolution": {
+        "số đó": "ba sản phẩm OCOP trong quyết định của Huế"
+      },
+      "expected_answer_facts": [
+        "Có, hạt sen của HTX Sen Huế thuộc danh sách được công nhận hạng 3 sao."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ],
+      "tags": [
+        "entity_lookup",
+        "natural",
+        "plural_reference",
+        "session_memory"
+      ],
+      "turn_id": "SM09-4"
+    },
+    {
+      "id": "SM045",
+      "conversation_id": "SM09",
+      "turn_index": 5,
+      "history": [
+        "Hải Phòng công nhận bao nhiêu sản phẩm OCOP 4 sao trong đợt năm 2025 vậy?",
+        "Còn 3 sao thì được bao nhiêu sản phẩm?",
+        "Vậy Huế ở đợt công nhận năm 2025 có tất cả bao nhiêu sản phẩm?",
+        "Trong số đó có hạt sen không?"
+      ],
+      "question": "Quay lại Hải Phòng, 26 sản phẩm 4 sao lúc nãy thuộc bao nhiêu chủ thể?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "RECOGNITION_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "region": "Hải Phòng",
+        "star_rating": 4,
+        "years": [
+          "2025"
+        ]
+      },
+      "expected_standalone_query": "26 sản phẩm OCOP 4 sao của Hải Phòng năm 2025 được công nhận cho bao nhiêu chủ thể theo Quyết định 525/QĐ-UBND?",
+      "expected_context_action": "RETURN",
+      "required_context_turn_ids": [
+        "SM09-1"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM09-3",
+        "SM09-4"
+      ],
+      "referent_resolution": {
+        "26 sản phẩm lúc nãy": "26 sản phẩm 4 sao của Hải Phòng"
+      },
+      "expected_answer_facts": [
+        "26 sản phẩm OCOP 4 sao của Hải Phòng thuộc 7 chủ thể."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        }
+      ],
+      "tags": [
+        "long_range_reference",
+        "natural",
+        "negative_contamination",
+        "region_return",
+        "session_memory"
+      ],
+      "turn_id": "SM09-5"
+    },
+    {
+      "id": "SM046",
+      "conversation_id": "SM10",
+      "turn_index": 1,
+      "history": [],
+      "question": "Điều 5 của Quyết định 26/2026 nói về chuyện gì vậy?",
+      "gold_intent": "EXACT_LOOKUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "article_id": "5"
+      },
+      "expected_standalone_query": "Điều 5 Quyết định 26/2026/QĐ-TTg quy định nội dung gì?",
+      "expected_context_action": "START",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {},
+      "expected_answer_facts": [
+        "Điều 5 quy định thời gian tổ chức đánh giá, phân hạng sản phẩm OCOP."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:be59d98ad6ad73058c5818be"
+        }
+      ],
+      "tags": [
+        "article_lookup",
+        "natural",
+        "session_memory"
+      ],
+      "turn_id": "SM10-1"
+    },
+    {
+      "id": "SM047",
+      "conversation_id": "SM10",
+      "turn_index": 2,
+      "history": [
+        "Điều 5 của Quyết định 26/2026 nói về chuyện gì vậy?"
+      ],
+      "question": "Điều kế tiếp thì sao?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "article_id": "6"
+      },
+      "expected_standalone_query": "Điều 6 Quyết định 26/2026/QĐ-TTg quy định nội dung gì?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM10-1"
+      ],
+      "forbidden_context_turn_ids": [],
+      "referent_resolution": {
+        "điều kế tiếp": "Điều 6 sau Điều 5 của Quyết định 26/2026"
+      },
+      "expected_answer_facts": [
+        "Điều 6 quy định thành phần hồ sơ đánh giá, phân hạng sản phẩm OCOP."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "document_carry",
+        "natural",
+        "ordinal_reference",
+        "session_memory"
+      ],
+      "turn_id": "SM10-2"
+    },
+    {
+      "id": "SM048",
+      "conversation_id": "SM10",
+      "turn_index": 3,
+      "history": [
+        "Điều 5 của Quyết định 26/2026 nói về chuyện gì vậy?",
+        "Điều kế tiếp thì sao?"
+      ],
+      "question": "Mình chuyển qua Nghị định 15/2018 nhé, Điều 12 của nó nói gì?",
+      "gold_intent": "EXACT_LOOKUP",
+      "business_intent": "EXACT_LOOKUP",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "15/2018/NĐ-CP",
+        "article_id": "12"
+      },
+      "expected_standalone_query": "Điều 12 Nghị định 15/2018/NĐ-CP quy định vấn đề gì?",
+      "expected_context_action": "SWITCH_DOCUMENT",
+      "required_context_turn_ids": [],
+      "forbidden_context_turn_ids": [
+        "SM10-1",
+        "SM10-2"
+      ],
+      "referent_resolution": {
+        "nó": "Nghị định 15/2018"
+      },
+      "expected_answer_facts": [
+        "Điều 12 liệt kê cơ sở không thuộc diện cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        }
+      ],
+      "tags": [
+        "document_switch",
+        "natural",
+        "negative_contamination",
+        "session_memory"
+      ],
+      "turn_id": "SM10-3"
+    },
+    {
+      "id": "SM049",
+      "conversation_id": "SM10",
+      "turn_index": 4,
+      "history": [
+        "Điều 5 của Quyết định 26/2026 nói về chuyện gì vậy?",
+        "Điều kế tiếp thì sao?",
+        "Mình chuyển qua Nghị định 15/2018 nhé, Điều 12 của nó nói gì?"
+      ],
+      "question": "Thế các cơ sở được miễn giấy đó vẫn phải bảo đảm ATTP đúng không?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "SECTOR_COMPLIANCE",
+      "gold_lane": "TEXT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "15/2018/NĐ-CP",
+        "article_id": "12"
+      },
+      "expected_standalone_query": "Theo Điều 12 Nghị định 15/2018/NĐ-CP, các cơ sở không phải cấp giấy chứng nhận có còn phải tuân thủ điều kiện an toàn thực phẩm không?",
+      "expected_context_action": "CONTINUE",
+      "required_context_turn_ids": [
+        "SM10-3"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM10-1",
+        "SM10-2"
+      ],
+      "referent_resolution": {
+        "giấy đó": "Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm"
+      },
+      "expected_answer_facts": [
+        "Các cơ sở được miễn cấp Giấy chứng nhận vẫn phải tuân thủ điều kiện bảo đảm an toàn thực phẩm tương ứng."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 11,
+          "evidence_unit_id": "ocop:evidence:4e61f334f7c7cb822ca7a0d4"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        }
+      ],
+      "tags": [
+        "legal_continuation",
+        "natural",
+        "pronoun",
+        "session_memory"
+      ],
+      "turn_id": "SM10-4"
+    },
+    {
+      "id": "SM050",
+      "conversation_id": "SM10",
+      "turn_index": 5,
+      "history": [
+        "Điều 5 của Quyết định 26/2026 nói về chuyện gì vậy?",
+        "Điều kế tiếp thì sao?",
+        "Mình chuyển qua Nghị định 15/2018 nhé, Điều 12 của nó nói gì?",
+        "Thế các cơ sở được miễn giấy đó vẫn phải bảo đảm ATTP đúng không?"
+      ],
+      "question": "Quay lại Điều 6 của Quyết định 26 lúc nãy, hồ sơ đề nghị chấm 5 sao do ai chuẩn bị?",
+      "gold_intent": "FOLLOWUP",
+      "business_intent": "PROCEDURE_FORM",
+      "gold_lane": "PINPOINT",
+      "in_scope": true,
+      "gold_clarify": false,
+      "gold_slots": {
+        "document_code": "26/2026/QĐ-TTg",
+        "article_id": "6",
+        "star_rating": 5
+      },
+      "expected_standalone_query": "Theo Điều 6 Quyết định 26/2026/QĐ-TTg, hồ sơ đề nghị đánh giá phân hạng sản phẩm OCOP 5 sao do cơ quan nào chuẩn bị?",
+      "expected_context_action": "RETURN",
+      "required_context_turn_ids": [
+        "SM10-2"
+      ],
+      "forbidden_context_turn_ids": [
+        "SM10-3",
+        "SM10-4"
+      ],
+      "referent_resolution": {
+        "Điều 6 lúc nãy": "Điều 6 Quyết định 26/2026"
+      },
+      "expected_answer_facts": [
+        "Hồ sơ đề nghị đánh giá, phân hạng OCOP 5 sao do UBND cấp tỉnh chuẩn bị."
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+        }
+      ],
+      "tags": [
+        "document_return",
+        "long_range_reference",
+        "natural",
+        "negative_contamination",
+        "session_memory"
+      ],
+      "turn_id": "SM10-5"
+    }
+  ]
+}

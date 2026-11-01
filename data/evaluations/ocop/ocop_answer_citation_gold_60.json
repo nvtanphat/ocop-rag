@@ -1,0 +1,1811 @@
+{
+  "dataset_name": "OCOP-RAG Answer Grounding & Citation Gold — 60 câu",
+  "dataset_version": "1.0.1",
+  "task": "answer_grounding_citation",
+  "language": "vi",
+  "corpus_version": "9e8f7e46a64a74e80dd8",
+  "evidence_id_fingerprint": "ocop-evidence-b531594eddc8",
+  "source_inputs": [
+    "ocop_retrieval_gold_100_natural_final.json",
+    "evidence_unit_ids(1).md",
+    "ocop-ocr-reviewed.md"
+  ],
+  "scope": "60 answerable questions re-used from the 100-query retrieval gold set",
+  "evaluation_guidance": {
+    "answer_correctness": "compare factual assertions with required_claims, rather than exact string match",
+    "faithfulness": "decompose generated answer into claims; verify support in retrieved evidence",
+    "citation_precision": "evaluate cited EvidenceUnits that support answer claims",
+    "citation_recall": "evaluate whether gold evidence supporting required claims was cited",
+    "multisource": "for cross-document questions, check all gold_citations, not just any one"
+  },
+  "counts": {
+    "questions": 60,
+    "claims": 102,
+    "evidence_links": 66,
+    "distinct_evidence_units": 60,
+    "source_documents": 12,
+    "question_types": {
+      "exact": 18,
+      "semantic": 24,
+      "numeric": 7,
+      "category": 3,
+      "table": 3,
+      "form": 2,
+      "cross_document": 3
+    }
+  },
+  "questions": [
+    {
+      "id": "R001",
+      "query": "Quyết định 26/2026/QĐ-TTg áp dụng cho những nội dung và đối tượng nào trong chương trình OCOP?",
+      "question_type": "exact",
+      "gold_answer": "Quyết định 26/2026/QĐ-TTg quy định bộ tiêu chí, việc đánh giá, phân hạng, công nhận, nâng hạng và công nhận lại sản phẩm OCOP; đồng thời quy định thu hồi giấy chứng nhận và kiểm tra, giám sát sau công nhận. Văn bản áp dụng cho các cơ quan quản lý, hội đồng đánh giá các cấp và các chủ thể OCOP như hợp tác xã, tổ hợp tác, doanh nghiệp nhỏ và vừa, trang trại, hộ sản xuất hoặc hộ gia đình có đăng ký kinh doanh.",
+      "required_claims": [
+        {
+          "claim_id": "R001_C01",
+          "text": "Quyết định 26/2026/QĐ-TTg quy định bộ tiêu chí, việc đánh giá, phân hạng, công nhận, nâng hạng và công nhận lại sản phẩm OCOP; đồng thời quy định thu hồi giấy chứng nhận và kiểm tra, giám sát sau công nhận.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:8494d772f6506de70736fa2d"
+          ]
+        },
+        {
+          "claim_id": "R001_C02",
+          "text": "Văn bản áp dụng cho các cơ quan quản lý, hội đồng đánh giá các cấp và các chủ thể OCOP như hợp tác xã, tổ hợp tác, doanh nghiệp nhỏ và vừa, trang trại, hộ sản xuất hoặc hộ gia đình có đăng ký kinh doanh.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:8494d772f6506de70736fa2d"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:8494d772f6506de70736fa2d",
+          "source_excerpt": "Điều 1. Phạm vi điều chỉnh và đối tượng áp dụng 1. Phạm vi điều chỉnh Quyết định này quy định về Bộ tiêu chí, công tác đánh giá, phân hạng, công nhận, nâng hạng, công nhận lại sản phẩm mỗi xã một sản phẩm (sau đây gọi là OCOP), thu hồi giấy chứng nhận kết quả phân hạng sản phẩm OCOP (sau đây gọi là "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R002",
+      "query": "Nếu muốn đưa sản phẩm tham gia đánh giá OCOP thì những loại sản phẩm và chủ thể nào được phép đăng ký theo quy định năm 2026?",
+      "question_type": "semantic",
+      "gold_answer": "Sản phẩm tham gia OCOP gồm sáu nhóm: thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch. Chủ thể có thể đăng ký gồm hợp tác xã, tổ hợp tác, doanh nghiệp nhỏ và vừa, trang trại, hộ sản xuất và hộ gia đình có đăng ký kinh doanh. Với nhóm dịch vụ du lịch, hội, hiệp hội, trung tâm điều hành hoặc tổ chức tương đương cũng được tham gia.",
+      "required_claims": [
+        {
+          "claim_id": "R002_C01",
+          "text": "Sản phẩm tham gia OCOP gồm sáu nhóm: thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        },
+        {
+          "claim_id": "R002_C02",
+          "text": "Chủ thể có thể đăng ký gồm hợp tác xã, tổ hợp tác, doanh nghiệp nhỏ và vừa, trang trại, hộ sản xuất và hộ gia đình có đăng ký kinh doanh.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        },
+        {
+          "claim_id": "R002_C03",
+          "text": "Với nhóm dịch vụ du lịch, hội, hiệp hội, trung tâm điều hành hoặc tổ chức tương đương cũng được tham gia.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01",
+          "source_excerpt": "2. Sản phẩm tham gia đánh giá, phân hạng sản phẩm OCOP bao gồm 06 nhóm sản phẩm: thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch. Danh mục phân loại sản phẩm tham gia đánh giá, phân hạng sản ph"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R003",
+      "query": "Trong Quyết định 26, điều nào nói về bộ tiêu chí dùng để chấm và phân hạng sản phẩm OCOP?",
+      "question_type": "exact",
+      "gold_answer": "Điều 3 của Quyết định 26/2026/QĐ-TTg quy định Bộ tiêu chí đánh giá, phân hạng sản phẩm OCOP. Bộ tiêu chí gồm phần A về sản phẩm và sức mạnh cộng đồng (40 điểm), phần B về khả năng tiếp thị (25 điểm) và phần C về chất lượng sản phẩm (35 điểm).",
+      "required_claims": [
+        {
+          "claim_id": "R003_C01",
+          "text": "Điều 3 của Quyết định 26/2026/QĐ-TTg quy định Bộ tiêu chí đánh giá, phân hạng sản phẩm OCOP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:6f7d7dbcf79df92c8e22c4ff"
+          ]
+        },
+        {
+          "claim_id": "R003_C02",
+          "text": "Bộ tiêu chí gồm phần A về sản phẩm và sức mạnh cộng đồng (40 điểm), phần B về khả năng tiếp thị (25 điểm) và phần C về chất lượng sản phẩm (35 điểm).",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:6f7d7dbcf79df92c8e22c4ff"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:6f7d7dbcf79df92c8e22c4ff",
+          "source_excerpt": "Điều 3. Bộ tiêu chí đánh giá, phân hạng sản phẩm OCOP 1. Bộ tiêu chí đánh giá, phân hạng sản phẩm OCOP gồm 03 phần: a) Phần A: Các tiêu chí đánh giá về sản phẩm và sức mạnh cộng đồng (40 điểm), gồm tổ chức sản xuất, phát triển sản phẩm, sức mạnh cộng đồng. b) Phần B: Các tiêu chí đánh giá về khả năn"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R004",
+      "query": "Đợt đánh giá OCOP ở cấp tỉnh do ai tổ chức và thường được tiến hành vào thời điểm nào?",
+      "question_type": "semantic",
+      "gold_answer": "UBND cấp tỉnh tổ chức đánh giá, phân hạng OCOP cấp tỉnh ít nhất hai đợt mỗi năm. Theo Điều 5, đợt 1 được tổ chức trước ngày 30/6 với hồ sơ do cấp xã đề nghị trước ngày 30/4; đợt 2 trước ngày 30/12 với hồ sơ cấp xã đề nghị trước ngày 30/10.",
+      "required_claims": [
+        {
+          "claim_id": "R004_C01",
+          "text": "UBND cấp tỉnh tổ chức đánh giá, phân hạng OCOP cấp tỉnh ít nhất hai đợt mỗi năm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:be59d98ad6ad73058c5818be"
+          ]
+        },
+        {
+          "claim_id": "R004_C02",
+          "text": "Theo Điều 5, đợt 1 được tổ chức trước ngày 30/6 với hồ sơ do cấp xã đề nghị trước ngày 30/4; đợt 2 trước ngày 30/12 với hồ sơ cấp xã đề nghị trước ngày 30/10.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:be59d98ad6ad73058c5818be"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:be59d98ad6ad73058c5818be",
+          "source_excerpt": "Điều 5. Thời gian tổ chức đánh giá, phân hạng sản phẩm OCOP 1. UBND cấp tỉnh tổ chức đánh giá, phân hạng sản phẩm OCOP cấp tỉnh ít nhất 02 đợt trong năm. Đợt 01 trước ngày 30 tháng 6 đối với các hồ sơ được UBND cấp xã đề nghị trước ngày 30 tháng 4; đợt 02 trước ngày 30 tháng 12 đối với các hồ sơ đượ"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R005",
+      "query": "Theo Quyết định 26, việc đánh giá và công nhận một sản phẩm OCOP được tổ chức ra sao?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 4 của Quyết định 26/2026/QĐ-TTg, việc đánh giá, phân hạng và công nhận OCOP được tổ chức ở hai cấp: cấp tỉnh và cấp trung ương. UBND cấp tỉnh công nhận, cấp giấy chứng nhận cho sản phẩm 3 và 4 sao; Bộ Nông nghiệp và Môi trường chủ trì công nhận, cấp giấy chứng nhận cho sản phẩm 5 sao. Sản phẩm 1 và 2 sao không được ban hành quyết định công nhận hoặc cấp giấy chứng nhận.",
+      "required_claims": [
+        {
+          "claim_id": "R005_C01",
+          "text": "Theo Điều 4 của Quyết định 26/2026/QĐ-TTg, việc đánh giá, phân hạng và công nhận OCOP được tổ chức ở hai cấp: cấp tỉnh và cấp trung ương.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        },
+        {
+          "claim_id": "R005_C02",
+          "text": "UBND cấp tỉnh công nhận, cấp giấy chứng nhận cho sản phẩm 3 và 4 sao; Bộ Nông nghiệp và Môi trường chủ trì công nhận, cấp giấy chứng nhận cho sản phẩm 5 sao.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        },
+        {
+          "claim_id": "R005_C03",
+          "text": "Sản phẩm 1 và 2 sao không được ban hành quyết định công nhận hoặc cấp giấy chứng nhận.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47",
+          "source_excerpt": "Điều 4. Công tác đánh giá, phân hạng sản phẩm OCOP 1. Công tác đánh giá, phân hạng và công nhận sản phẩm OCOP gồm 2 cấp: cấp tỉnh và cấp trung ương, cụ thể như sau: a) Ủy ban nhân dân (sau đây gọi tắt là UBND) cấp tỉnh tổ chức đánh giá, phân hạng và quyết định công nhận, cấp giấy chứng nhận cho sản "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R006",
+      "query": "Muốn đạt OCOP 5 sao cấp quốc gia thì sản phẩm phải được ít nhất bao nhiêu điểm theo quy định năm 2026?",
+      "question_type": "numeric",
+      "gold_answer": "Theo Quyết định 26/2026/QĐ-TTg, sản phẩm OCOP 5 sao cấp quốc gia phải có tổng điểm trung bình từ 90 đến 100 điểm. Như vậy mức tối thiểu về điểm số là 90 điểm.",
+      "required_claims": [
+        {
+          "claim_id": "R006_C01",
+          "text": "Theo Quyết định 26/2026/QĐ-TTg, sản phẩm OCOP 5 sao cấp quốc gia phải có tổng điểm trung bình từ 90 đến 100 điểm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:fbdded1356619ad0cc90994f"
+          ]
+        },
+        {
+          "claim_id": "R006_C02",
+          "text": "Như vậy mức tối thiểu về điểm số là 90 điểm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:fbdded1356619ad0cc90994f"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f",
+          "source_excerpt": "a) Hạng 5 sao (cấp quốc gia): Tổng điểm trung bình đạt từ 90 đến 100 điểm, là sản phẩm đặc trưng, có thương hiệu, đạt tiêu chuẩn chất lượng cao và hội tụ điều kiện để xuất khẩu. b) Hạng 4 sao (cấp tỉnh): Tổng điểm trung bình đạt từ 70 đến dưới 90 điểm, là sản phẩm đặc trưng, từng bước có thương hiệu"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R007",
+      "query": "Tôi đang chuẩn bị đăng ký OCOP, cần xem quy định về bộ hồ sơ đánh giá ở điều nào của Quyết định 26?",
+      "question_type": "exact",
+      "gold_answer": "Quy định về hồ sơ đánh giá, phân hạng sản phẩm OCOP nằm tại Điều 6 của Quyết định 26/2026/QĐ-TTg. Hồ sơ đăng ký lần đầu có Phiếu đăng ký Mẫu số 01 và Báo cáo tự đánh giá Mẫu số 02 tại Phụ lục III.",
+      "required_claims": [
+        {
+          "claim_id": "R007_C01",
+          "text": "Quy định về hồ sơ đánh giá, phân hạng sản phẩm OCOP nằm tại Điều 6 của Quyết định 26/2026/QĐ-TTg.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        },
+        {
+          "claim_id": "R007_C02",
+          "text": "Hồ sơ đăng ký lần đầu có Phiếu đăng ký Mẫu số 01 và Báo cáo tự đánh giá Mẫu số 02 tại Phụ lục III.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b",
+          "source_excerpt": "Điều 6. Hồ sơ đánh giá, phân hạng sản phẩm OCOP 1. Hồ sơ đăng ký tham gia đánh giá, phân hạng sản phẩm OCOP (sau đây gọi là hồ sơ sản phẩm) do chủ thể OCOP chuẩn bị, bao gồm: a) Hồ sơ đăng ký tham gia đánh giá, phân hạng (lần đầu): Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP theo Mẫu số 01 Phụ l"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R009",
+      "query": "Danh mục những nhóm sản phẩm được tham gia OCOP nằm ở phụ lục nào của Quyết định 26/2026?",
+      "question_type": "exact",
+      "gold_answer": "Danh mục phân loại các sản phẩm tham gia đánh giá, phân hạng OCOP nằm tại Phụ lục I ban hành kèm theo Quyết định 26/2026/QĐ-TTg.",
+      "required_claims": [
+        {
+          "claim_id": "R009_C01",
+          "text": "Danh mục phân loại các sản phẩm tham gia đánh giá, phân hạng OCOP nằm tại Phụ lục I ban hành kèm theo Quyết định 26/2026/QĐ-TTg.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:ff7866be323aa271fcadbc11"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 15,
+          "evidence_unit_id": "ocop:evidence:ff7866be323aa271fcadbc11",
+          "source_excerpt": "Phụ lục I DANH MỤC PHÂN LOẠI SẢN PHẨM THAM GIA ĐÁNH GIÁ, PHÂN HẠNG SẢN PHẨM OCOP (Kèm theo Quyết định số 26/2026/QĐ-TTg ngày 22 tháng 5 năm 2026 của Thủ tướng Chính phủ) **Bảng 1** | STT | Phân loại sản phẩm | Cơ quan chủ trì quản lý¹ | | --- | --- | --- | | **I** | **SẢN PHẨM THỰC PHẨM** | | | **1*"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R010",
+      "query": "Tôi muốn xem mẫu phiếu chấm điểm OCOP theo bộ tiêu chí năm 2026 thì tìm ở phần nào?",
+      "question_type": "exact",
+      "gold_answer": "Phiếu chấm điểm theo Bộ tiêu chí đánh giá sản phẩm OCOP năm 2026 nằm tại Phụ lục II của Quyết định 26/2026/QĐ-TTg. Phụ lục này đồng thời là phiếu đánh giá sản phẩm OCOP theo từng bộ sản phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R010_C01",
+          "text": "Phiếu chấm điểm theo Bộ tiêu chí đánh giá sản phẩm OCOP năm 2026 nằm tại Phụ lục II của Quyết định 26/2026/QĐ-TTg.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d5fb356eec131b12fe6ca0a7"
+          ]
+        },
+        {
+          "claim_id": "R010_C02",
+          "text": "Phụ lục này đồng thời là phiếu đánh giá sản phẩm OCOP theo từng bộ sản phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d5fb356eec131b12fe6ca0a7"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:d5fb356eec131b12fe6ca0a7",
+          "source_excerpt": "Phụ lục II BỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP (Kiêm phiếu đánh giá sản phẩm OCOP) (Kèm theo Quyết định số 26/2026/QĐ-TTg ngày 22 tháng 5 năm 2026 của Thủ tướng Chính phủ) | STT | Nội dung | | --- | --- | | 1 | Bộ sản phẩm: Rau, củ, quả, hạt tươi | | 2 | Bộ sản phẩm: Thịt, thủy sản, trứng, sữa tươi |"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R011",
+      "query": "Rau, củ, quả tươi đăng ký OCOP thì được xếp vào nhóm sản phẩm nào trên phiếu đánh giá?",
+      "question_type": "category",
+      "gold_answer": "Rau, củ, quả và hạt tươi thuộc nhóm Thực phẩm tươi sống, trong loại sản phẩm Thực phẩm. Phiếu đánh giá tương ứng là Bộ sản phẩm số 1: Rau, củ, quả, hạt tươi.",
+      "required_claims": [
+        {
+          "claim_id": "R011_C01",
+          "text": "Rau, củ, quả và hạt tươi thuộc nhóm Thực phẩm tươi sống, trong loại sản phẩm Thực phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d67083b90b27013c918636e1"
+          ]
+        },
+        {
+          "claim_id": "R011_C02",
+          "text": "Phiếu đánh giá tương ứng là Bộ sản phẩm số 1: Rau, củ, quả, hạt tươi.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d67083b90b27013c918636e1"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:d67083b90b27013c918636e1",
+          "source_excerpt": "1. Bộ sản phẩm: Rau, củ, quả, hạt tươi (Sản phẩm: Thực phẩm. Nhóm: Thực phẩm tươi sống) Tên sản phẩm: ................................................ Mã số sản phẩm: (T).-.(X).-.(STT).-20...... T: Mã tỉnh - X: Mã xã - STT: Số thứ tự sản phẩm do xã lập thống kê - Năm đánh giá. Mã đơn vị hành chính t"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R012",
+      "query": "Nếu cơ sở sản xuất rau củ dùng trên 75% lao động tại xã thì mục lao động địa phương được bao nhiêu điểm?",
+      "question_type": "numeric",
+      "gold_answer": "Với tỷ lệ từ 75% lao động là người trên địa bàn cấp xã trở lên, tiêu chí sử dụng lao động địa phương được 3 điểm trong phiếu chấm dành cho rau, củ, quả, hạt tươi.",
+      "required_claims": [
+        {
+          "claim_id": "R012_C01",
+          "text": "Với tỷ lệ từ 75% lao động là người trên địa bàn cấp xã trở lên, tiêu chí sử dụng lao động địa phương được 3 điểm trong phiếu chấm dành cho rau, củ, quả, hạt tươi.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:5d78de9c4e188b860fe4800e"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 20,
+          "evidence_unit_id": "ocop:evidence:5d78de9c4e188b860fe4800e",
+          "source_excerpt": "Có sử dụng ≥ 75% lao động là người trên địa bàn cấp xã | 3 | | 3.4. Tăng trưởng sản xuất kinh doanh | 2 | | Hợp tác xã xếp loại trung bình hoặc năm trước liền kề năm đánh giá có lợi nhuận cao hơn so với năm trước liền kề; các loại hình khác: Năm trước liền kề năm đánh giá có lợi nhuận cao hơn so với"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R014",
+      "query": "Trong phiếu đánh giá OCOP cho rau củ quả tươi, phần dinh dưỡng yêu cầu thể hiện những chỉ tiêu gì?",
+      "question_type": "table",
+      "gold_answer": "Tiêu chí dinh dưỡng của rau, củ, quả, hạt tươi xem xét hàm lượng các chỉ tiêu như protit, lipid và vitamin dựa trên phiếu kiểm nghiệm do cơ quan có thẩm quyền cấp. Không có chỉ tiêu được 0 điểm; có 1–2 chỉ tiêu được 1 điểm; có trên 2 chỉ tiêu được 3 điểm.",
+      "required_claims": [
+        {
+          "claim_id": "R014_C01",
+          "text": "Tiêu chí dinh dưỡng của rau, củ, quả, hạt tươi xem xét hàm lượng các chỉ tiêu như protit, lipid và vitamin dựa trên phiếu kiểm nghiệm do cơ quan có thẩm quyền cấp.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7bc769748735be1685c6062d"
+          ]
+        },
+        {
+          "claim_id": "R014_C02",
+          "text": "Không có chỉ tiêu được 0 điểm; có 1–2 chỉ tiêu được 1 điểm; có trên 2 chỉ tiêu được 3 điểm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7bc769748735be1685c6062d"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:7bc769748735be1685c6062d",
+          "source_excerpt": "7. DINH DƯỜNG (Chỉ ra hàm lượng của các chỉ tiêu dinh dưỡng như: Protit, Lipid, Vitamin,.. (theo phiếu kiểm nghiệm do cơ quan có thẩm quyền cấp) | 3 | | Không có | 0 | | Có 1 - 2 chỉ tiêu | 1 | | Có trên 2 chỉ tiêu | 3 | | 8. TÍNH ĐỘC ĐÁO (Chất lượng: có nét riêng, khác biệt, có dấu hiệu nhận biết r"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R021",
+      "query": "Làm nước mắm hoặc tương thì cần chọn nhóm sản phẩm nào trong bộ tiêu chí OCOP 2026?",
+      "question_type": "category",
+      "gold_answer": "Tương, nước mắm và các gia vị dạng lỏng khác thuộc loại sản phẩm Thực phẩm, nhóm Gia vị. Theo Phụ lục II của Quyết định 26/2026/QĐ-TTg, sử dụng Bộ sản phẩm số 9 để đánh giá.",
+      "required_claims": [
+        {
+          "claim_id": "R021_C01",
+          "text": "Tương, nước mắm và các gia vị dạng lỏng khác thuộc loại sản phẩm Thực phẩm, nhóm Gia vị.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+          ]
+        },
+        {
+          "claim_id": "R021_C02",
+          "text": "Theo Phụ lục II của Quyết định 26/2026/QĐ-TTg, sử dụng Bộ sản phẩm số 9 để đánh giá.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13",
+          "source_excerpt": "9. Bộ sản phẩm: Tương, nước mắm, gia vị dạng lỏng khác (Sản phẩm: Thực phẩm. Nhóm: Gia vị) Tên sản phẩm: ........................................................ Mã số sản phẩm: (T).-.(X).-.(STT).-20...... T: Mã tỉnh - X: Mã xã - STT: Số thứ tự sản phẩm do xã lập thống kê - Năm đánh giá. Mã đơn vị h"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R023",
+      "query": "Muối, tỏi và hồ tiêu nằm trong bộ sản phẩm OCOP nào vậy?",
+      "question_type": "category",
+      "gold_answer": "Muối, hành, tỏi, tiêu và các gia vị tương tự thuộc Bộ sản phẩm số 10: Gia vị khác. Nhóm này được xếp trong loại sản phẩm Thực phẩm, nhóm Gia vị.",
+      "required_claims": [
+        {
+          "claim_id": "R023_C01",
+          "text": "Muối, hành, tỏi, tiêu và các gia vị tương tự thuộc Bộ sản phẩm số 10: Gia vị khác.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:730f832dd6967319ad3e8af7"
+          ]
+        },
+        {
+          "claim_id": "R023_C02",
+          "text": "Nhóm này được xếp trong loại sản phẩm Thực phẩm, nhóm Gia vị.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:730f832dd6967319ad3e8af7"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 63,
+          "evidence_unit_id": "ocop:evidence:730f832dd6967319ad3e8af7",
+          "source_excerpt": "10. Bộ sản phẩm: Gia vị khác (muối, hành, tỏi, tiêu,...) (Sản phẩm: Thực phẩm. Nhóm: Gia vị) Tên sản phẩm: ........................................................ Mã số sản phẩm: (T).-.(X).-.(STT).-20...... T: Mã tỉnh - X: Mã xã - STT: Số thứ tự sản phẩm do xã lập thống kê - Năm đánh giá. Mã đơn vị"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R024",
+      "query": "Mẫu số 01 trong hồ sơ OCOP năm 2026 là phiếu dùng để đăng ký nội dung gì?",
+      "question_type": "form",
+      "gold_answer": "Mẫu số 01 là Phiếu đăng ký tham gia đánh giá, phân hạng sản phẩm OCOP. Phiếu có thông tin đơn vị đăng ký, tên và nhóm sản phẩm, lần đăng ký (lần đầu, nâng hạng hoặc đánh giá lại) và tài liệu kèm theo.",
+      "required_claims": [
+        {
+          "claim_id": "R024_C01",
+          "text": "Mẫu số 01 là Phiếu đăng ký tham gia đánh giá, phân hạng sản phẩm OCOP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:31b097b5b638199fa9d71770"
+          ]
+        },
+        {
+          "claim_id": "R024_C02",
+          "text": "Phiếu có thông tin đơn vị đăng ký, tên và nhóm sản phẩm, lần đăng ký (lần đầu, nâng hạng hoặc đánh giá lại) và tài liệu kèm theo.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:31b097b5b638199fa9d71770"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 148,
+          "evidence_unit_id": "ocop:evidence:31b097b5b638199fa9d71770",
+          "source_excerpt": "Mẫu số 01: Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc PHIẾU ĐĂNG KÝ Tham gia đánh giá, phân hạng sản phẩm OCOP của tỉnh ................. năm ............. 1. Thông tin về đơn vị đăng ký: - Tên đơn vị: .............................."
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R025",
+      "query": "Chủ thể tham gia OCOP cần dùng mẫu nào để tự đánh giá sản phẩm theo Quyết định 26?",
+      "question_type": "form",
+      "gold_answer": "Chủ thể OCOP sử dụng Mẫu số 02 tại Phụ lục III của Quyết định 26/2026/QĐ-TTg để lập Báo cáo tự đánh giá về sản phẩm. Báo cáo này dành cho chủ thể có sản phẩm đăng ký đánh giá.",
+      "required_claims": [
+        {
+          "claim_id": "R025_C01",
+          "text": "Chủ thể OCOP sử dụng Mẫu số 02 tại Phụ lục III của Quyết định 26/2026/QĐ-TTg để lập Báo cáo tự đánh giá về sản phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:81033a3f4e7472c7fe3367e7"
+          ]
+        },
+        {
+          "claim_id": "R025_C02",
+          "text": "Báo cáo này dành cho chủ thể có sản phẩm đăng ký đánh giá.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:81033a3f4e7472c7fe3367e7"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 150,
+          "evidence_unit_id": "ocop:evidence:81033a3f4e7472c7fe3367e7",
+          "source_excerpt": "Mẫu số 02: Báo cáo tự đánh giá về sản phẩm BÁO CÁO TỰ ĐÁNH GIÁ VỀ SẢN PHẨM (Dành cho chủ thể có sản phẩm đăng ký) Phần I THÔNG TIN CHUNG 1. Tên chủ thể: ........................................................ 2. Loại hình tổ chức: ........................................................ 3. Địa chỉ:"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R027",
+      "query": "Một cơ sở chế biến rau củ sử dụng khoảng 60% lao động tại xã thì được chấm mấy điểm ở tiêu chí này theo bộ OCOP 2026?",
+      "question_type": "numeric",
+      "gold_answer": "Tỷ lệ khoảng 60% lao động cư trú trên địa bàn cấp xã nằm trong mức từ 50% đến dưới 75%, nên được 2 điểm ở tiêu chí sử dụng lao động địa phương của bộ sản phẩm chế biến từ rau, củ, quả, hạt.",
+      "required_claims": [
+        {
+          "claim_id": "R027_C01",
+          "text": "Tỷ lệ khoảng 60% lao động cư trú trên địa bàn cấp xã nằm trong mức từ 50% đến dưới 75%, nên được 2 điểm ở tiêu chí sử dụng lao động địa phương của bộ sản phẩm chế biến từ rau, củ, quả, hạt.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:0f8c4387091b3e34ad8f6409"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 50,
+          "evidence_unit_id": "ocop:evidence:0f8c4387091b3e34ad8f6409",
+          "source_excerpt": "Có sử dụng từ 50% đến 75% lao động là người trên địa bàn cấp xã | 2 | | Có sử dụng ≥ 75% lao động là người trên địa bàn cấp xã | 3 | | 3.4. Tăng trưởng sản xuất kinh doanh | 2 | | Hợp tác xã xếp loại trung bình hoặc năm trước liền kề năm đánh giá có lợi nhuận cao hơn so với năm trước liền kề; các lo"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R028",
+      "query": "Quyết định 148/QĐ-TTg năm 2023 ban hành kèm những bộ tiêu chí và quy trình nào?",
+      "question_type": "exact",
+      "gold_answer": "Quyết định 148/QĐ-TTg ngày 24/02/2023 ban hành Bộ tiêu chí và quy trình đánh giá, phân hạng sản phẩm Chương trình Mỗi xã một sản phẩm (OCOP). Bộ tiêu chí là căn cứ đánh giá, phân hạng các sản phẩm tham gia Chương trình OCOP.",
+      "required_claims": [
+        {
+          "claim_id": "R028_C01",
+          "text": "Quyết định 148/QĐ-TTg ngày 24/02/2023 ban hành Bộ tiêu chí và quy trình đánh giá, phân hạng sản phẩm Chương trình Mỗi xã một sản phẩm (OCOP).",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:3560e41762b48c3f78c22df4"
+          ]
+        },
+        {
+          "claim_id": "R028_C02",
+          "text": "Bộ tiêu chí là căn cứ đánh giá, phân hạng các sản phẩm tham gia Chương trình OCOP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:3560e41762b48c3f78c22df4"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:3560e41762b48c3f78c22df4",
+          "source_excerpt": "Điều 1. Ban hành kèm theo Quyết định này Bộ tiêu chí và quy trình đánh giá, phân hạng sản phẩm Chương trình mỗi xã một sản phẩm (tên tiếng Anh là One Commune One Product - OCOP, gọi tắt là Chương trình OCOP), như sau: 1. Bộ tiêu chí và quy trình đánh giá, phân hạng sản phẩm Chương trình mỗi xã một s"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R029",
+      "query": "Trong quy định OCOP năm 2023, sản phẩm được chia thành những nhóm chính nào?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Quyết định 148/QĐ-TTg năm 2023, sáu nhóm sản phẩm OCOP là: thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch.",
+      "required_claims": [
+        {
+          "claim_id": "R029_C01",
+          "text": "Theo Quyết định 148/QĐ-TTg năm 2023, sáu nhóm sản phẩm OCOP là: thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:68b68f23172c848ea02b866e"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:68b68f23172c848ea02b866e",
+          "source_excerpt": "a) Các sản phẩm tham gia Chương trình OCOP, gồm 06 nhóm sản phẩm: Thực phẩm; đồ uống; dược liệu và sản phẩm từ dược liệu; hàng thủ công mỹ nghệ; sinh vật cảnh; và dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch (Danh mục phân loại sản phẩm tại Phụ lục I). b) Bộ tiêu chí của sản phẩm gồm"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R030",
+      "query": "Quyết định 148/QĐ-TTg có hiệu lực từ khi nào và đã thay thế quyết định cũ nào?",
+      "question_type": "exact",
+      "gold_answer": "Quyết định 148/QĐ-TTg có hiệu lực từ ngày ký, tức ngày 24/02/2023. Quyết định thay thế Quyết định 1048/QĐ-TTg ngày 21/08/2019 và Quyết định 781/QĐ-TTg ngày 08/06/2020.",
+      "required_claims": [
+        {
+          "claim_id": "R030_C01",
+          "text": "Quyết định 148/QĐ-TTg có hiệu lực từ ngày ký, tức ngày 24/02/2023.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:1a97fe8e92994d154a5d81dc"
+          ]
+        },
+        {
+          "claim_id": "R030_C02",
+          "text": "Quyết định thay thế Quyết định 1048/QĐ-TTg ngày 21/08/2019 và Quyết định 781/QĐ-TTg ngày 08/06/2020.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:1a97fe8e92994d154a5d81dc"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:1a97fe8e92994d154a5d81dc",
+          "source_excerpt": "Điều 3. Quyết định này có hiệu lực thi hành kể từ ngày ký, thay thế Quyết định số 1048/QĐ-TTg ngày 21 tháng 8 năm 2019 của Thủ tướng Chính phủ về việc ban hành Bộ tiêu chí đánh giá, phân hạng sản phẩm Chương trình mỗi xã một sản phẩm; Quyết định số 781/QĐ-TTg ngày 08 tháng 6 năm 2020 của Thủ tướng C"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R031",
+      "query": "Theo Quyết định 148 năm 2023, bộ nào được giao chủ trì phối hợp triển khai chương trình OCOP?",
+      "question_type": "exact",
+      "gold_answer": "Theo Điều 2 Quyết định 148/QĐ-TTg, Bộ Nông nghiệp và Phát triển nông thôn được giao chủ trì hướng dẫn và triển khai Quyết định, phối hợp với các bộ, ngành liên quan và UBND các tỉnh, thành phố.",
+      "required_claims": [
+        {
+          "claim_id": "R031_C01",
+          "text": "Theo Điều 2 Quyết định 148/QĐ-TTg, Bộ Nông nghiệp và Phát triển nông thôn được giao chủ trì hướng dẫn và triển khai Quyết định, phối hợp với các bộ, ngành liên quan và UBND các tỉnh, thành phố.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:50419373a89328220469473b"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:50419373a89328220469473b",
+          "source_excerpt": "Điều 2. Bộ Nông nghiệp và Phát triển nông thôn chủ trì, phối hợp với các Bộ: Công Thương, Khoa học và Công nghệ, Văn hóa, Thể thao và Du lịch, Y tế, Tài nguyên và Môi trường, các bộ, ngành liên quan và Ủy ban nhân dân các tỉnh, thành phố trực thuộc trung ương hướng dẫn và triển khai thực hiện Quyết "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R032",
+      "query": "Trong quy trình OCOP năm 2023, sản phẩm đạt 4 sao sẽ do cấp nào phê duyệt?",
+      "question_type": "semantic",
+      "gold_answer": "Theo quy trình OCOP ban hành kèm Quyết định 148/QĐ-TTg năm 2023, UBND cấp tỉnh ban hành quyết định phê duyệt kết quả đánh giá và giấy chứng nhận cho sản phẩm đạt 4 sao.",
+      "required_claims": [
+        {
+          "claim_id": "R032_C01",
+          "text": "Theo quy trình OCOP ban hành kèm Quyết định 148/QĐ-TTg năm 2023, UBND cấp tỉnh ban hành quyết định phê duyệt kết quả đánh giá và giấy chứng nhận cho sản phẩm đạt 4 sao.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:5956d9136c1be1b8caa5cdd5"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:5956d9136c1be1b8caa5cdd5",
+          "source_excerpt": "UBND cấp tỉnh ban hành Quyết định phê duyệt kết quả đánh giá và Giấy chứng nhận cho các sản phẩm đạt 4 sao, tổ chức công bố kết quả."
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R033",
+      "query": "Tôi muốn đọc đầy đủ quy trình đánh giá, phân hạng OCOP theo Quyết định 148 thì xem phụ lục nào?",
+      "question_type": "exact",
+      "gold_answer": "Toàn bộ quy trình đánh giá, phân hạng sản phẩm OCOP theo Quyết định 148/QĐ-TTg nằm tại Phụ lục II ban hành kèm theo Quyết định.",
+      "required_claims": [
+        {
+          "claim_id": "R033_C01",
+          "text": "Toàn bộ quy trình đánh giá, phân hạng sản phẩm OCOP theo Quyết định 148/QĐ-TTg nằm tại Phụ lục II ban hành kèm theo Quyết định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:9fc06f496c5121b2b26f00e9"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:9fc06f496c5121b2b26f00e9",
+          "source_excerpt": "Phụ lục II** # QUY TRÌNH ĐÁNH GIÁ, PHÂN HẠNG SẢN PHẨM OCOP (Kèm theo Quyết định số 148/QĐ-TTg ngày 24 tháng 02 năm 2023 của Thủ tướng Chính phủ) **1. Trình tự đánh giá, phân hạng sản phẩm OCOP** a) Ủy ban nhân dân xã, phường, thị trấn (UBND cấp xã) tổ chức đánh giá một số nội dung của Hồ sơ sản phẩm"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R035",
+      "query": "Ai có thẩm quyền ký quyết định công nhận và cấp giấy chứng nhận OCOP 4 sao theo quy trình năm 2023?",
+      "question_type": "semantic",
+      "gold_answer": "UBND cấp tỉnh có thẩm quyền ban hành quyết định công nhận kết quả đánh giá, cấp giấy chứng nhận cho sản phẩm OCOP đạt 4 sao theo quy trình năm 2023.",
+      "required_claims": [
+        {
+          "claim_id": "R035_C01",
+          "text": "UBND cấp tỉnh có thẩm quyền ban hành quyết định công nhận kết quả đánh giá, cấp giấy chứng nhận cho sản phẩm OCOP đạt 4 sao theo quy trình năm 2023.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:c28cf37978e2d3d9c0a43782"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:c28cf37978e2d3d9c0a43782",
+          "source_excerpt": "UBND cấp tỉnh ban hành Quyết định công nhận kết quả đánh giá, cấp Giấy chứng nhận sản phẩm đạt 4 sao; tổ chức công bố kết quả. + UBND cấp tỉnh ban hành Quyết định phê duyệt kết quả chấm điểm, chuyển hồ sơ và sản phẩm mẫu của các sản phẩm có tiềm năng đạt 5 sao (từ 90 đến 100 điểm) đề nghị cấp trung "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R040",
+      "query": "Bộ tiêu chí kiêm phiếu chấm điểm OCOP năm 2023 nằm ở phụ lục nào?",
+      "question_type": "exact",
+      "gold_answer": "Bộ tiêu chí đánh giá sản phẩm OCOP, kiêm phiếu đánh giá của thành viên Hội đồng, nằm trong Phụ lục III của Quyết định 148/QĐ-TTg năm 2023.",
+      "required_claims": [
+        {
+          "claim_id": "R040_C01",
+          "text": "Bộ tiêu chí đánh giá sản phẩm OCOP, kiêm phiếu đánh giá của thành viên Hội đồng, nằm trong Phụ lục III của Quyết định 148/QĐ-TTg năm 2023.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:1d01a87ff52f3fb01af2fee2"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:1d01a87ff52f3fb01af2fee2",
+          "source_excerpt": "Phụ lục III BỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP (KIÊM PHIẾU ĐÁNH GIÁ SẢN PHẨM OCOP CỦA THÀNH VIÊN HỘI ĐỒNG ĐÁNH GIÁ) (Kèm theo Quyết định số 148/QĐ-TTg ngày 24 tháng 02 năm 2023 của Thủ tướng Chính phủ) | STT | Nội dung | Trang | | --- | --- | --- | | 1 | Bộ sản phẩm: Rau, củ, quả, hạt tươi | 02 | | "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R041",
+      "query": "Sản phẩm thực phẩm nào thì doanh nghiệp được tự công bố theo Nghị định 15/2018?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 4 Nghị định 15/2018/NĐ-CP, diện tự công bố gồm thực phẩm đã qua chế biến bao gói sẵn, phụ gia thực phẩm, chất hỗ trợ chế biến thực phẩm, dụng cụ chứa đựng thực phẩm và vật liệu bao gói tiếp xúc trực tiếp với thực phẩm, trừ các trường hợp được loại trừ theo Nghị định. Sản phẩm chỉ để sản xuất hoặc gia công xuất khẩu, hoặc dùng cho sản xuất nội bộ mà không tiêu thụ trong nước, được miễn thủ tục tự công bố.",
+      "required_claims": [
+        {
+          "claim_id": "R041_C01",
+          "text": "Theo Điều 4 Nghị định 15/2018/NĐ-CP, diện tự công bố gồm thực phẩm đã qua chế biến bao gói sẵn, phụ gia thực phẩm, chất hỗ trợ chế biến thực phẩm, dụng cụ chứa đựng thực phẩm và vật liệu bao gói tiếp xúc trực tiếp với thực phẩm, trừ các trường hợp được loại trừ theo Nghị định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7e23081983930b9474d62035"
+          ]
+        },
+        {
+          "claim_id": "R041_C02",
+          "text": "Sản phẩm chỉ để sản xuất hoặc gia công xuất khẩu, hoặc dùng cho sản xuất nội bộ mà không tiêu thụ trong nước, được miễn thủ tục tự công bố.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7e23081983930b9474d62035"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:7e23081983930b9474d62035",
+          "source_excerpt": "Điều 4. Tự công bố sản phẩm 1. Tổ chức, cá nhân sản xuất, kinh doanh thực phẩm thực hiện tự công bố thực phẩm đã qua chế biến bao gói sẵn, phụ gia thực phẩm, chất hỗ trợ chế biến thực phẩm, dụng cụ chứa đựng thực phẩm, vật liệu bao gói tiếp xúc trực tiếp với thực phẩm (sau đây gọi chung là sản phẩm)"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R042",
+      "query": "Muốn tự công bố một sản phẩm thực phẩm, cơ sở cần chuẩn bị hồ sơ và thực hiện thủ tục ra sao?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 5 Nghị định 15/2018/NĐ-CP, hồ sơ tự công bố gồm bản tự công bố theo Mẫu số 01 Phụ lục I và phiếu kết quả kiểm nghiệm an toàn thực phẩm còn trong thời hạn 12 tháng từ phòng kiểm nghiệm đủ điều kiện. Cơ sở công khai bản tự công bố qua phương tiện thông tin đại chúng, website hoặc niêm yết tại trụ sở, đồng thời nộp một bản cho cơ quan có thẩm quyền do UBND cấp tỉnh chỉ định. Sau khi tự công bố, cơ sở được sản xuất, kinh doanh và chịu trách nhiệm về an toàn sản phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R042_C01",
+          "text": "Theo Điều 5 Nghị định 15/2018/NĐ-CP, hồ sơ tự công bố gồm bản tự công bố theo Mẫu số 01 Phụ lục I và phiếu kết quả kiểm nghiệm an toàn thực phẩm còn trong thời hạn 12 tháng từ phòng kiểm nghiệm đủ điều kiện.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        },
+        {
+          "claim_id": "R042_C02",
+          "text": "Cơ sở công khai bản tự công bố qua phương tiện thông tin đại chúng, website hoặc niêm yết tại trụ sở, đồng thời nộp một bản cho cơ quan có thẩm quyền do UBND cấp tỉnh chỉ định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        },
+        {
+          "claim_id": "R042_C03",
+          "text": "Sau khi tự công bố, cơ sở được sản xuất, kinh doanh và chịu trách nhiệm về an toàn sản phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d",
+          "source_excerpt": "Điều 5. Hồ sơ, trình tự tự công bố sản phẩm 1. Hồ sơ tự công bố sản phẩm bao gồm: a) Bản tự công bố sản phẩm theo Mẫu số 01 Phụ lục I ban hành kèm theo Nghị định này; b) Phiếu kết quả kiểm nghiệm an toàn thực phẩm của sản phẩm trong thời hạn 12 tháng tính đến ngày nộp hồ sơ được cấp bởi phòng kiểm n"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R043",
+      "query": "Những loại thực phẩm nào phải đăng ký bản công bố sản phẩm, không chỉ làm thủ tục tự công bố?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 6 Nghị định 15/2018/NĐ-CP, nhóm phải đăng ký bản công bố gồm thực phẩm bảo vệ sức khỏe, thực phẩm dinh dưỡng y học và thực phẩm dùng cho chế độ ăn đặc biệt. Ngoài ra còn có sản phẩm dinh dưỡng cho trẻ đến 36 tháng tuổi và phụ gia thực phẩm hỗn hợp có công dụng mới hoặc phụ gia không thuộc danh mục/không đúng đối tượng sử dụng do Bộ Y tế quy định.",
+      "required_claims": [
+        {
+          "claim_id": "R043_C01",
+          "text": "Theo Điều 6 Nghị định 15/2018/NĐ-CP, nhóm phải đăng ký bản công bố gồm thực phẩm bảo vệ sức khỏe, thực phẩm dinh dưỡng y học và thực phẩm dùng cho chế độ ăn đặc biệt.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:4d3da94a28de44493c428333"
+          ]
+        },
+        {
+          "claim_id": "R043_C02",
+          "text": "Ngoài ra còn có sản phẩm dinh dưỡng cho trẻ đến 36 tháng tuổi và phụ gia thực phẩm hỗn hợp có công dụng mới hoặc phụ gia không thuộc danh mục/không đúng đối tượng sử dụng do Bộ Y tế quy định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:4d3da94a28de44493c428333"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:4d3da94a28de44493c428333",
+          "source_excerpt": "Điều 6. Đăng ký bản công bố sản phẩm Tổ chức, cá nhân sản xuất, kinh doanh thực phẩm phải đăng ký bản công bố sản phẩm đối với các sản phẩm sau đây: 1. Thực phẩm bảo vệ sức khỏe, thực phẩm dinh dưỡng y học, thực phẩm dùng cho chế độ ăn đặc biệt. 2. Sản phẩm dinh dưỡng dùng cho trẻ đến 36 tháng tuổi."
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R045",
+      "query": "Cơ sở kinh doanh thực phẩm nào không phải xin giấy chứng nhận đủ điều kiện an toàn thực phẩm?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 12 Nghị định 15/2018/NĐ-CP, các cơ sở không thuộc diện cấp giấy chứng nhận đủ điều kiện an toàn thực phẩm gồm sản xuất ban đầu nhỏ lẻ, sản xuất/kinh doanh thực phẩm không có địa điểm cố định, sơ chế nhỏ lẻ, kinh doanh thực phẩm nhỏ lẻ và kinh doanh thực phẩm bao gói sẵn. Việc không thuộc diện cấp giấy chứng nhận không đồng nghĩa được miễn các yêu cầu bảo đảm an toàn thực phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R045_C01",
+          "text": "Theo Điều 12 Nghị định 15/2018/NĐ-CP, các cơ sở không thuộc diện cấp giấy chứng nhận đủ điều kiện an toàn thực phẩm gồm sản xuất ban đầu nhỏ lẻ, sản xuất/kinh doanh thực phẩm không có địa điểm cố định, sơ chế nhỏ lẻ, kinh doanh thực phẩm nhỏ lẻ và kinh doanh thực phẩm bao gói sẵn.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:ebea3b9830ac7e52426d47f4"
+          ]
+        },
+        {
+          "claim_id": "R045_C02",
+          "text": "Việc không thuộc diện cấp giấy chứng nhận không đồng nghĩa được miễn các yêu cầu bảo đảm an toàn thực phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:ebea3b9830ac7e52426d47f4"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4",
+          "source_excerpt": "Điều 12. Cơ sở không thuộc diện cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm 1. Các cơ sở sau đây không thuộc diện cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm: a) Sản xuất ban đầu nhỏ lẻ; b) Sản xuất, kinh doanh thực phẩm không có địa điểm cố định; c) Sơ chế nhỏ lẻ; d) Kinh "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R047",
+      "query": "Tôi muốn kiểm tra phần thông tin bắt buộc trên nhãn thực phẩm, Nghị định 15/2018 quy định ở điều nào?",
+      "question_type": "exact",
+      "gold_answer": "Quy định về nội dung bắt buộc trên nhãn thực phẩm trong Nghị định 15/2018/NĐ-CP nằm tại Điều 24, thuộc Chương VII về ghi nhãn thực phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R047_C01",
+          "text": "Quy định về nội dung bắt buộc trên nhãn thực phẩm trong Nghị định 15/2018/NĐ-CP nằm tại Điều 24, thuộc Chương VII về ghi nhãn thực phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:f38a8d11b561ba3f63ab9396"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 19,
+          "evidence_unit_id": "ocop:evidence:f38a8d11b561ba3f63ab9396",
+          "source_excerpt": "Điều 24. Nội dung ghi nhãn bắt buộc 1. Tổ chức, cá nhân sản xuất, kinh doanh sản phẩm tại Việt Nam ngoài việc tuân thủ các quy định của pháp luật về ghi nhãn hàng hóa còn phải tuân thủ các quy định sau:"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R049",
+      "query": "Nếu phát hiện lô thực phẩm không an toàn thì quy định về truy xuất nguồn gốc nằm ở điều nào của Nghị định 15?",
+      "question_type": "exact",
+      "gold_answer": "Quy định về truy xuất nguồn gốc khi phát hiện thực phẩm không bảo đảm an toàn nằm tại Điều 34 Nghị định 15/2018/NĐ-CP. Khi phát hiện thực phẩm không an toàn hoặc có yêu cầu của cơ quan có thẩm quyền, tổ chức, cá nhân sản xuất, kinh doanh phải thực hiện truy xuất nguồn gốc theo Luật An toàn thực phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R049_C01",
+          "text": "Quy định về truy xuất nguồn gốc khi phát hiện thực phẩm không bảo đảm an toàn nằm tại Điều 34 Nghị định 15/2018/NĐ-CP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:12ac221b59d176c6594fe009"
+          ]
+        },
+        {
+          "claim_id": "R049_C02",
+          "text": "Khi phát hiện thực phẩm không an toàn hoặc có yêu cầu của cơ quan có thẩm quyền, tổ chức, cá nhân sản xuất, kinh doanh phải thực hiện truy xuất nguồn gốc theo Luật An toàn thực phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:12ac221b59d176c6594fe009"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 27,
+          "evidence_unit_id": "ocop:evidence:12ac221b59d176c6594fe009",
+          "source_excerpt": "Điều 34. Truy xuất nguồn gốc đối với sản phẩm không bảo đảm an toàn Khi phát hiện sản phẩm thực phẩm do mình sản xuất, kinh doanh không bảo đảm an toàn hoặc khi cơ quan nhà nước có thẩm quyền yêu cầu, tổ chức, cá nhân sản xuất, kinh doanh sản phẩm phải có trách nhiệm thực hiện việc truy xuất nguồn g"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R051",
+      "query": "Dán nhãn hàng hóa ở vị trí nào trên sản phẩm hoặc bao bì thì đúng quy định?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 4 Nghị định 43/2017/NĐ-CP, nhãn phải đặt trên hàng hóa hoặc bao bì thương phẩm ở vị trí dễ quan sát, dễ nhận biết đầy đủ nội dung, không cần tháo rời các chi tiết hay bộ phận của hàng hóa. Nếu không thể mở bao bì ngoài thì bao bì ngoài phải có nhãn chứa đầy đủ nội dung bắt buộc.",
+      "required_claims": [
+        {
+          "claim_id": "R051_C01",
+          "text": "Theo Điều 4 Nghị định 43/2017/NĐ-CP, nhãn phải đặt trên hàng hóa hoặc bao bì thương phẩm ở vị trí dễ quan sát, dễ nhận biết đầy đủ nội dung, không cần tháo rời các chi tiết hay bộ phận của hàng hóa.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:b3c6286e66098d7248a17ac9"
+          ]
+        },
+        {
+          "claim_id": "R051_C02",
+          "text": "Nếu không thể mở bao bì ngoài thì bao bì ngoài phải có nhãn chứa đầy đủ nội dung bắt buộc.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:b3c6286e66098d7248a17ac9"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:b3c6286e66098d7248a17ac9",
+          "source_excerpt": "Điều 4. Vị trí nhãn hàng hóa 1. Nhãn hàng hóa phải được thể hiện trên hàng hóa, bao bì thương phẩm của hàng hóa ở vị trí khi quan sát có thể nhận biết được dễ dàng, đầy đủ các nội dung quy định của nhãn mà không phải tháo rời các chi tiết, các phần của hàng hóa. 2. Trường hợp không được hoặc không t"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R052",
+      "query": "Thông tin bắt buộc trên nhãn hàng hóa có phải viết bằng tiếng Việt không?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 7 Nghị định 43/2017/NĐ-CP, các nội dung bắt buộc trên nhãn hàng hóa phải ghi bằng tiếng Việt, trừ các trường hợp ngoại lệ được quy định. Hàng hóa có thể ghi thêm ngôn ngữ khác nhưng nội dung phải tương ứng với tiếng Việt.",
+      "required_claims": [
+        {
+          "claim_id": "R052_C01",
+          "text": "Theo Điều 7 Nghị định 43/2017/NĐ-CP, các nội dung bắt buộc trên nhãn hàng hóa phải ghi bằng tiếng Việt, trừ các trường hợp ngoại lệ được quy định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d9bac91e4c6aa86e5b4998f0"
+          ]
+        },
+        {
+          "claim_id": "R052_C02",
+          "text": "Hàng hóa có thể ghi thêm ngôn ngữ khác nhưng nội dung phải tương ứng với tiếng Việt.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d9bac91e4c6aa86e5b4998f0"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:d9bac91e4c6aa86e5b4998f0",
+          "source_excerpt": "Điều 7. Ngôn ngữ trình bày nhãn hàng hóa 1. Những nội dung bắt buộc thể hiện trên nhãn hàng hóa phải được ghi bằng tiếng Việt, trừ trường hợp quy định tại khoản 4 Điều này. 2. Hàng hóa được sản xuất và lưu thông trong nước, ngoài việc thực hiện quy định tại khoản 1 Điều này, nội dung thể hiện trên n"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R053",
+      "query": "Hàng nhập khẩu đã có nhãn nước ngoài thì khi nào cần dán thêm nhãn phụ?",
+      "question_type": "semantic",
+      "gold_answer": "Hàng nhập khẩu có nhãn gốc chưa thể hiện hoặc thể hiện chưa đủ nội dung bắt buộc bằng tiếng Việt thì phải có nhãn phụ bằng tiếng Việt khi lưu thông tại Việt Nam. Theo Điều 8 Nghị định 43/2017/NĐ-CP, nhãn phụ được gắn trên hàng hóa hoặc bao bì thương phẩm, không che khuất nội dung bắt buộc của nhãn gốc.",
+      "required_claims": [
+        {
+          "claim_id": "R053_C01",
+          "text": "Hàng nhập khẩu có nhãn gốc chưa thể hiện hoặc thể hiện chưa đủ nội dung bắt buộc bằng tiếng Việt thì phải có nhãn phụ bằng tiếng Việt khi lưu thông tại Việt Nam.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:9a8ff47a58f5c1e59db93eba"
+          ]
+        },
+        {
+          "claim_id": "R053_C02",
+          "text": "Theo Điều 8 Nghị định 43/2017/NĐ-CP, nhãn phụ được gắn trên hàng hóa hoặc bao bì thương phẩm, không che khuất nội dung bắt buộc của nhãn gốc.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:9a8ff47a58f5c1e59db93eba"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:9a8ff47a58f5c1e59db93eba",
+          "source_excerpt": "Điều 8. Ghi nhãn phụ 1. Nhãn phụ sử dụng đối với hàng hóa nhập khẩu theo quy định tại khoản 3 Điều 7 của Nghị định này. 2. Nhãn phụ được sử dụng đối với hàng hóa không xuất khẩu được hoặc bị trả lại, đưa ra lưu thông trên thị trường. 3. Nhãn phụ phải được gắn trên hàng hóa hoặc bao bì thương phẩm củ"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R054",
+      "query": "Nếu chuẩn bị thiết kế bao bì sản phẩm, tôi cần xem danh sách nội dung bắt buộc ghi nhãn ở điều nào của Nghị định 43?",
+      "question_type": "exact",
+      "gold_answer": "Danh sách nội dung bắt buộc phải thể hiện trên nhãn hàng hóa được quy định tại Điều 10 Nghị định 43/2017/NĐ-CP. Nhãn phải có tên hàng hóa, tên và địa chỉ tổ chức hoặc cá nhân chịu trách nhiệm, xuất xứ hàng hóa và nội dung khác theo từng loại hàng hóa.",
+      "required_claims": [
+        {
+          "claim_id": "R054_C01",
+          "text": "Danh sách nội dung bắt buộc phải thể hiện trên nhãn hàng hóa được quy định tại Điều 10 Nghị định 43/2017/NĐ-CP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7c38d1d9466bc27231b59587"
+          ]
+        },
+        {
+          "claim_id": "R054_C02",
+          "text": "Nhãn phải có tên hàng hóa, tên và địa chỉ tổ chức hoặc cá nhân chịu trách nhiệm, xuất xứ hàng hóa và nội dung khác theo từng loại hàng hóa.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7c38d1d9466bc27231b59587"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7c38d1d9466bc27231b59587",
+          "source_excerpt": "Điều 10. Nội dung bắt buộc phải thể hiện trên nhãn hàng hóa 1. Nhãn hàng hóa bắt buộc phải thể hiện các nội dung sau: a) Tên hàng hóa; b) Tên và địa chỉ của tổ chức, cá nhân chịu trách nhiệm về hàng hóa; c) Xuất xứ hàng hóa; d) Các nội dung khác theo tính chất của mỗi loại hàng hóa được quy định tại"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R059",
+      "query": "Các nội dung bị bãi bỏ hoặc thay thế của Nghị định 43 được nêu ở điều nào trong Nghị định 111?",
+      "question_type": "exact",
+      "gold_answer": "Các quy định bị bãi bỏ hoặc thay thế trong Nghị định 43/2017/NĐ-CP được nêu tại Điều 2 Nghị định 111/2021/NĐ-CP. Điều này quy định việc bãi bỏ một số khoản, điểm và thay thế một số phụ lục của Nghị định 43.",
+      "required_claims": [
+        {
+          "claim_id": "R059_C01",
+          "text": "Các quy định bị bãi bỏ hoặc thay thế trong Nghị định 43/2017/NĐ-CP được nêu tại Điều 2 Nghị định 111/2021/NĐ-CP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7ca091c4b938903d17b9e88a"
+          ]
+        },
+        {
+          "claim_id": "R059_C02",
+          "text": "Điều này quy định việc bãi bỏ một số khoản, điểm và thay thế một số phụ lục của Nghị định 43.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:7ca091c4b938903d17b9e88a"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7ca091c4b938903d17b9e88a",
+          "source_excerpt": "Điều 2. Bãi bỏ và thay thế một số quy định tại Nghị định số 43/2017/NĐ-CP 1. Bãi bỏ khoản 2 Điều 8; điểm b khoản 2 Điều 5 Nghị định số 43/2017/NĐ-CP. 2. Bãi bỏ nội dung quy định: Đối với hàng hóa không xuất khẩu được hoặc bị trả lại, đưa ra lưu thông trên thị trường thì trên nhãn phụ phải có dòng ch"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R060",
+      "query": "Từ ngày nào thì Nghị định 111/2021 về ghi nhãn hàng hóa bắt đầu có hiệu lực?",
+      "question_type": "exact",
+      "gold_answer": "Nghị định 111/2021/NĐ-CP có hiệu lực thi hành từ ngày 15/02/2022 theo Điều 3 của Nghị định.",
+      "required_claims": [
+        {
+          "claim_id": "R060_C01",
+          "text": "Nghị định 111/2021/NĐ-CP có hiệu lực thi hành từ ngày 15/02/2022 theo Điều 3 của Nghị định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:2f321a79048ca3534c6e9ce9"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:2f321a79048ca3534c6e9ce9",
+          "source_excerpt": "Điều 3. Hiệu lực thi hành Nghị định này có hiệu lực từ ngày 15 tháng 02 năm 2022. Điều 4. Trách nhiệm thi hành 1. Bộ trưởng Bộ Khoa học và Công nghệ có trách nhiệm hướng dẫn thực hiện Nghị định này. 2. Các Bộ trưởng, Thủ trưởng cơ quan ngang Bộ, Thủ trưởng cơ quan thuộc Chính phủ, Chủ tịch Ủy ban nh"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R063",
+      "query": "Trong Luật Hợp tác xã 2023, giao dịch nội bộ được hiểu là gì?",
+      "question_type": "exact",
+      "gold_answer": "Theo khoản 1 Điều 4 Luật Hợp tác xã 2023, giao dịch nội bộ là việc hợp tác xã hoặc liên hiệp hợp tác xã cung cấp sản phẩm, dịch vụ, kể cả dịch vụ tạo việc làm và cho vay nội bộ, cho thành viên chính thức theo thỏa thuận bằng văn bản.",
+      "required_claims": [
+        {
+          "claim_id": "R063_C01",
+          "text": "Theo khoản 1 Điều 4 Luật Hợp tác xã 2023, giao dịch nội bộ là việc hợp tác xã hoặc liên hiệp hợp tác xã cung cấp sản phẩm, dịch vụ, kể cả dịch vụ tạo việc làm và cho vay nội bộ, cho thành viên chính thức theo thỏa thuận bằng văn bản.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:b96e8524486f04beb935be65"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:b96e8524486f04beb935be65",
+          "source_excerpt": "1. Giao dịch nội bộ là việc cung cấp sản phẩm, dịch vụ bao gồm cả dịch vụ tạo việc làm và hoạt động cho vay nội bộ của hợp tác xã, liên hiệp hợp tác xã cho thành viên chính thức theo thỏa thuận bằng văn bản. Người ký: Cổng Thông tin điện tử Chính phủ Email: thongtinchinhphu@chinhphu.vn Cơ quan: Văn "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R064",
+      "query": "Một hợp tác xã được phép thực hiện những quyền gì theo Luật Hợp tác xã năm 2023?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 9 Luật Hợp tác xã 2023, hợp tác xã có quyền tự quyết việc tổ chức, quản lý, hoạt động và thuê, sử dụng lao động. Hợp tác xã còn có quyền kinh doanh các ngành nghề không bị cấm, cung cấp sản phẩm và dịch vụ, kết nạp thành viên, huy động vốn và liên kết với tổ chức khác, theo quy định của Luật và Điều lệ.",
+      "required_claims": [
+        {
+          "claim_id": "R064_C01",
+          "text": "Theo Điều 9 Luật Hợp tác xã 2023, hợp tác xã có quyền tự quyết việc tổ chức, quản lý, hoạt động và thuê, sử dụng lao động.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a4cf95beb18a457e467ae3c6"
+          ]
+        },
+        {
+          "claim_id": "R064_C02",
+          "text": "Hợp tác xã còn có quyền kinh doanh các ngành nghề không bị cấm, cung cấp sản phẩm và dịch vụ, kết nạp thành viên, huy động vốn và liên kết với tổ chức khác, theo quy định của Luật và Điều lệ.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:ba1ae2ec66c1612e6f2af7c3"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:a4cf95beb18a457e467ae3c6",
+          "source_excerpt": "Điều 9. Quyền của hợp tác xã, liên hiệp hợp tác xã 1. Tổ chức thực hiện có hiệu quả các mục tiêu, chỉ tiêu đã đề ra. 2. Quyết định việc tổ chức, quản lý và hoạt động của hợp tác xã, liên hiệp hợp tác xã; thuê và sử dụng lao động."
+        },
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:ba1ae2ec66c1612e6f2af7c3",
+          "source_excerpt": "3. Được kinh doanh, sản xuất trong những ngành, nghề mà pháp luật không cấm. 4. Yêu cầu thành viên đăng ký nhu cầu sử dụng sản phẩm, dịch vụ để xây dựng và triển khai thực hiện kế hoạch cung ứng, tiêu thụ sản phẩm, dịch vụ cho thành viên. 5. Cung cấp sản phẩm, dịch vụ ra bên ngoài sau khi hoàn thành"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R066",
+      "query": "Muốn được cấp giấy chứng nhận đăng ký hợp tác xã thì phải đáp ứng những điều kiện gì?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 44 Luật Hợp tác xã 2023, điều kiện cấp giấy chứng nhận đăng ký hợp tác xã gồm: ngành nghề đăng ký không thuộc diện cấm đầu tư kinh doanh; hồ sơ đăng ký hợp lệ; tên hợp tác xã phù hợp quy định của Luật; và nộp đủ lệ phí đăng ký theo quy định.",
+      "required_claims": [
+        {
+          "claim_id": "R066_C01",
+          "text": "Theo Điều 44 Luật Hợp tác xã 2023, điều kiện cấp giấy chứng nhận đăng ký hợp tác xã gồm: ngành nghề đăng ký không thuộc diện cấm đầu tư kinh doanh; hồ sơ đăng ký hợp lệ; tên hợp tác xã phù hợp quy định của Luật; và nộp đủ lệ phí đăng ký theo quy định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:1270a05a47a8324450ae9727"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 32,
+          "evidence_unit_id": "ocop:evidence:1270a05a47a8324450ae9727",
+          "source_excerpt": "Điều 44. Giấy chứng nhận đăng ký hợp tác xã 1. Điều kiện cấp Giấy chứng nhận đăng ký hợp tác xã: a) Ngành, nghề đăng ký kinh doanh không bị cấm đầu tư kinh doanh; b) Có hồ sơ đăng ký hợp lệ; c) Tên của hợp tác xã, liên hiệp hợp tác xã theo quy định của Luật này; d) Nộp đủ lệ phí đăng ký theo quy địn"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R067",
+      "query": "Luật Hợp tác xã 2023 có điều nào nói về chính sách hỗ trợ đất đai cho hợp tác xã?",
+      "question_type": "exact",
+      "gold_answer": "Chính sách hỗ trợ đất đai cho hợp tác xã được quy định tại Điều 21 Luật Hợp tác xã 2023. Điều này đề cập ưu tiên quỹ đất cho thuê, các hình thức miễn, giảm hoặc hỗ trợ tiền thuê đất theo pháp luật đất đai và tạo điều kiện sử dụng đất ổn định.",
+      "required_claims": [
+        {
+          "claim_id": "R067_C01",
+          "text": "Chính sách hỗ trợ đất đai cho hợp tác xã được quy định tại Điều 21 Luật Hợp tác xã 2023.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:c1b081879d9ce854e9967153"
+          ]
+        },
+        {
+          "claim_id": "R067_C02",
+          "text": "Điều này đề cập ưu tiên quỹ đất cho thuê, các hình thức miễn, giảm hoặc hỗ trợ tiền thuê đất theo pháp luật đất đai và tạo điều kiện sử dụng đất ổn định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:c1b081879d9ce854e9967153"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 15,
+          "evidence_unit_id": "ocop:evidence:c1b081879d9ce854e9967153",
+          "source_excerpt": "Điều 21. Chính sách đất đai 1. Trong quy hoạch, kế hoạch sử dụng đất, chính quyền địa phương ưu tiên bố trí quỹ đất cho tổ hợp tác, hợp tác xã, liên hiệp hợp tác xã thuê; ưu đãi hợp lý về giá và thời gian cho thuê đất đối với tổ hợp tác, hợp tác xã, liên hiệp hợp tác xã chưa được hỗ trợ thuê đất the"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R068",
+      "query": "Hợp tác xã có được hỗ trợ ứng dụng công nghệ hoặc chuyển đổi số theo Luật năm 2023 không, cụ thể là gì?",
+      "question_type": "semantic",
+      "gold_answer": "Có. Điều 24 Luật Hợp tác xã 2023 quy định hỗ trợ hợp tác xã đổi mới công nghệ, phát triển mô hình kinh tế xanh và khai thác tài sản trí tuệ. Điều này cũng đề cập hỗ trợ chuyển đổi số, thương mại điện tử, hạ tầng công nghệ thông tin, phần mềm dùng chung, trang thông tin điện tử và tư vấn chuyển giao công nghệ.",
+      "required_claims": [
+        {
+          "claim_id": "R068_C01",
+          "text": "Có. Điều 24 Luật Hợp tác xã 2023 quy định hỗ trợ hợp tác xã đổi mới công nghệ, phát triển mô hình kinh tế xanh và khai thác tài sản trí tuệ.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:c1b22a9c4a18c2a2859fffe6"
+          ]
+        },
+        {
+          "claim_id": "R068_C02",
+          "text": "Điều này cũng đề cập hỗ trợ chuyển đổi số, thương mại điện tử, hạ tầng công nghệ thông tin, phần mềm dùng chung, trang thông tin điện tử và tư vấn chuyển giao công nghệ.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:c1b22a9c4a18c2a2859fffe6"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:c1b22a9c4a18c2a2859fffe6",
+          "source_excerpt": "Điều 24. Chính sách ứng dụng khoa học và công nghệ, đổi mới sáng tạo và chuyển đổi số 1. Hỗ trợ tổ hợp tác, hợp tác xã, liên hiệp hợp tác xã đổi mới sáng tạo, nâng cao năng suất dựa trên nền tảng khoa học và công nghệ và đổi mới sáng tạo; xây dựng mô hình kinh tế xanh, kinh tế tuần hoàn, giảm phát t"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R070",
+      "query": "Trong hoạt động chế biến thực phẩm, những hành vi nào bị Luật An toàn thực phẩm cấm?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 5 Luật An toàn thực phẩm 2010, hành vi bị cấm gồm dùng nguyên liệu không dành cho thực phẩm, nguyên liệu quá hạn hoặc không rõ nguồn gốc để chế biến. Luật cũng cấm dùng phụ gia ngoài danh mục hoặc vượt giới hạn cho phép, dùng hóa chất bị cấm, dùng động vật chết do bệnh và sản xuất, kinh doanh thực phẩm không bảo đảm an toàn.",
+      "required_claims": [
+        {
+          "claim_id": "R070_C01",
+          "text": "Theo Điều 5 Luật An toàn thực phẩm 2010, hành vi bị cấm gồm dùng nguyên liệu không dành cho thực phẩm, nguyên liệu quá hạn hoặc không rõ nguồn gốc để chế biến.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:007cda58b7afb420a78fc0c2"
+          ]
+        },
+        {
+          "claim_id": "R070_C02",
+          "text": "Luật cũng cấm dùng phụ gia ngoài danh mục hoặc vượt giới hạn cho phép, dùng hóa chất bị cấm, dùng động vật chết do bệnh và sản xuất, kinh doanh thực phẩm không bảo đảm an toàn.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:007cda58b7afb420a78fc0c2"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:007cda58b7afb420a78fc0c2",
+          "source_excerpt": "Điều 5. Những hành vi bị cấm 1. Sử dụng nguyên liệu không thuộc loại dùng cho thực phẩm để chế biến thực phẩm. 2. Sử dụng nguyên liệu thực phẩm đã quá thời hạn sử dụng, không rõ nguồn gốc, xuất xứ hoặc không bảo đảm an toàn để sản xuất, chế biến thực phẩm. 3. Sử dụng phụ gia thực phẩm, chất hỗ trợ c"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R071",
+      "query": "Khi mua thực phẩm, người tiêu dùng có những quyền gì và phải thực hiện nghĩa vụ gì?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 9 Luật An toàn thực phẩm 2010, người tiêu dùng có quyền được cung cấp thông tin trung thực về an toàn thực phẩm, khiếu nại, khởi kiện và yêu cầu bồi thường do thực phẩm không an toàn gây ra. Người tiêu dùng có nghĩa vụ tuân thủ các hướng dẫn về vận chuyển, lưu giữ, bảo quản và sử dụng thực phẩm.",
+      "required_claims": [
+        {
+          "claim_id": "R071_C01",
+          "text": "Theo Điều 9 Luật An toàn thực phẩm 2010, người tiêu dùng có quyền được cung cấp thông tin trung thực về an toàn thực phẩm, khiếu nại, khởi kiện và yêu cầu bồi thường do thực phẩm không an toàn gây ra.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:038dbc889f371c5e7cbeacd6"
+          ]
+        },
+        {
+          "claim_id": "R071_C02",
+          "text": "Người tiêu dùng có nghĩa vụ tuân thủ các hướng dẫn về vận chuyển, lưu giữ, bảo quản và sử dụng thực phẩm.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:038dbc889f371c5e7cbeacd6"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 9,
+          "evidence_unit_id": "ocop:evidence:038dbc889f371c5e7cbeacd6",
+          "source_excerpt": "Điều 9. Quyền và nghĩa vụ của người tiêu dùng thực phẩm 1. Người tiêu dùng thực phẩm có các quyền sau đây: a) Được cung cấp thông tin trung thực về an toàn thực phẩm, hướng dẫn sử dụng, vận chuyển, lưu giữ, bảo quản, lựa chọn, sử dụng thực phẩm phù hợp; được cung cấp thông tin về nguy cơ gây mất an "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R072",
+      "query": "Muốn sản xuất hoặc kinh doanh thực phẩm an toàn thì sản phẩm phải đáp ứng những điều kiện chung nào?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 10 Luật An toàn thực phẩm 2010, thực phẩm phải đáp ứng quy chuẩn kỹ thuật và tuân thủ giới hạn đối với vi sinh vật gây bệnh, dư lượng thuốc bảo vệ thực vật, thuốc thú y, kim loại nặng và các tác nhân gây ô nhiễm khác. Tùy loại thực phẩm, còn phải đáp ứng quy định về phụ gia, chất hỗ trợ chế biến, bao gói, ghi nhãn và bảo quản.",
+      "required_claims": [
+        {
+          "claim_id": "R072_C01",
+          "text": "Theo Điều 10 Luật An toàn thực phẩm 2010, thực phẩm phải đáp ứng quy chuẩn kỹ thuật và tuân thủ giới hạn đối với vi sinh vật gây bệnh, dư lượng thuốc bảo vệ thực vật, thuốc thú y, kim loại nặng và các tác nhân gây ô nhiễm khác.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a2784a181736e3b8cb7f5bd1"
+          ]
+        },
+        {
+          "claim_id": "R072_C02",
+          "text": "Tùy loại thực phẩm, còn phải đáp ứng quy định về phụ gia, chất hỗ trợ chế biến, bao gói, ghi nhãn và bảo quản.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:a2784a181736e3b8cb7f5bd1"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:a2784a181736e3b8cb7f5bd1",
+          "source_excerpt": "Điều 10. Điều kiện chung về bảo đảm an toàn đối với thực phẩm 1. Đáp ứng quy chuẩn kỹ thuật tương ứng, tuân thủ quy định về giới hạn vi sinh vật gây bệnh, dư lượng thuốc bảo vệ thực vật, dư lượng thuốc thú y, kim loại nặng, tác nhân gây ô nhiễm và các chất khác trong thực phẩm có thể gây hại đến sức"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R076",
+      "query": "Quyết định 525 của Hải Phòng công nhận sản phẩm OCOP của năm nào?",
+      "question_type": "exact",
+      "gold_answer": "Quyết định 525/QĐ-UBND của Hải Phòng ban hành năm 2026 công nhận kết quả đánh giá, phân hạng sản phẩm OCOP của năm 2025.",
+      "required_claims": [
+        {
+          "claim_id": "R076_C01",
+          "text": "Quyết định 525/QĐ-UBND của Hải Phòng ban hành năm 2026 công nhận kết quả đánh giá, phân hạng sản phẩm OCOP của năm 2025.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:11a1a964d3b7bdfd4025220f"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f",
+          "source_excerpt": "Điều 1. Công nhận kết quả đánh giá, phân hạng sản phẩm và cấp Giấy chứng nhận sản phẩm OCOP cấp thành phố năm 2025 cho 58 sản phẩm của 20 chủ thể ban hành kèm theo Quyết định này, gồm: a) Sản phẩm OCOP 4 sao: 26 (hai mươi sáu) của 07 chủ thể. b) Sản phẩm OCOP 3 sao: 32 (ba mươi hai) sản phẩm của 13 "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R077",
+      "query": "Giấy chứng nhận OCOP được cấp theo Quyết định 525 của Hải Phòng có giá trị trong bao nhiêu tháng?",
+      "question_type": "numeric",
+      "gold_answer": "Giấy chứng nhận OCOP cấp theo Quyết định 525/QĐ-UBND của Hải Phòng có hiệu lực 36 tháng, tức ba năm, kể từ ngày ký.",
+      "required_claims": [
+        {
+          "claim_id": "R077_C01",
+          "text": "Giấy chứng nhận OCOP cấp theo Quyết định 525/QĐ-UBND của Hải Phòng có hiệu lực 36 tháng, tức ba năm, kể từ ngày ký.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:449c6a8c3a6c0af3829b368e"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:449c6a8c3a6c0af3829b368e",
+          "source_excerpt": "Điều 2. Giấy chứng nhận sản phẩm OCOP cấp thành phố có hiệu lực 36 tháng (03 năm) kể từ ngày ký. Các chủ thể có sản phẩm đã được công nhận sản phẩm OCOP được sử dụng biểu trưng OCOP và hạng sao in trên bao bì của sản phẩm. Điều 3. Giao Sở Nông nghiệp và Môi trường công bố Quyết định công nhận sản ph"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R078",
+      "query": "Ở Hải Phòng, cơ quan nào có trách nhiệm công bố kết quả và trao giấy chứng nhận OCOP theo Quyết định 525?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 3 Quyết định 525/QĐ-UBND, Sở Nông nghiệp và Môi trường được giao công bố quyết định công nhận, trao giấy chứng nhận cho các chủ thể có sản phẩm OCOP được công nhận và hướng dẫn việc sử dụng biểu trưng trên bao bì.",
+      "required_claims": [
+        {
+          "claim_id": "R078_C01",
+          "text": "Theo Điều 3 Quyết định 525/QĐ-UBND, Sở Nông nghiệp và Môi trường được giao công bố quyết định công nhận, trao giấy chứng nhận cho các chủ thể có sản phẩm OCOP được công nhận và hướng dẫn việc sử dụng biểu trưng trên bao bì.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:20b15899f8894ea863f49091"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:20b15899f8894ea863f49091",
+          "source_excerpt": "Điều 3. Giao Sở Nông nghiệp và Môi trường công bố Quyết định công nhận sản phẩm và trao Giấy chứng nhận cho các chủ thể có sản phẩm được công nhận sản phẩm OCOP; hướng dẫn Ủy ban nhân dân các xã, phường, đặc khu và các chủ thể sản xuất thực hiện việc sử dụng và in biểu trưng OCOP lên bao bì sản phẩm"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R079",
+      "query": "Trong đợt công nhận OCOP năm 2025 của Hải Phòng có bao nhiêu sản phẩm thuộc bao nhiêu chủ thể?",
+      "question_type": "numeric",
+      "gold_answer": "Đợt công nhận OCOP năm 2025 của Hải Phòng theo Quyết định 525/QĐ-UBND gồm 58 sản phẩm thuộc 20 chủ thể. Trong số đó có 26 sản phẩm đạt 4 sao và 32 sản phẩm đạt 3 sao.",
+      "required_claims": [
+        {
+          "claim_id": "R079_C01",
+          "text": "Đợt công nhận OCOP năm 2025 của Hải Phòng theo Quyết định 525/QĐ-UBND gồm 58 sản phẩm thuộc 20 chủ thể.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:3bd4cf0ea9de5b2f8fe5f0f5",
+            "ocop:evidence:11a1a964d3b7bdfd4025220f"
+          ]
+        },
+        {
+          "claim_id": "R079_C02",
+          "text": "Trong số đó có 26 sản phẩm đạt 4 sao và 32 sản phẩm đạt 3 sao.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:11a1a964d3b7bdfd4025220f"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:3bd4cf0ea9de5b2f8fe5f0f5",
+          "source_excerpt": "DANH SÁCH 58 SẢN PHẨM CỦA 20 CHỦ THỂ ĐƯỢC CÔNG NHẬN SẢN PHẨM OCOP NĂM 2025 (Kèm theo Quyết định số: /QĐ-UBND ngày / /2026 của Ủy ban nhân dân thành phố Hải Phòng) 1. Danh sách các sản phẩm đạt OCOP 4 sao (26 sản phẩm) **Bảng 1** | STT | Tổ chức/cá nhân | Sản phẩm | Địa chỉ | Chủ thể | Điểm đánh giá "
+        },
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f",
+          "source_excerpt": "Điều 1. Công nhận kết quả đánh giá, phân hạng sản phẩm và cấp Giấy chứng nhận sản phẩm OCOP cấp thành phố năm 2025 cho 58 sản phẩm của 20 chủ thể ban hành kèm theo Quyết định này, gồm: a) Sản phẩm OCOP 4 sao: 26 (hai mươi sáu) của 07 chủ thể. b) Sản phẩm OCOP 3 sao: 32 (ba mươi hai) sản phẩm của 13 "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R081",
+      "query": "Đợt phê duyệt OCOP theo Quyết định 797/2026 của Huế có tổng cộng bao nhiêu sản phẩm 3 sao và 4 sao?",
+      "question_type": "numeric",
+      "gold_answer": "Quyết định 797/QĐ-UBND năm 2026 của Huế phê duyệt ba sản phẩm OCOP năm 2025, gồm hai sản phẩm 4 sao (Mứt Atiso đỏ, Siro Atiso đỏ) và một sản phẩm 3 sao (Hạt sen).",
+      "required_claims": [
+        {
+          "claim_id": "R081_C01",
+          "text": "Quyết định 797/QĐ-UBND năm 2026 của Huế phê duyệt ba sản phẩm OCOP năm 2025, gồm hai sản phẩm 4 sao (Mứt Atiso đỏ, Siro Atiso đỏ) và một sản phẩm 3 sao (Hạt sen).",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:72ee7e66ea33d62755beecbb",
+            "ocop:evidence:4fd125a39ba20f34f854e4b5"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb",
+          "source_excerpt": "Điều 1. Phê duyệt kết quả đánh giá, phân hạng và cấp Giấy chứng nhận cho 03 sản phẩm đạt OCOP hạng 3 sao, 4 sao năm 2025 như sau: 1. Công nhận sản phẩm Mứt Atiso đỏ; Siro Atiso đỏ của Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol, phường Phong Thái, thành phố Huế đạt sản phẩm OCOP 4 sao."
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:4fd125a39ba20f34f854e4b5",
+          "source_excerpt": "2. Công nhận sản phẩm Hạt sen của HTX Sen Huế, phường Phong Điền, thành phố Huế đạt sản phẩm OCOP 3 sao. (chi tiết phụ lục I, II kèm theo) Điều 2. Sản phẩm đạt hạng 3 sao, 4 sao được UBND thành phố cấp Giấy chứng nhận, được sử dụng nhãn hiệu chứng nhận sản phẩm OCOP Việt Nam và được khen thưởng, hỗ "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R082",
+      "query": "Hạt sen của Hợp tác xã Sen Huế được công nhận đạt mấy sao OCOP vậy?",
+      "question_type": "numeric",
+      "gold_answer": "Sản phẩm Hạt sen của Hợp tác xã Sen Huế được công nhận OCOP 3 sao theo Quyết định 797/QĐ-UBND năm 2026.",
+      "required_claims": [
+        {
+          "claim_id": "R082_C01",
+          "text": "Sản phẩm Hạt sen của Hợp tác xã Sen Huế được công nhận OCOP 3 sao theo Quyết định 797/QĐ-UBND năm 2026.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:4fd125a39ba20f34f854e4b5"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:4fd125a39ba20f34f854e4b5",
+          "source_excerpt": "2. Công nhận sản phẩm Hạt sen của HTX Sen Huế, phường Phong Điền, thành phố Huế đạt sản phẩm OCOP 3 sao. (chi tiết phụ lục I, II kèm theo) Điều 2. Sản phẩm đạt hạng 3 sao, 4 sao được UBND thành phố cấp Giấy chứng nhận, được sử dụng nhãn hiệu chứng nhận sản phẩm OCOP Việt Nam và được khen thưởng, hỗ "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R083",
+      "query": "Ở Huế, sản phẩm mứt nào xuất hiện trong danh sách được công nhận OCOP 4 sao?",
+      "question_type": "table",
+      "gold_answer": "Sản phẩm mứt được công nhận OCOP 4 sao tại Huế là Mứt Atiso đỏ của Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol.",
+      "required_claims": [
+        {
+          "claim_id": "R083_C01",
+          "text": "Sản phẩm mứt được công nhận OCOP 4 sao tại Huế là Mứt Atiso đỏ của Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:26f4393ef78a866246e696f0"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0",
+          "source_excerpt": "Mứt Atiso đỏ | Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol | Phường Phong Thái, thành phố Huế | 4 sao | | 2 | Siro Atiso đỏ | Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol | Phường Phong Thái, thành phố Huế | 4 sao |"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R084",
+      "query": "Theo danh sách OCOP 3 sao tại Huế, Hợp tác xã Sen Huế có sản phẩm gì?",
+      "question_type": "table",
+      "gold_answer": "Hợp tác xã Sen Huế có sản phẩm Hạt sen được công nhận OCOP 3 sao theo Phụ lục II của Quyết định 797/QĐ-UBND.",
+      "required_claims": [
+        {
+          "claim_id": "R084_C01",
+          "text": "Hợp tác xã Sen Huế có sản phẩm Hạt sen được công nhận OCOP 3 sao theo Phụ lục II của Quyết định 797/QĐ-UBND.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:f02df27668983011e7f138fc"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc",
+          "source_excerpt": "Hạt sen | Hợp tác xã Sen Huế | Phường Phong Điền, thành phố Huế | 3 sao |"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R086",
+      "query": "Các hồ sơ OCOP đang xử lý dở thì Quyết định 1489/2025 có hướng dẫn chuyển tiếp như thế nào?",
+      "question_type": "semantic",
+      "gold_answer": "Theo Điều 2 Quyết định 1489/QĐ-TTg năm 2025, những hồ sơ OCOP đã được cấp huyện tiếp nhận trước thời điểm quyết định có hiệu lực nhưng chưa có kết quả đánh giá, công nhận sẽ được chuyển lên cấp tỉnh. Cấp tỉnh tiếp tục đánh giá và công nhận theo quy định.",
+      "required_claims": [
+        {
+          "claim_id": "R086_C01",
+          "text": "Theo Điều 2 Quyết định 1489/QĐ-TTg năm 2025, những hồ sơ OCOP đã được cấp huyện tiếp nhận trước thời điểm quyết định có hiệu lực nhưng chưa có kết quả đánh giá, công nhận sẽ được chuyển lên cấp tỉnh.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:864bb61b6e05ff93adbd3a67"
+          ]
+        },
+        {
+          "claim_id": "R086_C02",
+          "text": "Cấp tỉnh tiếp tục đánh giá và công nhận theo quy định.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:864bb61b6e05ff93adbd3a67"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:864bb61b6e05ff93adbd3a67",
+          "source_excerpt": "Điều 2. Quyết định này có hiệu lực kể từ ngày ký ban hành. Đối với những hồ sơ đề nghị đánh giá, công nhận sản phẩm OCOP được cấp huyện tiếp nhận đến thời điểm Quyết định này có hiệu lực, nhưng chưa có kết quả đánh giá, công nhận, được chuyển hồ sơ lên cấp tỉnh để tiếp tục thực hiện đánh giá, công n"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R087",
+      "query": "Theo quy trình sửa đổi năm 2025, sản phẩm OCOP được 90–100 điểm sẽ do cấp tỉnh chuyển hồ sơ lên cơ quan nào?",
+      "question_type": "semantic",
+      "gold_answer": "Theo quy trình được sửa đổi tại Quyết định 1489/QĐ-TTg năm 2025, UBND cấp tỉnh chuyển hồ sơ các sản phẩm đạt 90–100 điểm lên Bộ Nông nghiệp và Môi trường để đề nghị đánh giá, phân hạng và công nhận sản phẩm OCOP cấp quốc gia.",
+      "required_claims": [
+        {
+          "claim_id": "R087_C01",
+          "text": "Theo quy trình được sửa đổi tại Quyết định 1489/QĐ-TTg năm 2025, UBND cấp tỉnh chuyển hồ sơ các sản phẩm đạt 90–100 điểm lên Bộ Nông nghiệp và Môi trường để đề nghị đánh giá, phân hạng và công nhận sản phẩm OCOP cấp quốc gia.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:5a53d48ca118a57170850405"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:5a53d48ca118a57170850405",
+          "source_excerpt": "UBND cấp tỉnh chuyển hồ sơ các sản phẩm đạt từ 90 điểm đến 100 điểm lên Bộ Nông nghiệp và Môi trường đề nghị đánh giá, phân hạng, công nhận sản phẩm OCOP cấp quốc gia.” 4. Sửa đổi điểm c, khoản 3 về “Hồ sơ đề xuất đánh giá sản phẩm cấp tỉnh”: “c) Hồ sơ đề xuất đánh giá sản phẩm cấp tỉnh: Do UBND cấp"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R088",
+      "query": "Nghị quyết 15/2026/NQ-CP đang tạm ngưng áp dụng những văn bản nào về an toàn thực phẩm?",
+      "question_type": "semantic",
+      "gold_answer": "Nghị quyết 15/2026/NQ-CP tạm ngưng hiệu lực áp dụng Nghị định 46/2026/NĐ-CP ngày 26/01/2026 và Nghị quyết 66.13/2026/NQ-CP ngày 27/01/2026. Việc tạm ngưng kéo dài cho đến khi Luật An toàn thực phẩm sửa đổi và nghị định hướng dẫn có hiệu lực theo nội dung nghị quyết.",
+      "required_claims": [
+        {
+          "claim_id": "R088_C01",
+          "text": "Nghị quyết 15/2026/NQ-CP tạm ngưng hiệu lực áp dụng Nghị định 46/2026/NĐ-CP ngày 26/01/2026 và Nghị quyết 66.13/2026/NQ-CP ngày 27/01/2026.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:6c04452a709f29d5d12441d0"
+          ]
+        },
+        {
+          "claim_id": "R088_C02",
+          "text": "Việc tạm ngưng kéo dài cho đến khi Luật An toàn thực phẩm sửa đổi và nghị định hướng dẫn có hiệu lực theo nội dung nghị quyết.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:6c04452a709f29d5d12441d0"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:6c04452a709f29d5d12441d0",
+          "source_excerpt": "Điều 1. Tạm ngưng hiệu lực áp dụng văn bản Tạm ngưng hiệu lực áp dụng cho đến khi Luật An toàn thực phẩm (sửa đổi) và Nghị định hướng dẫn Luật An toàn thực phẩm (sửa đổi) có hiệu lực thi hành đối với các văn bản sau đây: 1. Nghị định số 46/2026/NĐ-CP ngày 26 tháng 01 năm 2026 của Chính phủ quy định "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R090",
+      "query": "Nếu ở phường Thành Sen muốn hỏi nơi nộp hồ sơ OCOP và đầu mối hỗ trợ thì liên hệ ở đâu?",
+      "question_type": "semantic",
+      "gold_answer": "Địa điểm tiếp nhận hồ sơ OCOP năm 2026 là UBND phường Thành Sen, qua Phòng Nông nghiệp và Môi trường. Đầu mối hỗ trợ được nêu trong thông báo là bà Hoàng Thị Hiền, chuyên viên Phòng Nông nghiệp và Môi trường, số điện thoại 0917 271 336.",
+      "required_claims": [
+        {
+          "claim_id": "R090_C01",
+          "text": "Địa điểm tiếp nhận hồ sơ OCOP năm 2026 là UBND phường Thành Sen, qua Phòng Nông nghiệp và Môi trường.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:870aa24f7962f051f33211f8"
+          ]
+        },
+        {
+          "claim_id": "R090_C02",
+          "text": "Đầu mối hỗ trợ được nêu trong thông báo là bà Hoàng Thị Hiền, chuyên viên Phòng Nông nghiệp và Môi trường, số điện thoại 0917 271 336.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:870aa24f7962f051f33211f8"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8",
+          "source_excerpt": "Nơi tiếp nhận:** UBND phường Thành Sen (qua Phòng Nông nghiệp và Môi trường). **Liên hệ hỗ trợ:** Bà Hoàng Thị Hiền — Chuyên viên Phòng Nông nghiệp và Môi trường — Điện thoại: **0917 271 336**. **Căn cứ thực hiện:** Quyết định số 26/2026/QĐ-TTg ngày 22/5/2026 của Thủ tướng Chính phủ về Bộ tiêu chí v"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R091",
+      "query": "Tôi muốn đối chiếu bộ tiêu chí chấm OCOP của năm 2023 và năm 2026 thì mỗi bộ nằm ở phụ lục nào?",
+      "question_type": "cross_document",
+      "gold_answer": "Theo Quyết định 148/QĐ-TTg năm 2023, Bộ tiêu chí đánh giá sản phẩm OCOP kiêm phiếu chấm điểm nằm ở Phụ lục III. Theo Quyết định 26/2026/QĐ-TTg năm 2026, nội dung tương ứng nằm ở Phụ lục II.",
+      "required_claims": [
+        {
+          "claim_id": "R091_C01",
+          "text": "Theo Quyết định 148/QĐ-TTg năm 2023, Bộ tiêu chí đánh giá sản phẩm OCOP kiêm phiếu chấm điểm nằm ở Phụ lục III.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:1d01a87ff52f3fb01af2fee2"
+          ]
+        },
+        {
+          "claim_id": "R091_C02",
+          "text": "Theo Quyết định 26/2026/QĐ-TTg năm 2026, nội dung tương ứng nằm ở Phụ lục II.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:d5fb356eec131b12fe6ca0a7"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:d5fb356eec131b12fe6ca0a7",
+          "source_excerpt": "Phụ lục II BỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP (Kiêm phiếu đánh giá sản phẩm OCOP) (Kèm theo Quyết định số 26/2026/QĐ-TTg ngày 22 tháng 5 năm 2026 của Thủ tướng Chính phủ) | STT | Nội dung | | --- | --- | | 1 | Bộ sản phẩm: Rau, củ, quả, hạt tươi | | 2 | Bộ sản phẩm: Thịt, thủy sản, trứng, sữa tươi |"
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:1d01a87ff52f3fb01af2fee2",
+          "source_excerpt": "Phụ lục III BỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP (KIÊM PHIẾU ĐÁNH GIÁ SẢN PHẨM OCOP CỦA THÀNH VIÊN HỘI ĐỒNG ĐÁNH GIÁ) (Kèm theo Quyết định số 148/QĐ-TTg ngày 24 tháng 02 năm 2023 của Thủ tướng Chính phủ) | STT | Nội dung | Trang | | --- | --- | --- | | 1 | Bộ sản phẩm: Rau, củ, quả, hạt tươi | 02 | | "
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R092",
+      "query": "Người ở phường Thành Sen muốn nâng hạng OCOP thì hồ sơ địa phương yêu cầu có gì, so với hồ sơ theo Quyết định 26/2026?",
+      "question_type": "cross_document",
+      "gold_answer": "Để đăng ký nâng hạng OCOP tại phường Thành Sen, chủ thể cần Phiếu đăng ký Mẫu số 01, Báo cáo tự đánh giá Mẫu số 02 và tài liệu minh chứng về những thay đổi so với sản phẩm đã được công nhận. Điều 6 Quyết định 26/2026/QĐ-TTg cũng yêu cầu các thành phần trên đối với hồ sơ xin nâng hạng.",
+      "required_claims": [
+        {
+          "claim_id": "R092_C01",
+          "text": "Để đăng ký nâng hạng OCOP tại phường Thành Sen, chủ thể cần Phiếu đăng ký Mẫu số 01, Báo cáo tự đánh giá Mẫu số 02 và tài liệu minh chứng về những thay đổi so với sản phẩm đã được công nhận.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:975f19d44898e2dd5a6789d6"
+          ]
+        },
+        {
+          "claim_id": "R092_C02",
+          "text": "Điều 6 Quyết định 26/2026/QĐ-TTg cũng yêu cầu các thành phần trên đối với hồ sơ xin nâng hạng.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b",
+          "source_excerpt": "b) Hồ sơ đăng ký tham gia đánh giá, nâng hạng: Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP theo Mẫu số 01 Phụ lục III ban hành kèm theo Quyết định này; Báo cáo tự đánh giá về sản phẩm theo Mẫu số 02 Phụ lục III ban hành kèm theo Quyết định này, trong đó phải thể hiện rõ nội dung và tài liệu minh"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6",
+          "source_excerpt": "b) Đối với sản phẩm đăng ký nâng hạng** Hồ sơ gồm: - Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP theo Mẫu số 01; - Báo cáo tự đánh giá về sản phẩm theo Mẫu số 02; - Tài liệu minh chứng, trong đó thể hiện rõ những nội dung, kết quả thay đổi so với sản phẩm OCOP đã được công nhận. **c) Đối với sản"
+        }
+      ],
+      "answerable": true
+    },
+    {
+      "id": "R100",
+      "query": "Phiếu đăng ký đánh giá OCOP theo bộ quy định 2023 và bộ 2026 có phải đều là mẫu số 1 không?",
+      "question_type": "cross_document",
+      "gold_answer": "Quyết định 148/QĐ-TTg năm 2023 sử dụng Biểu số 1 — Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP. Quyết định 26/2026/QĐ-TTg năm 2026 sử dụng Mẫu số 01 — Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP.",
+      "required_claims": [
+        {
+          "claim_id": "R100_C01",
+          "text": "Quyết định 148/QĐ-TTg năm 2023 sử dụng Biểu số 1 — Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:6c7ce388e68e6b65405a2516"
+          ]
+        },
+        {
+          "claim_id": "R100_C02",
+          "text": "Quyết định 26/2026/QĐ-TTg năm 2026 sử dụng Mẫu số 01 — Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP.",
+          "supported_by_evidence_unit_ids": [
+            "ocop:evidence:31b097b5b638199fa9d71770"
+          ]
+        }
+      ],
+      "gold_citations": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 148,
+          "evidence_unit_id": "ocop:evidence:31b097b5b638199fa9d71770",
+          "source_excerpt": "Mẫu số 01: Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc PHIẾU ĐĂNG KÝ Tham gia đánh giá, phân hạng sản phẩm OCOP của tỉnh ................. năm ............. 1. Thông tin về đơn vị đăng ký: - Tên đơn vị: .............................."
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 16,
+          "evidence_unit_id": "ocop:evidence:6c7ce388e68e6b65405a2516",
+          "source_excerpt": "BIỂU SỐ 1: PHIẾU ĐĂNG KÝ ĐÁNH GIÁ, PHÂN HẠNG SẢN PHẨM OCOP CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc PHIẾU ĐĂNG KÝ Tham gia đánh giá, phân hạng sản phẩm Chương trình OCOP của tỉnh ............... năm ............... 1. Thông tin về đơn vị đăng ký: - Tên đơn vị: ................."
+        }
+      ],
+      "answerable": true
+    }
+  ]
+}
