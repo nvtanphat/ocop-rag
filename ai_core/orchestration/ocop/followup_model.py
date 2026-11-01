@@ -40,9 +40,7 @@ def refers_back(question: str) -> bool:
     lang = get_language()
     folded = fold(question)
     pronouns = "|".join(re.escape(fold(p)) for p in lang.followup.pronouns)
-    return bool(
-        re.search(rf"\b(?:{pronouns})\b", folded) or re.search(rf"\b{lang.followup.demonstrative}\b", folded)
-    )
+    return bool(re.search(rf"\b(?:{pronouns}|{lang.followup.demonstrative})\b", folded))
 
 
 def validate(question: str, history: list[str], proposed: object) -> str | None:
@@ -58,15 +56,18 @@ def validate(question: str, history: list[str], proposed: object) -> str | None:
     allowed = set(lang.content_words(source, accent_aware=True))
     words = set(lang.content_words(text, accent_aware=True))
     numbers = set(re.findall(r"\d+(?:[.,/]\d+)*", text))
+    source_numbers = set(re.findall(r"\d+(?:[.,/]\d+)*", source))
+    if not numbers.issubset(source_numbers):
+        return None
     # A name is a capitalised word after the first (Hichagol, Huế, HTX); every name and number must come from the
     # conversation. Plain words may join the sentence ("thuộc", "xếp"), but only a couple of them.
     names = {fold(w) for w in re.findall(r"[^\W\d_]+", text)[1:] if w[0].isupper()}
     known = {fold(w) for w in re.findall(r"[^\W\d_]+", source)}
-    if numbers - set(re.findall(r"\d+(?:[.,/]\d+)*", source)) or names - known or len(words - allowed) > 2:
+    if not names.issubset(known) or len(words - allowed) > 2:
         return None
     # The words that pointed back ("hãng", "nhóm") are replaced and fillers dropped, so only some of the question's
     # own words must remain; what keeps the rewrite honest is that it adds nothing the conversation did not say.
-    if own and not own & words:
+    if own and own.isdisjoint(words):
         return None
     return text
 
