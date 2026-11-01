@@ -15,6 +15,7 @@ from ai_core.orchestration.ocop.verification import (
     grounded_in_excerpt,
     verify_claims,
     _normalize,
+    _cites,
 )
 from ai_core.graph.ocop.links import LINK_RELATIONS
 from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS
@@ -562,14 +563,6 @@ def _parse_claims(raw):
             if kept:
                 missing.append("; ".join(kept).rstrip(". "))
     return claims, missing
-
-
-def _cites(row: dict, citation: dict) -> bool:
-    return (
-        row.get("source_id") == citation.get("source_id")
-        and (row.get("evidence_unit_id") or row.get("unit_id")) == citation.get("evidence_unit_id")
-        and (not citation.get("chunk_id") or row.get("chunk_id") == citation.get("chunk_id"))
-    )
 
 
 def _prose_rule_only(numbers, citations, selected, claim, catalog) -> bool:

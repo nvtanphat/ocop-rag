@@ -70,20 +70,22 @@ def score_assertion() -> re.Pattern:
     return lang.compiled("score_assertion", build)
 
 
+def _cites(row: dict, citation: dict) -> bool:
+    return (
+        row.get("source_id") == citation.get("source_id")
+        and (row.get("evidence_unit_id") or row.get("unit_id")) == citation.get("evidence_unit_id")
+        and (not citation.get("chunk_id") or row.get("chunk_id") == citation.get("chunk_id"))
+    )
+
+
 def _cited_rows(marker_ids: list[int], citations: list[dict], evidence_rows: list[dict]) -> list[dict]:
-    rows = []
-    for n in marker_ids:
-        if not 0 < n <= len(citations):
-            continue
-        c = citations[n - 1]
-        rows.extend(
-            r
-            for r in evidence_rows
-            if r.get("source_id") == c.get("source_id")
-            and (r.get("evidence_unit_id") or r.get("unit_id")) == c.get("evidence_unit_id")
-            and (not c.get("chunk_id") or r.get("chunk_id") == c.get("chunk_id"))
-        )
-    return rows
+    return [
+        r
+        for n in marker_ids
+        if 0 < n <= len(citations)
+        for r in evidence_rows
+        if _cites(r, citations[n - 1])
+    ]
 
 
 def _stated_in(assertion: str, verified: str) -> bool:
@@ -349,9 +351,7 @@ def verify_claims(
         spans = row.get("source_spans") or row.get("spans") or []
         for i, c in enumerate(citations, 1):
             if (
-                row.get("source_id") == c.get("source_id")
-                and (row.get("evidence_unit_id") or row.get("unit_id")) == c.get("evidence_unit_id")
-                and (not c.get("chunk_id") or row.get("chunk_id") == c.get("chunk_id"))
+                _cites(row, c)
                 and isinstance(spans, list)
                 and any(
                     isinstance(span, dict)
