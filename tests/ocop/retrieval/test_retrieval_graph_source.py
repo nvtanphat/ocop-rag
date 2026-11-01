@@ -325,3 +325,21 @@ def test_a_heading_that_is_only_a_label_takes_its_name_from_the_next_line():
     ordered = [{"chunk_id": "annex", "context": {"legal_heading": "Phụ lục III"},
                 "raw_text": "Phụ lục III\nBỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP\n(Kèm theo Quyết định)"}]
     assert _title_seeds("Bộ tiêu chí đánh giá sản phẩm OCOP nằm ở phụ lục nào?", ordered, lambda cid: True) == ["annex"]
+
+
+def test_the_cross_encoder_reorders_rows_fused_across_tools(monkeypatch):
+    from ai_core.orchestration.ocop import answer
+    from ai_core.retrieval.ocop import search
+
+    def fake_rerank(query, candidates, model_id, revision=None, pair_token_budget=None):
+        return sorted(candidates, key=lambda c: "lao động" not in c["text"])
+
+    monkeypatch.setattr(search, "_rerank", fake_rerank)
+    rows = [
+        {"tool": "lookup_product_subgroup", "source_id": "S", "evidence_unit_id": "title", "text": "7. Bộ sản phẩm: rau"},
+        {"tool": "search_regulations", "source_id": "S", "evidence_unit_id": "row", "text": "Sử dụng lao động tại xã"},
+        {"tool": "search_regulations", "source_id": "S", "evidence_unit_id": "other", "text": "Ghi chú"},
+    ]
+    ordered = answer.rerank_fused("lao động địa phương", rows)
+    assert ordered[0]["evidence_unit_id"] == "row"  # a tie between tools' first rows goes to the cross-encoder
+    assert {r["evidence_unit_id"] for r in ordered} == {"title", "row", "other"}
