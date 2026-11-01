@@ -1019,6 +1019,7 @@ class OcopAgent:
             outputs,
             llm=self.llm,
             catalog=self._catalog(),
+            rerank=self.rerank,
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )
         gaps = [

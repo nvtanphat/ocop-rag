@@ -219,6 +219,7 @@ def test_a_form_gap_is_reported_while_the_rest_of_the_evidence_is_answered():
     from ai_core.orchestration.ocop.workflow import OcopAgent
 
     agent = OcopAgent.__new__(OcopAgent)
+    agent.rerank = False
     row = {
         "source_id": "VN.X",
         "evidence_unit_id": "u1",

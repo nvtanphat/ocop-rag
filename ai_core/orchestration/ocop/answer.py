@@ -858,10 +858,49 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
     }
 
 
+def _row_key(row: dict) -> str:
+    return json.dumps(
+        [row.get("source_id"), row.get("evidence_unit_id") or row.get("unit_id"), row.get("chunk_id")], default=str
+    )
+
+
+def rerank_fused(question: str, records: list[dict]) -> list[dict]:
+    """The cross-encoder re-scores the head of the order fused across tools, merged with that order (ViCAS-RAG global
+    fusion: RRF over every family, then the cross-encoder). RRF alone gives every tool's first row the same score, so a
+    sheet title from a table lookup could lead a passage the text search ranked first for the question."""
+    from ai_core.retrieval.ocop.models_config import DEFAULT_RERANKER_MODEL, DEFAULT_RERANKER_REVISION
+    from ai_core.retrieval.ocop.search import _rerank, rrf
+
+    cfg = get_settings().retrieval
+    head: list[dict] = []
+    for row in records:
+        key = _row_key(row)
+        text = str(row.get("raw_text") or row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
+        if text.strip() and all(item["chunk_id"] != key for item in head):
+            head.append({"chunk_id": key, "text": text})
+        if len(head) >= cfg.rerank_candidates:
+            break
+    if len(head) < 2:
+        return records
+    first_stage = [item["chunk_id"] for item in head]
+    second = [item["chunk_id"] for item in _rerank(question, head, DEFAULT_RERANKER_MODEL, DEFAULT_RERANKER_REVISION)]
+    merged = rrf([first_stage, second], weights=[cfg.rerank_first_stage_weight, 1.0])
+    # A tie is broken by the cross-encoder: the fused order between the first rows of different tools is only tool order.
+    place = {key: i for i, key in enumerate(sorted(merged, key=lambda k: (-merged[k], second.index(k))))}
+    order = sorted(range(len(records)), key=lambda i: (place.get(_row_key(records[i]), len(place)), i))
+    return [records[i] for i in order]
+
+
 def assemble(
-    question: str, tool_results: list[dict], *, llm: OpenAICompatClient | None = None, catalog=None, style: str = ""
+    question: str,
+    tool_results: list[dict],
+    *,
+    llm: OpenAICompatClient | None = None,
+    catalog=None,
+    style: str = "",
+    rerank: bool = False,
 ) -> dict:
-    result = _assemble(question, tool_results, llm=llm, catalog=catalog, style=style)
+    result = _assemble(question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank)
     missing = result.get("evidence_fusion", {}).get("missing_facets", [])
     if missing:
         result["evidence_fusion"]["answer_status"] = result["status"]
@@ -873,7 +912,13 @@ def assemble(
 
 
 def _assemble(
-    question: str, tool_results: list[dict], *, llm: OpenAICompatClient | None = None, catalog=None, style: str = ""
+    question: str,
+    tool_results: list[dict],
+    *,
+    llm: OpenAICompatClient | None = None,
+    catalog=None,
+    style: str = "",
+    rerank: bool = False,
 ) -> dict:
     records = []
     for result in tool_results:
@@ -892,7 +937,10 @@ def _assemble(
                     )
     # Every tool's rows in one order by rank fusion; the graph proof keeps its place through the reservations in
     # _most_relevant, not by leading the list.
-    records = order_evidence(question, fuse_tool_rows(records))
+    records = fuse_tool_rows(records)
+    if rerank:
+        records = rerank_fused(question, records)
+    records = order_evidence(question, records)
     citations, contexts, selected = _evidence(
         records,
         question=question,
