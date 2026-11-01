@@ -34,7 +34,8 @@ DEMONSTRATIVE = get_language().followup.demonstrative
 
 
 def empty() -> dict:
-    return {"referents": {}, "standalone": "", "evidence": [], "corpus_version": None}
+    # recent: the last standalone questions, newest first; what a later "lúc nãy" can point back to.
+    return {"referents": {}, "standalone": "", "recent": [], "evidence": [], "corpus_version": None}
 
 
 def _short(value: Any, limit: int = 128) -> bool:
@@ -54,6 +55,8 @@ def sanitize(raw: Any) -> dict:
                 out["referents"][kind] = [v for v in values if _short(v)][:MAX_REFERENTS]
     if _short(raw.get("standalone"), 600):
         out["standalone"] = raw["standalone"]
+    if isinstance(raw.get("recent"), list):
+        out["recent"] = [q for q in raw["recent"] if _short(q, 600)][:MAX_TURNS]
     if _short(raw.get("corpus_version"), 64):
         out["corpus_version"] = raw["corpus_version"]
     for ref in raw.get("evidence") or []:
@@ -96,6 +99,7 @@ def update(
             ]
     if standalone:
         state["standalone"] = standalone[:600]
+        state["recent"] = [standalone[:600], *state["recent"]][:MAX_TURNS]
     turn = max([r.get("turn", 0) for r in state["evidence"]] + [0]) + 1
     fresh = [
         {

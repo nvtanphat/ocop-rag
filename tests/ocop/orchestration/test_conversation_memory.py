@@ -359,3 +359,26 @@ def test_a_comparison_with_a_pronoun_between_so_sanh_and_voi_resolves_the_two_fo
         "form_ids": ["2", "1"],
         "form_id": "2",
     }
+
+
+def test_a_model_restatement_of_a_follow_up_adds_nothing_the_conversation_did_not_say():
+    from ai_core.orchestration.ocop import followup_model
+
+    history = ["Siro Atiso đỏ của Công ty Hichagol ở Huế được mấy sao?", "Hạt sen của HTX Sen Huế được mấy sao?"]
+    question = "Quay lại siro lúc nãy, nó của đơn vị nào?"
+    assert followup_model.refers_back(question)
+    assert not followup_model.refers_back("Hạn nộp hồ sơ OCOP năm 2026 là ngày nào?")
+    good = "Siro Atiso đỏ của Công ty Hichagol thuộc đơn vị nào?"
+    assert followup_model.validate(question, history, good) == good
+    assert followup_model.validate(question, history, "Siro Atiso đỏ đạt 5 sao năm 2027 của đơn vị nào?") is None
+    assert followup_model.validate(question, history, "Siro Atiso đỏ của Công ty Vinamilk thuộc đơn vị nào?") is None
+
+
+def test_memory_keeps_the_recent_standalone_questions_newest_first():
+    from ai_core.orchestration.ocop import memory
+
+    state = memory.empty()
+    for q in ["Câu một?", "Câu hai?", "Câu ba?", "Câu bốn?"]:
+        state = memory.update(state, slots={}, standalone=q, citations=[], corpus_version=None)
+    assert state["recent"] == ["Câu bốn?", "Câu ba?", "Câu hai?"]
+    assert memory.sanitize(state)["recent"] == state["recent"]

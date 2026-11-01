@@ -14,7 +14,7 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
-from ai_core.orchestration.ocop import aspects, memory, scope_model, semantic_route
+from ai_core.orchestration.ocop import aspects, followup_model, memory, scope_model, semantic_route
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
@@ -150,6 +150,14 @@ class OcopAgent:
                 )
                 if carried:
                     method += "+compare"
+                # A question that points back is restated by the model from the recent questions (ViCAS-RAG, Legal-RAG):
+                # the rules state the scope of the thing named last, which "hãng đó" or "siro lúc nãy" may not mean.
+                if self.llm is not None and followup_model.refers_back(query):
+                    restated = followup_model.propose(
+                        self.llm, query, safe_session["memory"]["recent"][::-1]
+                    )
+                    if restated:
+                        effective, method = restated, "model_rewrite"
             elif choice.intent == Intent.FOLLOWUP:
                 previous = str(session.get("last_query") or "")
                 if "years" in updates:
