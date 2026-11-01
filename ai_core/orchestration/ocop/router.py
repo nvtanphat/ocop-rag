@@ -425,9 +425,7 @@ def _scope_years_to_rule_versions(route: Route, query: str, language: Language |
 
 def _merge_followup(prior: dict, updates: dict) -> dict:
     """Carry only ordinary question-extracted scope; never ids, auth or verified flags."""
-    raw = prior.get("slots") or {}
-    if not isinstance(raw, dict):
-        raw = {}
+    raw = prior.get("slots") if isinstance(prior.get("slots"), dict) else {}
     slots = {
         key: value
         for key, value in raw.items()
@@ -755,11 +753,7 @@ def _route_business(
     opener = bool(re.match(r"^(?:" + _alt(lang.followup.openers) + r"|20\d{2}\b|nam\s+20\d{2}\b)", folded))
     pronoun = bool(lang.words("pronouns", lang.followup.pronouns).search(folded))
     pronoun = pronoun or memory.singular_reference(q, lang)
-    tail = (
-        bool(lang.words("tail_cues", lang.followup.tail_cues).search(folded))
-        if lang.followup.tail_cues
-        else False
-    )
+    tail = bool(lang.followup.tail_cues and lang.words("tail_cues", lang.followup.tail_cues).search(folded))
     # A reference ("sản phẩm đó", "... thì sao?") with no scope of its own continues the conversation, whatever its length.
     # A reference or closing cue continues the conversation unless the question says WHERE it applies (document, locality) itself:
     # naming only a new target ("Mẫu số 02 thì sao?") still inherits the document.
@@ -781,10 +775,7 @@ def _route_business(
         )
     facets = Facets(lang, q, slots)
     producer = lang.hit(q, "producer")
-    if producer:
-        slots_for_caps = {**slots, "_producer": True}
-    else:
-        slots_for_caps = slots
+    slots_for_caps = {**slots, "_producer": True} if producer else slots
 
     if facets.private_scope or facets.private_dossier or facets.private_scoring:
         return Route(
@@ -829,9 +820,7 @@ def _route_business(
     # tier ever sees it and it is out of scope by default. Only "follow-up" does not apply to it, since it scopes itself.
     if not in_domain and not followup and not explicit_oos and askable and (semantic_route or llm_scope):
         verdict, source = second_opinion()
-        if verdict == Intent.FOLLOWUP and own_scope:
-            verdict = None
-        if verdict == Intent.FOLLOWUP:
+        if verdict == Intent.FOLLOWUP and not own_scope:
             followup = True
             slots = _merge_followup(prior, updates)
         elif verdict == Intent.OUT_OF_SCOPE:
@@ -974,7 +963,7 @@ def _route_business(
             try:
                 result = llm_route(q)
                 candidate = Intent(result["intent"])
-                if candidate != Intent.CONVERSATION and (True):
+                if candidate != Intent.CONVERSATION:
                     intent = candidate
                 safe = {
                     "product_name",
