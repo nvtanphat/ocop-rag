@@ -820,9 +820,10 @@ def _route_business(
     # tier ever sees it and it is out of scope by default. Only "follow-up" does not apply to it, since it scopes itself.
     if not in_domain and not followup and not explicit_oos and askable and (semantic_route or llm_scope):
         verdict, source = second_opinion()
-        if verdict == Intent.FOLLOWUP and not own_scope:
-            followup = True
-            slots = _merge_followup(prior, updates)
+        if verdict == Intent.FOLLOWUP:
+            if not own_scope:
+                followup = True
+                slots = _merge_followup(prior, updates)
         elif verdict == Intent.OUT_OF_SCOPE:
             return Route(
                 intent=Intent.OUT_OF_SCOPE, strategy="clarify", slots=slots, reason_codes=[source + "_out_of_scope"]
