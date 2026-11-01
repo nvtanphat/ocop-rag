@@ -379,3 +379,17 @@ def test_graph_enriched_chunk_respects_model_max_tokens_not_target_chunk_budget(
     assert chunks[0]["over_budget"] is False, (
         f"Expected over_budget=False, got True (tokens={chunks[0]['estimated_tokens']})"
     )
+
+
+def test_a_parent_chain_over_the_cap_drops_middle_levels_and_keeps_the_sheet():
+    from ai_core.retrieval.ocop.graph_context import _fit_chain
+
+    def words(text):
+        return len(text.split())
+
+    sheet, part = "Bộ sản phẩm: Chế biến từ rau củ", "Phần A: Sản phẩm và sức mạnh của cộng đồng"
+    group, leaf = "3. Sức mạnh cộng đồng", "3.3. Lao động địa phương"
+    assert _fit_chain([sheet, part, group, leaf], words, 25) == [sheet, group, leaf]
+    assert _fit_chain([sheet, part, group, leaf], words, 18) == [sheet, leaf]
+    assert _fit_chain([sheet, part, group, leaf], words, 10) == [leaf]
+    assert _fit_chain([sheet, leaf], words, 5) == []

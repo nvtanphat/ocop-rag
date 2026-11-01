@@ -48,6 +48,23 @@ def _chain(node_id, incoming, nodes):
         node_id = parent
 
 
+def _fit_chain(labels: list[str], count, cap: int) -> list[str]:
+    """The ancestor labels (root first) that fit the token cap.
+
+    Middle levels go first: they repeat in every sibling structure ("Phần A … > 3. SỨC MẠNH CỘNG ĐỒNG" is in each of
+    the ~30 product sheets), while the root (the sheet "Bộ sản phẩm: Chế biến từ rau, củ, quả, hạt") and the nearest
+    level tell one passage from its twins. Ragflow keeps the full heading path for the same reason.
+    """
+    kept = list(labels)
+    while len(kept) > 2 and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
+        del kept[1]
+    if kept and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
+        kept = kept[-1:]
+    if kept and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
+        kept = []
+    return kept
+
+
 def enrich_chunks(chunks, graph_dir, *, allow_partial_debug=False, counter=None, root=None):
     cfg = get_settings(root).context
     count = counter or estimated_tokens
@@ -156,13 +173,7 @@ def enrich_chunks(chunks, graph_dir, *, allow_partial_debug=False, counter=None,
                 continue  # the chunk itself already shows it
             if not labels or labels[-1] != label:
                 labels.append(label)
-        kept = []
-        for label in reversed(labels):  # keep the nearest ancestors first when the cap bites
-            if count(CONTEXT_PREFIX + " > ".join([label, *kept])) > cfg.parent_chain_max_tokens and kept:
-                break
-            kept.insert(0, label)
-        if kept and count(CONTEXT_PREFIX + " > ".join(kept)) > cfg.parent_chain_max_tokens:
-            kept = []
+        kept = _fit_chain(labels, count, cfg.parent_chain_max_tokens)
         if kept:
             prefix = CONTEXT_PREFIX + " > ".join(kept) + "\n"
             chunk["text_for_bm25"] = prefix + chunk["text_for_bm25"]
