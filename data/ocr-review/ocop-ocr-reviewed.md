@@ -9272,7 +9272,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -9540,7 +9540,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Không đồng đều, chấp nhận được | 1 |
 | Tương đối đồng đều | 2 |
 | Đồng đều | 3 |
-| C) Màu sắc | 3 |
+| c) Màu sắc | 3 |
 | Chấp nhận được | 0 |
 | Tương đối phù hợp với đặc tính sản phẩm | 1 |
 | Tốt, phù hợp với đặc tính sản phẩm**** | 2 |
@@ -9688,7 +9688,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| - e) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -9890,7 +9890,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -9905,7 +9905,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản lý | 4 |
-| - Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -10093,7 +10093,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -10224,7 +10224,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 Điểm) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50% | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -10294,7 +10294,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| Be) Sở hữu trí tuk | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -10498,7 +10498,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -10630,7 +10630,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Các tiêu chí | Thang điểm (Điểm) |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | o sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -10711,12 +10711,12 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
 | Thị trường quốc tế (có hợp đồng); hoặc phân phối tại các kênh thương mại hiện đại: siêu thị, thương mại điện tử,... (có hợp đồng và vận hành ổn định ít nhất 6 tháng) | 5 |
-| (b) Tố chức phầu (Gồm: Tổ chức kinh doanh; phân phối sản phẩm) | 4 |
+| b) Tổ chức phân phối (Gồm: Tổ chức kinh doanh; phân phối sản phẩm) | 4 |
 | Không có người chịu trách nhiệm quản lý phân phối | 0 |
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -10900,7 +10900,7 @@ Người đánh giá (Ký và ghi rõ họ tên)
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -11620,7 +11620,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -11884,7 +11884,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
@@ -12008,7 +12008,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -12092,7 +12092,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản lý | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -12192,7 +12192,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không tuân thủ đầy 
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50%*** | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -12445,7 +12445,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -12460,7 +12460,7 @@ Ghi chú: Dấu sao là yêu cầu tối thiểu phải đạt theo các cấp �
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -12559,7 +12559,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | --- | --- |
 | Phần A SẢN PHẨM VÀ SỨC MẠNH CỦA CỘNG ĐỒNG (40 ĐIỂM) 1 | 40 |
 | 1. TỔ CHỨC SẢN XUẤT | 18 |
-| Nguồn nguyên liệu | 5 |
+| a) Nguồn nguyên liệu | 5 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh dưới 50% | 1 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 50% đến dưới 75% | 3 |
 | Sử dụng nguyên liệu có nguồn gốc trong tỉnh từ 75% đến 100% | 5 |
@@ -12630,7 +12630,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
@@ -12645,7 +12645,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -12670,7 +12670,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | Tương đối giống câu chuyện sản phẩm ở nơi khác, có thay đổi một số yếu tố | 1 |
 | Có câu chuyện riêng gắn với nguồn gốc xuất xứ*** | 3 |
 | Có câu chuyện sản phẩm đặc sắc, mang sắc thái truyền thống, văn hóa và trí tuệ/bản sắc địa phương | 5 |
-| C) Cấu trúc câu chuyện | 2 |
+| c) Cấu trúc câu chuyện | 2 |
 | Chỉ áp dụng khi có câu chuyện |  |
 | Đơn giản | 0 |
 | Có đầy đủ các yếu tố của câu chuyện sản phẩm | 1 |
@@ -12818,12 +12818,12 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc không có đủ điều k
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| - e) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
 | 4. TIẾP THỊ | 13 |
-| - Khu vực phân, phối chính | 5 |
+| a) Khu vực phân phối chính | 5 |
 | Thị trường trong huyện | 1 |
 | Thị trường ngoài huyện, có dưới 5 đại diện/đại lý phân phối | 2 |
 | Thị trường ngoài huyện, có ≥ 5 đại diện/đại lý phân phối | 3 |
@@ -13000,7 +13000,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 
 | Các tiêu chí | Thang điểm |
 | --- | --- |
-| He) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 Điểm) | 25 |
@@ -13047,7 +13047,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Ngắn gọn, xúc tích và có các thông điệp đặc sắc về sản phẩm/văn hóa/trí tuệ/bản sắc địa phương***** | 2 |
 | Phần C: CHẤT LƯỢNG SẢN PHẨM (35 điểm) | 35 |
 | 6. CÁC CHỈ TIÊU | 21 |
-| ịa) Mức độ tinh xảo/sắc nét của sản phẩm | 5 |
+| a) Mức độ tinh xảo/sắc nét của sản phẩm | 5 |
 | Không khéo léo/nhã nhặn, không thể bán được Khá khéo léo/nhã nhặn, có thể bán được | 0 |
 | Khéo léo/nhã nhặn có thể bán được, có giá trị mỹ thuật, kỹ thuật | 3 |
 | Tinh xảo, có giá trị mỹ thuật, kỹ thuật, có thể bán được trong các cửa hàng lớn và xuất khẩu | 5 |
@@ -13375,7 +13375,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
@@ -13532,7 +13532,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | đ) Kế toán | 1 |
 | Không có hoạt động kế toán theo quy định | 0 |
 | Có tổ chức công tác kế toán theo quy định | 1 |
-| - e) Sở hữu trí tuệ | 2 |
+| e) Sở hữu trí tuệ | 2 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký | 1 |
 | Nhãn hiệu sử dụng trên sản phẩm của chủ thể được cấp giấy chứng nhận đăng ký; và sản phẩm có sử dụng dấu hiệu chỉ dẫn nguồn gốc địa lý gắn với cộng đồng địa phương (đối với những sản phẩm đã được bảo hộ chỉ dẫn địa lý, nhãn hiệu chứng nhận, nhãn hiệu tập thể thì bắt buộc phải sử dụng) | 2 |
 
@@ -13711,7 +13711,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | --- | --- |
 | Phần B KHẢ NĂNG TIẾP THỊ (25 ĐIỂM) | 25 |
 | 4. TIẾP THỊ | 13 |
-| Ba) Khu v vực phân c chính | 5 |
+| a) Khu vực phân phối chính | 5 |
 | Thị trường trong huyện | 1 |
 | Thị trường ngoài huyện | 2 |
 | Thị trường ngoài tỉnh | 3 |
@@ -13721,7 +13721,7 @@ Hồ sơ bị loại khi: Giả mạo hồ sơ hoặc ghi nhãn sản phẩm kh�
 | Có người chịu trách nhiệm quản lý phân phối | 1 |
 | Có bộ phận/phòng quản lý phân phối | 3 |
 | Có bộ phận/phòng quản lý phân phối, có ứng dụng công nghệ thông tin trong quản lý | 4 |
-| C) Quảng bá sản phẩm | 4 |
+| c) Quảng bá sản phẩm | 4 |
 | Không có hoạt động quảng bá | 0 |
 | Có một số hoạt động quảng bá | 1 |
 | Có nhiều hoạt động quảng bá, có website của cơ sở/quảng bá trên mạng xã hội, có tham gia hoạt động xúc tiến thương mại trong tỉnh | 2 |
