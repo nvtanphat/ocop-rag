@@ -34,6 +34,7 @@ class ContextSettings(BaseModel):
 class RetrievalSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
     top_k: int = Field(8, ge=1)
+    max_hits_per_document: int = Field(3, ge=1)
     candidate_pool_min: int = Field(40, ge=1)
     rrf_k: int = Field(60, ge=1)
     rrf_weight_sparse: float = Field(1.0, gt=0)

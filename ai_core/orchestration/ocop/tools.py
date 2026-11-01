@@ -463,7 +463,7 @@ class ToolRegistry:
         wanted = [fold(a) for a in anchors if a]
         if wanted:
             try:
-                rows = search(self.index_dir, " ".join(a for a in anchors if a), mode=mode, top_k=8)
+                rows = search(self.index_dir, " ".join(a for a in anchors if a), mode=mode, top_k=get_settings().retrieval.top_k)
             except (RuntimeError, ValueError, OSError):
                 return None
             rows = [
@@ -667,7 +667,7 @@ class ToolRegistry:
                         self.index_dir,
                         query,
                         mode=mode,
-                        top_k=8,
+                        top_k=get_settings().retrieval.top_k,
                         source_id=allowed_source,
                         rerank=bool(context.get("rerank", False)),
                     ):
@@ -720,7 +720,7 @@ class ToolRegistry:
                         self.index_dir,
                         query,
                         mode=mode,
-                        top_k=8,
+                        top_k=get_settings().retrieval.top_k,
                         source_id=allowed_source,
                         rerank=bool(context.get("rerank", False)),
                     ):
@@ -744,7 +744,7 @@ class ToolRegistry:
                     self.index_dir,
                     query,
                     mode=mode,
-                    top_k=8,
+                    top_k=get_settings().retrieval.top_k,
                     source_id=source_filter or context.get("_scope_source"),
                     rerank=bool(context.get("rerank", False)),
                     with_continuations=True,

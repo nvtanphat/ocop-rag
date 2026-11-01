@@ -596,7 +596,15 @@ def search(
             if "reranker_score" in row
             else "deterministic_" + mode + "_order; reranker_not_requested",
         )
-    results = results[:top_k]
+    # ViCAS-RAG diversify_hits: a short document whose every page matches the question's place or topic must not take all
+    # top_k places; each document takes at most max_hits_per_document first, the rest fill the free places in rank order.
+    cap = settings.max_hits_per_document
+    per_source: dict = {}
+    first, later = [], []
+    for row in results:
+        per_source[row["source_id"]] = per_source.get(row["source_id"], 0) + 1
+        (first if per_source[row["source_id"]] <= cap else later).append(row)
+    results = (first + later)[:top_k]
     results = _with_following_chunks(
         results,
         ordered,
