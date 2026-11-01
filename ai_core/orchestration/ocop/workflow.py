@@ -152,11 +152,9 @@ class OcopAgent:
                     method += "+compare"
                 # A question that points back is restated by the model from the recent questions (ViCAS-RAG, Legal-RAG):
                 # the rules state the scope of the thing named last, which "hãng đó" or "siro lúc nãy" may not mean.
-                if self.llm is not None and followup_model.refers_back(query):
-                    restated = followup_model.propose(
-                        self.llm, query, safe_session["memory"]["recent"][::-1]
-                    )
-                    if restated:
+                recent = safe_session["memory"]["recent"]
+                if self.llm is not None and recent and followup_model.refers_back(query):
+                    if restated := followup_model.propose(self.llm, query, recent[::-1]):
                         effective, method = restated, "model_rewrite"
             elif choice.intent == Intent.FOLLOWUP:
                 previous = str(session.get("last_query") or "")
