@@ -1,4 +1,4 @@
-﻿# Kiến trúc OCOP GraphRAG
+# Kiến trúc OCOP GraphRAG
 
 Hệ thống có một corpus đang hoạt động. `ocop_main.py` phục vụ API và `frontend/dist`; Vite chỉ dùng khi phát triển, proxy `/api` tới backend cổng 8000.
 
@@ -25,7 +25,25 @@ Hệ thống có một corpus đang hoạt động. `ocop_main.py` phục vụ A
 | Bằng chứng, ngữ cảnh | SOURCE lấy từ đoạn gốc; cửa sổ giữ mệnh đề/facet được hỏi; mọi nguồn chia sẻ ngân sách cứng; verifier đọc đúng cửa sổ mô hình thấy |
 | Sinh, kiểm chứng | Marker và quote đúng chỉ chứng minh truy vết; claim phải khớp nghĩa, số, phủ định và chủ thể; cổng điểm/sao không được bỏ qua |
 
-Hợp đồng sinh và kiểm từng claim nằm tại [ADR-009](adr/009-claim-level-answers-and-session-privacy.md).
+### Viết lại câu hỏi nối tiếp
+
+Trong hội thoại nhiều lượt, câu hỏi của người dùng được xử lý qua hai tầng:
+1. **Tầng mô hình (`followup_model.py`)**: Khi câu hỏi chứa đại từ hoặc cụm chỉ định trỏ ngược (`refers_back` khớp `lang.followup.pronouns` hoặc `demonstrative`), mô hình được gọi để viết lại câu hỏi dựa trên 3 câu hỏi độc lập gần nhất lưu trong `state["memory"]["recent"]` (theo thứ tự cũ trước, mới sau). Kết quả phải vượt qua kiểm thực tất định tại `validate`: không chứa số hay tên riêng mới ngoài hội thoại, không quá 2 từ thường mới và phải giữ lại từ nội dung gốc. Câu viết lại chỉ dùng làm văn bản truy xuất (`effective_query`), không làm bằng chứng hay thay đổi slot cấu trúc.
+2. **Tầng quy tắc (`memory.py:rewrite`)**: Khi câu hỏi không trỏ ngược hoặc mô hình không khả dụng/không vượt qua kiểm thực, quy tắc hoán đổi slot sẽ áp dụng. Nếu người dùng nêu một thực thể mới (sản phẩm, chủ thể) chưa từng xuất hiện ở câu liền trước để hoán đổi, hệ thống giữ nguyên câu hỏi của người dùng và bổ sung phạm vi (`state_scope`), tránh viết lại nhầm sang thực thể cũ.
+
+### Luồng truy xuất và hợp nhất bằng chứng
+
+Luồng truy xuất vận hành theo chuỗi kiểm soát ngân sách và chất lượng:
+1. **Tìm kiếm đa góc độ và giới hạn mỗi văn bản (`search.py`)**:
+   - `_search_with_parts` tìm kiếm đồng thời cả câu con phân tích từ mô hình (`aspects`) và các phần câu hỏi chia theo liên từ (RAG-Fusion), bảo đảm không bỏ sót đoạn trúng.
+   - Mỗi lần tìm kiếm áp dụng cơ chế `diversify_hits` (ViCAS-RAG): mỗi văn bản (`source_id`) chỉ được đóng góp tối đa `max_hits_per_document` đoạn (mặc định 3) vào danh sách ưu tiên; các đoạn còn lại xếp vào danh sách bù trước khi cắt theo `top_k`.
+2. **Hợp nhất đa công cụ (Tool Fusion)**: Các kết quả từ các công cụ khác nhau trong DAG (`search_regulations`, `lookup_product_subgroup`, `lookup_recognition`, `search_graph`) được hợp nhất bằng thuật toán Reciprocal Rank Fusion (RRF).
+3. **Chấm lại toàn cục bằng cross-encoder (`rerank_fused` trong `answer.py`)**:
+   - Khi có rerank, 24 hàng đầu của danh sách hợp nhất được mô hình cross-encoder cục bộ (`BAAI/bge-reranker-v2-m3`) chấm lại trực tiếp theo câu hỏi.
+   - Điểm RRF ban đầu và điểm cross-encoder được hợp nhất; các vị trí hòa điểm giữa hạng 1 của các công cụ khác nhau được phân định bằng điểm của cross-encoder (ADR-013).
+4. **Chọn ngữ cảnh đưa vào prompt**: Bằng chứng sau xếp hạng được đưa qua cửa sổ ngân sách: tối đa `max_source_blocks` (20 khối) và không vượt quá `prompt_token_budget` (6400 token).
+
+Hợp đồng sinh và kiểm từng claim nằm tại [ADR-009](adr/009-claim-level-answers-and-session-privacy.md). Chi tiết các quyết định truy xuất và viết lại nằm tại [ADR-013](adr/013-per-document-retrieval-cap-and-global-cross-encoder.md) và [ADR-014](adr/014-model-based-followup-rewrite.md).
 
 Phiên chỉ lưu ngữ cảnh hội thoại đã giới hạn và che định danh. Quyền riêng tư chỉ đến từ `AuthContext` phía server; request công khai không nhận tenant, hồ sơ hay rule do client cung cấp. Index public không chứa hồ sơ riêng tư.
 

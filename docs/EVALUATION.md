@@ -1,19 +1,37 @@
-﻿# Đánh giá chất lượng
+# Đánh giá chất lượng
 
 Gold evidence lấy từ ảnh PDF đã kiểm SHA, do người đọc nguồn ghi nhận; không sinh đáp án mong đợi từ đầu ra pipeline. Unit/contract test offline chứng minh bất biến, không phải thước đo chất lượng trên toàn corpus.
 
 ## Bộ đo
 
-| Bộ | Vị trí | Cách dùng |
-| --- | --- | --- |
-| Phát triển | `data/evaluations/ocop/dev_questions.json` và lock | Chỉnh router, retrieval, context |
-| Benchmark đọc PDF thủ công | `data/evaluations/ocop/manual_pdf_benchmark.jsonl` | Độ phủ trên corpus đầy đủ |
-| Bộ giữ riêng | Ngoài repo, khoá hash | Chỉ xem số tổng; không điều chỉnh theo từng ca |
-| Hội thoại offline | `tests/fixtures/conversation_eval.json` | Kiểm chính sách phiên, làm rõ, đổi chủ đề |
+Các bộ dữ liệu đánh giá chuẩn (gold sets) được lưu tại `data/evaluations/ocop/` (commit `6cbab84`):
+
+| Bộ | Vị trí | Quy mô | Cách dùng |
+| --- | --- | --- | --- |
+| Truy xuất tự nhiên | `data/evaluations/ocop/ocop_retrieval_gold_100_natural_final.json` | 100 câu | Đo Top-1, MRR, Recall@k theo trang (dataset_version `1.2.1-natural-query`) |
+| Suy luận đa bước | `data/evaluations/ocop/ocop_graphrag_multihop_gold_25.json` | 25 câu (64 bước) | Đo độ phủ từng bước và tỷ lệ hoàn thành chuỗi multihop đầy đủ |
+| Định tuyến router | `data/evaluations/ocop/ocop_router_gold_80.jsonl` | 80 câu | Đánh giá phân loại ý định (intent) và nhận diện phạm vi (scope) |
+| Từ chối ngoài phạm vi | `data/evaluations/ocop/ocop_abstention_gold_20.json` | 20 câu | Kiểm tra khả năng từ chối trả lời an toàn khi câu hỏi ngoài phạm vi |
+| Trích dẫn câu trả lời | `data/evaluations/ocop/ocop_answer_citation_gold_60.json` | 60 câu | Đối soát độ chính xác của trích dẫn `[S#]` và tính trung thực của claim |
+| Trí nhớ phiên | `data/evaluations/ocop/ocop_session_memory_gold_50.json` | 50 lượt | Đo lường độ chính xác tìm trang khi câu hỏi nối tiếp có từ trỏ ngược |
 
 Không thay gold để khớp output. Nếu gold bị soạn sai, cần quy trình sửa/khóa riêng trước khi chạy lại.
 
-Repo hiện không chứa bộ dữ liệu đánh giá nào trong `data/evaluations/ocop/`; bộ cũ vẫn tra được trong lịch sử Git. Khi thêm bộ mới, đặt đúng tên và vị trí ở bảng trên (các công cụ đọc đường dẫn mặc định đó, hoặc nhận `--dataset`/`--questions`), kèm lock hash cho bộ phát triển. Hai test dữ liệu đánh giá tự bỏ qua khi không có file và tự chạy lại khi file xuất hiện. `tools/cli.py evaluate` và cổng phát hành `validate_latest` cần `retrieval_page_gold_seed.jsonl` nên chưa chạy được cho tới khi bộ đó có mặt.
+## Lưu ý kiểm tra hạ tầng trước khi đo (Docker Qdrant)
+
+> [!IMPORTANT]
+> Trước khi thực hiện bất kỳ phép đo lường nào (`hybrid` hoặc `rerank`), bắt buộc phải kiểm tra container Qdrant bằng lệnh:
+> ```powershell
+> docker ps --filter "name=ocop-qdrant"
+> ```
+> Trên máy phát triển có dung lượng RAM thấp hoặc ổ đĩa C gần đầy, Docker daemon có thể âm thầm tắt container `ocop-qdrant`.
+> Khi Qdrant không sẵn sàng, hệ thống truy xuất sẽ tự động kích hoạt cơ chế suy thoái mềm (fallback), âm thầm chuyển sang tìm kiếm từ khóa thuần túy (sparse BM25) mà **không báo lỗi hay ngắt chương trình**. Điều này dẫn đến việc toàn bộ kết quả đo của chế độ `hybrid` bị tụt về điểm của BM25 mà người đo không nhận ra.
+> 
+> Nếu container bị tắt, bật lại bằng lệnh:
+> ```powershell
+> docker compose up -d qdrant
+> ```
+> Khi thực hiện đo lường đánh giá độc lập trên máy host, nên tắt container backend (`docker stop ocop-graphrag-backend-1`) để giải phóng toàn bộ tài nguyên CPU/RAM cho quá trình đánh giá.
 
 ## Công cụ
 
@@ -57,3 +75,43 @@ python tools/evaluate_reviewed_claims.py --help
 Marker hoặc đúng trang chưa chứng minh entailment. Claim về điểm/sao cần kiểm số và nguồn verified; nội dung từ nguồn chưa duyệt phải giữ nhãn phù hợp. Không báo một ca bị chặn hoặc không có dữ liệu là PASS chất lượng trả lời.
 
 Đánh giá claim verified chỉ nhận câu có EvidenceUnit từ chữ OCR đã duyệt; không có nguồn đủ điều kiện thì công cụ báo thiếu điều kiện. Cách sửa chữ OCR nằm trong [RUNBOOK](RUNBOOK.md). Evaluation gate kiểm phiên bản corpus và kết quả; không dùng kết quả của commit/corpus cũ làm bằng chứng phát hành hiện tại.
+
+## Kết quả đo lường đợt cải thiện (2026-11-01)
+
+Mọi phép đo được thực hiện ngày 2026-11-01 trên các bộ dữ liệu chuẩn đã ghim SHA:
+
+### 1. Truy xuất tự nhiên (dataset_version `1.2.1-natural-query`, 100 câu)
+Bộ đo: `data/evaluations/ocop/ocop_retrieval_gold_100_natural_final.json`
+
+| Commit | Thay đổi kỹ thuật | Top-1 | MRR | Recall@3 | Ghi chú |
+| --- | --- | :---: | :---: | :---: | --- |
+| `7398e2d` | Nâng context lên 14 khối nguồn, prompt budget 6400 token | - | - | - | Đo theo trang vào prompt: 97/95/61 → 98/95/62; trung bình đoạn/câu: 7,9 → 9,3 |
+| `61965b4` | Nâng context lên 20 khối nguồn | - | - | - | Đo theo trang vào prompt: 98/95/62 → 99/98/61 |
+| `7d29544`, `5b9558f` | Rerank cross-encoder 24 hàng đầu sau hợp nhất công cụ (RRF tool fusion) | 59 → 65 | 0,721 → 0,777 | 0,74 → 0,83 | Hòa điểm giữa vị trí 1 của các công cụ do cross-encoder phân định; thời gian tăng thêm ~8 s/câu trên CPU |
+
+### 2. Suy luận đa bước (Multihop, 25 câu, 64 bước)
+Bộ đo: `data/evaluations/ocop/ocop_graphrag_multihop_gold_25.json`
+
+| Commit | Thay đổi kỹ thuật | Số bước đạt trang vàng | Số chuỗi hoàn thành đầy đủ | Ghi chú |
+| --- | --- | :---: | :---: | --- |
+| `7398e2d` | 14 khối nguồn, 6400 tokens | 46/64 → 51/64 | 13/25 → 15/25 | Mở rộng cửa sổ nhận đủ bằng chứng liên văn bản |
+| `61965b4` | 20 khối nguồn | 51/64 → 52/64 | 15/25 → 16/25 | Bổ sung thêm các khối nguồn cho chuỗi dài |
+| `207ef28` | Tìm kiếm cả aspects mô hình lẫn sub_queries theo luật | 50/64 → 52/64 | 13/25 → 16/25 | Thử nghiệm bỏ tách theo luật làm giảm xuống 50 bước |
+| `7d29544` | Cross-encoder toàn cục sau hợp nhất công cụ | 52/64 → 53/64 | 16/25 → 17/25 | Phân định đúng đoạn văn bản quy định dẫn đầu |
+| `ec73930` | Giới hạn 3 đoạn mỗi văn bản (`max_hits_per_document`) | - | - | MH013 tăng thêm 2 bước đạt (QĐ26 trang 3 lọt vào top); 5 câu phức hợp ngẫu nhiên không đổi |
+
+### 3. Trí nhớ phiên hội thoại (Session Memory, 50 lượt)
+Bộ đo: `data/evaluations/ocop/ocop_session_memory_gold_50.json`
+
+| Commit | Thay đổi kỹ thuật | Trang vàng tìm đúng | Ghi chú |
+| --- | --- | :---: | --- |
+| `6630d15` | Mô hình viết lại câu trỏ ngược từ 3 câu gần nhất | 41/50 → 44/50 | Áp dụng kiểm thực từ vựng: không sáng tạo số và tên riêng |
+| `5e200b2` | Giữ câu hỏi (`state_scope`) khi sản phẩm mới không có trong câu trước | 44/50 → 44/50 | SM013 và SM014 phục hồi đúng tên sản phẩm thay vì gán nhầm sang sản phẩm cũ |
+| `909470f` | Nhận diện chữ viết tắt tên chủ thể ("HTX" và "Hợp tác xã") | 14/20 → 16/20 | Đo trên 4 hội thoại bị ảnh hưởng (SM013, SM015); 15 câu truy xuất gọi tên chủ thể không đổi |
+
+### 4. Định tuyến Router (80 câu) và Dữ liệu trích xuất
+- **Router (`ocop_router_gold_80.jsonl`, commit `1bc2129`)**: Giữ nguyên độ chính xác phân loại ý định 58/80 và phạm vi 76/80; 20 câu hỏi ngoài phạm vi (`ocop_abstention_gold_20.json`) từ chối đúng như cũ; ca SM033 được trả lời từ Nghị định 43 thay vì bị từ chối nhầm.
+- **Dữ liệu trích xuất tiêu chí**:
+  - Commit `3256090`: Nhận tiêu đề tiêu chí có đuôi chữ thường giúp giảm lỗi lệch tổng điểm cha/con từ 82 xuống 60.
+  - Commit `c733115`: Khôi phục 32 tiền tố mục tiêu chí bị mất hoặc lỗi OCR trong QĐ148 sau khi đối soát PDF gốc, giảm lỗi lệch điểm từ 60 xuống 24.
+  - Commit `ce226b9`: Nhận diện mốc chuyển tiếp quy phạm "sau N ngày/tháng/năm" tổng quát; số mốc thời gian không đổi.

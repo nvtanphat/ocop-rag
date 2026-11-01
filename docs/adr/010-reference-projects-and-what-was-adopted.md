@@ -21,6 +21,9 @@ Chỉ áp dụng ý tưởng giải quyết một vấn đề đo được; khô
 | ALCE, RAGAS, ARES | Đo citation recall/precision và faithfulness theo từng phát biểu | Đơn vị "claim"; kiểm tất định số/phủ định và xét nghĩa riêng cho diễn đạt lại. Quote đúng không tự chứng minh nội dung đúng (ADR-009) |
 | Aurelio `semantic-router`, DSPy | Tuyến định nghĩa bằng câu mẫu; tối ưu định tuyến bằng số đo | Không dùng: cần embedding mỗi câu hỏi và ngưỡng chưa đo; giữ cue có kiểm soát |
 | pyvi, underthesea | Tách từ tiếng Việt | Không dùng cho định tuyến: cue theo cụm từ nguyên vẹn là đủ |
+| ViCAS-RAG | `diversify_hits` phân tán tài liệu; cross-encoder toàn cục sau RRF đa công cụ; viết lại câu nối tiếp bằng mô hình | Áp dụng trần `max_hits_per_document: 3` (ADR-013); rerank cross-encoder 24 hàng đầu sau hợp nhất công cụ (ADR-013); viết lại câu có từ trỏ ngược từ 3 câu gần nhất có kiểm từ vựng chặt chẽ (ADR-014); schema 14 vai trò nút và 19 vai trò quan hệ (ADR-012) |
+| R2R (RAG-Fusion) | Tìm kiếm đa góc độ và hợp nhất mọi cách diễn đạt | Áp dụng tìm kiếm đồng thời cả câu con mô hình (`aspects`) và các phần tách theo luật trong `_search_with_parts`, không cái này thay cái kia; thử nghiệm để câu con mô hình thay phần tách theo luật làm multihop giảm từ 52 xuống 50 bước |
+| vn-legal-rag, Legal-RAG | Thêm trang liền kề cho kết quả tốt; viết lại câu nối tiếp | Đã thử nghiệm thêm trang liền kề vào RRF nhưng loại bỏ vì làm giảm top-1 từ 61 xuống 54; áp dụng viết lại câu hỏi nối tiếp có từ trỏ ngược kèm luật kiểm thực không cho sáng tạo số/tên riêng (ADR-014) |
 
 ## Hệ quả
 Quy tắc ngôn ngữ nằm trong `configs/ocop_language.yaml` và mã chung; `tests/ocop/contracts/test_no_corpus_literals.py` giữ cho mã không chứa hằng số theo corpus. Dependency UI/test được khai báo trong package frontend; ADR này không cấm công cụ kiểm thử cần thiết.

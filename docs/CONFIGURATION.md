@@ -1,4 +1,4 @@
-﻿# Cấu hình
+# Cấu hình
 
 `configs/ocop_sources.json` và `ocop_sources.lock.json` là danh mục và khoá nguồn. Không sửa PDF hay tái khoá để che việc bytes đã thay đổi.
 
@@ -47,14 +47,17 @@ python tools/cli.py run --help
 
 Cache điểm rerank phân biệt ngân sách token của cặp câu hỏi/đoạn. Phản hồi vẫn ghi `rerank_input_truncated` khi đoạn bị cắt, kể cả khi dùng lại điểm đã cache. Kích thước nhóm ứng viên và trọng số RRF tiếp tục nằm trong cấu hình truy xuất.
 
+`retrieval.top_k` (mặc định `8`) là số đoạn trích tối đa một lần tìm kiếm trả về; các lần gọi `search` trong `tools.py` đọc trực tiếp từ khoá này thay vì đặt số cứng.
+
+`retrieval.max_hits_per_document` (mặc định `3`, theo cơ chế `diversify_hits` của ViCAS-RAG): một lần tìm kiếm chỉ giữ tối đa 3 đoạn của cùng một văn bản nguồn ở nhóm ưu tiên trước khi lấy thêm các đoạn của văn bản khác; ngăn ngừa tình trạng văn bản ngắn hoặc hướng dẫn địa phương chiếm trọn 8 vị trí `top_k` và đẩy tài liệu quy chuẩn có câu trả lời ra ngoài.
+
+`context.max_source_blocks` (đặt là `20`, nâng từ 12 lên 14 tại commit `7398e2d`, rồi nâng lên 20 tại commit `61965b4`) là giới hạn số khối nguồn tối đa trong một prompt trả lời sau khi ghép các đoạn tiếp nối và loại bỏ đoạn lặp lại. `context.max_table_siblings` (mặc định 3) giới hạn các ô đi kèm cùng bản ghi trong ngân sách này.
+
+`context.prompt_token_budget` (đặt là `6400`, nâng tại commit `7398e2d`) là ngân sách token ước lượng tối đa cho toàn bộ prompt câu trả lời (system prompt + câu hỏi + các khối `SOURCE`). Cửa sổ mô hình trả lời là `llm.context_tokens` (8192) trong `ocop_models.yaml`; 1792 token còn lại được giữ làm dự phòng đầu ra (`output_reserve_tokens: 1024` cùng biên an toàn) cho các claim và trích dẫn. Nguồn không còn vừa ngân sách token sau khi thu hẹp trích đoạn sẽ bị bỏ, kể cả khi chỉ còn một nguồn.
+
 `agent.lookup_max_rows` giới hạn số hàng bằng chứng của lookup cấu trúc (mặc định 15).
 Lookup công nhận phân bổ ngân sách lần lượt theo bản ghi trước khi lấy thêm ô của
 cùng bản ghi, để một bản ghi nhiều ô không che các sản phẩm khác.
-
-`context.max_source_blocks` là giới hạn chung, kể cả các nguồn giữ chỗ cho facet,
-quan hệ và ô liên quan. `context.max_table_siblings` (mặc định 3) giới hạn các ô
-đi kèm cùng bản ghi trong ngân sách này. Nguồn không còn vừa ngân sách token sau
-khi thu hẹp trích đoạn sẽ bị bỏ, kể cả khi chỉ còn một nguồn.
 
 Tham chiếu: [khởi tạo luồng PyTorch](https://docs.pytorch.org/docs/stable/generated/torch.set_num_threads.html), [các bộ đọc Safetensors](https://huggingface.co/docs/safetensors/en/api/torch).
 

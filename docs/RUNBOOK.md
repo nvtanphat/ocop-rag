@@ -1,4 +1,4 @@
-﻿# Vận hành
+# Vận hành
 
 ## Khởi động
 
@@ -30,6 +30,40 @@ PDF gốc được mount read-only. Dẫn xuất ở `data/processed` cần quy�
 ```powershell
 docker compose stop backend
 ```
+
+### Quản lý container và sự cố Docker khi thiếu tài nguyên
+
+Trên môi trường phát triển cục bộ, Docker daemon hoặc WSL có thể tự động tắt các container lưu trữ (đặc biệt là `ocop-qdrant`) khi máy bị thiếu RAM hoặc phân vùng ổ C bị đầy.
+
+> [!WARNING]
+> Khi `ocop-qdrant` bị tắt, hệ thống không báo lỗi hay crash ứng dụng mà tự động kích hoạt cơ chế suy thoái mềm (fallback), âm thầm chuyển về tìm kiếm từ khoá BM25. Khi đó các yêu cầu `hybrid` hoặc `rerank` sẽ bị suy giảm chất lượng mà không có cảnh báo rõ ràng.
+
+1. **Kiểm tra trạng thái container**:
+   ```powershell
+   docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+   ```
+   Đảm bảo `ocop-qdrant` và `ocop-graphrag-neo4j-1` luôn ở trạng thái `Up`.
+
+2. **Bật lại container lưu trữ**:
+   - Khởi động lại riêng Qdrant:
+     ```powershell
+     docker compose up -d qdrant
+     ```
+   - Khởi động lại toàn bộ cụm lưu trữ (Qdrant và Neo4j):
+     ```powershell
+     docker compose --profile stores up -d
+     ```
+   - Trường hợp ổ đĩa C bị đầy, dọn dẹp các cache/image không dùng:
+     ```powershell
+     docker system prune -f
+     ```
+
+3. **Tắt backend container khi chạy đo lường đánh giá**:
+   Khi chạy các script đánh giá (`tools/evaluate_*.py`, `tools/cli.py evaluate`) trên máy host, phải dừng container backend để giải phóng bộ nhớ RAM, tránh tranh chấp CPU và khóa tải mô hình cục bộ:
+   ```powershell
+   docker stop ocop-graphrag-backend-1
+   ```
+   (hoặc `docker compose stop backend`). Sau khi đo xong, khởi động lại container backend bằng `docker compose up -d backend`.
 
 ## Chuẩn bị corpus
 
