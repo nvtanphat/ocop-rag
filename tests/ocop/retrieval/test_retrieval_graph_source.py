@@ -353,3 +353,20 @@ def test_an_owner_written_with_and_without_an_abbreviation_is_one_owner():
     assert key("HTX Sen Huế") == key("Hợp tác xã Sen Huế")
     assert key("HTX Sen Huế") != key("Hợp tác xã Thụy Hương")
     assert key("Công ty TNHH Hichagol") == key("công ty tnhh hichagol")
+
+
+def test_a_replaced_document_is_read_after_the_version_in_force():
+    from ai_core.orchestration.ocop.answer import assemble
+
+    def row(source, unit, page):
+        text = "Bộ tiêu chí đánh giá sản phẩm OCOP nằm ở phụ lục của quyết định này."
+        return {"source_id": source, "evidence_unit_id": unit, "chunk_id": unit, "text": text, "raw_text": text,
+                "review_status": "verified", "source_spans": [{"pdf_page": page, "bbox": [0, 0, 1, 1]}]}
+
+    rows = [row("VN.OCOP.QD148.2023", "old", 22), row("VN.OCOP.QD26.2026", "new", 17)]
+    results = [{"tool": "search_regulations", "output": {"status": "ok", "results": rows}}]
+    question = "Bộ tiêu chí đánh giá sản phẩm OCOP nằm ở phụ lục nào?"
+    plain = assemble(question, results)["citations"]
+    current = assemble(question, results, replaced=frozenset({"VN.OCOP.QD148.2023"}))["citations"]
+    assert plain[0]["source_id"] == "VN.OCOP.QD148.2023"
+    assert [c["source_id"] for c in current] == ["VN.OCOP.QD26.2026", "VN.OCOP.QD148.2023"]

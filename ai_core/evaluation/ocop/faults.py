@@ -35,6 +35,9 @@ class SimulatedToolFailure:
         self.fault = fault
         self.calls = []
 
+    def replaced_sources(self) -> frozenset[str]:
+        return frozenset()  # no graph behind a simulated failure, so no validity chain
+
     def dispatch(self, name: str, *, query: str, slots: dict, context=None, auth=None) -> dict:
         self.calls.append(name)
         if name != self.target:

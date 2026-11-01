@@ -891,8 +891,11 @@ def assemble(
     catalog=None,
     style: str = "",
     rerank: bool = False,
+    replaced: frozenset[str] = frozenset(),
 ) -> dict:
-    result = _assemble(question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank)
+    result = _assemble(
+        question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank, replaced=replaced
+    )
     missing = result.get("evidence_fusion", {}).get("missing_facets", [])
     if missing:
         result["evidence_fusion"]["answer_status"] = result["status"]
@@ -911,6 +914,7 @@ def _assemble(
     catalog=None,
     style: str = "",
     rerank: bool = False,
+    replaced: frozenset[str] = frozenset(),
 ) -> dict:
     records = []
     for result in tool_results:
@@ -932,6 +936,12 @@ def _assemble(
     records = fuse_tool_rows(records)
     if rerank:
         records = rerank_fused(question, records)
+    if replaced:
+        # ViHERMES prefers the end of a validity chain: a question that does not ask about an older version reads the
+        # version in force first; a replaced document's rows follow and still fill free places.
+        records = [r for r in records if r.get("source_id") not in replaced] + [
+            r for r in records if r.get("source_id") in replaced
+        ]
     records = order_evidence(question, records)
     citations, contexts, selected = _evidence(
         records,

@@ -18,7 +18,7 @@ from ai_core.orchestration.ocop import aspects, followup_model, memory, scope_mo
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
-from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS
+from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS, Capability
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.answer import assemble, BAD_RESULT_STATUSES
 from ai_core.system.telemetry import traced
@@ -1013,12 +1013,20 @@ class OcopAgent:
             }
         outputs = every
         question = state.get("effective_query", state["query"])
+        # A question that names a year, a document or a change over time may be about an older version on purpose.
+        asks_version = bool(
+            route.slots.get("years")
+            or route.slots.get("document_code")
+            or route.slots.get("document_codes")
+            or Capability.TEMPORAL.value in route.capabilities
+        )
         response = assemble(
             question,
             outputs,
             llm=self.llm,
             catalog=self._catalog(),
             rerank=self.rerank,
+            replaced=frozenset() if asks_version else self.tools.replaced_sources(),
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )
         gaps = [

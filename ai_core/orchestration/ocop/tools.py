@@ -213,6 +213,25 @@ class ToolRegistry:
         self.graph_dir = self.root / "data/processed/ocop/graph"
         self._words: frozenset[str] | None = None
         self._linker: SetLinker | None = None
+        self._replaced: frozenset[str] | None = None
+
+    def replaced_sources(self) -> frozenset[str]:
+        """Documents another document of the corpus replaces (QĐ26/2026 REPLACES QĐ148/2023), read from the graph's
+        source-backed REPLACES edges between SourceDocument nodes: the end of a validity chain is the version in force."""
+        if self._replaced is None:
+            documents = {
+                node["node_id"]: node["source_id"]
+                for node in records(self.graph_dir / "nodes.jsonl")
+                if node.get("node_type") == "SourceDocument"
+            }
+            self._replaced = frozenset(
+                documents[edge["target_entity_id"]]
+                for edge in records(self.graph_dir / "edges.jsonl")
+                if edge.get("relation_type") == "REPLACES"
+                and edge.get("source_entity_id") in documents
+                and edge.get("target_entity_id") in documents
+            )
+        return self._replaced
 
     def _corpus_words(self) -> frozenset[str]:
         """Folded words that occur anywhere in the indexed evidence (what the corpus can be asked about)."""
