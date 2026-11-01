@@ -211,18 +211,19 @@ class OcopAgent:
 
     def _trusted_context(self, state: OcopState) -> dict:
         provided = state.get("context") or {}
-        slots = Route.model_validate(state["route"]).slots
+        route = Route.model_validate(state["route"])
+        slots = route.slots
         # Never import authenticated, tenant, verified_criteria, verified_answers,
         # graph_seed_ids, temporal_rule or server permissions from a user dict.
         context = {
             "retrieval_mode": self.retrieval_mode,
             "rerank": self.rerank,
             "allow_partial_debug": self.allow_partial_debug,
-            "business_intent": Route.model_validate(state["route"]).intent.value,
+            "business_intent": route.intent.value,
         }
         # A compound question is restated as self-contained sub-questions once per question (model, validated).
         query = state.get("effective_query", state["query"])
-        if self.llm is not None and self._compound(query, Route.model_validate(state["route"])):
+        if self.llm is not None and self._compound(query, route):
             cache = self.__dict__.setdefault("_aspect_cache", {})
             if query not in cache:
                 cache[query] = aspects.propose(self.llm, query)
