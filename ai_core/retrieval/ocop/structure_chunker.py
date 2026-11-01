@@ -21,7 +21,7 @@ from ocop_contracts.models import cell_display_text
 
 TokenCount = Callable[[str], int]
 LEGAL_HEADING = re.compile(
-    r"^(?:Điều\s+\d+|Mẫu\s+(?:số\s+)?\d+|Phụ\s+lục\b|Chương\s+[IVX0-9]+|Mục\s+\d+)", re.I
+    r"^(?:Điều\s+\d+|Mẫu\s+(?:số\s+)?\d+|Biểu\s+(?:mẫu\s+|số\s+)?\d+|Phụ\s+lục\b|Chương\s+[IVX0-9]+|Mục\s+\d+)", re.I
 )
 WORD = re.compile(r"\S+", re.UNICODE)
 CLAUSE_START = re.compile(
@@ -279,7 +279,9 @@ def _plan_table(
         return []
     table = unit.get("structured") or {}
     base = _base(unit, meta)
-    preface = base + "Bảng\n"  # internal table ids carry no meaning for the embedding
+    # A table under a heading on the same page ("Phụ lục I") is read in that context, like a paragraph is.
+    heading = _legal_heading(unit, "")
+    preface = base + (f"Ngữ cảnh cấu trúc: {heading}.\n" if heading else "") + "Bảng\n"
     header = "\n".join(headers)
     header_cells = [c for c in table.get("cells", []) or [] if c.get("is_header") or c.get("header")]
     if not header_cells and inferred and table.get("cells"):
@@ -337,6 +339,7 @@ def _plan_table(
                 row_ids=rid,
                 spans=_table_spans(unit, row_cells, header_cells),
                 table_headers=headers,
+                heading=heading,
                 token_count=count(content),
                 over_budget=count(content) > budget,
                 header_inferred=inferred,

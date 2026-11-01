@@ -73,7 +73,7 @@ def _rx(lang=None):
     return lang.compiled("links", build)
 
 
-_CLAUSES = re.compile(r"\n(?=\s*(?:[a-zđ]\)|\d+\.)\s)")
+_CLAUSES = re.compile(r"\n(?=\s*(?:[^\W\d_]\)|\d+\.)\s)")
 
 
 def _nfc(text: str) -> str:

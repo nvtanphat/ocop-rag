@@ -68,7 +68,7 @@ VERSION = code_fingerprint(
     ],
 )
 LEGAL_START = re.compile(
-    r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?\d{1,3}(?!\d).*)\s*$",
+    r"^\s*(Điều\s+\d+[a-zđ]?(?:[.:]\s*.*)?|Chương\s+[IVXLCDM0-9]+\b.*|Mục\s+\d+\b.*|PHỤ\s*LỤC\s*[IVXLCDM0-9]*\b.*|Mẫu\s*(?:số)?\s*0?\d{1,3}(?!\d).*|Biểu\s*(?:mẫu|số)?\s*0?\d{1,3}(?!\d).*)\s*$",
     re.IGNORECASE,
 )
 LEGAL_REFERENCE = re.compile(
@@ -178,7 +178,7 @@ def _segments(text: str) -> list[tuple[str, str]]:
                 else "annex"
                 if "phụ" in low and "lục" in low
                 else "form"
-                if low.startswith("mẫu")
+                if low.startswith(("mẫu", "biểu"))
                 else "section"
             )
             buf.append(clean)
@@ -615,6 +615,12 @@ def page_units(
                 parent=root["unit_id"],
                 structured={
                     "source_kind": source_kind,
+                    # A table under a heading on the same page carries it, as the paragraphs after it do.
+                    **(
+                        {"legal_heading": active_legal_heading, "legal_heading_origin": "same_page_previous_segment"}
+                        if active_legal_heading
+                        else {}
+                    ),
                     "table_id": table_id,
                     "cells": cells_sorted,
                     "row_count": table.get("row_count"),

@@ -61,3 +61,17 @@ def test_a_reviewed_line_without_ocr_blocks_is_never_dropped_as_table_text():
                               {"row": 0, "col": 1, "text": "Nội dung", "bbox": [40, 60, 90, 70]}]}],
     }
     assert 0 not in _lines_duplicated_in_tables(page)
+
+
+def test_a_bieu_so_heading_starts_a_form_unit():
+    from ai_core.processing.ocop.knowledge_extract import _segments
+
+    kinds = [kind for kind, _ in _segments("Mở đầu\nBIỂU SỐ 3. MẪU BÁO CÁO ĐÁNH GIÁ CỦA ỦY BAN NHÂN DÂN CẤP XÃ\nNội dung")]
+    assert kinds == ["paragraph", "form"]
+
+
+def test_a_table_is_chunked_under_the_heading_of_its_page():
+    from ai_core.retrieval.ocop.structure_chunker import _legal_heading
+
+    table = {"structured": {"legal_heading": "Phụ lục I", "legal_heading_origin": "same_page_previous_segment"}}
+    assert _legal_heading(table, "") == "Phụ lục I"

@@ -415,14 +415,23 @@ def _title_seeds(query: str, ordered: list[dict], allowed) -> list[str]:
         if not heading or not allowed(chunk["chunk_id"]):
             continue
         match = re.match(r"^\D*?(?:\d+[a-z]?|[IVXLC]+)\b[.:)]?\s*(?P<title>\S.*)$", str(heading).strip())
-        words = set(re.findall(r"[a-z0-9]+", fold(match["title"]))) if match else set()
-        words = {w for w in words if not w.isdigit()}
+        title = match["title"] if match else _title_line_after(chunk, str(heading))
+        words = {w for w in re.findall(r"[a-z0-9]+", fold(title)) if not w.isdigit()}
         if len(words) < 2:
             continue
         share = len(words & asked) / len(words)
         if share >= settings.title_seed_min_share:
             scored.append((-share, -len(words), chunk["chunk_id"]))
     return [cid for _, _, cid in sorted(scored)[: settings.title_seed_max]]
+
+
+def _title_line_after(chunk: dict, heading: str) -> str:
+    """The name of a heading that is only a label ("Phụ lục III"): the next non-empty line of the passage."""
+    lines = [line.strip() for line in str(chunk.get("raw_text") or "").splitlines()]
+    if heading.strip() not in lines:
+        return ""
+    after = lines[lines.index(heading.strip()) + 1:]
+    return next((line for line in after if line), "")[:200]
 
 
 def search(
@@ -512,44 +521,44 @@ def search(
                     cid = ordered[pos]["chunk_id"]
                     sparse.append(cid)
                     sparse_scores[cid] = score
+    lists, weights = (
+        ([sparse, dense], [settings.rrf_weight_sparse, settings.rrf_weight_dense]) if mode == "hybrid"
+        else ([sparse], [1.0]) if mode == "sparse" else ([dense], [1.0])
+    )
     seeds = _title_seeds(query, ordered, allowed)
-    if mode == "hybrid":
-        fused = rrf([sparse, dense, seeds],
-                    weights=[settings.rrf_weight_sparse, settings.rrf_weight_dense, settings.rrf_weight_title])
-    elif seeds:
-        first = sparse if mode == "sparse" else dense
-        fused = rrf([first, seeds], weights=[1.0, settings.rrf_weight_title])
-    else:
-        fused = dict(sparse_scores) if mode == "sparse" else dense_scores
+    if seeds:
+        lists, weights = [*lists, seeds], [*weights, settings.rrf_weight_title]
+    fused = rrf(lists, weights=weights) if len(lists) > 1 else (dict(sparse_scores) if mode == "sparse" else dense_scores)
     items = sorted(fused.items(), key=lambda x: (-x[1], x[0]))[:pool_size]
-    results = []
-    for cid, score in items:
+
+    def make_row(cid, score):
         ch = chunks[cid]
-        results.append(
-            {
-                "chunk_id": cid,
-                "evidence_unit_id": ch["evidence_unit_id"],
-                "source_id": ch["source_id"],
-                "pdf_page": ch["spans"][0]["pdf_page"],
-                "source_spans": ch["spans"],
-                "review_status": ch["review_status"],
-                "corpus_version": ch["corpus_version"],
-                "score": round(float(score), 6),
-                "text": ch["text_for_bm25"],
-                "raw_text": ch.get("raw_text", ch["text_for_bm25"]),
-                "context": ch.get("context", {}),
-                "row_ids": ch.get("row_ids", []),
-                "table_headers": ch.get("table_headers", []),
-                "char_start": ch.get("char_start"),
-                "char_end": ch.get("char_end"),
-                "over_budget": ch.get("over_budget", False),
-            }
-        )
-        results[-1]["retrieval_mode"] = mode
-        results[-1]["requested_retrieval_mode"] = requested_mode
+        row = {
+            "chunk_id": cid,
+            "evidence_unit_id": ch["evidence_unit_id"],
+            "source_id": ch["source_id"],
+            "pdf_page": ch["spans"][0]["pdf_page"],
+            "source_spans": ch["spans"],
+            "review_status": ch["review_status"],
+            "corpus_version": ch["corpus_version"],
+            "score": round(float(score), 6),
+            "text": ch["text_for_bm25"],
+            "raw_text": ch.get("raw_text", ch["text_for_bm25"]),
+            "context": ch.get("context", {}),
+            "row_ids": ch.get("row_ids", []),
+            "table_headers": ch.get("table_headers", []),
+            "char_start": ch.get("char_start"),
+            "char_end": ch.get("char_end"),
+            "over_budget": ch.get("over_budget", False),
+        }
+        row["retrieval_mode"] = mode
+        row["requested_retrieval_mode"] = requested_mode
         if fallback_reason:
-            results[-1]["retrieval_fallback_reason"] = fallback_reason
-        results[-1].update(dense_meta)
+            row["retrieval_fallback_reason"] = fallback_reason
+        row.update(dense_meta)
+        return row
+
+    results = [make_row(cid, score) for cid, score in items]
     if rerank and results and settings.rerank_skip_on_agreement and sparse and dense and sparse[0] == dense[0]:
         for row in results:
             row["ranking_reason"] = "deterministic_" + mode + "_order; reranker_skipped_first_stage_agrees"

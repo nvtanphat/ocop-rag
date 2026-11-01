@@ -52,7 +52,8 @@ def test_missing_verified_dependency_does_not_guess_criterion(tmp_path, monkeypa
     monkeypatch.setattr(agent.tools, "dispatch", fake)
     result = agent.execute(_state(route))
     assert calls == ["lookup_product_subgroup"]
-    assert result["results"][1]["output"]["status"] == "dependency_unavailable"
+    # Nothing found upstream is an ordinary miss: the child is skipped, and text recovery stays possible.
+    assert result["results"][1]["output"]["status"] == "dependency_empty"
 
 
 def test_valid_verified_dependency_allows_child(tmp_path, monkeypatch):
@@ -419,3 +420,16 @@ def test_targeted_recovery_searches_only_the_parts_no_evidence_speaks_to(tmp_pat
         and updated["results"][-1]["output"]["results"][0]["query_part"] == grade["uncovered_parts"][0]
     )
     assert updated["trace"][-1]["reason"] == "uncovered_question_parts"
+
+
+def test_an_empty_dependency_allows_text_recovery_but_a_failed_service_does_not():
+    from ai_core.orchestration.ocop.planner import recovery_safe
+
+    route = _route(["lookup_product_subgroup", "lookup_criterion"])
+    plan = build_plan(route)
+    empty = [{"tool": "lookup_product_subgroup", "output": {"results": [], "status": "no_results"}},
+             {"tool": "lookup_criterion", "output": {"results": [], "status": "dependency_empty"}}]
+    failed = [{"tool": "lookup_product_subgroup", "output": {"results": [], "status": "tool_unavailable"}},
+              {"tool": "lookup_criterion", "output": {"results": [], "status": "dependency_unavailable"}}]
+    assert recovery_safe(Route.model_validate(route.model_dump()), empty, plan)
+    assert not recovery_safe(Route.model_validate(route.model_dump()), failed, plan)

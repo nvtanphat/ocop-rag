@@ -37,6 +37,10 @@ MEMORY_ROWS = 3  # remembered evidence rows added to a follow-up turn at most
 PART_SCOPED_STATUSES = frozenset({"recognition_scope_unverified", "entity_not_found"})
 
 
+
+# What a dependency returns when it ran correctly and found nothing (not a service failure).
+EMPTY_DEPENDENCY_STATUSES = frozenset({"no_results", "not_found", "entity_not_found"})
+
 class OcopState(TypedDict, total=False):
     query: str
     effective_query: str
@@ -262,6 +266,7 @@ class OcopAgent:
         if output.get("status") in (
             "tool_unavailable",
             "dependency_unavailable",
+            "dependency_empty",
             "invalid_tool_output",
             "not_found",
             "not_ready",
@@ -371,7 +376,10 @@ class OcopAgent:
                 and not (name == "search_graph" and self._graph_seed_rows(finished.get(dep, {})))
             ]
             if failed:
-                output = {"results": [], "status": "dependency_unavailable"}
+                # A dependency that ran and found nothing is an ordinary miss: the child is skipped, but the bounded text
+                # recovery may still answer. Only a failed service (or policy stop) blocks recovery.
+                empty = all((finished.get(dep) or {}).get("status") in EMPTY_DEPENDENCY_STATUSES for dep in failed)
+                output = {"results": [], "status": "dependency_empty" if empty else "dependency_unavailable"}
                 results.append(
                     {
                         "tool": name,

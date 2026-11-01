@@ -36,6 +36,7 @@ BAD_RESULT_STATUSES = frozenset(
         "sheet_scope_unavailable",
         "tool_unavailable",
         "dependency_unavailable",
+        "dependency_empty",
         "invalid_tool_output",
         "backend_unavailable",
         "index_unavailable",

@@ -317,3 +317,11 @@ def test_a_passage_whose_heading_the_question_names_is_seeded():
     seeds = _title_seeds("Từ ngày nào Nghị định này bắt đầu có hiệu lực thi hành?", ordered, lambda cid: True)
     assert seeds[0] == "a" and "c" not in seeds and "d" not in seeds
     assert _title_seeds("Ai chịu trách nhiệm?", ordered, lambda cid: cid != "b") == []
+
+
+def test_a_heading_that_is_only_a_label_takes_its_name_from_the_next_line():
+    from ai_core.retrieval.ocop.search import _title_seeds
+
+    ordered = [{"chunk_id": "annex", "context": {"legal_heading": "Phụ lục III"},
+                "raw_text": "Phụ lục III\nBỘ TIÊU CHÍ ĐÁNH GIÁ SẢN PHẨM OCOP\n(Kèm theo Quyết định)"}]
+    assert _title_seeds("Bộ tiêu chí đánh giá sản phẩm OCOP nằm ở phụ lục nào?", ordered, lambda cid: True) == ["annex"]

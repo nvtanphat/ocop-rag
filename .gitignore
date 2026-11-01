@@ -41,3 +41,6 @@ htmlcov/
 Thumbs.db
 build/
 dist/
+
+# cloned reference projects (read-only study material)
+reference/
