@@ -100,16 +100,18 @@ def _recognition_records_in_scope(rows: list[dict], *, region, stars):
 
 
 def _expanded_name_key(labels: list[str]):
-    """A key under which "HTX Sen Huế" and "Hợp tác xã Sen Huế" are one name: a word that is the initials of a phrase
-    several labels share stands for that phrase (the rule catalog.py uses to read "HTX" as a kind of entity)."""
+    """Map initials to their expanded phrase when shared across multiple labels."""
     runs: dict[str, set[str]] = {}
     for label in labels:
         words = normalize(label).split()
         for size in (2, 3, 4):
             for start in range(len(words) - size + 1):
-                runs.setdefault(" ".join(words[start : start + size]), set()).add(label)
+                phrase = " ".join(words[start : start + size])
+                runs.setdefault(phrase, set()).add(label)
     initials = {
-        "".join(word[0] for word in run.split()): run for run, owners in runs.items() if len(owners) >= 2
+        "".join(w[0] for w in phrase.split()): phrase
+        for phrase, owners in runs.items()
+        if len(owners) >= 2
     }
     return lambda label: " ".join(initials.get(word, word) for word in normalize(label).split())
 
@@ -369,7 +371,8 @@ class ToolRegistry:
         # The model's self-contained sub-questions and the parts cut at joining words are both searched, as RAG-Fusion
         # searches every phrasing: the model may write fewer parts than the question has, and a part it drops loses its hits.
         parts = list(context.get("aspects") or [])
-        parts += [p for p in sub_queries(query) if all(fold(p) != fold(q) for q in parts)]
+        aspect_folds = {fold(q) for q in parts}
+        parts += [p for p in sub_queries(query) if fold(p) not in aspect_folds]
         for part in parts:
             scope = (
                 self._anaphoric_source(
@@ -384,10 +387,12 @@ class ToolRegistry:
             found = self.search_part(
                 part, slots, {**context, **({"_scope_source": scope} if scope else {})}, auth
             )
-            earlier.extend(found.get("results", [])[:4])
-            for row in found.get("results", [])[:4]:
-                if self._hit_key(row) not in seen:
-                    seen.add(self._hit_key(row))
+            hits = found.get("results", [])[:4]
+            earlier.extend(hits)
+            for row in hits:
+                key = self._hit_key(row)
+                if key not in seen:
+                    seen.add(key)
                     extra.append({**row, "query_part": part})
         if not extra:
             return whole
@@ -460,12 +465,15 @@ class ToolRegistry:
         noun = memory._noun_pattern(get_language(), "document")
         if not re.search(r"(?:" + noun + r")\s+" + memory.DEMONSTRATIVE + r"\b", fold(part)):
             return None
-        wanted = [fold(a) for a in anchors if a]
-        if wanted:
+        valid_anchors = [a for a in anchors if a]
+        if valid_anchors:
             try:
-                rows = search(self.index_dir, " ".join(a for a in anchors if a), mode=mode, top_k=get_settings().retrieval.top_k)
+                rows = search(
+                    self.index_dir, " ".join(valid_anchors), mode=mode, top_k=get_settings().retrieval.top_k
+                )
             except (RuntimeError, ValueError, OSError):
                 return None
+            wanted = [fold(a) for a in valid_anchors]
             rows = [
                 r
                 for r in rows
@@ -522,6 +530,8 @@ class ToolRegistry:
             mode = context.get("retrieval_mode", "sparse")
             doc = slots.get("document_code")
             source_filter = self._resolve_source_id(doc) if doc else None
+            top_k = get_settings().retrieval.top_k
+            rerank = bool(context.get("rerank", False))
             if slots.get("sheet_number"):
                 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 
@@ -665,9 +675,9 @@ class ToolRegistry:
                         self.index_dir,
                         query,
                         mode=mode,
-                        top_k=get_settings().retrieval.top_k,
+                        top_k=top_k,
                         source_id=allowed_source,
-                        rerank=bool(context.get("rerank", False)),
+                        rerank=rerank,
                     ):
                         # Defend even if a search adapter violates its filter.
                         if hit.get("source_id") != allowed_source:
@@ -718,9 +728,9 @@ class ToolRegistry:
                         self.index_dir,
                         query,
                         mode=mode,
-                        top_k=get_settings().retrieval.top_k,
+                        top_k=top_k,
                         source_id=allowed_source,
-                        rerank=bool(context.get("rerank", False)),
+                        rerank=rerank,
                     ):
                         if hit.get("source_id") != allowed_source:
                             continue
@@ -742,9 +752,9 @@ class ToolRegistry:
                     self.index_dir,
                     query,
                     mode=mode,
-                    top_k=get_settings().retrieval.top_k,
+                    top_k=top_k,
                     source_id=source_filter or context.get("_scope_source"),
-                    rerank=bool(context.get("rerank", False)),
+                    rerank=rerank,
                     with_continuations=True,
                 )
             }
@@ -955,7 +965,7 @@ class ToolRegistry:
             asked_orgs = [str(slots["organization_name"])] if slots.get("organization_name") else []
             if name == "lookup_recognition" and asked_orgs:
                 organization_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Organization"]
-                orgs = set().union(*(_matching_entity_ids(organization_nodes, asked) for asked in asked_orgs))
+                orgs = {nid for asked in asked_orgs for nid in _matching_entity_ids(organization_nodes, asked)}
                 # The same owner written with and without an abbreviation is one owner: the record's edges may reach
                 # only the other spelling.
                 key = _expanded_name_key([node["label"] for node in organization_nodes])
