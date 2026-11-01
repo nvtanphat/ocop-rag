@@ -406,7 +406,7 @@ def _evidence(
         estimated_tokens(
             f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status', 'needs_review')}: "
         )
-        for i, (key, row, span, flag) in enumerate(entries, 1)
+        for i, (key, row, span, _) in enumerate(entries, 1)
     ]
     excerpts = (
         fit_budget([e[1] for e in entries], [e[3] for e in entries], window_terms, cfg, budget, headers)
@@ -999,7 +999,7 @@ def _assemble(
             }
         )
     if llm is None:
-        return {
+        return response({
             "answer": (
                 "Kết quả truy xuất (chưa tạo câu trả lời bằng LLM). "
                 "Các trích đoạn giữ nguyên trạng thái xác minh của nguồn; "
@@ -1007,26 +1007,24 @@ def _assemble(
             ),
             "status": "retrieval_only",
             "citations": citations,
-            "evidence_fusion": fusion,
-        }
+        })
     system = SYSTEM_PROMPT
     if style == "simple":
         system += "\nDiễn giải ngắn gọn, dễ hiểu. Giữ nguyên nghĩa và chỉ dùng thông tin trong SOURCE."
     prompt = "CÂU HỎI: " + question + "\nSOURCE:\n" + "\n".join(contexts)
     cfg = get_settings().context
     if fusion["context_term_coverage"] < cfg.min_term_coverage and question_terms(question):
-        return {
+        return response({
             "answer": "Nội dung gửi tới mô hình chưa phủ đủ ý của câu hỏi nên không sinh câu trả lời. "
             "Trích xuất nguồn:\n" + "\n".join(contexts),
             "status": "insufficient_context_for_generation",
             "citations": citations,
-            "evidence_fusion": fusion,
             "generation_diagnostics": {
                 "layer": "context",
                 "reasons": ["question_terms_not_in_prompt_source"],
                 "context_term_coverage": fusion["context_term_coverage"],
             },
-        }
+        })
     try:
         structured = getattr(llm, "chat_structured", None)
         raw = (
@@ -1039,14 +1037,13 @@ def _assemble(
             return _publish_claims(parsed, citations, selected, contexts, fusion, catalog, question, llm)
         text = raw
         if not isinstance(text, str) or not text.strip():
-            return {
+            return response({
                 "answer": "Model không trả về văn bản hợp lệ. Chỉ cung cấp bản trích xuất nguồn:\n"
                 + "\n".join(contexts),
                 "status": "citation_verification_failed",
                 "citations": citations,
-                "evidence_fusion": fusion,
                 "generation_diagnostics": {"layer": "generation", "reasons": ["invalid_model_text"]},
-            }
+            })
         # Server builds its own citations from tool evidence; never trust model IDs.
         verification = check_source_markers(text, citations)
         sensitive = check_sensitive_claims(text, selected, citations)
@@ -1072,14 +1069,13 @@ def _assemble(
             )
             reasons = list(dict.fromkeys(reasons))
             # Never expose unsupported [S#] claims as valid references.
-            return {
+            return response({
                 "answer": "Tầng xác minh chưa chấp nhận câu trả lời LLM ("
                 + ", ".join(reasons)
                 + "). Chỉ cung cấp bản trích xuất chưa diễn giải:\n"
                 + "\n".join(contexts),
                 "status": "citation_verification_failed",
                 "citations": citations,
-                "evidence_fusion": fusion,
                 "claim_verification": claims,
                 "generation_diagnostics": {
                     "layer": "claim_verification",
@@ -1087,21 +1083,20 @@ def _assemble(
                     "markers": verification,
                     "sensitive_claims": sensitive,
                 },
-            }
+            })
         if verification["unverified_source"]:
             text = (
                 "[LƯU Ý: Nguồn OCR/trích xuất chưa được duyệt; thông tin cần kiểm tra lại PDF gốc.]\n" + text
             )
         # This is identity checking, not a factual entailment proof.
-        return {
+        return response({
             "answer": text,
             "status": "generated_unverified_claims"
             if verification["unverified_source"]
             else "generated_claims_verified",
             "citations": citations,
-            "evidence_fusion": fusion,
             "claim_verification": claims,
-        }
+        })
     except (RuntimeError, TimeoutError, ConnectionError, OSError) as exc:
         reason = "model_output_truncated" if isinstance(exc, ModelOutputTruncated) else "model_unavailable"
         message = (
@@ -1109,10 +1104,9 @@ def _assemble(
             if isinstance(exc, ModelOutputTruncated)
             else "LLM chưa sẵn sàng."
         )
-        return {
+        return response({
             "answer": message + " Bằng chứng truy xuất:\n" + "\n".join(contexts),
             "status": "model_unavailable_retrieval_only",
             "citations": citations,
-            "evidence_fusion": fusion,
             "generation_diagnostics": {"layer": "generation", "reasons": [reason]},
-        }
+        })
