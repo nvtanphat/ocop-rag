@@ -435,3 +435,32 @@ def test_article_heading_that_starts_a_sentence_keeps_its_subject():
     assert sentences[0] == "Điều 2. Quyết định này có hiệu lực kể từ ngày ký ban hành."
     assert sentences[1].startswith("Điều 3. Bộ trưởng") and "chịu trách nhiệm thi hành" in sentences[1]
     assert sentences[2] == "Điều 4. Phạm vi điều chỉnh"
+
+
+def test_a_numbered_heading_with_a_mixed_case_tail_is_a_criterion_not_an_option():
+    sid = "VN.OCOP.QD26.2026"
+    rows = [
+        ("10. TÍNH AN TOÀN", "3"),
+        ("11. TÍNH ĐỘC ĐÁO Chất lượng (mùi thơm, màu sắc): có nét riêng", "5"),
+        ("Rất độc đáo và có tính đặc trưng", "5"),
+        ("1. Có giấy chứng nhận", "2"),
+    ]
+    cells = []
+    for i, (label, score) in enumerate(rows):
+        cells += [
+            {"row": i, "col": 0, "text": label, "bbox": [0, i * 20, 80, i * 20 + 20]},
+            {"row": i, "col": 1, "text": score, "bbox": [80, i * 20, 100, i * 20 + 20]},
+        ]
+    unit = {
+        "unit_id": "unit:score:0003",
+        "source_id": sid,
+        "unit_kind": "criterion_table_candidate",
+        "text": "\n".join(f"{label} | {score}" for label, score in rows),
+        "spans": [{"pdf_page": 117, "table_id": "table:1", "bbox": [0, 0, 100, 80]}],
+        "structured": {"table_id": "table:1", "cells": cells},
+    }
+    s = extract_semantics([unit], {sid: "ocop_framework"}, candidates([unit], {sid: "ocop_framework"}))
+    kinds = {e["label"][:3]: e["kind"] for e in s["business_entities"] if e["kind"] in ("Criterion", "ScoreOption")}
+    assert kinds["11."] == "Criterion"
+    assert kinds["Rất"] == "ScoreOption"
+    assert kinds["1. "] == "ScoreOption"  # an ordinary numbered option stays an option

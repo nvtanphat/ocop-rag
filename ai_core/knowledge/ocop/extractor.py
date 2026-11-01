@@ -306,14 +306,18 @@ def extract_semantics(
     markers_re = re.compile(r"(?<!\*)\*" + asterisk_quantifier() + r"(?!\*)")
 
     def is_section(label: str) -> bool:
-        # A heading cell may include a lower-case explanatory paragraph.
+        # A heading cell may include a lower-case explanatory paragraph, or an OCR-mixed tail ("11. TÍNH ĐỘC ĐÁO Chất
+        # lượng (...)"): the first two words after the number in capitals name the heading, an option ("1. Có ...") never
+        # starts that way.
+        match = section_re.match(label)
+        if not match:
+            return False
         title = re.split(r"[\n(]", label, maxsplit=1)[0]
         letters = [c for c in title if c.isalpha()]
-        return (
-            bool(section_re.match(label))
-            and len(letters) >= 4
-            and sum(c.isupper() for c in letters) >= 0.8 * len(letters)
-        )
+        if len(letters) >= 4 and sum(c.isupper() for c in letters) >= 0.8 * len(letters):
+            return True
+        words = re.findall(r"[^\W\d_]+", label[match.end(1):])[:2]
+        return len(words) == 2 and all(w.isupper() for w in words) and sum(map(len, words)) >= 4
 
     for _, rows in sorted(score_tables.items(), key=lambda item: str(item[0])):
         parent_id = None
