@@ -1,6 +1,6 @@
 {
   "dataset_name": "OCOP-RAG Retrieval 100 — câu hỏi tiếng Việt tự nhiên",
-  "dataset_version": "1.2.1-natural-query",
+  "dataset_version": "1.2.2-natural-query",
   "task": "evidence_unit_retrieval",
   "language": "vi",
   "corpus_version": "9e8f7e46a64a74e80dd8",
@@ -12,7 +12,8 @@
     "Correlate a returned chunk with its parent evidence_unit_id; do not score by chunk_id.",
     "No unanswerable questions are included in this retrieval ranking benchmark.",
     "alternative_evidence: a unit that answers the question as completely as the gold_evidence on its own. A question is satisfied when all gold_evidence is returned or any alternative_evidence unit is.",
-    "2026-10-31: R025 accepts QĐ26 page 4 as alternative evidence (Điều 6: 'Báo cáo tự đánh giá về sản phẩm theo Mẫu số 02 Phụ lục III'), which names the same form as page 150."
+    "2026-10-31: R025 accepts QĐ26 page 4 as alternative evidence (Điều 6: 'Báo cáo tự đánh giá về sản phẩm theo Mẫu số 02 Phụ lục III'), which names the same form as page 150.",
+    "R064 (2026-11-02): Điều 9 Luật Hợp tác xã 2023 starts at the end of p.7 (clauses 1-2) and continues on p.8 (clauses 3 onward), so p.8 is added as alternative_evidence; checked against the source text."
   ],
   "counts": {
     "questions": 100,
@@ -793,6 +794,13 @@
           "source_id": "VN.LAW.17.2023",
           "pdf_page": 7,
           "evidence_unit_id": "ocop:evidence:a4cf95beb18a457e467ae3c6"
+        }
+      ],
+      "alternative_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:e4f635687f4ec7b446dad840"
         }
       ]
     },
