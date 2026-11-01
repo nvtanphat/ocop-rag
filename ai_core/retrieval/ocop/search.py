@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
@@ -599,11 +599,12 @@ def search(
     # ViCAS-RAG diversify_hits: a short document whose every page matches the question's place or topic must not take all
     # top_k places; each document takes at most max_hits_per_document first, the rest fill the free places in rank order.
     cap = settings.max_hits_per_document
-    per_source: dict = {}
+    per_source: Counter[str] = Counter()
     first, later = [], []
     for row in results:
-        per_source[row["source_id"]] = per_source.get(row["source_id"], 0) + 1
-        (first if per_source[row["source_id"]] <= cap else later).append(row)
+        sid = row["source_id"]
+        per_source[sid] += 1
+        (first if per_source[sid] <= cap else later).append(row)
     results = (first + later)[:top_k]
     results = _with_following_chunks(
         results,
