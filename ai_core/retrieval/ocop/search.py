@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from collections import Counter, OrderedDict
+from collections import OrderedDict
 from functools import lru_cache
 from ai_core.system.telemetry import traced
 from pathlib import Path
@@ -597,14 +597,19 @@ def search(
             else "deterministic_" + mode + "_order; reranker_not_requested",
         )
     # ViCAS-RAG diversify_hits: a short document whose every page matches the question's place or topic must not take all
-    # top_k places; each document takes at most max_hits_per_document first, the rest fill the free places in rank order.
+    # top_k places; each document takes at most max_hits_per_document pages first, the rest fill the free places in rank
+    # order. ViCAS counts chunks because its chunk is one article; here a page is split into several chunks, and counting
+    # them let one page use up its document's places (R048: three chunks of p.21 pushed out p.20, the answer).
     cap = settings.max_hits_per_document
-    per_source: Counter[str] = Counter()
+    pages: dict[str, set] = {}
     first, later = [], []
     for row in results:
-        sid = row["source_id"]
-        per_source[sid] += 1
-        (first if per_source[sid] <= cap else later).append(row)
+        seen = pages.setdefault(row["source_id"], set())
+        if row["pdf_page"] in seen or len(seen) < cap:
+            seen.add(row["pdf_page"])
+            first.append(row)
+        else:
+            later.append(row)
     results = (first + later)[:top_k]
     results = _with_following_chunks(
         results,

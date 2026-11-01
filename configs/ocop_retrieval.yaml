@@ -20,7 +20,7 @@ context:
   max_quote_parts: 4               # lines of one quote: one passage per cited source of a comparison
 retrieval:
   top_k: 8                         # passages one search returns; the cross-encoder and the token budget choose what reaches the prompt
-  max_hits_per_document: 3         # one search keeps at most this many passages of a document before filling with the rest (ViCAS diversify_hits)
+  max_hits_per_document: 3         # one search keeps at most this many pages of a document before filling with the rest (ViCAS diversify_hits)
   candidate_pool_min: 40           # sparse/dense candidates before fusion
   rrf_k: 60
   rrf_weight_sparse: 1.0
