@@ -1027,6 +1027,8 @@ class OcopAgent:
             if item.get("optional")
             and item["tool"] not in ENRICHMENT_TOOLS
             and (item.get("output") or {}).get("status") != "not_needed"
+            # A tool the question gave nothing to look up (no product named) found nothing because nothing was asked.
+            and not (item.get("output") or {}).get("input_missing")
             and (
                 item.get("skipped")
                 or (item.get("output") or {}).get("status") in BAD_RESULT_STATUSES

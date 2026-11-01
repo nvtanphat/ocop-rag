@@ -921,7 +921,8 @@ class ToolRegistry:
             elif name == "lookup_product_subgroup" and not slots.get("product_name"):
                 # The question names no product set. Returning the first taxonomy nodes would answer every product
                 # with the same group; an ordinary miss lets the planner's text recovery search instead.
-                return {"results": [], "status": "no_results", "reason": "no_product_set_named"}
+                # input_missing: nothing was asked of this tool, so an optional call is not a gap in the answer.
+                return {"results": [], "status": "no_results", "reason": "no_product_set_named", "input_missing": True}
             asked_products = [
                 str(x)
                 for x in (slots.get("product_names") or [slots.get("product_name")])
