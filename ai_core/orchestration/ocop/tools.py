@@ -16,10 +16,11 @@ from ai_core.graph.ocop.lookup import GraphEvidence
 from ai_core.graph.ocop.links import LINK_RELATIONS, SetLinker
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.temporal import resolve_event_applicability
+from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
 from ai_core.orchestration.ocop.contracts import AuthContext
 from ai_core.system.telemetry import traced
 from ai_core.orchestration.ocop.semantic import normalize
-from ai_core.orchestration.ocop.language import fold, get_language
+from ai_core.orchestration.ocop.language import fold, get_language, has_diacritics
 from ai_core.orchestration.ocop.document_scope import DocumentResolver
 from ai_core.retrieval.ocop.fusion import criterion_facets, order_evidence
 
@@ -120,7 +121,6 @@ def _matching_entity_ids(nodes: list[dict], requested: str) -> set[str]:
     exact = {node["node_id"] for node in nodes if identity(node["label"]) == identity(requested)}
     if exact:
         return exact
-    from ai_core.orchestration.ocop.language import has_diacritics
 
     key = identity if has_diacritics(requested) else normalize
     needle = key(requested)
@@ -209,12 +209,12 @@ class ToolRegistry:
         self.root = Path(root)
         self.index_dir = self.root / "data/processed/ocop/index"
         self.graph_dir = self.root / "data/processed/ocop/graph"
+        self._words: frozenset[str] | None = None
+        self._linker: SetLinker | None = None
 
     def _corpus_words(self) -> frozenset[str]:
         """Folded words that occur anywhere in the indexed evidence (what the corpus can be asked about)."""
-        if not hasattr(self, "_words"):
-            from ai_core.orchestration.ocop.language import fold
-
+        if self._words is None:
             words: set[str] = set()
             path = self.index_dir / "evidence_units.jsonl"
             if path.is_file():
@@ -225,7 +225,7 @@ class ToolRegistry:
         return self._words
 
     def _set_linker(self) -> SetLinker:
-        if not hasattr(self, "_linker"):
+        if self._linker is None:
             self._linker = SetLinker.from_jsonl(self.index_dir / "evidence_units.jsonl")
         return self._linker
 
@@ -509,8 +509,6 @@ class ToolRegistry:
         auth: AuthContext | None = None,
     ) -> dict:
         context = context or {}
-        from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
-
         if name not in TOOL_REGISTRY:
             raise ValueError("Unknown or unauthorized OCOP tool: " + name)
         if TOOL_REGISTRY[name].requires_auth and not isinstance(auth, AuthContext):
