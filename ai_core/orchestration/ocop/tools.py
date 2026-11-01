@@ -351,8 +351,11 @@ class ToolRegistry:
         seen = {self._hit_key(row) for row in whole.get("results", [])}
         extra = []
         earlier = []  # rows of the parts already searched, in order: what a later "văn bản đó" can point back to
-        # Self-contained sub-questions written by the model when there is one, else the parts cut at joining words.
-        for part in context.get("aspects") or sub_queries(query):
+        # The model's self-contained sub-questions and the parts cut at joining words are both searched, as RAG-Fusion
+        # searches every phrasing: the model may write fewer parts than the question has, and a part it drops loses its hits.
+        parts = list(context.get("aspects") or [])
+        parts += [p for p in sub_queries(query) if all(fold(p) != fold(q) for q in parts)]
+        for part in parts:
             scope = (
                 self._anaphoric_source(
                     part,
