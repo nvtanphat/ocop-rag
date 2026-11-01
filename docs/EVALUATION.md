@@ -19,6 +19,20 @@ Bộ giữ riêng (held-out) nằm ngoài repo, khoá bằng hash: chỉ xem s�
 
 Không thay gold để khớp output. Nếu gold bị soạn sai, cần quy trình sửa/khóa riêng trước khi chạy lại.
 
+## Chạy và chấm bằng `tools/evaluate_gold.py`
+
+Một lệnh cho năm bộ `retrieval`, `multihop`, `session`, `abstention`, `citation` (bộ router dùng `tools/evaluate_router.py`). Mỗi dòng kết quả lưu (văn bản, trang) của từng trích dẫn theo thứ tự trong câu trả lời, nên vẫn chấm được sau khi dựng lại kho làm đổi mã đoạn. Lệnh `run` từ chối chạy khi tìm kiếm hybrid đang rơi về chỉ từ khoá.
+
+```powershell
+# nhóm nhỏ trước, cả bộ khi chốt
+python tools/evaluate_gold.py run retrieval --sample 5 --seed 7 --out ../ocop-eval-runs/ret_try.jsonl
+python tools/evaluate_gold.py run session --ids SM013,SM015 --real-for followup --out ../ocop-eval-runs/sm.jsonl
+python tools/evaluate_gold.py run citation --ids R001,R091 --llm real --out ../ocop-eval-runs/cite.jsonl
+python tools/evaluate_gold.py score retrieval ../ocop-eval-runs/ret.jsonl --compare ../ocop-eval-runs/ret_old.jsonl
+```
+
+`--llm stub` (mặc định) không sinh câu trả lời: số đo là bằng chứng vào prompt. `--real-for followup,aspects,scope` chỉ gửi các bước đó tới mô hình thật. Bộ `abstention` và `citation` cần `--llm real` mới có ý nghĩa. `--resume` chạy tiếp tệp đã có; với `session`, lệnh chạy nguyên các hội thoại chứa câu được chọn.
+
 ## Lưu ý kiểm tra hạ tầng trước khi đo (Docker Qdrant)
 
 > [!IMPORTANT]
