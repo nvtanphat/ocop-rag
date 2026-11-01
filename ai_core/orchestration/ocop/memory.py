@@ -321,22 +321,33 @@ def rewrite(
             if old and new and old != new and old.casefold() in text.casefold():
                 text = re.sub(re.escape(old), lambda _: str(new), text, count=1, flags=re.I)
                 replaced.append("product" if key == "product_name" else "organization")
-        # a new article/form/sheet the earlier question never referred to: ask about it afresh inside the carried scope
-        fresh = [
-            (kind, _values(resolved, kind))
-            for kind in ("article", "form", "sheet")
-            if _values(resolved, kind) and kind not in replaced
+        # A new product/organisation the previous question does not spell out ("Còn hạt sen của HTX Sen Huế?" after a
+        # question written as "Siro của Hichagol..."): the old question would still ask about the old thing, so the
+        # user's own question is kept with its scope below instead.
+        unplaced = [
+            key
+            for key in ("product_name", "organization_name")
+            if updates.get(key)
+            and updates.get(key) != (previous_slots or {}).get(key)
+            and ("product" if key == "product_name" else "organization") not in replaced
         ]
-        if fresh:
-            target = " và ".join(_surface(lang, kind, v) for kind, vals in fresh for v in vals)
-            scope = [_surface(lang, kind, v) for kind in ("document",) for v in _values(slots, kind)]
-            if slots.get("region"):
-                scope.append(str(slots["region"]))
-            if slots.get("product_name"):
-                scope.append(f"sản phẩm {slots['product_name']}")
-            of = f" {lang.followup.scope_of} " + ", ".join(dict.fromkeys(scope)) if scope else ""
-            return lang.followup.generic_question.format(target=target, scope=of), "generic_target"
-        return text, ("substitute:" + ",".join(replaced)) if replaced else "previous_standalone"
+        if not unplaced:
+            # a new article/form/sheet the earlier question never referred to: ask about it afresh inside the carried scope
+            fresh = [
+                (kind, _values(resolved, kind))
+                for kind in ("article", "form", "sheet")
+                if _values(resolved, kind) and kind not in replaced
+            ]
+            if fresh:
+                target = " và ".join(_surface(lang, kind, v) for kind, vals in fresh for v in vals)
+                scope = [_surface(lang, kind, v) for kind in ("document",) for v in _values(slots, kind)]
+                if slots.get("region"):
+                    scope.append(str(slots["region"]))
+                if slots.get("product_name"):
+                    scope.append(f"sản phẩm {slots['product_name']}")
+                of = f" {lang.followup.scope_of} " + ", ".join(dict.fromkeys(scope)) if scope else ""
+                return lang.followup.generic_question.format(target=target, scope=of), "generic_target"
+            return text, ("substitute:" + ",".join(replaced)) if replaced else "previous_standalone"
     # the question has words of its own: keep them and state the scope it relies on (including what it points back to)
     explicit = {
         k

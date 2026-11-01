@@ -383,3 +383,19 @@ def test_memory_keeps_the_recent_standalone_questions_newest_first():
         state = memory.update(state, slots={}, standalone=q, citations=[], corpus_version=None)
     assert state["recent"] == ["Câu bốn?", "Câu ba?", "Câu hai?"]
     assert memory.sanitize(state)["recent"] == state["recent"]
+
+
+def test_a_new_product_the_previous_question_does_not_spell_out_keeps_the_users_question():
+    from ai_core.orchestration.ocop import memory
+
+    state = {**memory.empty(), "standalone": "Siro của Hichagol ở Huế đạt mấy sao OCOP vậy?"}
+    updates = {"product_name": "Hạt sen", "organization_name": "HTX Sen Huế"}
+    text, method = memory.rewrite(
+        "Còn hạt sen của HTX Sen Huế được mấy sao?",
+        state,
+        {**updates, "region": "Huế"},
+        updates,
+        previous_slots={"product_name": "Mứt Atiso đỏ", "region": "Huế"},
+    )
+    assert "siro" not in text.casefold() and "hạt sen" in text.casefold(), text
+    assert method == "state_scope"
