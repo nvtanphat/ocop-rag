@@ -781,6 +781,7 @@ class ToolRegistry:
                     source_id=source_filter or context.get("_scope_source"),
                     rerank=rerank,
                     with_continuations=True,
+                    demote_sources=self.replaced_sources() if context.get("prefer_current") else frozenset(),
                 )
             }
         if name == "lookup_legal_unit":

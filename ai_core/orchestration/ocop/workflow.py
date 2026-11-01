@@ -218,6 +218,7 @@ class OcopAgent:
             "rerank": self.rerank,
             "allow_partial_debug": self.allow_partial_debug,
             "business_intent": route.intent.value,
+            "prefer_current": not self._asks_version(route),
         }
         # A compound question is restated as self-contained sub-questions once per question (model, validated).
         query = state.get("effective_query", state["query"])
@@ -234,6 +235,16 @@ class OcopAgent:
         ):
             context["as_of_date"] = provided["as_of_date"]
         return context
+
+    @staticmethod
+    def _asks_version(route: Route) -> bool:
+        """A question that names a year, a document or a change over time may be about an older version on purpose."""
+        return bool(
+            route.slots.get("years")
+            or route.slots.get("document_code")
+            or route.slots.get("document_codes")
+            or Capability.TEMPORAL.value in route.capabilities
+        )
 
     @staticmethod
     def _verified_slots(results: list[dict]) -> dict:
@@ -1013,13 +1024,7 @@ class OcopAgent:
             }
         outputs = every
         question = state.get("effective_query", state["query"])
-        # A question that names a year, a document or a change over time may be about an older version on purpose.
-        asks_version = bool(
-            route.slots.get("years")
-            or route.slots.get("document_code")
-            or route.slots.get("document_codes")
-            or Capability.TEMPORAL.value in route.capabilities
-        )
+        asks_version = self._asks_version(route)
         response = assemble(
             question,
             outputs,

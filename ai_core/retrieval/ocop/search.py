@@ -451,6 +451,7 @@ def search(
     pair_token_budget: int | None = None,
     evidence_unit_ids: set[str] | None = None,
     with_continuations: bool = False,
+    demote_sources: frozenset[str] = frozenset(),
 ) -> list[dict]:
     if mode not in ("sparse", "hybrid", "dense"):
         raise ValueError("mode must be sparse, dense or hybrid")
@@ -596,6 +597,12 @@ def search(
             if "reranker_score" in row
             else "deterministic_" + mode + "_order; reranker_not_requested",
         )
+    # A document another one replaces is read after the version in force (ViHERMES: the end of a validity chain first),
+    # before the top_k cut, so the current page is not displaced by its older twin (MH007: QĐ1489 p.5 over QĐ26 p.5).
+    if demote_sources:
+        results = [r for r in results if r["source_id"] not in demote_sources] + [
+            r for r in results if r["source_id"] in demote_sources
+        ]
     # ViCAS-RAG diversify_hits: a short document whose every page matches the question's place or topic must not take all
     # top_k places; each document takes at most max_hits_per_document pages first, the rest fill the free places in rank
     # order. ViCAS counts chunks because its chunk is one article; here a page is split into several chunks, and counting
