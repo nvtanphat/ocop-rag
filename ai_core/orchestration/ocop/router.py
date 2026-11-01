@@ -825,8 +825,12 @@ def _route_business(
     semantic = None
     # A bare fragment with no conversation to lean on says too little to classify: asking for scope is the rules' job.
     askable = has_prior or len(content) > 3
-    if not in_domain and not followup and not explicit_oos and not own_scope and askable and (semantic_route or llm_scope):
+    # A question that names its own scope (a product, a place) but carries no domain cue is asked too: otherwise neither
+    # tier ever sees it and it is out of scope by default. Only "follow-up" does not apply to it, since it scopes itself.
+    if not in_domain and not followup and not explicit_oos and askable and (semantic_route or llm_scope):
         verdict, source = second_opinion()
+        if verdict == Intent.FOLLOWUP and own_scope:
+            verdict = None
         if verdict == Intent.FOLLOWUP:
             followup = True
             slots = _merge_followup(prior, updates)
