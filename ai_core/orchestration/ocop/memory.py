@@ -212,9 +212,10 @@ def _as_slots(kind: str, values: list[str]) -> dict:
 
 
 def _surface(lang: Language, kind: str, value: str) -> str:
-    if kind == "form" and value.isdigit():
-        return f"{lang.structure_nouns['form'][0].capitalize()} {int(value):02d}"
-    if kind in lang.structure_nouns:
+    if kind == "form":
+        return f"{lang.structure_nouns['form'][0].capitalize()} {int(value):02d}" if value.isdigit() else value
+    # Only the kinds a question names by a structure noun plus a number; a product is shown by its own name.
+    if kind in ("article", "sheet"):
         return f"{lang.structure_nouns[kind][0].capitalize()} {value}"
     if kind == "document":
         return f"{next(iter(lang.document_types.values()))[0].capitalize()} {value}"
