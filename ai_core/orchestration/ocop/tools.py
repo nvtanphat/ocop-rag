@@ -98,6 +98,21 @@ def _recognition_records_in_scope(rows: list[dict], *, region, stars):
     return result
 
 
+def _expanded_name_key(labels: list[str]):
+    """A key under which "HTX Sen Huế" and "Hợp tác xã Sen Huế" are one name: a word that is the initials of a phrase
+    several labels share stands for that phrase (the rule catalog.py uses to read "HTX" as a kind of entity)."""
+    runs: dict[str, set[str]] = {}
+    for label in labels:
+        words = normalize(label).split()
+        for size in (2, 3, 4):
+            for start in range(len(words) - size + 1):
+                runs.setdefault(" ".join(words[start : start + size]), set()).add(label)
+    initials = {
+        "".join(word[0] for word in run.split()): run for run, owners in runs.items() if len(owners) >= 2
+    }
+    return lambda label: " ".join(initials.get(word, word) for word in normalize(label).split())
+
+
 def _matching_entity_ids(nodes: list[dict], requested: str) -> set[str]:
     def identity(value):
         return re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(value)).casefold()).strip()
@@ -943,6 +958,11 @@ class ToolRegistry:
             if name == "lookup_recognition" and asked_orgs:
                 organization_nodes = [node for node in graph.nodes.values() if node["node_type"] == "Organization"]
                 orgs = set().union(*(_matching_entity_ids(organization_nodes, asked) for asked in asked_orgs))
+                # The same owner written with and without an abbreviation is one owner: the record's edges may reach
+                # only the other spelling.
+                key = _expanded_name_key([node["label"] for node in organization_nodes])
+                wanted = {key(asked) for asked in asked_orgs} | {key(graph.nodes[i]["label"]) for i in orgs}
+                orgs |= {node["node_id"] for node in organization_nodes if key(node["label"]) in wanted}
                 if not orgs:
                     return {"results": [], "status": "entity_not_found", "entity": [str(slots["organization_name"])]}
                 # One owner can appear as several Organization nodes (full name and abbreviation) and one product as several

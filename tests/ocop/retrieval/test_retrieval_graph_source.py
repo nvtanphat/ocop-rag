@@ -343,3 +343,13 @@ def test_the_cross_encoder_reorders_rows_fused_across_tools(monkeypatch):
     ordered = answer.rerank_fused("lao động địa phương", rows)
     assert ordered[0]["evidence_unit_id"] == "row"  # a tie between tools' first rows goes to the cross-encoder
     assert {r["evidence_unit_id"] for r in ordered} == {"title", "row", "other"}
+
+
+def test_an_owner_written_with_and_without_an_abbreviation_is_one_owner():
+    from ai_core.orchestration.ocop.tools import _expanded_name_key
+
+    labels = ["Hợp tác xã Sen Huế", "HTX Sen Huế", "Hợp tác xã Thụy Hương", "Công ty TNHH Hichagol"]
+    key = _expanded_name_key(labels)
+    assert key("HTX Sen Huế") == key("Hợp tác xã Sen Huế")
+    assert key("HTX Sen Huế") != key("Hợp tác xã Thụy Hương")
+    assert key("Công ty TNHH Hichagol") == key("công ty tnhh hichagol")
