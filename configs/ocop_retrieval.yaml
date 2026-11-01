@@ -9,7 +9,7 @@ context:
   table_excerpt_max_chars: 5000    # table rows are short; keep the whole matched table chunk
   parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
   parent_label_max_chars: 90
-  max_source_blocks: 14            # SOURCE blocks in one prompt after merging continuations and dropping repeats
+  max_source_blocks: 20            # SOURCE blocks in one prompt after merging continuations and dropping repeats
   max_link_blocks: 3               # source blocks kept for the far end of a proved graph link, one per kind of link
   max_enrichment_blocks: 3         # at most this many blocks from optional graph enrichment, so it never pushes out the primary evidence
   max_blocks_per_document: 3       # free places go to other documents first; leftovers fill from the same document after
