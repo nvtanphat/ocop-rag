@@ -92,7 +92,7 @@ def update(
     """State after an answered turn: recency-ordered referents, the standalone question, citation references."""
     state = sanitize(prior)
     for kind in REFERENT_SLOTS:
-        seen = [v for v in _values(slots, kind)]
+        seen = _values(slots, kind)
         if seen:
             state["referents"][kind] = list(dict.fromkeys([*seen[::-1], *state["referents"].get(kind, [])]))[
                 :MAX_REFERENTS
@@ -100,7 +100,7 @@ def update(
     if standalone:
         state["standalone"] = standalone[:600]
         state["recent"] = [standalone[:600], *state["recent"]][:MAX_TURNS]
-    turn = max([r.get("turn", 0) for r in state["evidence"]] + [0]) + 1
+    turn = max((r.get("turn", 0) for r in state["evidence"]), default=0) + 1
     fresh = [
         {
             "source_id": c["source_id"],
@@ -205,23 +205,17 @@ def plural_referents(question: str, memory: Any, updates: dict, lang: Language |
 
 
 def _as_slots(kind: str, values: list[str]) -> dict:
-    key = REFERENT_SLOTS[kind][0]
-    if len(REFERENT_SLOTS[kind]) == 2:  # kinds that hold several values at once (list slot + first value)
-        out = {key: values}
-        out[REFERENT_SLOTS[kind][1]] = values[0]
-        return out
-    return {REFERENT_SLOTS[kind][0]: values[-1]}
+    slots = REFERENT_SLOTS[kind]
+    if len(slots) == 2:
+        return {slots[0]: values, slots[1]: values[0]}
+    return {slots[0]: values[-1]}
 
 
 def _surface(lang: Language, kind: str, value: str) -> str:
-    if kind == "form":
-        return (
-            f"{lang.structure_nouns['form'][0].capitalize()} {int(value):02d}" if value.isdigit() else value
-        )
-    if kind == "article":
-        return f"{lang.structure_nouns['article'][0].capitalize()} {value}"
-    if kind == "sheet":
-        return f"{lang.structure_nouns['sheet'][0].capitalize()} {value}"
+    if kind == "form" and value.isdigit():
+        return f"{lang.structure_nouns['form'][0].capitalize()} {int(value):02d}"
+    if kind in lang.structure_nouns:
+        return f"{lang.structure_nouns[kind][0].capitalize()} {value}"
     if kind == "document":
         return f"{next(iter(lang.document_types.values()))[0].capitalize()} {value}"
     return value
@@ -278,9 +272,9 @@ def rewrite(
     stripped = _opener(lang).sub("", question).strip()
     resolved = {**updates, **(carried or {})}
     # Another document than the one under discussion: what was asked about (Điều/Mẫu/Phiếu of the old one) does not travel.
-    switched = [
-        d for d in _values(updates, "document") if d not in state["referents"].get("document", [])[:1]
-    ] and state["referents"].get("document")
+    switched = bool(state["referents"].get("document")) and any(
+        d not in state["referents"]["document"][:1] for d in _values(updates, "document")
+    )
     substitutions = _substitutions(lang)
     carries_target = any(substitutions[kind].search(base) for kind in ("article", "form", "sheet"))
     if (
