@@ -1,0 +1,7 @@
+data/extraction/** -text whitespace=cr-at-eol
+data/ocr-dataset/** -text whitespace=cr-at-eol
+data/processed/** -text whitespace=cr-at-eol
+data/processed/ocop/graph/**/nodes.jsonl filter=lfs diff=lfs merge=lfs -text
+data/processed/ocop/graph/**/edges.jsonl filter=lfs diff=lfs merge=lfs -text
+data/processed/ocop/graph/nodes.jsonl filter=lfs diff=lfs merge=lfs -text
+data/processed/ocop/graph/edges.jsonl filter=lfs diff=lfs merge=lfs -text

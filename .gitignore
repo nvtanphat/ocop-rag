@@ -14,9 +14,14 @@ outputs/
 models/
 *.egg-info/
 # Source PDFs are intentionally included for reproducibility.
-# Runtime artifacts are generated from the immutable, source-locked PDFs.
-data/processed/
-data/ocr-dataset/
+# Keep processed runtime data; exclude rebuild caches and local run state.
+data/processed/ocop/cache/
+data/processed/ocop/semantic_cache/
+data/processed/ocop/graph/snapshots/
+data/processed/ocop/.system.lock
+data/ocr-dataset/_raw/
+data/ocr-dataset/run-state.json
+data/ocr-dataset/.ocr.lock
 data/runtime/
 data/review/
 data/models/

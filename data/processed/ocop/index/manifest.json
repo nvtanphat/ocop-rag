@@ -1,0 +1,57 @@
+{
+  "bm25": {
+    "corpus_hash": "73e3ee4624a2efd0c5fd75c7232ccc5161dfbae80abbc8773a496745c27c8c7e",
+    "documents": 2430,
+    "records_hash": "9fb68655385d468668bab41ef0ff815f793576ebe501bc03730d326427e27307",
+    "tokenizer": "unicode_casefold_vi_folded",
+    "vocabulary_size": 3527
+  },
+  "chunking": {
+    "max_estimated_tokens": 551,
+    "method": "structure_aware_contextual_parent_child",
+    "over_budget_chunks": 0,
+    "token_count_method": "conservative_unicode_estimate"
+  },
+  "config": {
+    "max_words": 200,
+    "model_max_tokens": 2048,
+    "overlap": 24,
+    "token_budget": 512,
+    "tokenizer_path": null
+  },
+  "corpus_version": "affccebc20166db51141",
+  "counts": {
+    "chunks": 2430,
+    "evidence_units": 1666,
+    "source_pages": 583,
+    "structured_records": 8951
+  },
+  "dense": {
+    "collection": "ocop_affccebc20166db51141_8dec3ae85428",
+    "dimension": 768,
+    "enabled": true,
+    "host": "localhost",
+    "model_id": "google/embeddinggemma-300m",
+    "points": 2430,
+    "port": 6333,
+    "revision": null
+  },
+  "entity_catalog": {
+    "counts": {
+      "authority": 21,
+      "document": 11,
+      "form": 36,
+      "organization": 22,
+      "product": 58,
+      "product_group": 51,
+      "region": 6,
+      "sheet": 30
+    },
+    "sha256": "1290606f72761d4da74864ef8a4d16187d6c816aebb15cb164dd730740dbb3ad"
+  },
+  "index_version": "ocop-retrieval-c77940171f8f",
+  "source_complete": true,
+  "source_knowledge_version": "9d5b479d6a6022de9011",
+  "status": "hybrid_ready",
+  "structural_graph_version": "ce4db556b0af69a47a97"
+}
