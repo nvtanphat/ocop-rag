@@ -559,6 +559,10 @@ class ToolRegistry:
             # of them once, in assemble() (ViCAS-RAG: RRF over every branch, then one cross-encoder pass). Reranking
             # inside each of the 3-5 searches of a compound question scored ~120 pairs at ~0.8 s each.
             top_k = get_settings().retrieval.top_k
+            if context.get("rerank"):
+                # The cross-encoder can only promote what the first stage hands it: with the top_k head alone, a short
+                # page that states the answer ("4 sao: 70 đến dưới 90 điểm") never reached it among long criteria sheets.
+                top_k = max(top_k, get_settings().retrieval.rerank_candidates)
             if slots.get("sheet_number"):
                 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 
