@@ -555,8 +555,10 @@ class ToolRegistry:
             mode = context.get("retrieval_mode", "sparse")
             doc = slots.get("document_code")
             source_filter = self._resolve_source_id(doc) if doc else None
+            # The text searches return their first-stage hybrid order; the cross-encoder scores the fused rows of all
+            # of them once, in assemble() (ViCAS-RAG: RRF over every branch, then one cross-encoder pass). Reranking
+            # inside each of the 3-5 searches of a compound question scored ~120 pairs at ~0.8 s each.
             top_k = get_settings().retrieval.top_k
-            rerank = bool(context.get("rerank", False))
             if slots.get("sheet_number"):
                 from ai_core.graph.ocop.integrity import validate_graph_snapshot
 
@@ -702,7 +704,6 @@ class ToolRegistry:
                         mode=mode,
                         top_k=top_k,
                         source_id=allowed_source,
-                        rerank=rerank,
                     ):
                         # Defend even if a search adapter violates its filter.
                         if hit.get("source_id") != allowed_source:
@@ -755,7 +756,6 @@ class ToolRegistry:
                         mode=mode,
                         top_k=top_k,
                         source_id=allowed_source,
-                        rerank=rerank,
                     ):
                         if hit.get("source_id") != allowed_source:
                             continue
@@ -779,7 +779,6 @@ class ToolRegistry:
                     mode=mode,
                     top_k=top_k,
                     source_id=source_filter or context.get("_scope_source"),
-                    rerank=rerank,
                     with_continuations=True,
                     demote_sources=self.replaced_sources() if context.get("prefer_current") else frozenset(),
                 )
