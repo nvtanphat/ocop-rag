@@ -109,22 +109,34 @@ class OcopAgent:
         auth = state.get("auth")
         if isinstance(auth, AuthContext):
             safe_session["tenant_id"] = auth.tenant_id
-        choice = route_query(
-            query,
-            session=safe_session,
-            # The model proposes an intent only for a question no deterministic signal covers, and costs one extra
-            # model round trip: opt-in (OCOP_LLM_ROUTER=1). The deterministic route is the default.
-            llm_route=(self.llm.route if self.llm and os.getenv("OCOP_LLM_ROUTER") == "1" else None),
-            # Asked only where no deterministic signal separates a follow-up from an off-topic question.
-            llm_scope=((lambda text: scope_model.propose(self.llm, text)) if self.llm else None),
-            semantic_route=self.semantic_route,
-            indexed_content_bigram_coverage=lambda text: query_content_bigram_coverage(
-                self.tools.index_dir, text
-            ),
-            catalog=self._catalog(),
-        )
+        def decide(text: str):
+            return route_query(
+                text,
+                session=safe_session,
+                # The model proposes an intent only for a question no deterministic signal covers, and costs one extra
+                # model round trip: opt-in (OCOP_LLM_ROUTER=1). The deterministic route is the default.
+                llm_route=(self.llm.route if self.llm and os.getenv("OCOP_LLM_ROUTER") == "1" else None),
+                # Asked only where no deterministic signal separates a follow-up from an off-topic question.
+                llm_scope=((lambda question: scope_model.propose(self.llm, question)) if self.llm else None),
+                semantic_route=self.semantic_route,
+                indexed_content_bigram_coverage=lambda question: query_content_bigram_coverage(
+                    self.tools.index_dir, question
+                ),
+                catalog=self._catalog(),
+            )
+
+        choice = decide(query)
         effective = query
         method = "none"
+        # A reference the rules cannot place ("phiếu đó" when no sheet number was ever typed) is not dangling when the
+        # question before names what it points at in words ("...phiếu chấm nhóm nào?"). ViCAS-RAG restates a follow-up
+        # with the model before it routes; here the rules still decide first and only a restatement that passes the
+        # validator (no name or number the conversation did not say) replaces the clarification, routed as a question of
+        # its own. Without one the user is asked, as before.
+        if "reference_unresolved" in choice.reason_codes and self.llm is not None:
+            recent = (safe_session.get("memory") or {}).get("recent") or []
+            if recent and (restated := followup_model.propose(self.llm, query, recent[::-1])):
+                choice, effective, method = decide(restated), restated, "model_rewrite"
         if choice.dialogue.acts and choice.dialogue.action == "task":
             from ai_core.orchestration.ocop.dialogue import understand
 

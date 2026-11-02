@@ -400,3 +400,51 @@ def test_a_new_product_the_previous_question_does_not_spell_out_keeps_the_users_
     )
     assert "siro" not in text.casefold() and "hạt sen" in text.casefold(), text
     assert method == "state_scope"
+
+
+def _agent_with_model(reply: str):
+    import json
+    from pathlib import Path
+
+    from ai_core.orchestration.ocop.workflow import OcopAgent
+
+    class Model:
+        model = "fake"
+
+        def chat_structured(self, system, user, **kwargs):
+            return json.dumps({"standalone": reply}) if system.startswith("Bạn viết lại") else "{}"
+
+        def chat(self, system, user, **kwargs):
+            return ""
+
+    return OcopAgent(Path("."), llm=Model(), retrieval_mode="sparse")
+
+
+def _session_after(question: str) -> dict:
+    from ai_core.orchestration.ocop import memory
+
+    return {
+        "last_query": question,
+        "slots": {},
+        "intent": "PRODUCT_CLASSIFICATION",
+        "memory": memory.update(None, slots={}, standalone=question, citations=[], corpus_version=None),
+    }
+
+
+def test_a_reference_the_rules_cannot_place_is_restated_by_the_model_instead_of_asked():
+    before = "Mật ong nhà mình nuôi có đăng ký OCOP được không, phải xem phiếu chấm nhóm nào?"
+    follow_up = "Thế phiếu đó chấm tối đa bao nhiêu điểm phần câu chuyện sản phẩm?"
+    asked = _agent_with_model("").route({"query": follow_up, "session": _session_after(before)})
+    assert asked["route"]["intent"] == "CLARIFY"  # no restatement: the user is asked, as before
+    restated = _agent_with_model("Phiếu chấm của mật ong tối đa bao nhiêu điểm phần câu chuyện sản phẩm?")
+    out = restated.route({"query": follow_up, "session": _session_after(before)})
+    assert out["route"]["intent"] != "CLARIFY" and out["rewrite_method"] == "model_rewrite"
+    assert out["effective_query"].startswith("Phiếu chấm của mật ong")
+
+
+def test_a_restatement_that_invents_a_name_does_not_replace_the_clarification():
+    before = "Mật ong nhà mình nuôi có đăng ký OCOP được không, phải xem phiếu chấm nhóm nào?"
+    out = _agent_with_model("Phiếu chấm của Siro Atiso đỏ tối đa bao nhiêu điểm phần câu chuyện sản phẩm?").route(
+        {"query": "Thế phiếu đó chấm tối đa bao nhiêu điểm phần câu chuyện sản phẩm?", "session": _session_after(before)}
+    )
+    assert out["route"]["intent"] == "CLARIFY"
