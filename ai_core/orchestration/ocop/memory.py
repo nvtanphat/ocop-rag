@@ -155,13 +155,22 @@ def singular_reference(question: str, lang: Language | None = None) -> bool:
     return any(_singular_kind(fold(question), kind, lang) for kind in REFERENT_SLOTS)
 
 
-def _singular_kind(folded: str, kind: str, lang: Language) -> bool:
+def _singular_match(folded: str, kind: str, lang: Language):
     noun = _noun_pattern(lang, kind)
-    return bool(
-        noun
-        and lang.followup.demonstrative
-        and re.search(rf"\b(?:{noun})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", folded)
-    )
+    if not (noun and lang.followup.demonstrative):
+        return None
+    return re.search(rf"\b(?:{noun})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", folded)
+
+
+def _singular_kind(folded: str, kind: str, lang: Language) -> bool:
+    return _singular_match(folded, kind, lang) is not None
+
+
+def _answered_earlier(folded: str, kind: str, lang: Language) -> bool:
+    """In "which firm got 4 stars, and how long is the certificate in that decision valid?" the reference points at what
+    an earlier clause of the same question asks for, so there is nothing to ask the user."""
+    match = _singular_match(folded, kind, lang)
+    return bool(match and lang.hit(folded[: match.start()], "question_words"))
 
 
 def singular_referents(question: str, memory: Any, updates: dict, prior_slots: dict, lang: Language | None = None) -> dict:
@@ -191,7 +200,7 @@ def dangling_reference(
     for kind in REFERENT_SLOTS:
         noun = _noun_pattern(lang, kind)
         count = _reference_count(folded, noun, lang) if noun else None
-        singular = _singular_kind(folded, kind, lang)
+        singular = _singular_kind(folded, kind, lang) and not _answered_earlier(folded, kind, lang)
         if (
             singular
             and count is None

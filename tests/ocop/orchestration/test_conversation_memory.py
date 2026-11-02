@@ -448,3 +448,11 @@ def test_a_restatement_that_invents_a_name_does_not_replace_the_clarification():
         {"query": "Thế phiếu đó chấm tối đa bao nhiêu điểm phần câu chuyện sản phẩm?", "session": _session_after(before)}
     )
     assert out["route"]["intent"] == "CLARIFY"
+
+
+def test_a_reference_to_what_an_earlier_clause_asks_for_is_not_dangling():
+    from ai_core.orchestration.ocop import memory
+
+    inside = "Siro Atiso đỏ của công ty nào được Huế công nhận OCOP 4 sao, và giấy chứng nhận trong quyết định đó dùng được mấy năm?"
+    assert memory.dangling_reference(inside, None, {}) is None
+    assert memory.dangling_reference("Quyết định đó có hiệu lực khi nào?", None, {}) == "document"
