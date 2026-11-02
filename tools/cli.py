@@ -194,7 +194,12 @@ def main() -> None:
         # API modules resolve their source/index/graph roots on import. Serve
         # exactly the corpus just prepared, even if an older OCOP_ROOT exists.
         os.environ["OCOP_ROOT"] = str(system.root)
+        # The deployment's retrieval profile and rerank switch come from .env; read it now, not as a side effect of the
+        # first model call, so a request that reaches /query first is served with the same profile as one after /health.
+        from ai_core.orchestration.ocop.llm import load_env_file
         from uvicorn import run as serve
+
+        load_env_file()
 
         serve("backend.api.ocop_main:app", host=args.host, port=args.port)
     except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:
