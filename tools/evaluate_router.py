@@ -26,13 +26,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from ai_core.orchestration.ocop.contracts import AgentResponse, Intent, Route  # noqa: E402
+from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY  # noqa: E402
 from ai_core.orchestration.ocop.language import fold  # noqa: E402
-from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath  # noqa: E402
+from ai_core.orchestration.ocop.retrieval_strategy import RetrievalPath, choose_retrieval_path  # noqa: E402
 from ai_core.orchestration.ocop.sessions import next_state  # noqa: E402
 from ai_core.orchestration.ocop.workflow import OcopAgent  # noqa: E402
 
 DEFAULT = ROOT / "data/evaluations/ocop/ocop_router_gold_80.jsonl"
 NO_TOOLS = {Intent.CLARIFY.value, Intent.OUT_OF_SCOPE.value, Intent.CONVERSATION.value}
+TOOL_GOLD_FIELDS = ("gold_required_tools", "gold_allowed_tools", "gold_forbidden_tools")
 
 
 def split_of(row: dict) -> str:
@@ -58,6 +60,12 @@ def load(path: Path) -> list[dict]:
             problems.append("unknown lane")
         if not isinstance(row["history"], list) or not isinstance(row["gold_slots"], dict):
             problems.append("history must be a list and gold_slots an object")
+        for field in TOOL_GOLD_FIELDS:
+            if field in row and (
+                not isinstance(row[field], list)
+                or any(not isinstance(name, str) or name not in TOOL_REGISTRY for name in row[field])
+            ):
+                problems.append(field + " must list registered tool names")
         if problems:
             raise SystemExit(f"{row['id']}: {', '.join(problems)}")
     return rows
@@ -105,6 +113,10 @@ def score(row: dict, route: Route) -> dict:
     accepted = {row["gold_intent"], row.get("alt_intent")} - {None}
     predicted_clarify = route.needs_clarification or route.intent == Intent.CLARIFY
     hit, total = slots_hit(row["gold_slots"], route.slots)
+    primary_lane = choose_retrieval_path(route.required_tools).value
+    planned = set(route.required_tools) | set(route.secondary_tools)
+    required_gold = set(row.get("gold_required_tools") or [])
+    allowed_gold = set(row["gold_allowed_tools"]) if "gold_allowed_tools" in row else None
     return {
         "id": row["id"],
         "question": row["question"],
@@ -114,6 +126,17 @@ def score(row: dict, route: Route) -> dict:
         "intent": route.intent.value,
         "gold_lane": row["gold_lane"],
         "lane": route.retrieval_path.value,
+        "execution_lane": route.retrieval_path.value,
+        "primary_lane": primary_lane,
+        "primary_lane_ok": primary_lane == row["gold_lane"],
+        "required_tools": list(route.required_tools),
+        "secondary_tools": list(route.secondary_tools),
+        "planned_tool_count": len(planned),
+        "tool_gold": any(field in row for field in TOOL_GOLD_FIELDS),
+        "required_tools_hit": len(required_gold & set(route.required_tools)),
+        "required_tools_total": len(required_gold),
+        "forbidden_tools": sorted(planned & set(row.get("gold_forbidden_tools") or [])),
+        "unexpected_tools": sorted(planned - allowed_gold) if allowed_gold is not None else [],
         "intent_ok": route.intent.value in accepted,
         "lane_ok": route.retrieval_path.value == row["gold_lane"],
         "clarify_ok": predicted_clarify == row["gold_clarify"],
@@ -125,7 +148,7 @@ def score(row: dict, route: Route) -> dict:
 
 
 def pct(part: int, whole: int) -> str:
-    return f"{part}/{whole} ({100 * part / whole:.0f}%)" if whole else "-"
+    return f"{part}/{whole} ({100 * part / whole:.2f}%)" if whole else "-"
 
 
 def main() -> int:
@@ -166,9 +189,19 @@ def main() -> int:
     print(f"  intent        {pct(total['intent_ok'], n)}")
     print(f"  lane          {pct(total['lane_ok'], n)}")
     print(f"  intent+lane   {pct(both, n)}")
+    print(f"  primary lane  {pct(sum(r['primary_lane_ok'] for r in results), n)}")
+    print(f"  intent+primary {pct(sum(r['intent_ok'] and r['primary_lane_ok'] for r in results), n)}")
     print(f"  clarify       {pct(total['clarify_ok'], n)}")
     print(f"  scope         {pct(total['scope_ok'], n)}")
     print(f"  slots         {pct(hits, wanted)}")
+    labelled_tools = [r for r in results if r["tool_gold"]]
+    if labelled_tools:
+        print(f"  tool gold     {len(labelled_tools)}/{n} rows")
+        print(f"  required tools {pct(sum(r['required_tools_hit'] for r in labelled_tools), sum(r['required_tools_total'] for r in labelled_tools))}")
+        print(f"  forbidden tools {sum(len(r['forbidden_tools']) for r in labelled_tools)} planned")
+        print(f"  unexpected tools {sum(len(r['unexpected_tools']) for r in labelled_tools)} planned")
+    else:
+        print("  tool gold     absent (tool correctness is not scored)")
     if args.model:
         print(f"  model asked   {pct(len(asked), n)} of the questions (the rest the rules and embeddings settled)")
     if args.sealed:

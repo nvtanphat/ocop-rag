@@ -329,7 +329,8 @@ def test_the_router_model_is_given_only_labels_the_router_accepts():
 
     assert set(scope_model.INTENTS) <= {intent.value for intent in Intent}
     assert {"FOLLOWUP", "OUT_OF_SCOPE"} <= set(scope_model.INTENTS)
-    assert scope_model.SCHEMA["required"] == ["intent"] and scope_model.SCHEMA["additionalProperties"] is False
+    assert scope_model.SCHEMA["required"] == ["intent", "secondary_intents"]
+    assert scope_model.SCHEMA["additionalProperties"] is False
 
     class Model:
         def chat_structured(self, system, user, *, schema, max_tokens):

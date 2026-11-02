@@ -156,7 +156,10 @@ cues:
   temporal_legal_scope: [quy định, bộ tiêu chí, tiêu chí, mẫu, hồ sơ, ocop, chính sách, văn bản, luật, hiệu lực, công nhận, năm]
   compliance: [an toàn thực phẩm, giấy attt, giấy chứng nhận cơ sở, nhãn hàng hóa, miễn giấy, vệ sinh thực phẩm,
     đủ điều kiện attt, miễn chứng nhận, attp, an toàn vệ sinh thực phẩm, điều kiện vệ sinh]
-  classification: [thuộc nhóm, thuộc phân nhóm, thuộc loại, nhóm nào, nhóm gì, phân nhóm, phân loại sản phẩm]
+  classification: [thuộc nhóm, thuộc phân nhóm, thuộc loại, nhóm nào, nhóm gì, phân nhóm, phân loại sản phẩm,
+    nằm trong danh mục sản phẩm, thuộc danh mục sản phẩm]
+  # Query interpretation only; do not broaden ingestion's amendment predicates.
+  document_change: [sửa, sửa đổi, thay thế, bổ sung, bãi bỏ]
   evidence_requirements: [minh chứng, giấy tờ cần, hồ sơ cần có, cần chứng nhận gì, yêu cầu giấy tờ, loại giấy tờ, cần giấy tờ]
   evidence_search_terms: [minh chứng giấy tờ tiêu chí]
   relation: [thay thế, sửa đổi văn bản, sửa đổi quyết định, bổ sung văn bản, căn cứ văn bản]

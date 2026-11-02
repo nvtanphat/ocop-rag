@@ -152,22 +152,53 @@ def singular_reference(question: str, lang: Language | None = None) -> bool:
     grammar used for plural references, rather than enumerating complete phrases.
     """
     lang = lang or get_language()
-    nouns = "|".join(_noun_pattern(lang, kind) for kind in REFERENT_SLOTS)
+    return any(_singular_kind(fold(question), kind, lang) for kind in REFERENT_SLOTS)
+
+
+def _singular_kind(folded: str, kind: str, lang: Language) -> bool:
+    noun = _noun_pattern(lang, kind)
     return bool(
-        lang.followup.demonstrative
-        and re.search(rf"\b(?:{nouns})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", fold(question))
+        noun
+        and lang.followup.demonstrative
+        and re.search(rf"\b(?:{noun})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", folded)
     )
 
 
-def dangling_reference(question: str, memory: Any, updates: dict, lang: Language | None = None) -> str | None:
-    """Kind of thing (form, sheet, article, document) that a plural reference points back to when the conversation holds
-    fewer than two such things and the question names none itself ("Hai mẫu này khác nhau ở đâu?" in a new session)."""
+def singular_referents(question: str, memory: Any, updates: dict, prior_slots: dict, lang: Language | None = None) -> dict:
+    """Only a unique conversation candidate may fill a missing singular reference; explicit scope wins."""
+    lang = lang or get_language()
+    referents = sanitize(memory)["referents"]
+    carried = {}
+    for kind, keys in REFERENT_SLOTS.items():
+        pool = referents.get(kind, [])
+        if (
+            _singular_kind(fold(question), kind, lang)
+            and not _values(updates, kind)
+            and not _values(prior_slots, kind)
+            and len(pool) == 1
+        ):
+            carried[keys[-1]] = pool[0]
+    return carried
+
+
+def dangling_reference(
+    question: str, memory: Any, updates: dict, lang: Language | None = None, *, prior_slots: dict | None = None
+) -> str | None:
+    """A reference with no matching topic must be clarified before corpus scope recovery."""
     lang = lang or get_language()
     referents = sanitize(memory)["referents"]
     folded = fold(question)
     for kind in REFERENT_SLOTS:
         noun = _noun_pattern(lang, kind)
         count = _reference_count(folded, noun, lang) if noun else None
+        singular = _singular_kind(folded, kind, lang)
+        if (
+            singular
+            and count is None
+            and not _values(updates, kind)
+            and len(_values(prior_slots or {}, kind) or referents.get(kind, [])) != 1
+        ):
+            return kind
         if (
             noun
             and not _values(updates, kind)

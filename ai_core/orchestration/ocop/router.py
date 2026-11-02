@@ -12,6 +12,7 @@ from __future__ import annotations
 from ai_core.orchestration.ocop.document_scope import DocumentResolver, document_pattern
 
 import re
+import json
 import unicodedata
 from collections.abc import Callable
 from datetime import date
@@ -29,6 +30,7 @@ from ai_core.orchestration.ocop.language import Language, fold, get_language, ha
 from ai_core.orchestration.ocop.privacy import get_privacy
 from ai_core.orchestration.ocop.retrieval_strategy import choose_retrieval_path
 from ai_core.retrieval.ocop.settings import get_settings
+from ai_core.retrieval.ocop.decompose import sub_queries
 
 TOOLS = frozenset(TOOL_REGISTRY)
 
@@ -47,6 +49,7 @@ ROUTES = {
     Intent.OUT_OF_SCOPE: ("clarify", []),
 }
 INTENT_CAPABILITY = {
+    Intent.EXACT_LOOKUP: Capability.EXACT_ARTICLE,
     Intent.PRODUCT_CLASSIFICATION: Capability.CLASSIFY_PRODUCT,
     Intent.CRITERIA_LOOKUP: Capability.CRITERIA,
     Intent.RECOGNITION_LOOKUP: Capability.RECOGNITION,
@@ -54,6 +57,18 @@ INTENT_CAPABILITY = {
     Intent.SECTOR_COMPLIANCE: Capability.SECTOR_COMPLIANCE,
     Intent.TEMPORAL_COMPARE: Capability.TEMPORAL,
     Intent.MULTIHOP_REASONING: Capability.RELATION_REASONING,
+}
+CAPABILITY_INTENT = {cap: intent for intent, cap in INTENT_CAPABILITY.items()}
+CAPABILITY_INTENT[Capability.EVIDENCE_REQUIREMENTS] = Intent.CRITERIA_LOOKUP
+INTENT_PRIORITY = {
+    Intent.EXACT_LOOKUP: 70,
+    Intent.PRODUCT_CLASSIFICATION: 65,
+    Intent.CRITERIA_LOOKUP: 45,
+    Intent.PROCEDURE_FORM: 50,
+    Intent.TEMPORAL_COMPARE: 75,
+    Intent.RECOGNITION_LOOKUP: 55,
+    Intent.SECTOR_COMPLIANCE: 60,
+    Intent.MULTIHOP_REASONING: 35,
 }
 PRIVATE_CAPABILITIES: frozenset[Capability] = frozenset()
 YEAR = re.compile(r"\b20\d{2}\b")
@@ -479,6 +494,8 @@ class Facets:
         h = lambda name: lang.hit(text, name)  # noqa: E731
         self.authority = h("authority")
         self.multihop = h("multihop")
+        parts = sub_queries(text)
+        self.multihop = self.multihop or bool(parts and all(lang.hit(part, "question_words") for part in parts))
         self.compliance = h("compliance")
         self.classification = h("classification")
         self.procedure = h("procedure")
@@ -550,6 +567,15 @@ class Facets:
             h("private_open") and PRIVATE_HANDLE.search(folded.upper())
         )
         self.recognition_listing = h("recognition_listing")
+        # A legal change is a temporal task even when the question says neither "hiệu lực" nor "so sánh".
+        legal_change = bool(
+            slots.get("document_code")
+            and h("document_change")
+            and (h("relation") or len(slots.get("document_codes") or []) > 1 or h("amend_object"))
+            and not self.procedure
+        )
+        self.relation = self.relation or legal_change
+        self.temporal = self.temporal or legal_change
 
 
 def _capabilities(facets: Facets, slots: dict) -> tuple[list[Capability], list[str]]:
@@ -684,15 +710,29 @@ def _semantic_label(semantic_route, q: str, has_prior: bool) -> Intent | None:
     return None if label == Intent.FOLLOWUP and not has_prior else label
 
 
-def _model_label(llm_scope: Callable[[str], dict], q: str, prior: dict) -> Intent | None:
-    """The intent label the model proposes for ``q`` given the previous question, or None when it proposes nothing valid."""
+def _model_labels(llm_scope: Callable[[str], dict], q: str, prior: dict) -> tuple[Intent | None, list[Intent]]:
+    """Only enum labels cross the model boundary; slots and tools stay server-owned."""
     previous = "PREVIOUS: " + str(prior["last_query"]) + "\n" if prior.get("last_query") else ""
+    scoped = {key: value for key, value in (prior.get("slots") or {}).items() if key in FOLLOWUP_SCOPE_KEYS}
+    if scoped:
+        previous += "SCOPE: " + json.dumps(scoped, ensure_ascii=False) + "\n"
     text = previous + "CURRENT: " + q
     try:
-        label = Intent((llm_scope(text) or {}).get("intent"))
+        result = llm_scope(text) or {}
+        label = Intent(result.get("intent"))
     except (ValueError, TypeError, AttributeError, RuntimeError, OSError):
-        return None
-    return None if label == Intent.FOLLOWUP and not prior.get("last_query") else label
+        return None, []
+    if label == Intent.CONVERSATION or (label == Intent.FOLLOWUP and not prior.get("last_query")):
+        return None, []
+    extras = result.get("secondary_intents") or []
+    secondary = []
+    if isinstance(extras, list) and label not in (Intent.OUT_OF_SCOPE, Intent.CLARIFY):
+        for name in extras[:3]:
+            if isinstance(name, str) and name in Intent._value2member_map_:
+                intent = Intent(name)
+                if intent != label and intent in INTENT_CAPABILITY and intent not in secondary:
+                    secondary.append(intent)
+    return label, secondary
 
 
 def _route_business(
@@ -722,15 +762,22 @@ def _route_business(
     has_prior = bool(prior.get("last_query"))
     updates = extract_slots(q, catalog=catalog, language=lang)
     # "Hai mẫu này khác nhau ở đâu?": things the conversation discussed, named by a plural reference or a comparison.
-    carried = memory.plural_referents(q, prior.get("memory"), updates, lang) if has_prior else {}
-    if not carried and (dangling := memory.dangling_reference(q, prior.get("memory"), updates, lang)):
+    carried = {
+        **memory.singular_referents(q, prior.get("memory"), updates, prior.get("slots") or {}, lang),
+        **memory.plural_referents(q, prior.get("memory"), updates, lang),
+    } if has_prior else {}
+    if (
+        dangling := memory.dangling_reference(
+            q, prior.get("memory"), {**updates, **carried}, lang, prior_slots=prior.get("slots")
+        )
+    ):
         # "these two forms" with nothing earlier to point at: ask which, never guess from whatever the search returns
         return Route(
             intent=Intent.CLARIFY,
             strategy="clarify",
             needs_clarification=True,
             missing_slots=["referent_" + dangling],
-            reason_codes=["plural_reference_unresolved"],
+            reason_codes=["reference_unresolved"],
         )
     own_scope = bool(
         set(updates)
@@ -795,7 +842,7 @@ def _route_business(
         or facets.criteria
         or facets.recognition
         or facets.scoring_method
-        or any(catalog.mentions(q).values())
+        or any(matches for kind, matches in catalog.mentions(q).items() if kind != "region")
         or bool(slots.get("star_rating") or slots.get("years") and followup)
     )
     explicit_oos = lang.hit(q, "explicit_out_of_scope")
@@ -804,12 +851,15 @@ def _route_business(
     # model, picking one label of a closed list. A label only steers this route and is checked against the enum; it never
     # names a tool. The answer is kept so that a question is asked at most once.
     opinion: list[tuple[Intent | None, str]] = []
+    model_secondary: list[Intent] = []
 
     def second_opinion() -> tuple[Intent | None, str]:
         if not opinion:
             label, source = _semantic_label(semantic_route, q, has_prior), "semantic"
             if label is None and llm_scope is not None:
-                label, source = _model_label(llm_scope, q, prior), "model"
+                label, extra = _model_labels(llm_scope, q, prior)
+                model_secondary.extend(extra)
+                source = "model"
             opinion.append((label, source))
         return opinion[0]
 
@@ -832,6 +882,8 @@ def _route_business(
             in_domain = True
             semantic = verdict
     bare_code = bool(BARE_CRITERION.match(q)) and not followup
+    if bare_code:
+        slots["criterion_id"] = q.rstrip("?.! ").strip()
     # "Điều 5 quy định gì?": an article number with nothing else says nothing about which of several documents is meant.
     structure_words = {w for names in lang.structure_nouns.values() for n in names for w in lang.content_words(n)}
     bare_locator = (
@@ -882,23 +934,18 @@ def _route_business(
         )
 
     caps, cap_reasons = _capabilities(Facets(lang, q, slots_for_caps) if producer else facets, slots_for_caps)
-    scores: dict[Intent, int] = {}
+    # Intent and the plan start from the same capability analysis, including page locators and relations.
+    scores: dict[Intent, int] = {
+        CAPABILITY_INTENT[cap]: INTENT_PRIORITY[CAPABILITY_INTENT[cap]]
+        for cap in caps
+        if cap in CAPABILITY_INTENT
+    }
     if facets.scoring_method:
         scores[Intent.CRITERIA_LOOKUP] = 70
-    if facets.multihop and (facets.criteria or facets.procedure or facets.compliance or facets.recognition):
+    if facets.multihop and (facets.criteria or facets.procedure or facets.compliance or facets.recognition or facets.temporal):
         scores[Intent.MULTIHOP_REASONING] = 80
-    if facets.temporal:
-        scores[Intent.TEMPORAL_COMPARE] = 75
     if facets.authority:
         scores[Intent.EXACT_LOOKUP] = 88
-    elif updates.get("article_id") and updates.get("document_code"):
-        scores[Intent.EXACT_LOOKUP] = 70
-    if facets.classification:
-        scores[Intent.PRODUCT_CLASSIFICATION] = 65
-    if facets.compliance:
-        scores[Intent.SECTOR_COMPLIANCE] = 60
-    if facets.recognition and not facets.normative_star:
-        scores[Intent.RECOGNITION_LOOKUP] = 55
     if (slots.get("product_name") or slots.get("organization_name")) and producer:
         scores[Intent.RECOGNITION_LOOKUP] = max(75, scores.get(Intent.RECOGNITION_LOOKUP, 0))
     if (
@@ -911,10 +958,6 @@ def _route_business(
         scores[Intent.RECOGNITION_LOOKUP] = max(78, scores.get(Intent.RECOGNITION_LOOKUP, 0))
     if facets.normative_star:
         scores[Intent.CRITERIA_LOOKUP] = max(85, scores.get(Intent.CRITERIA_LOOKUP, 0))
-    if facets.procedure:
-        scores[Intent.PROCEDURE_FORM] = 50
-    if facets.criteria:
-        scores.setdefault(Intent.CRITERIA_LOOKUP, 45)
     if lang.hit(q, "procedure_own"):
         scores[Intent.PROCEDURE_FORM] = 72
     if facets.multihop:
@@ -938,14 +981,19 @@ def _route_business(
         scores[Intent.OCOP_OVERVIEW if parent == Intent.FOLLOWUP else parent] = 30
     if scores:
         intent = max(scores, key=scores.get)
-        if scores[intent] < get_settings().agent.rule_confident_score and not followup and semantic_route:
+        if scores[intent] < get_settings().agent.rule_confident_score and not followup and (semantic_route or llm_scope):
             # A weak rule (a general cue, an entity mention) is a guess; clearly closer example utterances overrule it.
-            label = _semantic_label(semantic_route, q, has_prior)
+            label, source = second_opinion()
             # A vote for the catch-all overview is no evidence against a specific intent the rules found.
             if label is not None and label not in (intent, Intent.FOLLOWUP, Intent.OUT_OF_SCOPE, Intent.OCOP_OVERVIEW):
+                prior_cap = INTENT_CAPABILITY.get(intent)
                 intent = label
-                caps = [INTENT_CAPABILITY[label]] if label in INTENT_CAPABILITY else caps
-                cap_reasons.append("semantic_override")
+                if label in INTENT_CAPABILITY:
+                    caps = [INTENT_CAPABILITY[label]] + [
+                        cap for cap in caps
+                        if cap not in (prior_cap, Capability.OVERVIEW, INTENT_CAPABILITY[label])
+                    ]
+                cap_reasons.append(source + "_override")
     else:
         intent = Intent.OCOP_OVERVIEW
         label, source = (semantic, "semantic") if semantic else second_opinion() if (semantic_route or llm_scope) else (None, "")
@@ -966,24 +1014,14 @@ def _route_business(
                 candidate = Intent(result["intent"])
                 if candidate != Intent.CONVERSATION:
                     intent = candidate
-                safe = {
-                    "product_name",
-                    "product_group",
-                    "region",
-                    "as_of_date",
-                    "document_code",
-                    "form_id",
-                    "criterion_id",
-                }
-                slots.update(
-                    {
-                        k: v
-                        for k, v in (result.get("slots") or {}).items()
-                        if k in safe and isinstance(v, (str, int)) and len(str(v)) <= 128
-                    }
-                )
+                # A label proposal cannot invent a source or replace an explicitly pinned document.
             except (ValueError, KeyError, TypeError, AttributeError):
                 pass
+    if intent == Intent.CLARIFY:
+        return Route(
+            intent=intent, strategy="clarify", slots=slots, needs_clarification=True,
+            missing_slots=["topic"], reason_codes=["model_needs_scope"],
+        )
     effective = intent
     if followup:
         if not scores or max(scores.values()) < 75:
@@ -1021,6 +1059,10 @@ def _route_business(
         caps = []
     elif caps == [Capability.OVERVIEW] and effective in INTENT_CAPABILITY:
         caps = [INTENT_CAPABILITY[effective]]
+    for extra in model_secondary:
+        cap = INTENT_CAPABILITY[extra]
+        if cap not in caps and intent != Intent.OUT_OF_SCOPE:
+            caps.append(cap)
     if set(caps) & PRIVATE_CAPABILITIES:
         caps = [c for c in caps if c in PRIVATE_CAPABILITIES]
     required, secondary = _select_tools(caps, slots, facets)
@@ -1049,7 +1091,7 @@ def _route_business(
             missing_slots=["split_question"],
             reason_codes=["tool_budget_exceeded"] + cap_reasons,
         )
-    others = [x for x in scores if x != effective and scores[x] >= 40]
+    others = list(dict.fromkeys([*model_secondary, *(x for x in scores if x != effective and scores[x] >= 40)]))
     return Route(
         intent=intent,
         strategy=strategy,
