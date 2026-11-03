@@ -356,6 +356,16 @@ class ToolRegistry:
             )
         return self._bands
 
+    def replacement_units(self) -> set[str]:
+        """Evidence units of the graph's REPLACES edges: the clauses that put a newer document in place of an older one."""
+        return {
+            citation["evidence_unit_id"]
+            for edge in records(self.graph_dir / "edges.jsonl")
+            if edge.get("relation_type") == "REPLACES" and edge.get("check") == "passed"
+            for citation in edge.get("citations") or []
+            if citation.get("evidence_unit_id")
+        }
+
     def successors(self, source_id: str) -> tuple[str, ...]:
         """Documents that replace ``source_id`` according to the graph's source-backed REPLACES edges."""
         documents = {
@@ -976,6 +986,16 @@ class ToolRegistry:
                     for source in (source_filter, *successors)
                 ]
                 return {"results": [row for turn in zip_longest(*lists) for row in turn if row is not None]}
+            # "Quy định OCOP mới nhất là văn bản nào?": the clauses that replace older versions say which one is in force;
+            # they are the evidence of the graph's REPLACES edges and lead the passages.
+            if not source_filter and get_language().hit(query, "current_version") and (units := self.replacement_units()):
+                chain = search(self.index_dir, query, mode=mode, top_k=4, evidence_unit_ids=units)
+                rest = search(
+                    self.index_dir, query, mode=mode, top_k=top_k, source_id=context.get("_scope_source"),
+                    with_continuations=True,
+                )
+                seen = {row.get("chunk_id") for row in chain}
+                return {"results": chain + [row for row in rest if row.get("chunk_id") not in seen]}
             return {
                 "results": search(
                     self.index_dir,

@@ -205,6 +205,12 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
     scores = [len(terms & set(lang.content_words(record, accent_aware=True))) for record in records]
     best = max(scores, default=0)
     candidates = [record for record, score in zip(records, scores) if score == best]
+    # Parallel items tie on words ("a) 4 sao: 26 sản phẩm của 07 chủ thể", "b) 3 sao: 32 sản phẩm của 13 chủ thể"): the
+    # one that also carries the claim's other figures ("13 chủ thể") is the record the claim is about.
+    figures = set(re.findall(r"\d+(?:[.,]\d+)?", score_assertion().sub(" ", MARKER.sub("", claim))))
+    if figures and len(candidates) > 1:
+        carrying = [record for record in candidates if figures <= set(re.findall(r"\d+(?:[.,]\d+)?", record))]
+        candidates = carrying or candidates
     squashed = [re.sub(r"\s+", " ", record.casefold()) for record in candidates]
     if not candidates:
         return False

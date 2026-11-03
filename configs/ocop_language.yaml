@@ -147,6 +147,8 @@ cues:
   temporal: [so sánh, chuyển tiếp, trước và sau, thay đổi theo năm, khác nhau, hiệu lực, năm nào áp dụng]
   # "Hiệu lực" alone is a validity question only when it does not ask for a plain duration (how long it lasts).
   temporal_validity: [hiệu lực]
+  # Asks which version is in force now: answered by the clauses that replace older versions (the validity chain).
+  current_version: [mới nhất, hiện hành, đang áp dụng, còn áp dụng, bản mới]
   temporal_fact: [bao lâu, thời hạn, mấy tháng, mấy năm, bao nhiêu tháng, bao nhiêu năm]
   temporal_strong: [chuyển tiếp, thời điểm áp dụng, năm nào áp dụng, thay đổi theo năm, theo thời điểm,
     quy định năm, trước và sau khi, có còn áp dụng, hết hiệu lực]

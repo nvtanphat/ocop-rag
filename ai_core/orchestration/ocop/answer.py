@@ -830,6 +830,9 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
                         for n in numbers
                         if 0 < n <= len(citations)
                     ]
+                    # The locality that issued the cited document ("Thành phố Hải Phòng") is part of its identity, like
+                    # its number: "Hải Phòng có 13 chủ thể…" names the decision's issuer, read from source metadata.
+                    + [str(((r or {}).get("context") or {}).get("jurisdiction") or "") for r in cited]
                 )
                 # A real quote is an anchor, not an entailment verdict. Deterministic checks run first;
                 # lexical failures can only be reconsidered by the independent review below.
