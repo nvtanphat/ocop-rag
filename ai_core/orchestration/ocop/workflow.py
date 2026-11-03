@@ -162,13 +162,15 @@ class OcopAgent:
                 )
                 if carried:
                     method += "+compare"
-                # A question that points back is restated by the model from the recent questions (ViCAS-RAG, Legal-RAG):
-                # the rules state the scope of the thing named last, which "hãng đó" or "siro lúc nãy" may not mean.
+                # A follow-up is restated by the model from the recent questions (ViCAS-RAG, Legal-RAG): the rules state
+                # the scope of the thing named last, which "hãng đó" or "siro lúc nãy" may not mean, and an elliptical
+                # turn with no pronoun at all ("vậy nộp hồ sơ cho ai?") has nothing for them to replace. A turn that is
+                # already self-contained comes back unchanged and the validator keeps the rule rewrite.
                 # The restatement says what the question is about: a carried name it no longer writes is dropped and the
                 # names it writes are taken, else the last turn's slots scope the tools to the thing "nó" no longer
                 # means ("nó" = chè khô after nước mắm searched the fish-sauce sheet). The route stays a follow-up.
                 recent = safe_session["memory"]["recent"]
-                if self.llm is not None and recent and followup_model.refers_back(query):
+                if self.llm is not None and recent:
                     if restated := followup_model.propose(self.llm, query, recent[::-1]):
                         effective, method = restated, "model_rewrite"
                         kept = {

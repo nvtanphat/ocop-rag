@@ -368,8 +368,6 @@ def test_a_model_restatement_of_a_follow_up_adds_nothing_the_conversation_did_no
 
     history = ["Siro Atiso đỏ của Công ty Hichagol ở Huế được mấy sao?", "Hạt sen của HTX Sen Huế được mấy sao?"]
     question = "Quay lại siro lúc nãy, nó của đơn vị nào?"
-    assert followup_model.refers_back(question)
-    assert not followup_model.refers_back("Hạn nộp hồ sơ OCOP năm 2026 là ngày nào?")
     good = "Siro Atiso đỏ của Công ty Hichagol thuộc đơn vị nào?"
     assert followup_model.validate(question, history, good) == good
     assert followup_model.validate(question, history, "Siro Atiso đỏ đạt 5 sao năm 2027 của đơn vị nào?") is None

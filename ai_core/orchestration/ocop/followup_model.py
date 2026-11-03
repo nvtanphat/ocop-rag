@@ -37,14 +37,6 @@ SYSTEM = (
 )
 
 
-def refers_back(question: str) -> bool:
-    """The question points at something said earlier: a pronoun or a demonstrative from the vocabulary file."""
-    lang = get_language()
-    folded = fold(question)
-    pronouns = "|".join(re.escape(fold(p)) for p in lang.followup.pronouns)
-    return bool(re.search(rf"\b(?:{pronouns}|{lang.followup.demonstrative})\b", folded))
-
-
 def validate(question: str, history: list[str], proposed: object) -> str | None:
     """The rewrite when it is faithful: most of the question's words kept, nothing new invented; else ``None``."""
     if not isinstance(proposed, str):
