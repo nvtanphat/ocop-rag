@@ -33,10 +33,13 @@ def _plain(text: str) -> str:
     return " ".join(text.split()).casefold()
 
 
-def needs_restoring(question: str) -> bool:
-    """Typed without any diacritic, with words to restore (not a bare code or number)."""
+def needs_restoring(question: str, abbreviations: dict[str, str] = {}, words: frozenset[str] = frozenset()) -> bool:  # noqa: B006
+    """Typed without any diacritic, with words to restore (not a bare code or number), or written with a chat
+    abbreviation ("muốn sp đạt 5 sao"): a corpus abbreviation that is not itself a word of the corpus."""
     plain = _plain(question)
-    return len(re.findall(r"[a-z]{2,}", plain)) >= 3 and fold(plain) == plain
+    if len(re.findall(r"[a-z]{2,}", plain)) >= 3 and fold(plain) == plain:
+        return True
+    return any(token in abbreviations and token not in words for token in re.findall(r"[a-z]+", fold(plain)))
 
 
 def propose(llm, question: str, abbreviations: dict[str, str]) -> str | None:
@@ -58,7 +61,7 @@ def propose(llm, question: str, abbreviations: dict[str, str]) -> str | None:
 def _same_words(asked: str, restored: str, abbreviations: dict[str, str]) -> bool:
     """Word by word, the restored text folds back to the asked one; an asked abbreviation may instead be written out
     as exactly the corpus phrase its initials stand for ("sp" -> "sản phẩm", never "siro phúc")."""
-    have = re.findall(r"\w+", asked)
+    have = re.findall(r"\w+", fold(asked))
     got = re.findall(r"\w+", fold(restored))
     i = j = 0
     while i < len(have) and j < len(got):

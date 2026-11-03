@@ -120,7 +120,9 @@ class OcopAgent:
         method = "none"
         # Every step below reads accented Vietnamese; a question typed without diacritics is restored first, and only
         # when removing the marks again gives back the user's exact text (diacritics_model).
-        if self.llm is not None and diacritics_model.needs_restoring(query):
+        if self.llm is not None and diacritics_model.needs_restoring(
+            query, self.tools.abbreviations(), self.tools._corpus_words()
+        ):
             if restored := diacritics_model.propose(self.llm, query, self.tools.abbreviations()):
                 query, method = restored, "diacritics_restored"
         choice = decide(query)
