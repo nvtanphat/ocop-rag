@@ -22,6 +22,7 @@
 - Cấu hình cho chất lượng đo được tốt nhất (mọi số trong [EVALUATION](EVALUATION.md) dùng cấu hình này): `OCOP_RETRIEVAL_PROFILE=hybrid`, `OCOP_RERANK=1` và một mô hình trả lời đã cấu hình (`OCOP_ANSWER_LLM_*`); khi đó FE gửi `hybrid` và tự bật LLM vì `/health` báo `answer_llm: true`. `python tools/cli.py run` nạp `.env` ngay khi khởi động, nên `/query` đầu tiên cũng dùng đúng hồ sơ. Qdrant tắt thì `/health` báo `not_ready` (`qdrant_unreachable`) và `/query` trả 503, không rơi về sparse.
 - `OCOP_SESSION_STORE`: `memory` (mặc định) hoặc `sqlite`; `OCOP_SESSION_DB` chọn tệp SQLite, mặc định `data/processed/ocop/sessions.sqlite3`.
 - `OCOP_MODELS_DIR`: kho mô hình cục bộ cho embedding/reranker. Các model phải được chuẩn bị trước; không bật `trust_remote_code`.
+- `retrieval.rerank_onnx` (mặc định `true`): dùng bản int8 ONNX của cross-encoder nếu thư mục `<tên-model>-onnx-int8` có trong kho mô hình; nếu thiếu thì dùng torch. Tạo bản này bằng `python tools/export_reranker_onnx.py` (đặt TMP/TEMP trên ổ D). Đo trên bộ retrieval: cùng top1 67 và MRR 0.79, 23.7 → 18.7 giây mỗi câu.
 - `OCOP_EASYOCR_MODEL_DIR`, `OCOP_VIETOCR_WEIGHTS`: trọng số OCR dùng trong dự án OCR riêng.
 - `OCOP_LAYOUT_MODEL_DIR`: thư mục trọng số layout cục bộ cho thành phần OCR; chỉ dùng khi bật thành phần này.
 - `OCOP_OCR_PEAK_LOCK`: tệp khóa tải/tính OCR giữa các tiến trình; mặc định `ocop-ocr-peak.lock` trong thư mục tạm hệ điều hành.

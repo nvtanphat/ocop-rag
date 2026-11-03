@@ -53,6 +53,8 @@ class RetrievalSettings(BaseModel):
     rerank_skip_on_agreement: bool = False
     rerank_batch_size: int = Field(4, ge=1)
     rerank_threads: int = Field(6, ge=1)
+    # Use the int8 ONNX copy of the cross-encoder when tools/export_reranker_onnx.py has built it; false = always torch.
+    rerank_onnx: bool = True
     tensor_reader_backend: Literal["auto", "mmap", "pread"] = "auto"
     rerank_cache_entries: int = Field(512, ge=0)
     query_max_chars: int = Field(1500, ge=50)

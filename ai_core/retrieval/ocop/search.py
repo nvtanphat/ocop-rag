@@ -143,6 +143,13 @@ def _load_reranker(model_id: str, revision: str | None = None):
     except ImportError as exc:
         raise RuntimeError("sentence-transformers required for --rerank") from exc
     resolved, is_local = resolve_local_model_path(model_id)
+    cfg = get_settings().retrieval
+    if cfg.rerank_onnx and is_local:
+        onnx_dir, found = resolve_local_model_path(f"{Path(resolved).name}-onnx-int8")
+        if found and (Path(onnx_dir) / "model.onnx").is_file():
+            from ai_core.retrieval.ocop.onnx_reranker import OnnxCrossEncoder
+
+            return OnnxCrossEncoder(onnx_dir, resolved, cfg.rerank_threads)
     # Avoid executing arbitrary Python from a remote repository. A revision
     # alone is not an approval to execute reviewed custom code.
     kwargs = {"device": "cpu", "trust_remote_code": False, "local_files_only": True}

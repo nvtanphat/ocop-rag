@@ -35,6 +35,7 @@ retrieval:
   rerank_skip_on_agreement: true   # sparse and dense agree on the first chunk: keep the fused order, no cross-encoder pass
   rerank_batch_size: 4
   rerank_threads: 6
+  rerank_onnx: true                # int8 ONNX copy of the cross-encoder when tools/export_reranker_onnx.py has built it (~2x faster); false = torch
   tensor_reader_backend: auto    # pread on Windows (safetensors>=0.8), mmap elsewhere; tensor values are unchanged
   rerank_cache_entries: 512
   query_max_chars: 1500
