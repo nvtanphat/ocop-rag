@@ -130,10 +130,12 @@ def _specific_citation(ref: dict, unit: dict) -> dict | None:
         if ref.get("table_id") and not str(cell_id).startswith(str(ref["table_id"]) + ":r"):
             return None
         cell = cell_at(unit, row_no, col)
+        # A cell with no box is cited by its page span, the same rule as a row without boxes.
+        page_box = next((s.get("bbox") for s in spans if int(s.get("pdf_page", -1)) == int(ref.get("pdf_page", -2))), None)
         if (
             cell is None
             or quote != str(cell.get("text") or "").strip()
-            or not bbox_matches(ref.get("bbox"), cell.get("bbox"))
+            or not bbox_matches(ref.get("bbox"), cell.get("bbox") or page_box)
         ):
             return None
         if row is not None and int(row) != row_no:

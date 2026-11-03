@@ -131,7 +131,8 @@ def _cell_ref_at(candidate: dict, evidence_index: dict[str, dict], row: int, col
         table_id=table_id,
         row=row,
         cell_id=f"{table_id}:r{row}:c{col}" if table_id else None,
-        bbox=cell.get("bbox"),
+        # A cell with no box (a reviewed table row typed without geometry) is cited by its page span, as a row is.
+        bbox=cell.get("bbox") or next(s for s in span if int(s["pdf_page"]) == page).get("bbox"),
         quote=raw,
     )
 
@@ -522,14 +523,17 @@ def extract_semantics(
             omitted["recognition_header_or_incomplete_row"] += 1
             continue
         product, producer = value("product"), value("producer")
-        if len(_short_label(product)) < 3 or len(_short_label(producer)) < 3:
+        if len(_short_label(product)) < 3:
             omitted["recognition_missing_owner_or_product"] += 1
             continue
+        # A row may print no owner (QĐ525 row 4: the owner cells are blank on the page): the record and its product
+        # stand on the cells that are printed, and no owner is guessed from a neighbouring row.
+        has_owner = len(_short_label(producer)) >= 3
         owner_cell = column_record("producer")
-        inherited = bool(owner_cell.get("inherited"))
-        owner_ref = cell_evidence("producer")
+        inherited = bool(owner_cell.get("inherited")) if has_owner else False
+        owner_ref = cell_evidence("producer") if has_owner else None
         product_ref = cell_evidence("product")
-        if owner_ref is None or product_ref is None:
+        if product_ref is None or (has_owner and owner_ref is None):
             omitted["recognition_missing_cell_evidence"] += 1
             continue
         address = value("address") or None
@@ -583,18 +587,19 @@ def extract_semantics(
                 product_ref,
                 key=f"{row['candidate_id']}:product",
             )
-            owner_id = add(
-                EntityType.ORGANIZATION,
-                _short_label(producer),
-                row,
-                owner_ref,
-                key=f"organization:{_short_label(producer).casefold()}:"
-                f"{_short_label(address).casefold() if address else owner_ref.evidence_unit_id + ':' + str(owner_ref.row)}",
-            )
             link("HAS_RECORD", decision, rec, ev)
             link("RECOGNIZES", rec, product_id, ev, extra_evidence=[product_ref])
-            link("DECLARED_BY", rec, owner_id, ev, extra_evidence=[owner_ref])
-            link("OWNED_BY", product_id, owner_id, ev, extra_evidence=[product_ref, owner_ref])
+            if has_owner:
+                owner_id = add(
+                    EntityType.ORGANIZATION,
+                    _short_label(producer),
+                    row,
+                    owner_ref,
+                    key=f"organization:{_short_label(producer).casefold()}:"
+                    f"{_short_label(address).casefold() if address else owner_ref.evidence_unit_id + ':' + str(owner_ref.row)}",
+                )
+                link("DECLARED_BY", rec, owner_id, ev, extra_evidence=[owner_ref])
+                link("OWNED_BY", product_id, owner_id, ev, extra_evidence=[product_ref, owner_ref])
         except (KeyError, ValueError):
             omitted["recognition_missing_evidence"] += 1
 

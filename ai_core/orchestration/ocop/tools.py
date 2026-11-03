@@ -220,25 +220,23 @@ class ToolRegistry:
         self._recognized: dict[tuple[str, int], frozenset[str]] | None = None
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
-        """(decision source, star level) -> the products its checked recognition records give that level, read from the
-        graph's RECOGNIZES and HAS_STAR edges: what a count in an answer ("02 sản phẩm 4 sao") is checked against."""
+        """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
+        from the graph's HAS_STAR edges: what a count in an answer ("02 sản phẩm 4 sao") is checked against. Rows are
+        counted, not product nodes: three owners' "Táo Bàng La" are three recognised products under one name."""
         if self._recognized is None:
             nodes = {n["node_id"]: n for n in records(self.graph_dir / "nodes.jsonl")}
-            products: dict[str, set[str]] = {}
-            levels: dict[str, int] = {}
+            grouped: dict[tuple[str, int], set[str]] = {}
             for edge in records(self.graph_dir / "edges.jsonl"):
                 record = nodes.get(edge.get("source_entity_id"))
-                if not record or record.get("node_type") != "RecognitionRecord" or edge.get("check") != "passed":
-                    continue
-                if edge.get("relation_type") == "RECOGNIZES":
-                    products.setdefault(record["node_id"], set()).add(edge["target_entity_id"])
-                elif edge.get("relation_type") == "HAS_STAR":
+                if (
+                    record
+                    and record.get("node_type") == "RecognitionRecord"
+                    and edge.get("relation_type") == "HAS_STAR"
+                    and edge.get("check") == "passed"
+                ):
                     level = (nodes.get(edge["target_entity_id"], {}).get("properties") or {}).get("star_level")
                     if level is not None:
-                        levels[record["node_id"]] = int(level)
-            grouped: dict[tuple[str, int], set[str]] = {}
-            for record_id, level in levels.items():
-                grouped.setdefault((nodes[record_id]["source_id"], level), set()).update(products.get(record_id, ()))
+                        grouped.setdefault((record["source_id"], int(level)), set()).add(record["node_id"])
             self._recognized = {key: frozenset(value) for key, value in grouped.items()}
         return self._recognized
 

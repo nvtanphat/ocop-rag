@@ -670,7 +670,7 @@ def _applies_star_band(text: str, numbers: list[int], citations: list[dict], que
 # A count of recognised products ("02 sản phẩm 4 sao") is the model's arithmetic over the rows it read; the decision rarely
 # writes it. It passes only when it equals the number of products the graph's checked recognition records of a cited
 # decision give the star levels the claim names. Every star level is a figure the records hold, not the model's.
-COUNT_REASONS = frozenset({"unsupported_score_or_star_claims", "source_missing_claim_numbers"})
+COUNT_REASONS = BAND_REASONS  # the count, the decision and the level are what the check settles
 
 
 def _counts_checked_records(text: str, numbers: list[int], citations: list[dict], recognized: dict) -> bool:
