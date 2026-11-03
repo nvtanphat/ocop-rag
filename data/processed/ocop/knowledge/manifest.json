@@ -1,14 +1,14 @@
 {
   "business_quality": "business_quality.json",
   "complete": true,
-  "corpus_version": "9d5b479d6a6022de9011",
+  "corpus_version": "f22cd2b4f134acff2a54",
   "counts": {
-    "business_entities": 20153,
+    "business_entities": 20155,
     "business_llm_errors": 0,
     "business_llm_omissions": 0,
     "business_llm_unit_statuses": 1037,
-    "business_omissions": 31,
-    "business_relations": 12633,
+    "business_omissions": 30,
+    "business_relations": 12637,
     "business_rules": 8787,
     "criterion_candidates": 8035,
     "entities": 1487,
@@ -93,7 +93,7 @@
   },
   "ocr_dataset_digest": "1204caa0ea1699b6a7f92c6ed7bdee8c7499eab482c5a4943aaca9e95c93514a",
   "ocr_dataset_version": "ocop-pdf-17bf8730f9e7",
-  "pipeline_version": "ocop-evidence-d1282e197a3f",
+  "pipeline_version": "ocop-evidence-2762299e9fbd",
   "semantic_proposals": {
     "chunk_count": 1130,
     "client_identity": {
@@ -122,7 +122,7 @@
       "duplicate_relations": 65,
       "enriched_attributes": 67,
       "kind_conflicts": 49,
-      "merged_entities": 702,
+      "merged_entities": 704,
       "unanchored_scoring_entities": 532,
       "ungrounded_after_merge": 342
     },

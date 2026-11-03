@@ -632,6 +632,12 @@
     ]
    },
    {
+    "label": "Hộ kinh doanh Phạm Quý Ngọc - Cơ sở sản xuất bánh đa Ngọc Xinh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
     "label": "Hộ kinh doanh Trần Văn Tiến 66",
     "source_ids": [
      "VN.HAIPHONG.QD525.2026"
@@ -682,7 +688,19 @@
     ]
    },
    {
+    "label": "Bánh cốm Hải Ninh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
     "label": "Bánh dẻo Trọng Kiểm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh nhãn",
     "source_ids": [
      "VN.HAIPHONG.QD525.2026"
     ]
@@ -713,6 +731,12 @@
    },
    {
     "label": "Bánh đa đỏ khô",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đa đỏ ướt",
     "source_ids": [
      "VN.HAIPHONG.QD525.2026"
     ]

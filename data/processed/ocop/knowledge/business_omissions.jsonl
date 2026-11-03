@@ -22,7 +22,6 @@
 {"count": 895, "reason": "procedure_frame_not_observed"}
 {"count": 91, "reason": "procedure_without_single_deadline"}
 {"count": 7, "reason": "recognition_header_or_incomplete_row"}
-{"count": 2, "reason": "recognition_missing_owner_or_product"}
 {"count": 3, "reason": "score_table_after_next_annex"}
 {"count": 7, "reason": "score_table_without_continuity"}
 {"count": 10, "reason": "sheet_header_missing_classification"}

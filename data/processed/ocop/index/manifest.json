@@ -1,8 +1,8 @@
 {
   "bm25": {
-    "corpus_hash": "3d89b38a2722932266bdd28bd3cd08e111a14443e3146a4ed393e2b2007f8128",
+    "corpus_hash": "622f8f41c8b8c64dd9592a3fd0dd14fbef0ffb0f3c7d4c786bafbafad6ff1a09",
     "documents": 2655,
-    "records_hash": "247051ecc6240c033928531074496c533ab2a07372afd09e340eb2805e8c2eb5",
+    "records_hash": "46b8fcc083471270ea5b3ed8f611466655418b4015dc75d22498363ecda5b433",
     "tokenizer": "unicode_casefold_vi_folded",
     "vocabulary_size": 3527
   },
@@ -19,7 +19,7 @@
     "token_budget": 512,
     "tokenizer_path": null
   },
-  "corpus_version": "84cfec8cb9fddd206410",
+  "corpus_version": "6b2f9a6adee5cb3a0655",
   "counts": {
     "chunks": 2655,
     "evidence_units": 1666,
@@ -27,7 +27,7 @@
     "structured_records": 8951
   },
   "dense": {
-    "collection": "ocop_84cfec8cb9fddd206410_8dec3ae85428",
+    "collection": "ocop_6b2f9a6adee5cb3a0655_8dec3ae85428",
     "dimension": 768,
     "enabled": true,
     "host": "localhost",
@@ -41,17 +41,17 @@
       "authority": 21,
       "document": 11,
       "form": 36,
-      "organization": 22,
-      "product": 58,
+      "organization": 23,
+      "product": 61,
       "product_group": 51,
       "region": 6,
       "sheet": 30
     },
-    "sha256": "1290606f72761d4da74864ef8a4d16187d6c816aebb15cb164dd730740dbb3ad"
+    "sha256": "931663e256486383ba6de2faa52ea01b8a5654a914f862087e23becb85ae8b80"
   },
   "index_version": "ocop-retrieval-de9d3b701d97",
   "source_complete": true,
-  "source_knowledge_version": "9d5b479d6a6022de9011",
+  "source_knowledge_version": "f22cd2b4f134acff2a54",
   "status": "hybrid_ready",
-  "structural_graph_version": "ce4db556b0af69a47a97"
+  "structural_graph_version": "965721e45dbe21af53c1"
 }

@@ -1,9 +1,9 @@
 {
-  "built_at": "2026-11-01T19:48:15.902360+00:00",
-  "corpus_version": "affccebc20166db51141",
-  "graph_version": "ce4db556b0af69a47a97",
+  "built_at": "2026-11-03T10:40:04.049604+00:00",
+  "corpus_version": "6b2f9a6adee5cb3a0655",
+  "graph_version": "965721e45dbe21af53c1",
   "index_status": "hybrid_ready",
-  "knowledge_version": "9d5b479d6a6022de9011",
+  "knowledge_version": "f22cd2b4f134acff2a54",
   "note": "Machine extraction is not legal review or official OCOP certification",
   "source_snapshot_sha256": "d322a4f34c0fecd2b2322662c8d32dece6a16733c2bfa932bf46177da6100dbb"
 }
