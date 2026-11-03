@@ -200,14 +200,6 @@ def test_a_quote_differing_only_in_layout_is_verbatim_but_a_changed_word_never_i
     assert not verbatim("hiệu lực", source)  # shorter than a quote must be
 
 
-def test_an_answer_names_what_was_looked_up_never_the_internal_tool():
-    from ai_core.orchestration.ocop.workflow import _public_names
-
-    said = _public_names(["lookup_criterion", "search_graph", "lookup_criterion"])
-    assert "lookup_" not in said and "search_" not in said and said.count("tra tiêu chí đánh giá") == 1
-    assert _public_names(["unregistered_tool"]) == "unregistered_tool"
-
-
 def test_the_programme_name_is_not_a_name_a_passage_must_introduce_but_an_invented_one_is():
     from ai_core.orchestration.ocop.entailment import anchored
 

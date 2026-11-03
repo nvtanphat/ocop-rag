@@ -152,7 +152,7 @@ def test_partial_coverage_cannot_label_generated_answer_fully_verified(tmp_path)
     }
     ans = agent.answer(state)["answer"]
     assert ans["status"] != "generated_claims_verified"
-    assert "Mình chưa tra đủ các phần" in ans["answer"]
+    assert "lookup_recognition" not in ans["answer"]  # the gap is in the status, not by tool name
 
 
 def test_hidden_tail_of_long_document_cannot_support_claim():

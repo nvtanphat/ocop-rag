@@ -61,14 +61,6 @@ class OcopState(TypedDict, total=False):
 PARTIAL_CORPUS_NOTICE = "[Corpus chưa đầy đủ — kết quả chỉ để thử nghiệm]"
 
 
-def _public_names(tools: list[str]) -> str:
-    """What was being looked up, in the reader's words; a tool's internal name never reaches an answer."""
-    from ai_core.orchestration.ocop.capabilities import TOOL_REGISTRY
-
-    said = [(TOOL_REGISTRY[name].public_description if name in TOOL_REGISTRY else "") or name for name in tools]
-    return ", ".join(dict.fromkeys(said))
-
-
 class OcopAgent:
     def __init__(
         self,
@@ -1082,10 +1074,7 @@ class OcopAgent:
             )
         ]
         if gaps and response["status"] not in ("insufficient_evidence",):
-            response["optional_gaps"] = gaps
-            response["answer"] = (
-                "[Chưa có dữ liệu cho phần phụ: " + _public_names(gaps) + "]\n" + response["answer"]
-            )
+            response["optional_gaps"] = gaps  # reported to the client, not written into the answer by tool name
         if notices and response["status"] != "insufficient_evidence":
             response["answer"] = "[" + " ".join(notices) + "]" + chr(10) + response["answer"]
             response["status"] = (
@@ -1106,18 +1095,12 @@ class OcopAgent:
             # A gap that a notice above already explains in words is not repeated by its internal tool name.
             if temporal_unverified:
                 missing = [name for name in missing if name != "resolve_temporal_applicability"]
-            # Tool coverage is about lookups, not about the answer: a lookup can come back empty while the search
-            # found the passage that answers. When the answer already says, in the user's words, what the documents
-            # lack ("Chưa tìm thấy trong tài liệu: …"), the lookup names add nothing for the reader and can contradict
-            # a correct answer; they stay in evidence_coverage and the status.
-            said_what_is_missing = bool((response.get("generation_diagnostics") or {}).get("missing_from_source"))
-            if missing and not said_what_is_missing:
-                response["answer"] = (
-                    "Mình chưa tra đủ các phần: " + _public_names(missing) + "." + "\n" + response["answer"]
-                )
-            if missing:
-                if response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
-                    response["status"] = "partial_evidence"
+            # Tool coverage is about lookups, not about the answer: a lookup can come back empty, or with graph nodes and
+            # no passage, while the search found the passage that answers. The answer says in the user's words what
+            # the documents lack ("Chưa tìm thấy trong tài liệu: …"); internal lookup names would only contradict a
+            # correct answer. The gap stays in evidence_coverage and lowers the status.
+            if missing and response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
+                response["status"] = "partial_evidence"
         return {"answer": response}
 
     def graph(self, *, checkpointer=None):
