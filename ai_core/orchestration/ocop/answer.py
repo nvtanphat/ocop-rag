@@ -412,7 +412,7 @@ def _evidence(
     budget = cfg.prompt_token_budget - cfg.output_reserve_tokens - overhead_tokens
     headers = [
         estimated_tokens(
-            f"[S{i}] {key[0]}, PDF p.{key[1]}, review={row.get('review_status', 'needs_review')}: "
+            f"[S{i}] {_document_label(key[0])}, trang {key[1]}: "
         )
         for i, (key, row, span, _) in enumerate(entries, 1)
     ]
@@ -461,8 +461,8 @@ def _evidence(
         citations.append(citation)
         selected.append(chosen)
         contexts.append(
-            f"[S{len(citations)}] {key[0]}, PDF p.{key[1]}, "
-            f"review={citation['review_status']}"
+            # The document's own number ("26/2026/QĐ-TTg"), not the corpus id: what the answer will call it.
+            f"[S{len(citations)}] {_document_label(key[0])}, trang {key[1]}"
             + (f" ({get_language().messages.answer_row[row['answer_row']]})" if row.get("answer_row") else "")
             + f": {excerpt.display}"
         )
