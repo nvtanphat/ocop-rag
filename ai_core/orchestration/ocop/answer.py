@@ -1070,18 +1070,18 @@ def _assemble(
         )
         return response(
             {
-                "answer": "Chưa tìm thấy bằng chứng nguồn đủ để trả lời trong dữ liệu đã lập chỉ mục."
-                + (" Tầng gây thiếu bằng chứng: " + reason + "." if reason else ""),
+                "answer": "Mình chưa tìm thấy đoạn tài liệu nào đủ để trả lời câu này.",
                 "status": "insufficient_evidence",
                 "citations": [],
+                # Which layer failed is for diagnosis, not for the reader.
+                "generation_diagnostics": {"layer": "retrieval", "reasons": [reason] if reason else []},
             }
         )
     if llm is None:
         return response({
             "answer": (
-                "Kết quả truy xuất (chưa tạo câu trả lời bằng LLM). "
-                "Các trích đoạn giữ nguyên trạng thái xác minh của nguồn; "
-                "điểm số OCR chưa xác minh không phải kết luận.\n" + "\n".join(contexts)
+                "Các đoạn tài liệu liên quan nhất (chế độ chỉ tra cứu, chưa soạn câu trả lời). Điểm số trong bản số hóa chưa "
+                "được người duyệt không phải kết luận.\n" + _shown_excerpts(contexts, citations)
             ),
             "status": "retrieval_only",
             "citations": citations,
@@ -1093,8 +1093,8 @@ def _assemble(
     cfg = get_settings().context
     if fusion["context_term_coverage"] < cfg.min_term_coverage and question_terms(question):
         return response({
-            "answer": "Nội dung gửi tới mô hình chưa phủ đủ ý của câu hỏi nên không sinh câu trả lời. "
-            "Trích xuất nguồn:\n" + "\n".join(contexts),
+            "answer": "Các đoạn tài liệu tìm được chưa nói tới đủ ý của câu hỏi nên mình không soạn câu trả lời. Các đoạn gần nhất để "
+            "bạn tự đối chiếu:\n" + _shown_excerpts(contexts, citations),
             "status": "insufficient_context_for_generation",
             "citations": citations,
             "generation_diagnostics": {

@@ -88,8 +88,8 @@ def test_retrieval_only_answer_keeps_long_relevant_row_context():
         llm=None,
     )
     assert relevant in result["answer"]
-    assert "review=needs_review" in result["answer"]
-    assert "điểm số OCR chưa xác minh không phải kết luận" in result["answer"]
+    assert "bản số hóa chưa được người duyệt" in result["answer"]  # an unreviewed source stays marked
+    assert "không phải kết luận" in result["answer"]
 
 
 def test_agent_lists_each_product_in_a_merged_producer_rowspan(tmp_path):
