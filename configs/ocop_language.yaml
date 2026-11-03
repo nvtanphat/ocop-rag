@@ -247,7 +247,7 @@ dialogue:
   address: '(?:ban|anh|chi|em|ad|bot|assistant)'
   particle: '(?:nhe|nha|a|ah|nhi|voi|di|nhieu|lam|rat nhieu|vay)'
   greeting: '(?:(?:xin )?chao|hello|hi|hey)(?: {address})?'
-  thanks: '(?:(?:ok|okay|vang|da|thoi)(?: (?:duoc roi|vay))? )?(?:cam on|thank you|thanks)(?: {address})?'
+  thanks: '(?:(?:ok|okay|vang|da|thoi)(?: (?:duoc roi|vay))? )?(?:cam on|camon|thank you|thanks|thank|tks|thks|ty)(?: {address})?'
   acknowledgment: '(?:ok|okay|vang|da|(?:(?:ok|okay|vang|da) )?(?:(?:minh|toi) )?(?:da )?hieu(?: roi)?)'
   farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
   identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'

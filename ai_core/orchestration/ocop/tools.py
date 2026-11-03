@@ -977,15 +977,28 @@ class ToolRegistry:
             # "Quyết định 148 còn hiệu lực không?": a document's end is written in the document that replaces it
             # (ViHERMES follows the validity chain). A question about a named document's validity searches it and the
             # documents the graph's REPLACES edges name as its successors, taking turns.
-            # Only a question about the document's validity: "quy trình năm 2023" asks for the older text itself.
-            asks_validity = get_language().hit(query, "temporal_validity")
-            successors = self.successors(source_filter) if source_filter and asks_validity else ()
-            if successors:
+            # Only a question about the document's validity: "quy trình năm 2023" asks for the older text itself. Its
+            # successors in the graph, and any other passage of the corpus that speaks of it ("Nghị định 15/2018 … tiếp
+            # tục có hiệu lực" in a later resolution the graph links to nothing), are searched with it, taking turns.
+            if source_filter and get_language().hit(query, "temporal_validity"):
                 lists = [
                     search(self.index_dir, query, mode=mode, top_k=top_k, source_id=source, with_continuations=True)
-                    for source in (source_filter, *successors)
+                    for source in (source_filter, *self.successors(source_filter))
                 ]
-                return {"results": [row for turn in zip_longest(*lists) for row in turn if row is not None]}
+                lists.append(
+                    [
+                        row
+                        for row in search(self.index_dir, query, mode=mode, top_k=top_k, with_continuations=True)
+                        if row.get("source_id") != source_filter
+                    ]
+                )
+                seen: set = set()
+                merged = []
+                for row in (row for turn in zip_longest(*lists) for row in turn if row is not None):
+                    if row.get("chunk_id") not in seen:
+                        seen.add(row.get("chunk_id"))
+                        merged.append(row)
+                return {"results": merged}
             # "Quy định OCOP mới nhất là văn bản nào?": the clauses that replace older versions say which one is in force;
             # they are the evidence of the graph's REPLACES edges and lead the passages.
             if not source_filter and get_language().hit(query, "current_version") and (units := self.replacement_units()):
