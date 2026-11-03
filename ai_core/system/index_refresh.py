@@ -31,7 +31,7 @@ def refresh_index_after_graph_change(root: Path) -> dict:
 
 
 def _refresh(root: Path) -> dict:
-    from ai_core.retrieval.ocop.index_pipeline import build_index
+    from ai_core.retrieval.ocop.index_pipeline import INDEX_VERSION, build_index
     from ai_core.retrieval.ocop import search as search_module
 
     base = Path(root) / "data/processed/ocop"
@@ -44,7 +44,8 @@ def _refresh(root: Path) -> dict:
     old, graph = _read(index_dir / "manifest.json"), _read(graph_dir / "manifest.json")
     if not old or not graph:
         raise RuntimeError("index and graph must both exist before a refresh")
-    if graph_index_mismatch(graph, old, strict=True) is None:
+    # The chunker and the index builder are fingerprinted (INDEX_VERSION): changed code makes the index stale too.
+    if graph_index_mismatch(graph, old, strict=True) is None and old.get("index_version") == INDEX_VERSION:
         return {"status": "current", "graph_version": graph["graph_version"]}
     config, dense = old.get("config") or {}, old.get("dense") or {}
     for leftover in (staging, previous):

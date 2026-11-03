@@ -352,8 +352,13 @@ def _plan_table(
         # Keep criterion headings, notes and options together until the next
         # numbered criterion; do not mix several unrelated criteria to fill a budget.
         criterion_start = bool(re.match(r"^\s*\d{1,2}\.\d{1,2}(?=[\s.,):]|$)", raw_label))
+        # A section heading ("5. CÂU CHUYỆN SẢN PHẨM | 12", OCR may read the dot as a comma) opens the section it
+        # heads: glued to the end of the previous criterion it was never found by a question about its own section
+        # (on a page break the heading is the last row of the page). It stays with the section's first criterion.
+        section_start = bool(re.match(r"^\s*\d{1,2}[.,](?!\d)\s*\S", raw_label))
+        heading_only = bool(buffer) and all(re.match(r"^\s*\d{1,2}[.,](?!\d)\s*\S", r) for _, r, _ in buffer)
         starts_merged_group = any(int(cell.get("rowspan") or 1) > 1 for cell in row_cells)
-        if buffer and (starts_merged_group or criterion_start):
+        if buffer and (starts_merged_group or section_start or (criterion_start and not heading_only)):
             # Begin a fresh child when source geometry starts another merged
             # row group, such as the next producer in a recognition table.
             flush()

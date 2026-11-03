@@ -744,6 +744,26 @@ UNVERIFIED_INTRO = (
 )
 
 
+def _shown_excerpts(contexts: list[str], citations: list[dict], first: list[int] = ()) -> str:
+    """The excerpts a reader gets when no claim could be checked: the ones the model leaned on first, each named by its
+    document and page and marked when no person has reviewed it; the prompt's "[S#] id, PDF p., review=" header is not
+    for the reader. The excerpt text itself is unchanged."""
+    wanted = [n for n in dict.fromkeys(first) if 0 < n <= len(contexts)]
+    order = wanted + [n for n in range(1, len(contexts) + 1) if n not in wanted]
+    blocks = []
+    for n in order:
+        citation = citations[n - 1] if n <= len(citations) else {}
+        body = contexts[n - 1].split(": ", 1)[1] if ": " in contexts[n - 1] else contexts[n - 1]
+        unreviewed = citation.get("review_status") != "verified"
+        blocks.append(
+            f"[S{n}] {_document_label(str(citation.get('source_id') or ''))}, trang {citation.get('pdf_page')}"
+            + (" (bản số hóa chưa được người duyệt)" if unreviewed else "")
+            + ":\n"
+            + body
+        )
+    return "\n\n".join(blocks)
+
+
 def _gap_notice(missing: list[str]) -> str:
     """What the documents do not answer, in the user's words: the prompt's label for them ("SOURCE") is not one."""
     gaps = [item.replace("SOURCE", "tài liệu") for item in missing]
@@ -810,7 +830,7 @@ def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None,
     if not accepted:
         reasons = list(dict.fromkeys(x for r in rejected for x in r["reasons"])) or ["no_claims"]
         return {
-            "answer": UNVERIFIED_INTRO + "\n".join(contexts),
+            "answer": UNVERIFIED_INTRO + _shown_excerpts(contexts, citations, [n for r in rejected for n in r["sources"]]),
             "status": "citation_verification_failed",
             "citations": citations,
             "evidence_fusion": fusion,
@@ -1082,7 +1102,7 @@ def _assemble(
             reasons = list(dict.fromkeys(reasons))
             # Never expose unsupported [S#] claims as valid references.
             return response({
-                "answer": UNVERIFIED_INTRO + "\n".join(contexts),
+                "answer": UNVERIFIED_INTRO + _shown_excerpts(contexts, citations),
                 "status": "citation_verification_failed",
                 "citations": citations,
                 "claim_verification": claims,

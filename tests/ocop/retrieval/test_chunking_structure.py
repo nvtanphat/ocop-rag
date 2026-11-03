@@ -393,3 +393,21 @@ def test_a_parent_chain_over_the_cap_drops_middle_levels_and_keeps_the_sheet():
     assert _fit_chain([sheet, part, group, leaf], words, 18) == [sheet, leaf]
     assert _fit_chain([sheet, part, group, leaf], words, 10) == [leaf]
     assert _fit_chain([sheet, leaf], words, 5) == []
+
+
+def test_a_section_heading_opens_its_own_section_not_the_end_of_the_previous_criterion():
+    content = "\n".join(
+        [
+            "Các tiêu chí | Thang điểm",
+            "4.3. Quảng bá sản phẩm | 5",
+            "Không có hoạt động quảng bá sản phẩm | 0",
+            "Có nhiều hoạt động quảng bá | 5",
+            "5. CÂU CHUYỆN SẢN PHẨM | 12",
+            "5.1. Câu chuyện sản phẩm | 5",
+            "Không có câu chuyện sản phẩm | 0",
+        ]
+    )
+    parts = split_units(make_unit(content, kind="criterion_table_candidate"), max_words=400, overlap=0)
+    with_heading = [p for p in parts if "5. CÂU CHUYỆN SẢN PHẨM | 12" in p]
+    assert len(with_heading) == 1
+    assert "5.1. Câu chuyện sản phẩm | 5" in with_heading[0] and "4.3. Quảng bá" not in with_heading[0]
