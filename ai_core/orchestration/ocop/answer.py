@@ -469,6 +469,8 @@ SYSTEM_PROMPT = (
     "Không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể; chỉ nêu điều nguồn ghi (ngày hiệu lực ghi trong văn bản là được). "
     "Mỗi claim được hiển thị riêng nên phải tự đứng được: gọi tên đối tượng (số hiệu văn bản, điều, mẫu, sản phẩm) thay vì “hai quyết định này”, “văn bản đó”. Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
     "(hệ thống tự gắn nhãn chưa duyệt) và không dùng dấu ba chấm của đoạn bị cắt làm nội dung. "
+    "Với câu hỏi có/không, claim nêu đúng điều nguồn quy định (ai làm, khi nào, điều kiện gì) để người hỏi tự thấy câu trả lời; "
+    "không gộp vào claim lời đáp 'Có/Không' hay vế phủ định chỉ suy ra từ câu hỏi ('không phải cấp xã') vì nguồn không viết vế đó. "
     'Trả lời bằng JSON {"claims":[{"text":...,"sources":["S1"],"quote":...}],"missing":[...]}: mỗi claim là một ý ngắn '
     'liên quan trực tiếp câu hỏi, kèm mã nguồn S# chứa ý đó và "quote" là đoạn SOURCE làm căn cứ, chép NGUYÊN VĂN '
     "từng ký tự (ít nhất vài từ, đủ chứa mọi con số, tên riêng và phủ định của claim); "
