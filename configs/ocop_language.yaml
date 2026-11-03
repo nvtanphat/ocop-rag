@@ -191,7 +191,7 @@ cues:
   # Questions about a private dossier (needs a trusted AuthContext).
   private_dossier: [rà soát hồ sơ của tôi, kiểm tra hồ sơ của tôi, hồ sơ của tôi còn thiếu, hồ sơ tôi còn thiếu, hồ sơ tôi thiếu gì,
     hồ sơ tôi cần bổ sung minh chứng, hồ sơ của tôi đạt chưa, hồ sơ của tôi có đạt, rà soát hồ sơ, đánh giá hồ sơ của tôi,
-    hồ sơ riêng, dossier riêng, hồ sơ nội bộ, hồ sơ chấm điểm riêng, điểm chấm riêng của]
+    hồ sơ riêng, dossier riêng, hồ sơ nội bộ]
   private_dossier_negative: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị, hồ sơ tôi cần nộp, tôi cần chuẩn bị hồ sơ,
     hồ sơ gồm những gì, hồ sơ cần có gì]
   private_scope: [tenant, dossier, hồ sơ của doanh nghiệp khác, hồ sơ của công ty khác, hồ sơ doanh nghiệp khác, tôi là admin,

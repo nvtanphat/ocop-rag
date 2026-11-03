@@ -370,6 +370,12 @@ class ToolRegistry:
                 results.extend({**row, "document_code": code} for row in rows)
             else:
                 unresolved.append(code)
+        # Later stages cut the head of the list (the cross-encoder scores 24 rows, the prompt takes a few blocks): the
+        # documents take turns, otherwise the first document fills the head and the second is never compared.
+        by_code: dict[str, list] = {}
+        for row in results:
+            by_code.setdefault(row["document_code"], []).append(row)
+        results = [row for turn in zip_longest(*by_code.values()) for row in turn if row is not None]
         merged = {"results": results, "unresolved_documents": unresolved}
         if results:
             merged["status"] = next((x for x in statuses if x and x not in BAD_DOCUMENT_STATUSES), "ok")

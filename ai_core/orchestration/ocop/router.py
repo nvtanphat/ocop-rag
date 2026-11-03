@@ -248,11 +248,17 @@ def _years_naming_a_document(lang: Language, text: str, folded: str) -> list[str
 
 
 def _version_years(lang: Language, folded: str) -> set[str]:
-    """Years written right after a name of the rules' version: "theo quy trình năm 2023", "bộ quy định 2026"."""
+    """Years written right after a name of the rules' version: "theo quy trình năm 2023", "bộ quy định 2026", and
+    "quy trình đánh giá năm 2023" (the process of assessing, not the year something was assessed)."""
     return {
         m.group(1)
         for m in re.finditer(
-            r"(?<![a-z])(?:" + _alt(lang.cues["version_reference"]) + r")(?:\s+ocop)?\s+(?:nam\s+)?(20\d{2})\b", folded
+            r"(?<![a-z])(?:"
+            + _alt(lang.cues["version_reference"])
+            + r")(?:\s+ocop)?(?:\s+(?:"
+            + _alt(lang.cues["assessment_year_scope"])
+            + r"))?\s+(?:nam\s+)?(20\d{2})\b",
+            folded,
         )
     }
 
