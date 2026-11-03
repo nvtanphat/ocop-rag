@@ -128,7 +128,11 @@ def _unit(
     # Stable even when OCR text changes, keyed by document/page/unit position.
     unit_id = stable_id("evidence", page["source_id"], [page["pdf_page"], kind, ordinal], revision=VERSION)
     raw_status = page.get("review_status", "needs_review")
-    if raw_status not in ("machine_extracted", "verified"):
+    if page.get("reviewed"):
+        # The owner checked this page's text against the PDF (data/ocr-dataset/review/corrections.jsonl): its units
+        # are verified source text, which is what every claim gate asks for.
+        status = ReviewStatus.VERIFIED
+    elif raw_status not in ("machine_extracted", "verified"):
         status = ReviewStatus.NEEDS_REVIEW
     else:
         status = ReviewStatus.MACHINE_EXTRACTED

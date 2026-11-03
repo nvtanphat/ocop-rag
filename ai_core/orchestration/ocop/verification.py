@@ -94,8 +94,14 @@ def _stated_in(assertion: str, verified: str) -> bool:
         return True
     score = get_language().alternation("score_noun")
     number = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*" + score, assertion, re.I)
-    return bool(number) and bool(
-        re.search(score + r"[^\d;|]{0,40}(?<!\d)" + re.escape(number[1]) + r"(?![\d.,]*\d)", verified, re.I)
+    if not number:
+        return False
+    value = re.escape(number[1])
+    # A score sheet writes the points as a table cell under a score column ("Các tiêu chí | Thang điểm", then
+    # "Có nhãn, ghi nhãn hàng hóa đầy đủ ... | 1"): the number closing a cell of such a table is the score.
+    return bool(
+        re.search(score + r"[^\d;|]{0,40}(?<!\d)" + value + r"(?![\d.,]*\d)", verified, re.I)
+        or (re.search(r"\|[^|]{0,30}" + score, verified, re.I) and re.search(r"\|\s*" + value + r"(?![\d.,]*\d)", verified))
     )
 
 
