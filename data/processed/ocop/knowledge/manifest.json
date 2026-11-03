@@ -1,7 +1,7 @@
 {
   "business_quality": "business_quality.json",
   "complete": true,
-  "corpus_version": "f22cd2b4f134acff2a54",
+  "corpus_version": "2679e2b66082b9297ee2",
   "counts": {
     "business_entities": 20155,
     "business_llm_errors": 0,
@@ -93,7 +93,7 @@
   },
   "ocr_dataset_digest": "1204caa0ea1699b6a7f92c6ed7bdee8c7499eab482c5a4943aaca9e95c93514a",
   "ocr_dataset_version": "ocop-pdf-17bf8730f9e7",
-  "pipeline_version": "ocop-evidence-2762299e9fbd",
+  "pipeline_version": "ocop-evidence-b0a6cb2fc994",
   "semantic_proposals": {
     "chunk_count": 1130,
     "client_identity": {
