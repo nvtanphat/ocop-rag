@@ -13,7 +13,7 @@ from pathlib import Path
 from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
-from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
+from ai_core.orchestration.ocop.router import OWN_SCOPE_SLOTS, route_query, extract_slots, _merge_followup
 from ai_core.orchestration.ocop import aspects, diacritics_model, followup_model, memory, scope_model, semantic_route
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
@@ -187,6 +187,23 @@ class OcopAgent:
                 # Only the two questions' own words: a label word added here would be searched for like evidence.
                 effective = previous + " " + query
                 method = "legacy_concat"
+        # "Ai là chủ thể sản xuất?" after a question about one product: no rule found a signal of its own, the intent
+        # came only from example utterances, and the question names no scope. In a conversation that is a follow-up
+        # the router did not see; the model restates it under the same validator (a self-contained question comes back
+        # unchanged). Questions any rule understood are left alone: restating those cost ranking on the session set.
+        recent = (safe_session.get("memory") or {}).get("recent") or []
+        if (
+            method == "none"
+            and recent
+            and self.llm is not None
+            and "semantic_intent" in choice.reason_codes
+            and not set(extract_slots(query, catalog=self._catalog())) & OWN_SCOPE_SLOTS
+            and (restated := followup_model.propose(self.llm, query, recent[::-1]))
+        ):
+            effective, method = restated, "model_rewrite"
+            choice = choice.model_copy(
+                update={"slots": {**choice.slots, **extract_slots(restated, catalog=self._catalog())}}
+            )
         return {
             "route": choice.model_dump(mode="json"),
             "effective_query": effective,
