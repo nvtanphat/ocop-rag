@@ -50,8 +50,9 @@ SCHEMA = {
 
 
 def plain(text: str) -> str:
-    """Words in order, as written: line breaks, runs of spaces and Markdown bold marks are layout, not content."""
-    return re.sub(r"\s+", " ", text.replace("**", "")).strip()
+    """Words in order, as written: line breaks, runs of spaces, Markdown bold marks and the "|" between table cells are
+    layout, not content (a quote of a score row may drop the cell separator)."""
+    return re.sub(r"\s+", " ", text.replace("**", "").replace("|", " ")).strip()
 
 
 def verbatim(quote: str, source: str) -> bool:

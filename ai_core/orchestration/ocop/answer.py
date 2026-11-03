@@ -670,7 +670,9 @@ def _applies_star_band(text: str, numbers: list[int], citations: list[dict], que
 # A count of recognised products ("02 sản phẩm 4 sao") is the model's arithmetic over the rows it read; the decision rarely
 # writes it. It passes only when it equals the number of products the graph's checked recognition records of a cited
 # decision give the star levels the claim names. Every star level is a figure the records hold, not the model's.
-COUNT_REASONS = BAND_REASONS  # the count, the decision and the level are what the check settles
+# The count, the decision and the levels are what the check settles; any other number in the claim makes it fail, so
+# remaining wording ("của thành phố Huế", "tổng cộng") is not a figure left unchecked.
+COUNT_REASONS = BAND_REASONS | {"grounding_terms_missing", "grounding_numbers_missing"}
 
 
 def _counts_checked_records(text: str, numbers: list[int], citations: list[dict], recognized: dict) -> bool:
@@ -694,7 +696,7 @@ def _counts_checked_records(text: str, numbers: list[int], citations: list[dict]
 # "Hichagol có 2 sản phẩm OCOP": the claim names one owner by a word only that owner's name carries, and states one
 # count; it passes when that owner's checked recognition records in the cited decisions number exactly that (of the
 # star levels the claim names, if any).
-OWNER_COUNT_REASONS = BAND_REASONS | {"grounding_numbers_missing"}
+OWNER_COUNT_REASONS = COUNT_REASONS
 
 
 def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], owners: dict, recognized: dict) -> bool:
@@ -735,7 +737,14 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
         reasons = []
         cited = [next((r for r in selected if _cites(r, citations[n - 1])), None)
                  for n in numbers if 0 < n <= len(citations)]
-        quote_sources = [str((row or {}).get("text") or "") for row in cited]
+        # The headings the excerpt was shown under ("1.6. Bảo vệ môi trường trong quá trình sản xuất") are source text
+        # too, read from the same page structure: a quote of a heading is as verbatim as a quote of the body.
+        quote_sources = [
+            str((row or {}).get("text") or "")
+            + "\n"
+            + "\n".join(((row or {}).get("context") or {}).get("parent_chain") or [])
+            for row in cited
+        ]
         if quote and not quoted_from(quote, "\n".join(quote_sources)):
             reasons.append("quote_not_verbatim")
         markers = check_source_markers(marked, citations)

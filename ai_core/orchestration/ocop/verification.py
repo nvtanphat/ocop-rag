@@ -179,14 +179,23 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
         spans = row.get("source_spans") or row.get("spans") or []
         span = next((s for s in spans if isinstance(s, dict)), {}) if isinstance(spans, list) else {}
         node_ids = row.get("graph_node_ids")
-        if span.get("table_id") and isinstance(span.get("row"), int):
+        # A criterion block (one criterion and its score options, kept together by the chunker) is one record: a
+        # claim naming two of its options ("2 điểm…; thêm … thì 3 điểm") states them of the same criterion. Rows of
+        # a recognition table stay separate, each one a different product.
+        if (row.get("context") or {}).get("unit_kind") == "criterion_table_candidate" and row.get("chunk_id"):
+            identity = ("criterion_block", row.get("source_id"), row["chunk_id"])
+        elif span.get("table_id") and isinstance(span.get("row"), int):
             identity = (row.get("source_id"), span["table_id"], span["row"])
         elif isinstance(node_ids, list) and node_ids and all(isinstance(value, str) for value in node_ids):
             identity = (row.get("source_id"), tuple(sorted(node_ids)))
         else:
             identity = (index,)
         groups.setdefault(identity, []).append(_labelled_text(row))
-    records = [part for texts in groups.values() for part in _split_claims(" ".join(texts))]
+    records = [
+        part
+        for identity, texts in groups.items()
+        for part in ([" ".join(texts)] if identity[0] == "criterion_block" else _split_claims(" ".join(texts)))
+    ]
     lang = get_language()
     terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)), accent_aware=True)
              if not word.isdigit()}
