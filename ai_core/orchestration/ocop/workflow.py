@@ -789,7 +789,9 @@ class OcopAgent:
         if route.intent == Intent.OUT_OF_SCOPE:
             return {
                 "answer": {
-                    "answer": get_language().messages.out_of_scope,
+                    "answer": get_language().messages.private_unsupported
+                    if "private_dossier_unsupported" in route.reason_codes
+                    else get_language().messages.out_of_scope,
                     "status": "out_of_scope",
                     "citations": [],
                 }
