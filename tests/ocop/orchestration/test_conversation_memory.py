@@ -489,3 +489,20 @@ def test_a_vote_to_ask_the_user_never_overrides_a_specific_intent_the_rules_foun
     agent.semantic_route = None
     route = agent.route({"query": "Hải Phòng có bao nhiêu sản phẩm OCOP 3 sao trong quyết định 525?", "session": {}})["route"]
     assert route["intent"] == "RECOGNITION_LOOKUP"
+
+
+def test_a_question_that_names_its_document_is_not_asked_for_a_topic():
+    from pathlib import Path
+
+    from ai_core.orchestration.ocop import scope_model
+    from ai_core.orchestration.ocop.workflow import OcopAgent
+
+    class Model:
+        model = "fake"
+
+        def chat_structured(self, system, user, **kwargs):
+            return '{"intent": "CLARIFY"}' if system == scope_model.SYSTEM else "{}"
+
+    agent = OcopAgent(Path("."), llm=Model(), retrieval_mode="sparse")
+    agent.semantic_route = None
+    assert agent.route({"query": "Ai ký quyết định 797 của Huế?", "session": {}})["route"]["intent"] != "CLARIFY"

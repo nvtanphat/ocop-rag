@@ -1014,7 +1014,10 @@ def _route_business(
             followup = True
             slots = _merge_followup(prior, updates)
             cap_reasons.append(source + "_followup")
-        elif label is not None and label not in (Intent.FOLLOWUP, Intent.OUT_OF_SCOPE):
+        # A question that names its document ("quyết định 797") has a topic: a vote to ask for one is not taken.
+        elif label is not None and label not in (Intent.FOLLOWUP, Intent.OUT_OF_SCOPE) and not (
+            label == Intent.CLARIFY and structural_scope
+        ):
             intent = label
             cap_reasons.append(source + "_intent")
         if llm_route is not None:
