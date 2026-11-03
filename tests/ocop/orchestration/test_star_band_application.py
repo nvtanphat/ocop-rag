@@ -32,3 +32,16 @@ def test_a_count_of_recognised_products_passes_only_when_the_checked_records_hol
     assert not _counts_checked_records("Quyết định 797/QĐ-UBND công nhận 5 sản phẩm OCOP 4 sao.", [1], cited, recognized)
     other = [{"source_id": "VN.HAIPHONG.QD525.2026", "pdf_page": 3}]
     assert not _counts_checked_records("Quyết định công nhận 02 sản phẩm OCOP 4 sao.", [1], other, recognized)
+
+
+def test_an_owners_count_passes_only_for_the_one_owner_it_names_and_its_cited_records():
+    from ai_core.orchestration.ocop.answer import _counts_owner_records
+
+    owners = {
+        "Công ty TNHH MTV Hichagol": {"keys": frozenset({"hichagol"}), "records": {"VN.HUE.QD797.2026": frozenset({"r1", "r2"})}},
+        "HTX Sen Huế": {"keys": frozenset({"sen hue"}), "records": {"VN.HUE.QD797.2026": frozenset({"r3"})}},
+    }
+    cited = [{"source_id": "VN.HUE.QD797.2026", "pdf_page": 3}]
+    assert _counts_owner_records("Công ty Hichagol có 2 sản phẩm OCOP.", [1], cited, owners, {})
+    assert not _counts_owner_records("Công ty Hichagol có 3 sản phẩm OCOP.", [1], cited, owners, {})
+    assert not _counts_owner_records("Một công ty có 2 sản phẩm OCOP.", [1], cited, owners, {})

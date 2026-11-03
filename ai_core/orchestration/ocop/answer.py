@@ -691,6 +691,36 @@ def _counts_checked_records(text: str, numbers: list[int], citations: list[dict]
     return False
 
 
+# "Hichagol có 2 sản phẩm OCOP": the claim names one owner by a word only that owner's name carries, and states one
+# count; it passes when that owner's checked recognition records in the cited decisions number exactly that (of the
+# star levels the claim names, if any).
+OWNER_COUNT_REASONS = BAND_REASONS | {"grounding_numbers_missing"}
+
+
+def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], owners: dict, recognized: dict) -> bool:
+    if not owners:
+        return False
+    tokens = re.findall(r"[a-z0-9]+", fold(text))
+    said = {t for t in tokens if len(t) >= 4} | {" ".join(p) for p in zip(tokens, tokens[1:])}
+    named = [owner for owner in owners.values() if owner["keys"] & said]
+    if len(named) != 1:
+        return False
+    star = get_language().alternation(list(get_language().star_noun))
+    star_number = re.compile(r"(?<!\d)(" + level_class() + r")\s*" + star + r"\b", re.I)
+    levels = {int(m) for m in star_number.findall(text)}
+    counts = {int(m) for m in re.findall(r"(?<![\d/.,])(\d{1,3})(?![\d/.,])", star_number.sub(" ", text))}
+    if len(counts) != 1:
+        return False
+    sources = {citations[n - 1].get("source_id") for n in numbers if 0 < n <= len(citations)}
+    held = [ids for source, ids in named[0]["records"].items() if source in sources]
+    if not held:
+        return False
+    rows = frozenset().union(*held)
+    if levels:
+        rows = rows & frozenset().union(*(recognized.get((s, lvl), frozenset()) for s in sources for lvl in levels))
+    return counts == {len(rows)}
+
+
 def _judge_claims(claims, citations, selected, catalog=None, question="", checked=None):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
@@ -793,6 +823,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
             reasons, tier = [], "star_band_applied"
         elif reasons and set(reasons) <= COUNT_REASONS and _counts_checked_records(text, numbers, citations, checked.get("recognized", {})):
             reasons, tier = [], "record_count_checked"
+        elif reasons and set(reasons) <= OWNER_COUNT_REASONS and _counts_owner_records(
+            text, numbers, citations, checked.get("owners", {}), checked.get("recognized", {})
+        ):
+            reasons, tier = [], "owner_count_checked"
         (rejected if reasons else accepted).append(
             {
                 "text": text,

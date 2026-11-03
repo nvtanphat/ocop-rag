@@ -1057,7 +1057,11 @@ class OcopAgent:
             rerank=self.rerank,
             replaced=frozenset() if asks_version else self.tools.replaced_sources(),
             # Graph facts the claim checker applies deterministically (score bands, counts of recognised products).
-            checked={"star_bands": self.tools.star_bands(), "recognized": self.tools.recognized_products()},
+            checked={
+                "star_bands": self.tools.star_bands(),
+                "recognized": self.tools.recognized_products(),
+                "owners": self.tools.owner_records(),
+            },
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )
         gaps = [

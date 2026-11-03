@@ -218,6 +218,7 @@ class ToolRegistry:
         self._bands: tuple[dict, ...] | None = None
         self._abbreviations: dict[str, str] | None = None
         self._recognized: dict[tuple[str, int], frozenset[str]] | None = None
+        self._owners: dict[str, dict] | None = None
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
         """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
@@ -239,6 +240,47 @@ class ToolRegistry:
                         grouped.setdefault((record["source_id"], int(level)), set()).add(record["node_id"])
             self._recognized = {key: frozenset(value) for key, value in grouped.items()}
         return self._recognized
+
+    def owner_records(self) -> dict[str, dict]:
+        """Organisation label -> the words only its name carries among the organisations ("hichagol") and its checked
+        recognition records per decision source, from DECLARED_BY edges: what "Hichagol có 2 sản phẩm" is checked
+        against. A claim names an owner by such a word; a word shared by several owners names none of them."""
+        if self._owners is None:
+            nodes = {n["node_id"]: n for n in records(self.graph_dir / "nodes.jsonl")}
+            by_owner: dict[str, dict[str, set[str]]] = {}
+            for edge in records(self.graph_dir / "edges.jsonl"):
+                record = nodes.get(edge.get("source_entity_id"))
+                owner = nodes.get(edge.get("target_entity_id"))
+                if (
+                    record
+                    and owner
+                    and record.get("node_type") == "RecognitionRecord"
+                    and edge.get("relation_type") == "DECLARED_BY"
+                    and edge.get("check") == "passed"
+                ):
+                    by_owner.setdefault(owner["label"], {}).setdefault(record["source_id"], set()).add(record["node_id"])
+            def terms(text: str) -> set[str]:
+                tokens = re.findall(r"[a-z0-9]+", fold(text))
+                return {t for t in tokens if len(t) >= 4} | {" ".join(p) for p in zip(tokens, tokens[1:])}
+
+            words = {label: terms(label) for label in by_owner}
+            shared = Counter(word for found in words.values() for word in found)
+            # A key is also rare in the documents: "nông nghiệp" is unique among owner names but common prose.
+            spread: Counter = Counter()
+            path = self.index_dir / "evidence_units.jsonl"
+            if path.is_file():
+                wanted = {w for found in words.values() for w in found if shared[w] == 1}
+                with path.open(encoding="utf-8") as handle:
+                    for line in handle:
+                        spread.update(wanted & terms(json.loads(line).get("text") or ""))
+            self._owners = {
+                label: {
+                    "keys": frozenset(w for w in words[label] if shared[w] == 1 and spread[w] <= 5),
+                    "records": {source: frozenset(ids) for source, ids in sources.items()},
+                }
+                for label, sources in by_owner.items()
+            }
+        return self._owners
 
     def star_bands(self) -> tuple[dict, ...]:
         """The score band of each star level, from the graph's checked StarLevel nodes, with the pages that state it:

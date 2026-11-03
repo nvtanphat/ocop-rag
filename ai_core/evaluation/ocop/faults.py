@@ -44,6 +44,9 @@ class SimulatedToolFailure:
     def recognized_products(self) -> dict:
         return {}  # nor recognition records
 
+    def owner_records(self) -> dict:
+        return {}
+
     def dispatch(self, name: str, *, query: str, slots: dict, context=None, auth=None) -> dict:
         self.calls.append(name)
         if name != self.target:
