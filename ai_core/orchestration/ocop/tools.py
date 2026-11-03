@@ -356,6 +356,23 @@ class ToolRegistry:
             )
         return self._bands
 
+    def successors(self, source_id: str) -> tuple[str, ...]:
+        """Documents that replace ``source_id`` according to the graph's source-backed REPLACES edges."""
+        documents = {
+            node["node_id"]: node["source_id"]
+            for node in records(self.graph_dir / "nodes.jsonl")
+            if node.get("node_type") == "SourceDocument"
+        }
+        return tuple(
+            dict.fromkeys(
+                documents[edge["source_entity_id"]]
+                for edge in records(self.graph_dir / "edges.jsonl")
+                if edge.get("relation_type") == "REPLACES"
+                and documents.get(edge.get("target_entity_id")) == source_id
+                and edge.get("source_entity_id") in documents
+            )
+        )
+
     def replaced_sources(self) -> frozenset[str]:
         """Documents another document of the corpus replaces (QĐ26/2026 REPLACES QĐ148/2023), read from the graph's
         source-backed REPLACES edges between SourceDocument nodes: the end of a validity chain is the version in force."""
@@ -947,6 +964,18 @@ class ToolRegistry:
             # may constrain the source set.
             if doc and not source_filter:
                 return {"results": [], "status": "document_not_found_or_ambiguous"}
+            # "Quyết định 148 còn hiệu lực không?": a document's end is written in the document that replaces it
+            # (ViHERMES follows the validity chain). A question about a named document's validity searches it and the
+            # documents the graph's REPLACES edges name as its successors, taking turns.
+            # Only a question about the document's validity: "quy trình năm 2023" asks for the older text itself.
+            asks_validity = get_language().hit(query, "temporal_validity")
+            successors = self.successors(source_filter) if source_filter and asks_validity else ()
+            if successors:
+                lists = [
+                    search(self.index_dir, query, mode=mode, top_k=top_k, source_id=source, with_continuations=True)
+                    for source in (source_filter, *successors)
+                ]
+                return {"results": [row for turn in zip_longest(*lists) for row in turn if row is not None]}
             return {
                 "results": search(
                     self.index_dir,
