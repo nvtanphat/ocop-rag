@@ -193,9 +193,9 @@ cues:
     hồ sơ tôi cần bổ sung minh chứng, hồ sơ của tôi đạt chưa, hồ sơ của tôi có đạt, rà soát hồ sơ, đánh giá hồ sơ của tôi,
     hồ sơ riêng, dossier riêng, hồ sơ nội bộ]
   private_dossier_negative: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị, hồ sơ tôi cần nộp, tôi cần chuẩn bị hồ sơ,
-    hồ sơ gồm những gì, hồ sơ cần có gì]
+    hồ sơ gồm những gì, hồ sơ cần có gì, bộ hồ sơ riêng, hồ sơ riêng hay]
   private_scope: [tenant, dossier, hồ sơ của doanh nghiệp khác, hồ sơ của công ty khác, hồ sơ doanh nghiệp khác, tôi là admin,
-    quyền quản trị, hồ sơ riêng]
+    quyền quản trị, hồ sơ riêng của]
   private_open: [mở hồ sơ, xem hồ sơ, truy cập hồ sơ, lấy hồ sơ, tải hồ sơ]
   private_scoring: [chấm điểm hồ sơ của tôi, tính điểm hồ sơ của tôi, ước tính điểm hồ sơ, dự tính điểm hồ sơ, tính điểm cho hồ sơ,
     hồ sơ của tôi được bao nhiêu điểm, bao nhiêu sao nếu, hãy tính điểm, chấm điểm giúp tôi, đánh giá điểm cho tôi]
