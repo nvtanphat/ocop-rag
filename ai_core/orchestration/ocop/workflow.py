@@ -1056,7 +1056,8 @@ class OcopAgent:
             catalog=self._catalog(),
             rerank=self.rerank,
             replaced=frozenset() if asks_version else self.tools.replaced_sources(),
-            star_bands=self.tools.star_bands(),
+            # Graph facts the claim checker applies deterministically (score bands, counts of recognised products).
+            checked={"star_bands": self.tools.star_bands(), "recognized": self.tools.recognized_products()},
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )
         gaps = [

@@ -41,6 +41,9 @@ class SimulatedToolFailure:
     def star_bands(self) -> tuple[dict, ...]:
         return ()  # nor star bands
 
+    def recognized_products(self) -> dict:
+        return {}  # nor recognition records
+
     def dispatch(self, name: str, *, query: str, slots: dict, context=None, auth=None) -> dict:
         self.calls.append(name)
         if name != self.target:

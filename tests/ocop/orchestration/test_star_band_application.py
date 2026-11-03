@@ -20,3 +20,15 @@ def test_the_wrong_level_a_score_outside_the_band_or_an_uncited_band_never_pass(
 
 def test_a_score_the_user_did_not_give_is_not_excused():
     assert not _applies_star_band("Hạt sen của HTX Sen Huế đạt 75 điểm, hạng 4 sao.", [1], CITED, ASKED, (BAND4,))
+
+
+def test_a_count_of_recognised_products_passes_only_when_the_checked_records_hold_it():
+    from ai_core.orchestration.ocop.answer import _counts_checked_records
+
+    recognized = {("VN.HUE.QD797.2026", 4): frozenset({"mut", "siro"}), ("VN.HUE.QD797.2026", 3): frozenset({"hat_sen"})}
+    cited = [{"source_id": "VN.HUE.QD797.2026", "pdf_page": 3}]
+    assert _counts_checked_records("Quyết định số 797/QĐ-UBND công nhận 02 sản phẩm OCOP 4 sao.", [1], cited, recognized)
+    assert _counts_checked_records("Quyết định 797/QĐ-UBND công nhận 3 sản phẩm hạng 3 sao và 4 sao.", [1], cited, recognized)
+    assert not _counts_checked_records("Quyết định 797/QĐ-UBND công nhận 5 sản phẩm OCOP 4 sao.", [1], cited, recognized)
+    other = [{"source_id": "VN.HAIPHONG.QD525.2026", "pdf_page": 3}]
+    assert not _counts_checked_records("Quyết định công nhận 02 sản phẩm OCOP 4 sao.", [1], other, recognized)

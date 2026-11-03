@@ -667,7 +667,31 @@ def _applies_star_band(text: str, numbers: list[int], citations: list[dict], que
     return False
 
 
-def _judge_claims(claims, citations, selected, catalog=None, question="", star_bands=()):
+# A count of recognised products ("02 sản phẩm 4 sao") is the model's arithmetic over the rows it read; the decision rarely
+# writes it. It passes only when it equals the number of products the graph's checked recognition records of a cited
+# decision give the star levels the claim names. Every star level is a figure the records hold, not the model's.
+COUNT_REASONS = frozenset({"unsupported_score_or_star_claims", "source_missing_claim_numbers"})
+
+
+def _counts_checked_records(text: str, numbers: list[int], citations: list[dict], recognized: dict) -> bool:
+    if not recognized:
+        return False
+    star = get_language().alternation(list(get_language().star_noun))
+    star_number = re.compile(r"(?<!\d)(" + level_class() + r")\s*" + star + r"\b", re.I)
+    levels = {int(m) for m in star_number.findall(text)}
+    counts = {int(m) for m in re.findall(r"(?<![\d/.,])(\d{1,3})(?![\d/.,])", star_number.sub(" ", text))}
+    if not levels or len(counts) != 1:
+        return False
+    sources = {citations[n - 1].get("source_id") for n in numbers if 0 < n <= len(citations)}
+    for source in sources:
+        if all((source, level) in recognized for level in levels):
+            total = len(frozenset().union(*(recognized[(source, level)] for level in levels)))
+            if counts == {total}:
+                return True
+    return False
+
+
+def _judge_claims(claims, citations, selected, catalog=None, question="", checked=None):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers, quote in claims:
@@ -764,8 +788,11 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", star_b
                         soft_excerpt = union
             else:
                 reasons.extend(failures)
-        if reasons and set(reasons) <= BAND_REASONS and _applies_star_band(text, numbers, citations, question, star_bands):
+        checked = checked or {}
+        if reasons and set(reasons) <= BAND_REASONS and _applies_star_band(text, numbers, citations, question, checked.get("star_bands", ())):
             reasons, tier = [], "star_band_applied"
+        elif reasons and set(reasons) <= COUNT_REASONS and _counts_checked_records(text, numbers, citations, checked.get("recognized", {})):
+            reasons, tier = [], "record_count_checked"
         (rejected if reasons else accepted).append(
             {
                 "text": text,
@@ -819,10 +846,10 @@ def _dropped_notice(count: int) -> str:
     return f"(Mình đã bỏ {count} ý vì chưa kiểm chứng được với tài liệu.)"
 
 
-def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question="", llm=None, star_bands=()):
+def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question="", llm=None, checked=None):
     """Publish only claims that pass every gate; name what was dropped and what the SOURCE does not answer."""
     claims, missing = parsed
-    accepted, rejected = _judge_claims(claims, citations, selected, catalog, question, star_bands)
+    accepted, rejected = _judge_claims(claims, citations, selected, catalog, question, checked)
     # A faithful paraphrase fails word overlap; a second judgement must anchor it with a verbatim quote (entailment.py).
     soft = [r for r in rejected if r.get("soft_excerpt")]
     # The excerpt header names the document, so a number in a cited source id is grounded like one in the question.
@@ -967,11 +994,11 @@ def assemble(
     style: str = "",
     rerank: bool = False,
     replaced: frozenset[str] = frozenset(),
-    star_bands: tuple[dict, ...] = (),
+    checked: dict | None = None,
 ) -> dict:
     result = _assemble(
         question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank, replaced=replaced,
-        star_bands=star_bands,
+        checked=checked,
     )
     missing = result.get("evidence_fusion", {}).get("missing_facets", [])
     if missing:
@@ -992,7 +1019,7 @@ def _assemble(
     style: str = "",
     rerank: bool = False,
     replaced: frozenset[str] = frozenset(),
-    star_bands: tuple[dict, ...] = (),
+    checked: dict | None = None,
 ) -> dict:
     records = []
     for result in tool_results:
@@ -1114,7 +1141,7 @@ def _assemble(
         )
         parsed = _parse_claims(raw) if isinstance(raw, str) else None
         if parsed is not None:
-            return _publish_claims(parsed, citations, selected, contexts, fusion, catalog, question, llm, star_bands)
+            return _publish_claims(parsed, citations, selected, contexts, fusion, catalog, question, llm, checked)
         text = raw
         if not isinstance(text, str) or not text.strip():
             return response({
