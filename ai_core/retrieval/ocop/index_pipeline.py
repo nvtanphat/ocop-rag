@@ -340,7 +340,10 @@ class BM25Search:
         scores = defaultdict(float)
         if idx.get("tokenizer") == "unicode_casefold_vi_folded":
             query_terms = {t: 1.0 for t in terms(query)}
-            query_terms.update({"__vi_fold__" + _fold_vietnamese(t): 0.35 for t in terms(query)})
+            # A question typed without diacritics ("dang ky ocop can giay to gi") matches the accented text only through
+            # the folded field, so there that field carries full weight; with diacritics it only backs the exact terms.
+            unaccented = _fold_vietnamese(query.casefold()) == query.casefold()
+            query_terms.update({"__vi_fold__" + _fold_vietnamese(t): 1.0 if unaccented else 0.35 for t in terms(query)})
             query_terms.update({t: 2.0 for t in _identifier_terms(query)})
         else:
             query_terms = {t: 1.0 for t in set(terms(query))}
@@ -410,6 +413,7 @@ def build_dense(
     host: str = "localhost",
     port: int = 6333,
     batch: int = 16,
+    cache_path: Path | None = None,
 ) -> dict:
     try:
         from qdrant_client import QdrantClient, models
@@ -463,9 +467,28 @@ def build_dense(
         )
     import uuid
 
+    import numpy as np
+
+    # A rebuild that leaves a chunk's embedding input unchanged (a ranking or chunk-id change elsewhere) reuses its
+    # vector: the cache is keyed by the exact input text and lives in a file named after the model, so a different
+    # model or revision never reads it. Re-embedding all chunks on CPU was most of a rebuild's time.
+    keys = [hashlib.sha256(c["text_for_embedding"].encode("utf-8")).hexdigest() for c in chunks]
+    known: dict[str, object] = {}
+    if cache_path is not None and cache_path.is_file():
+        with np.load(cache_path) as saved:
+            known = dict(zip(saved["keys"].tolist(), saved["vectors"]))
+    todo = [i for i, key in enumerate(keys) if key not in known]
+    for start in range(0, len(todo), batch):
+        part = todo[start : start + batch]
+        for i, vector in zip(part, _encode(model, [chunks[i]["text_for_embedding"] for i in part], False), strict=True):
+            known[keys[i]] = vector
+    if cache_path is not None and todo:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        current = list(dict.fromkeys(keys))
+        np.savez(cache_path, keys=np.array(current), vectors=np.stack([known[k] for k in current]))
     for start in range(0, len(chunks), batch):
         part = chunks[start : start + batch]
-        vectors = _encode(model, [c["text_for_embedding"] for c in part], False)
+        vectors = [known[k] for k in keys[start : start + batch]]
         points = [
             models.PointStruct(
                 id=str(uuid.uuid5(uuid.NAMESPACE_DNS, c["chunk_id"])),
@@ -634,6 +657,7 @@ def build_index(
             revision=embedding_revision,
             host=qdrant_host,
             port=qdrant_port,
+            cache_path=Path(knowledge).parent / "cache" / f"embeddings-{fingerprint}.npz",
         )
         manifest["dense"] = dense
         manifest["status"] = "hybrid_ready"
