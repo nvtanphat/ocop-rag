@@ -822,7 +822,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
                         for r in cited
                     ]
                     + [
+                        # The excerpt header names the document by its own number ("17/2023/QH15") and corpus id.
                         str(citations[n - 1].get("source_id") or "")
+                        + " "
+                        + _document_label(str(citations[n - 1].get("source_id") or ""))
                         + (
                             f" trang {citations[n - 1].get('pdf_page')}"
                             if about_page and citations[n - 1].get("pdf_page")
@@ -844,6 +847,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
                 # A real quote is an anchor, not an entailment verdict. Deterministic checks run first;
                 # lexical failures can only be reconsidered by the independent review below.
                 ids = " ".join(str(citations[n - 1].get("source_id") or "")
+                               + " " + _document_label(str(citations[n - 1].get("source_id") or ""))
                                + (f" trang {citations[n - 1].get('pdf_page')}" if about_page else "")
                                for n in numbers if 0 < n <= len(citations))
                 # The headings above the excerpt ("Điều 7. …") label it; a claim may name that label without the quote repeating it.

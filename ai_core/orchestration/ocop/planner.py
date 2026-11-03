@@ -48,6 +48,18 @@ RECOVERY_BLOCKING_STATUSES = frozenset(
 )
 
 
+def _corpus_covers(region: str) -> bool:
+    """A source of the corpus was issued by that place (its registry jurisdiction names it)."""
+    import json
+    from pathlib import Path
+
+    from ai_core.orchestration.ocop.language import fold
+
+    path = Path(__file__).resolve().parents[3] / "configs" / "ocop_sources.json"
+    places = {fold(str(s.get("jurisdiction") or "")) for s in json.loads(path.read_text(encoding="utf-8")).get("sources", [])}
+    return any(fold(region) in place for place in places if place)
+
+
 def recovery_safe(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
     """Only recover ordinary non-scoped misses, never failed services or policies."""
     if not plan.text_recovery or executed_tool_count(outputs) >= plan.max_calls:
@@ -58,7 +70,13 @@ def recovery_safe(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
         return False
     # Region and assessment-year queries require a verified, scope-aware
     # lookup. Generic text recovery must not make a legal assertion about them.
-    if any(route.slots.get(key) for key in ("region", "recognition_year", "assessment_year", "as_of_date")):
+    # A place the corpus has no document for (another province) must not be answered from other places' text, and a
+    # recognition question about a place needs its verified records; "quyết định của Huế do ai ký" names a place whose
+    # decision is in the corpus and is answered by that decision's text like any other passage.
+    region = route.slots.get("region")
+    if any(route.slots.get(key) for key in ("recognition_year", "assessment_year", "as_of_date")) or (
+        region and (route.intent == Intent.RECOGNITION_LOOKUP or not _corpus_covers(str(region)))
+    ):
         return False
     # Router may extract the issuance year inside an explicit decision code.
     # That is not a separate historical event-year constraint, and the text
