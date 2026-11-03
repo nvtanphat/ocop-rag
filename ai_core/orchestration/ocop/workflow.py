@@ -14,7 +14,7 @@ from time import monotonic
 from typing import TypedDict
 from ai_core.orchestration.ocop.contracts import AgentResponse, Route, Intent, AuthContext
 from ai_core.orchestration.ocop.router import route_query, extract_slots, _merge_followup
-from ai_core.orchestration.ocop import aspects, followup_model, memory, scope_model, semantic_route
+from ai_core.orchestration.ocop import aspects, diacritics_model, followup_model, memory, scope_model, semantic_route
 from ai_core.orchestration.ocop.planner import (
     ToolPlan, build_plan, evidence_ids, recovery_safe, executed_tool_count, RECOVERY_BLOCKING_STATUSES,
 )
@@ -125,9 +125,14 @@ class OcopAgent:
                 catalog=self._catalog(),
             )
 
+        method = "none"
+        # Every step below reads accented Vietnamese; a question typed without diacritics is restored first, and only
+        # when removing the marks again gives back the user's exact text (diacritics_model).
+        if self.llm is not None and diacritics_model.needs_restoring(query):
+            if restored := diacritics_model.propose(self.llm, query, self.tools.abbreviations()):
+                query, method = restored, "diacritics_restored"
         choice = decide(query)
         effective = query
-        method = "none"
         # A reference the rules cannot place ("phiếu đó" when no sheet number was ever typed) is not dangling when the
         # question before names what it points at in words ("...phiếu chấm nhóm nào?"). ViCAS-RAG restates a follow-up
         # with the model before it routes; here the rules still decide first and only a restatement that passes the

@@ -227,12 +227,14 @@ def test_model_failure_preserves_deterministic_route():
 
 
 def test_workflow_keeps_experimental_dialogue_model_out_of_production(tmp_path):
-    from ai_core.orchestration.ocop import scope_model
+    from ai_core.orchestration.ocop import diacritics_model, scope_model
 
     def structured(system, *args, **kwargs):
         # The router's own model tier (closed label list) is a different call from the experimental dialogue model.
         if system == scope_model.SYSTEM:
             return '{"intent": "OUT_OF_SCOPE"}'
+        if system == diacritics_model.SYSTEM:  # unaccented text is restored first; nothing to add here
+            return '{"text": "Some unfamiliar conversational wording without a clear task"}'
         pytest.fail("experimental model called")
 
     client = SimpleNamespace(route=lambda q: {}, chat_structured=structured)

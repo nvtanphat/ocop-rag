@@ -6,6 +6,7 @@ import json
 from datetime import date
 import re
 import unicodedata
+from collections import Counter
 from itertools import zip_longest
 from ocop_contracts.ratings import level_class
 from ai_core.retrieval.ocop.search import search
@@ -215,6 +216,7 @@ class ToolRegistry:
         self._linker: SetLinker | None = None
         self._replaced: frozenset[str] | None = None
         self._bands: tuple[dict, ...] | None = None
+        self._abbreviations: dict[str, str] | None = None
 
     def star_bands(self) -> tuple[dict, ...]:
         """The score band of each star level, from the graph's checked StarLevel nodes, with the pages that state it:
@@ -261,6 +263,30 @@ class ToolRegistry:
                         words.update(re.findall(r"[a-z0-9]+", fold(json.loads(line).get("text") or "")))
             self._words = frozenset(words)
         return self._words
+
+    def abbreviations(self) -> dict[str, str]:
+        """Initials -> the folded phrase of two to four words the corpus writes most often with them ("sp" -> "san
+        pham", "htx" -> "hop tac xa"): the only expansion a restored question may give an abbreviation. A phrase must
+        recur, and clearly lead any other phrase with the same initials."""
+        if self._abbreviations is None:
+            counts: Counter = Counter()
+            path = self.index_dir / "evidence_units.jsonl"
+            if path.is_file():
+                with path.open(encoding="utf-8") as handle:
+                    for line in handle:
+                        words = re.findall(r"[a-z]+", fold(json.loads(line).get("text") or ""))
+                        for size in (2, 3, 4):
+                            counts.update(" ".join(words[i : i + size]) for i in range(len(words) - size + 1))
+            by_initials: dict[str, list[tuple[int, str]]] = {}
+            for phrase, count in counts.items():
+                if count >= 20:
+                    by_initials.setdefault("".join(w[0] for w in phrase.split()), []).append((count, phrase))
+            self._abbreviations = {
+                initials: ranked[0][1]
+                for initials, found in by_initials.items()
+                if (ranked := sorted(found, reverse=True)) and (len(ranked) == 1 or ranked[0][0] >= 3 * ranked[1][0])
+            }
+        return self._abbreviations
 
     def _set_linker(self) -> SetLinker:
         if self._linker is None:
