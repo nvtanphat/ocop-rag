@@ -246,7 +246,7 @@ dialogue:
   particle: '(?:nhe|nha|a|ah|nhi|voi|di|nhieu|lam|rat nhieu|vay)'
   greeting: '(?:(?:xin )?chao|hello|hi|hey)(?: {address})?'
   thanks: '(?:(?:ok|okay|vang|da|thoi)(?: (?:duoc roi|vay))? )?(?:cam on|thank you|thanks)(?: {address})?'
-  acknowledgment: '(?:ok|okay|vang|da|(?:ok )?(?:minh|toi) (?:da )?hieu(?: roi)?)'
+  acknowledgment: '(?:ok|okay|vang|da|(?:(?:ok|okay|vang|da) )?(?:(?:minh|toi) )?(?:da )?hieu(?: roi)?)'
   farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
   identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'
   help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?(?:viec |dieu |chuc nang )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'
