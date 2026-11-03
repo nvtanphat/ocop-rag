@@ -159,7 +159,12 @@ def _singular_match(folded: str, kind: str, lang: Language):
     noun = _noun_pattern(lang, kind)
     if not (noun and lang.followup.demonstrative):
         return None
-    return re.search(rf"\b(?:{noun})(?:\s+[a-z]+){{0,2}}\s+{lang.followup.demonstrative}\b", folded)
+    # "sản phẩm nào trên phiếu" asks which product; "sản phẩm trên" / "sản phẩm đó" points back. A question word between
+    # the noun and the demonstrative makes the noun the thing asked for, not a reference.
+    for match in re.finditer(rf"\b(?:{noun})((?:\s+[a-z]+){{0,2}})\s+{lang.followup.demonstrative}\b", folded):
+        if not lang.hit(match.group(1), "question_words"):
+            return match
+    return None
 
 
 def _singular_kind(folded: str, kind: str, lang: Language) -> bool:

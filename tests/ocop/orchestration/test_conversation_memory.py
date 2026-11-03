@@ -456,3 +456,11 @@ def test_a_reference_to_what_an_earlier_clause_asks_for_is_not_dangling():
     inside = "Siro Atiso đỏ của công ty nào được Huế công nhận OCOP 4 sao, và giấy chứng nhận trong quyết định đó dùng được mấy năm?"
     assert memory.dangling_reference(inside, None, {}) is None
     assert memory.dangling_reference("Quyết định đó có hiệu lực khi nào?", None, {}) == "document"
+
+
+def test_a_noun_asked_about_with_a_question_word_is_not_a_reference():
+    from ai_core.orchestration.ocop import memory
+
+    asked = "Rau, củ, quả tươi đăng ký OCOP thì được xếp vào nhóm sản phẩm nào trên phiếu đánh giá?"
+    assert memory.dangling_reference(asked, None, {}) is None
+    assert memory.dangling_reference("Sản phẩm đó được mấy sao?", None, {}) == "product"
