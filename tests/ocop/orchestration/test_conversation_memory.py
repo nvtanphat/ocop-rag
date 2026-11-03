@@ -471,3 +471,21 @@ def test_a_restated_follow_up_drops_a_carried_name_it_no_longer_writes():
     out = agent.route({"query": "Vậy nó nằm trong nhóm sản phẩm nào?", "session": session})
     assert out["rewrite_method"] == "model_rewrite"
     assert "nước mắm" not in str(out["route"]["slots"])
+
+
+def test_a_vote_to_ask_the_user_never_overrides_a_specific_intent_the_rules_found():
+    from pathlib import Path
+
+    from ai_core.orchestration.ocop import scope_model
+    from ai_core.orchestration.ocop.workflow import OcopAgent
+
+    class Model:
+        model = "fake"
+
+        def chat_structured(self, system, user, **kwargs):
+            return '{"intent": "CLARIFY"}' if system == scope_model.SYSTEM else "{}"
+
+    agent = OcopAgent(Path("."), llm=Model(), retrieval_mode="sparse")
+    agent.semantic_route = None
+    route = agent.route({"query": "Hải Phòng có bao nhiêu sản phẩm OCOP 3 sao trong quyết định 525?", "session": {}})["route"]
+    assert route["intent"] == "RECOGNITION_LOOKUP"

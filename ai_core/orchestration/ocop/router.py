@@ -990,8 +990,11 @@ def _route_business(
         if scores[intent] < get_settings().agent.rule_confident_score and not followup and (semantic_route or llm_scope):
             # A weak rule (a general cue, an entity mention) is a guess; clearly closer example utterances overrule it.
             label, source = second_opinion()
-            # A vote for the catch-all overview is no evidence against a specific intent the rules found.
-            if label is not None and label not in (intent, Intent.FOLLOWUP, Intent.OUT_OF_SCOPE, Intent.OCOP_OVERVIEW):
+            # A vote for the catch-all overview, or for asking the user, is no evidence against a specific intent the
+            # rules found: "Hải Phòng ... bao nhiêu sản phẩm 3 sao ... quyết định 525" names its scope in full.
+            if label is not None and label not in (
+                intent, Intent.FOLLOWUP, Intent.OUT_OF_SCOPE, Intent.OCOP_OVERVIEW, Intent.CLARIFY
+            ):
                 prior_cap = INTENT_CAPABILITY.get(intent)
                 intent = label
                 if label in INTENT_CAPABILITY:
