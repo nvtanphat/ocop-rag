@@ -38,6 +38,9 @@ class SimulatedToolFailure:
     def replaced_sources(self) -> frozenset[str]:
         return frozenset()  # no graph behind a simulated failure, so no validity chain
 
+    def star_bands(self) -> tuple[dict, ...]:
+        return ()  # nor star bands
+
     def dispatch(self, name: str, *, query: str, slots: dict, context=None, auth=None) -> dict:
         self.calls.append(name)
         if name != self.target:

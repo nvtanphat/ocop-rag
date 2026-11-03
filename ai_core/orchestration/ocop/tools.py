@@ -214,6 +214,23 @@ class ToolRegistry:
         self._words: frozenset[str] | None = None
         self._linker: SetLinker | None = None
         self._replaced: frozenset[str] | None = None
+        self._bands: tuple[dict, ...] | None = None
+
+    def star_bands(self) -> tuple[dict, ...]:
+        """The score band of each star level, from the graph's checked StarLevel nodes, with the pages that state it:
+        what the answer checker applies a score from the question to ("72 điểm" -> 4 sao), never a score of a product."""
+        if self._bands is None:
+            self._bands = tuple(
+                {
+                    **(node.get("properties") or {}),
+                    "places": frozenset((c.get("source_id"), c.get("pdf_page")) for c in node.get("citations") or []),
+                }
+                for node in records(self.graph_dir / "nodes.jsonl")
+                if node.get("node_type") == "StarLevel"
+                and node.get("check") == "passed"
+                and (node.get("properties") or {}).get("star_level") is not None
+            )
+        return self._bands
 
     def replaced_sources(self) -> frozenset[str]:
         """Documents another document of the corpus replaces (QĐ26/2026 REPLACES QĐ148/2023), read from the graph's

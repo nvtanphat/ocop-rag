@@ -21,6 +21,7 @@ from ai_core.graph.ocop.links import LINK_RELATIONS
 from ai_core.orchestration.ocop.capabilities import ENRICHMENT_TOOLS
 from ai_core.retrieval.ocop.fusion import query_facets, covers, order_evidence, merge_graph_provenance, fuse_tool_rows
 from ai_core.orchestration.ocop.language import fold, get_language
+from ocop_contracts.ratings import level_class
 from ai_core.orchestration.ocop.context import fit_budget, graph_hops, question_terms, term_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
@@ -624,7 +625,47 @@ def _locator_label(row) -> str:
     )
 
 
-def _judge_claims(claims, citations, selected, catalog=None, question=""):
+# A star level stated for a score the user gave ("72 điểm" -> 4 sao) applies a rule; it rates no product. It passes the
+# score/star gate only through this deterministic check: every score in the claim is the user's or a bound of the band,
+# the claim names exactly one star level, and a checked StarLevel band of the graph, stated on a page the claim cites,
+# holds every score the user gave.
+BAND_REASONS = frozenset({"unsupported_score_or_star_claims", "source_missing_claim_numbers", "needs_semantic_entailment_check"})
+
+
+def _scores(text: str) -> set[float]:
+    score = get_language().alternation("score_noun")
+    return {
+        float(m.group(1).replace(",", "."))
+        for m in re.finditer(r"(?<![\d.,])(\d{1,3}(?:[.,]\d+)?)\s*" + score + r"\b", text, re.I)
+    }
+
+
+def _in_band(value: float, band: dict) -> bool:
+    low, high = band.get("min_points"), band.get("max_points")
+    above = low is None or value > low or (value == low and band.get("min_inclusive") is not False)
+    below = high is None or value < high or (value == high and band.get("max_inclusive") is not False)
+    return above and below
+
+
+def _applies_star_band(text: str, numbers: list[int], citations: list[dict], question: str, star_bands) -> bool:
+    asked = _scores(question)
+    if not asked or not star_bands:
+        return False
+    star = get_language().alternation(list(get_language().star_noun))
+    levels = {int(m) for m in re.findall(r"(?<!\d)(" + level_class() + r")\s*" + star + r"\b", text, re.I)}
+    if len(levels) != 1:
+        return False
+    places = {(citations[n - 1].get("source_id"), citations[n - 1].get("pdf_page")) for n in numbers if 0 < n <= len(citations)}
+    for band in star_bands:
+        if band.get("star_level") not in levels or not (band["places"] & places):
+            continue
+        bounds = {float(x) for x in (band.get("min_points"), band.get("max_points")) if x is not None}
+        if _scores(text) <= asked | bounds and all(_in_band(v, band) for v in asked & _scores(text) or asked):
+            return True
+    return False
+
+
+def _judge_claims(claims, citations, selected, catalog=None, question="", star_bands=()):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
     for text, numbers, quote in claims:
@@ -721,6 +762,8 @@ def _judge_claims(claims, citations, selected, catalog=None, question=""):
                         soft_excerpt = union
             else:
                 reasons.extend(failures)
+        if reasons and set(reasons) <= BAND_REASONS and _applies_star_band(text, numbers, citations, question, star_bands):
+            reasons, tier = [], "star_band_applied"
         (rejected if reasons else accepted).append(
             {
                 "text": text,
@@ -774,10 +817,10 @@ def _dropped_notice(count: int) -> str:
     return f"(Mình đã bỏ {count} ý vì chưa kiểm chứng được với tài liệu.)"
 
 
-def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question="", llm=None):
+def _publish_claims(parsed, citations, selected, contexts, fusion, catalog=None, question="", llm=None, star_bands=()):
     """Publish only claims that pass every gate; name what was dropped and what the SOURCE does not answer."""
     claims, missing = parsed
-    accepted, rejected = _judge_claims(claims, citations, selected, catalog, question)
+    accepted, rejected = _judge_claims(claims, citations, selected, catalog, question, star_bands)
     # A faithful paraphrase fails word overlap; a second judgement must anchor it with a verbatim quote (entailment.py).
     soft = [r for r in rejected if r.get("soft_excerpt")]
     # The excerpt header names the document, so a number in a cited source id is grounded like one in the question.
@@ -922,16 +965,18 @@ def assemble(
     style: str = "",
     rerank: bool = False,
     replaced: frozenset[str] = frozenset(),
+    star_bands: tuple[dict, ...] = (),
 ) -> dict:
     result = _assemble(
-        question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank, replaced=replaced
+        question, tool_results, llm=llm, catalog=catalog, style=style, rerank=rerank, replaced=replaced,
+        star_bands=star_bands,
     )
     missing = result.get("evidence_fusion", {}).get("missing_facets", [])
     if missing:
         result["evidence_fusion"]["answer_status"] = result["status"]
         result["status"] = "insufficient_facet_evidence"
         result["answer"] = (
-            "Tầng fusion chưa đủ bằng chứng cho mục " + ", ".join(missing) + ".\n" + result["answer"]
+            "Mình chưa tìm đủ tài liệu cho phần: " + ", ".join(missing) + ".\n" + result["answer"]
         )
     return result
 
@@ -945,6 +990,7 @@ def _assemble(
     style: str = "",
     rerank: bool = False,
     replaced: frozenset[str] = frozenset(),
+    star_bands: tuple[dict, ...] = (),
 ) -> dict:
     records = []
     for result in tool_results:
@@ -1066,7 +1112,7 @@ def _assemble(
         )
         parsed = _parse_claims(raw) if isinstance(raw, str) else None
         if parsed is not None:
-            return _publish_claims(parsed, citations, selected, contexts, fusion, catalog, question, llm)
+            return _publish_claims(parsed, citations, selected, contexts, fusion, catalog, question, llm, star_bands)
         text = raw
         if not isinstance(text, str) or not text.strip():
             return response({

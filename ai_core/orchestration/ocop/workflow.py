@@ -1057,6 +1057,7 @@ class OcopAgent:
             catalog=self._catalog(),
             rerank=self.rerank,
             replaced=frozenset() if asks_version else self.tools.replaced_sources(),
+            star_bands=self.tools.star_bands(),
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )
         gaps = [
