@@ -196,6 +196,10 @@ def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
                      for line in lines), default=0)
         return bool(lines), score, -index
 
+    # The row a lookup picked by comparing every record in scope (the highest or lowest score) is the answer itself.
+    for index, entry in enumerate(entries):
+        if entry[1].get("answer_row"):
+            reserve(index)
     # An explicitly requested part (criterion code "1.6", "Mẫu số 02") is a requirement, not a hint: question terms drop such
     # codes, so term coverage alone would let generic prose outvote the one row that holds the part. The best-ranked block
     # of each such facet is kept first.
@@ -403,6 +407,8 @@ def _evidence(
     entries = _merge_continuations(entries)
     entries = _drop_repeats(entries)
     entries = _most_relevant(entries, terms, cfg.max_source_blocks, facets=query_facets(question))
+    # The row a lookup picked as the answer (the extreme score in scope) is S1 whatever the reservations chose first.
+    entries = [e for e in entries if e[1].get("answer_row")] + [e for e in entries if not e[1].get("answer_row")]
     budget = cfg.prompt_token_budget - cfg.output_reserve_tokens - overhead_tokens
     headers = [
         estimated_tokens(
@@ -456,7 +462,9 @@ def _evidence(
         selected.append(chosen)
         contexts.append(
             f"[S{len(citations)}] {key[0]}, PDF p.{key[1]}, "
-            f"review={citation['review_status']}: {excerpt.display}"
+            f"review={citation['review_status']}"
+            + (f" ({get_language().messages.answer_row[row['answer_row']]})" if row.get("answer_row") else "")
+            + f": {excerpt.display}"
         )
     return citations, contexts, selected
 
@@ -726,6 +734,10 @@ def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], 
 # "X có điểm đánh giá cao nhất: 87,2 điểm" ranks a record against the whole list. It passes when, in a cited decision,
 # X's checked record prints that score and that score is the highest (or lowest) of the decision's records, of the
 # star levels the claim names if it names any.
+# The product, its score, the rank and the decision are what the check settles; the model's quote is not needed for them.
+RANK_REASONS = COUNT_REASONS | {"quote_not_verbatim"}
+
+
 def _ranks_checked_scores(text: str, numbers: list[int], citations: list[dict], scores: dict) -> bool:
     lang = get_language()
     high, low = lang.hit(text, "superlative_high"), lang.hit(text, "superlative_low")
@@ -861,7 +873,7 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
             text, numbers, citations, checked.get("owners", {}), checked.get("recognized", {})
         ):
             reasons, tier = [], "owner_count_checked"
-        elif reasons and set(reasons) <= COUNT_REASONS and _ranks_checked_scores(
+        elif reasons and set(reasons) <= RANK_REASONS and _ranks_checked_scores(
             text, numbers, citations, checked.get("scores", {})
         ):
             reasons, tier = [], "score_rank_checked"
@@ -1120,6 +1132,9 @@ def _assemble(
             r for r in records if r.get("source_id") in replaced
         ]
     records = order_evidence(question, records)
+    # A row a lookup picked deterministically as the answer (the record with the highest or lowest score in scope)
+    # leads whatever the similarity ranking thinks of its wording.
+    records = [r for r in records if r.get("answer_row")] + [r for r in records if not r.get("answer_row")]
     citations, contexts, selected = _evidence(
         records,
         question=question,

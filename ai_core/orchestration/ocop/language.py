@@ -46,6 +46,7 @@ class Messages(BaseModel):
     model_config = ConfigDict(extra="forbid")
     out_of_scope: str
     private_unsupported: str
+    answer_row: dict[str, str]
     clarify_prefix: str
     clarify_slots: dict[str, str]
 

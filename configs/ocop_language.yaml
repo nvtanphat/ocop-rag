@@ -258,6 +258,10 @@ dialogue:
 messages:
   out_of_scope: Mình chỉ hỗ trợ tra cứu kiến thức OCOP từ các văn bản đã lập chỉ mục. Bạn thử hỏi về quy định, phiếu chấm, hồ sơ cần chuẩn bị hoặc sản phẩm đã được công nhận nhé.
   private_unsupported: Hồ sơ riêng của một đơn vị không nằm trong dữ liệu công khai mà mình tra cứu, nên mình không xem hay rà soát được. Mình có thể giải thích quy định, phiếu chấm và hồ sơ cần chuẩn bị chung cho OCOP.
+  # Header note on the row a lookup picked by comparing every record in scope (computed by the system, not source text).
+  answer_row:
+    highest: bản ghi có điểm cao nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
+    lowest: bản ghi có điểm thấp nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
   clarify_prefix: "Cần bổ sung thông tin để xử lý: "
   clarify_slots:
     correction_detail: 'Bạn muốn sửa phần nào? Hãy nêu ý đúng hoặc phạm vi cần tra cứu lại.'

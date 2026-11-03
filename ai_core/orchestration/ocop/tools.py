@@ -220,6 +220,7 @@ class ToolRegistry:
         self._recognized: dict[tuple[str, int], frozenset[str]] | None = None
         self._owners: dict[str, dict] | None = None
         self._scores: dict | None = None
+        self._score_by_id: dict[str, float] = {}
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
         """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
@@ -242,6 +243,28 @@ class ToolRegistry:
             self._recognized = {key: frozenset(value) for key, value in grouped.items()}
         return self._recognized
 
+    def _extreme_first(self, rows: list[dict], query: str) -> list[dict]:
+        """"Sản phẩm 3 sao nào có điểm thấp nhất?": the rows in scope ordered by the score each record prints, so the
+        answer row leads the evidence instead of depending on which rows the row limit happens to keep."""
+        lang = get_language()
+        high, low = lang.hit(query, "superlative_high"), lang.hit(query, "superlative_low")
+        if high == low:
+            return rows
+        self.record_scores()
+        by_id = self._score_by_id
+
+        def score(row: dict) -> float | None:
+            return next((by_id[i] for i in row.get("graph_node_ids") or [] if i in by_id), None)
+
+        scored = sorted((row for row in rows if score(row) is not None), key=score, reverse=high)
+        if scored:
+            top = scored[0].get("graph_node_ids")
+            scored = [
+                {**row, "answer_row": "highest" if high else "lowest"} if row.get("graph_node_ids") == top else row
+                for row in scored
+            ]
+        return scored + [row for row in rows if score(row) is None]
+
     def record_scores(self) -> dict[str, list[tuple[float, frozenset[str], int | None]]]:
         """Decision source -> (score, folded product names, star level) of each checked recognition record that prints a
         score: what "X có điểm cao nhất, 87,2 điểm" is checked against."""
@@ -259,6 +282,7 @@ class ToolRegistry:
                 for record_id in ids
             }
             grouped: dict[str, list[tuple[float, frozenset[str], int | None]]] = {}
+            by_id: dict[str, float] = {}
             for node in nodes.values():
                 # A record shaped by the owner's edits keeps the row's printed score in its machine candidate.
                 printed = (node.get("properties") or {}).get("score_candidate") or (
@@ -271,7 +295,8 @@ class ToolRegistry:
                     grouped.setdefault(node["source_id"], []).append(
                         (float(score), frozenset(names.get(node["node_id"], ())), levels.get(node["node_id"]))
                     )
-            self._scores = grouped
+                    by_id[node["node_id"]] = float(score)
+            self._scores, self._score_by_id = grouped, by_id
         return self._scores
 
     def owner_records(self) -> dict[str, dict]:
@@ -1231,6 +1256,8 @@ class ToolRegistry:
                         "status": "recognition_scope_unverified",
                         "reason": "no_verified_rows_match_region_and_star_constraints",
                     }
+            if name == "lookup_recognition":
+                rows = self._extreme_first(rows, query)
             if needle:
                 if name == "lookup_form":
                     requested_numbers = slots.get("form_ids") or [needle]
