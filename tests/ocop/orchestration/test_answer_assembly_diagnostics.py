@@ -45,7 +45,7 @@ def test_unverified_source_failure_reports_actual_layer_without_score_claim():
     assert answer["claim_verification"]["claims"][0]["reason"] == "source_not_verified"
     assert answer["generation_diagnostics"]["layer"] == "claim_verification"
     assert answer["generation_diagnostics"]["reasons"] == ["source_not_verified"]
-    assert "source_not_verified" in answer["answer"]
+    assert "source_not_verified" not in answer["answer"]  # reason codes stay in the diagnostics
 
 
 def test_sheet_evidence_scope_filters_before_bm25_top_k(tmp_path):

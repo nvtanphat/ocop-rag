@@ -49,8 +49,8 @@ def test_only_supported_claims_are_published_and_gaps_are_named():
         "Hạt sen được công nhận hạng nào?", results(row("Hạt sen được công nhận hạng ba sao.")), llm=model
     )
     assert out["status"] == "partial_claims_verified"
-    assert "ba sao [S1]" in out["answer"] and "99" not in out["answer"].split("[Đã loại")[0]
-    assert "Nguồn chưa trả lời: giá bán" in out["answer"]
+    assert "ba sao [S1]" in out["answer"] and "99" not in out["answer"].split("(Mình đã bỏ")[0]
+    assert "Chưa tìm thấy trong tài liệu: giá bán" in out["answer"]
     assert out["generation_diagnostics"]["rejected"][0]["claim"].startswith("Giá bán")
     assert model.calls and model.calls[0]["required"] == ["claims", "missing"]
 
@@ -65,7 +65,7 @@ def test_grounded_claim_from_unreviewed_source_is_shown_labelled_never_as_verifi
         llm=model,
     )
     assert out["status"] == "generated_unverified_claims"
-    assert out["answer"].startswith("[LƯU Ý: Nguồn OCR/trích xuất chưa được duyệt")
+    assert out["answer"].startswith("Lưu ý: nội dung này lấy từ bản số hóa chưa được người duyệt")
 
 
 def test_unreviewed_source_claim_must_still_be_grounded_in_the_cited_excerpt():
@@ -378,8 +378,8 @@ def test_review_status_disclaimers_are_not_claims():
     )
     assert (
         out["status"] == "generated_unverified_claims"
-        and "Đã loại" not in out["answer"]
-        and "Nguồn chưa trả lời" not in out["answer"]
+        and "Mình đã bỏ" not in out["answer"]
+        and "Chưa tìm thấy trong tài liệu" not in out["answer"]
     )
 
 

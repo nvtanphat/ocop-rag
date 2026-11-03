@@ -892,8 +892,8 @@ class OcopAgent:
                 }
             temporal_unverified = True
             notices.append(
-                "Chưa có quy tắc hiệu lực/chuyển tiếp đã xác minh: nội dung dưới đây chỉ nêu những gì từng văn bản "
-                "ghi, không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể."
+                "Mình chưa có quy định đã xác minh về văn bản nào áp dụng cho từng năm hay ngày cụ thể, nên dưới đây chỉ nêu những gì từng văn bản "
+                "ghi, không kết luận văn bản nào áp dụng."
             )
         if any(
             (item.get("output") or {}).get("status")
@@ -971,7 +971,7 @@ class OcopAgent:
             notices.append(
                 "Không tìm thấy sản phẩm “" + "”, “".join(dict.fromkeys(missing_entity)) + "” trong các quyết định "
                 "công nhận đã lập chỉ mục, nên phần hỏi về sản phẩm này chưa được trả lời; nội dung dưới đây chỉ trả "
-                "lời các ý còn lại từ văn bản nguồn."
+                "lời các ý còn lại từ tài liệu."
             )
         elif missing_entity:
             return {
@@ -988,13 +988,13 @@ class OcopAgent:
         if scope_gap and answered_elsewhere:
             notices.append(
                 "Chưa có bản ghi công nhận đã xác minh khớp đầy đủ địa phương và mức sao được yêu cầu, nên phần hỏi "
-                "về hạng/công nhận chưa được trả lời; nội dung dưới đây chỉ trả lời các ý còn lại từ văn bản nguồn."
+                "về hạng/công nhận chưa được trả lời; nội dung dưới đây chỉ trả lời các ý còn lại từ tài liệu."
             )
         elif scope_gap:
             return {
                 "answer": {
                     "answer": "Chưa có bản ghi công nhận đã xác minh khớp đầy đủ "
-                    "địa phương và mức sao được yêu cầu; không suy đoán từ văn bản hoặc OCR.",
+                    "địa phương và mức sao bạn hỏi, nên mình không ước đoán số liệu.",
                     "status": "insufficient_recognition_scope",
                     "citations": [],
                 }
@@ -1087,7 +1087,7 @@ class OcopAgent:
                 missing = [name for name in missing if name != "resolve_temporal_applicability"]
             if missing:
                 response["answer"] = (
-                    "[CHƯA ĐỦ CHỨNG CỨ CHO TOÀN BỘ YÊU CẦU: " + _public_names(missing) + "]\n" + response["answer"]
+                    "Mình chưa tra đủ các phần: " + _public_names(missing) + "." + "\n" + response["answer"]
                 )
                 if response["status"] in ("generated_claims_verified", "generated_unverified_claims"):
                     response["status"] = "partial_evidence"

@@ -165,7 +165,7 @@ def test_citation_marker_alone_cannot_support_a_new_committee_claim():
     )
 
     assert response["status"] == "citation_verification_failed"
-    assert "Chỉ cung cấp bản trích xuất" in response["answer"]
+    assert "nguyên văn các đoạn liên quan nhất" in response["answer"]
 
 
 def test_planner_enforces_five_registered_tool_calls():

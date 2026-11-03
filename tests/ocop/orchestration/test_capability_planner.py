@@ -145,7 +145,7 @@ def test_tool_coverage_surfaces_missing_business_evidence(tmp_path):
     assert answer.tool_trace[0]["step"] == "route"
     assert all("tenant_id" not in json.dumps(x) for x in answer.tool_trace)
     if answer.evidence_coverage["status"] == "partial":
-        assert "CHƯA ĐỦ CHỨNG CỨ" in answer.answer
+        assert "Mình chưa tra đủ các phần" in answer.answer
 
 
 def test_tool_registry_does_not_accept_llm_created_tools(tmp_path):
