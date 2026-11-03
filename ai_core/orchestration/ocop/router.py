@@ -113,6 +113,11 @@ TARGET_KEYS = frozenset(
 )
 # Pattern for an identifier that looks like a private record handle (config-free: structural, not corpus data).
 PRIVATE_HANDLE = get_privacy().regex("private_handle")
+# Slots by which a question names its own scope (a document, a sheet, a product, an owner, a place).
+OWN_SCOPE_SLOTS = frozenset(
+    {"document_code", "article_id", "form_id", "sheet_number", "pdf_page", "criterion_id", "product_name",
+     "organization_name", "region"}
+)
 
 
 def _nfc(text: str) -> str:
@@ -785,20 +790,7 @@ def _route_business(
             missing_slots=["referent_" + dangling],
             reason_codes=["reference_unresolved"],
         )
-    own_scope = bool(
-        set(updates)
-        & {
-            "document_code",
-            "article_id",
-            "form_id",
-            "sheet_number",
-            "pdf_page",
-            "criterion_id",
-            "product_name",
-            "organization_name",
-            "region",
-        }
-    )
+    own_scope = bool(set(updates) & OWN_SCOPE_SLOTS)
     structural_scope = bool(
         set(updates) & {"document_code", "article_id", "form_id", "sheet_number", "pdf_page", "criterion_id"}
     )
