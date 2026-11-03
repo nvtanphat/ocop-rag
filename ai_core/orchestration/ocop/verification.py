@@ -153,7 +153,10 @@ def label_table_rows(text: str, fallback_header: str | None = None) -> str:
 
 
 def _labelled_text(row: dict) -> str:
-    return label_table_rows(
+    # The headings the passage sits under ("Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)") are source text of the same page
+    # structure: a score they state is stated by the source.
+    headings = " ".join(((row.get("context") or {}).get("parent_chain")) or [])
+    return (headings + "\n" if headings else "") + label_table_rows(
         str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""),
         _source_table_headers().get(str(row.get("source_id"))),
     )
