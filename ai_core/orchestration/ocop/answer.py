@@ -723,6 +723,31 @@ def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], 
     return counts == {len(rows)}
 
 
+# "X có điểm đánh giá cao nhất: 87,2 điểm" ranks a record against the whole list. It passes when, in a cited decision,
+# X's checked record prints that score and that score is the highest (or lowest) of the decision's records, of the
+# star levels the claim names if it names any.
+def _ranks_checked_scores(text: str, numbers: list[int], citations: list[dict], scores: dict) -> bool:
+    lang = get_language()
+    high, low = lang.hit(text, "superlative_high"), lang.hit(text, "superlative_low")
+    if not scores or high == low:
+        return False
+    stated = _scores(text)
+    star = lang.alternation(list(lang.star_noun))
+    levels = {int(m) for m in re.findall(r"(?<!\d)(" + level_class() + r")\s*" + star + r"\b", text, re.I)}
+    if len(stated) != 1:
+        return False
+    value = next(iter(stated))
+    folded = fold(text)
+    for source in {citations[n - 1].get("source_id") for n in numbers if 0 < n <= len(citations)}:
+        rows = [row for row in scores.get(source, []) if not levels or row[2] in levels]
+        if not rows:
+            continue
+        extreme = max(r[0] for r in rows) if high else min(r[0] for r in rows)
+        if value == extreme and any(r[0] == value and any(name in folded for name in r[1]) for r in rows):
+            return True
+    return False
+
+
 def _judge_claims(claims, citations, selected, catalog=None, question="", checked=None):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
@@ -836,6 +861,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
             text, numbers, citations, checked.get("owners", {}), checked.get("recognized", {})
         ):
             reasons, tier = [], "owner_count_checked"
+        elif reasons and set(reasons) <= COUNT_REASONS and _ranks_checked_scores(
+            text, numbers, citations, checked.get("scores", {})
+        ):
+            reasons, tier = [], "score_rank_checked"
         (rejected if reasons else accepted).append(
             {
                 "text": text,

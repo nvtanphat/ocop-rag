@@ -1078,6 +1078,7 @@ class OcopAgent:
                 "star_bands": self.tools.star_bands(),
                 "recognized": self.tools.recognized_products(),
                 "owners": self.tools.owner_records(),
+                "scores": self.tools.record_scores(),
             },
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),
         )

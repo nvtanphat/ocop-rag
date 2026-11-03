@@ -219,6 +219,7 @@ class ToolRegistry:
         self._abbreviations: dict[str, str] | None = None
         self._recognized: dict[tuple[str, int], frozenset[str]] | None = None
         self._owners: dict[str, dict] | None = None
+        self._scores: dict | None = None
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
         """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
@@ -240,6 +241,38 @@ class ToolRegistry:
                         grouped.setdefault((record["source_id"], int(level)), set()).add(record["node_id"])
             self._recognized = {key: frozenset(value) for key, value in grouped.items()}
         return self._recognized
+
+    def record_scores(self) -> dict[str, list[tuple[float, frozenset[str], int | None]]]:
+        """Decision source -> (score, folded product names, star level) of each checked recognition record that prints a
+        score: what "X có điểm cao nhất, 87,2 điểm" is checked against."""
+        if self._scores is None:
+            nodes = {n["node_id"]: n for n in records(self.graph_dir / "nodes.jsonl")}
+            names: dict[str, set[str]] = {}
+            for edge in records(self.graph_dir / "edges.jsonl"):
+                record = nodes.get(edge.get("source_entity_id"))
+                if record and record.get("node_type") == "RecognitionRecord" and edge.get("check") == "passed":
+                    if edge.get("relation_type") == "RECOGNIZES" and edge["target_entity_id"] in nodes:
+                        names.setdefault(record["node_id"], set()).add(fold(nodes[edge["target_entity_id"]]["label"]))
+            levels = {
+                record_id: level
+                for (source, level), ids in self.recognized_products().items()
+                for record_id in ids
+            }
+            grouped: dict[str, list[tuple[float, frozenset[str], int | None]]] = {}
+            for node in nodes.values():
+                # A record shaped by the owner's edits keeps the row's printed score in its machine candidate.
+                printed = (node.get("properties") or {}).get("score_candidate") or (
+                    (node.get("machine_candidate") or {}).get("properties") or {}
+                ).get("score_candidate")
+                score = str(printed or "").replace(",", ".")
+                if node.get("node_type") == "RecognitionRecord" and node.get("check") == "passed" and re.fullmatch(
+                    r"\d+(?:\.\d+)?", score
+                ):
+                    grouped.setdefault(node["source_id"], []).append(
+                        (float(score), frozenset(names.get(node["node_id"], ())), levels.get(node["node_id"]))
+                    )
+            self._scores = grouped
+        return self._scores
 
     def owner_records(self) -> dict[str, dict]:
         """Organisation label -> the words only its name carries among the organisations ("hichagol") and its checked

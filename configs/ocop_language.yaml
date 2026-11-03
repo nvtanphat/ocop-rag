@@ -223,6 +223,9 @@ cues:
   claim_critical: [bắt buộc, miễn, không phải, hiệu lực, được công nhận, hạn cuối]
   # How a score or star level is written: "74,6 điểm", "5 sao", "từ 90 đến dưới 100 điểm".
   score_noun: [điểm]
+  # A claim that a score is the highest or lowest of a list ("điểm cao nhất"): checked against every record of the decision.
+  superlative_high: [cao nhất, lớn nhất, nhiều điểm nhất]
+  superlative_low: [thấp nhất, ít điểm nhất]
   range_start: [từ]
   range_connector: [đến, tới, "-", "–"]
   range_below: [dưới]

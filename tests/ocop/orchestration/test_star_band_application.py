@@ -45,3 +45,13 @@ def test_an_owners_count_passes_only_for_the_one_owner_it_names_and_its_cited_re
     assert _counts_owner_records("Công ty Hichagol có 2 sản phẩm OCOP.", [1], cited, owners, {})
     assert not _counts_owner_records("Công ty Hichagol có 3 sản phẩm OCOP.", [1], cited, owners, {})
     assert not _counts_owner_records("Một công ty có 2 sản phẩm OCOP.", [1], cited, owners, {})
+
+
+def test_a_highest_score_passes_only_for_the_record_that_holds_the_top_score():
+    from ai_core.orchestration.ocop.answer import _ranks_checked_scores
+
+    scores = {"VN.HAIPHONG.QD525.2026": [(87.2, frozenset({"chuoi say deo phu tiramisu"}), 4), (84.1, frozenset({"nuoc mam ca thu"}), 4)]}
+    cited = [{"source_id": "VN.HAIPHONG.QD525.2026", "pdf_page": 3}]
+    assert _ranks_checked_scores("Chuối sấy dẻo phủ Tiramisu có điểm cao nhất, 87,2 điểm.", [1], cited, scores)
+    assert not _ranks_checked_scores("Nước mắm cá thu có điểm cao nhất, 84,1 điểm.", [1], cited, scores)
+    assert not _ranks_checked_scores("Chuối sấy dẻo phủ Tiramisu có 87,2 điểm.", [1], cited, scores)
