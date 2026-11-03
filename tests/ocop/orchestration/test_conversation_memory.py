@@ -464,3 +464,12 @@ def test_a_noun_asked_about_with_a_question_word_is_not_a_reference():
     asked = "Rau, củ, quả tươi đăng ký OCOP thì được xếp vào nhóm sản phẩm nào trên phiếu đánh giá?"
     assert memory.dangling_reference(asked, None, {}) is None
     assert memory.dangling_reference("Sản phẩm đó được mấy sao?", None, {}) == "product"
+
+
+def test_a_restated_follow_up_drops_a_carried_name_it_no_longer_writes():
+    before = "Nếu chuyển sang làm chè khô thì có dùng phiếu chấm của nước mắm không?"
+    session = {**_session_after(before), "slots": {"product_name": "nước mắm"}}
+    agent = _agent_with_model("Chè khô nằm trong nhóm sản phẩm nào?")
+    out = agent.route({"query": "Vậy nó nằm trong nhóm sản phẩm nào?", "session": session})
+    assert out["rewrite_method"] == "model_rewrite"
+    assert "nước mắm" not in str(out["route"]["slots"])

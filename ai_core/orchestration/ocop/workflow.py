@@ -28,7 +28,7 @@ from ai_core.orchestration.ocop.llm import OpenAICompatClient
 from ai_core.retrieval.ocop.search import query_content_bigram_coverage
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.orchestration.ocop.catalog import load_catalog
-from ai_core.orchestration.ocop.language import get_language
+from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.orchestration.ocop.privacy import redact
 
 
@@ -164,10 +164,21 @@ class OcopAgent:
                     method += "+compare"
                 # A question that points back is restated by the model from the recent questions (ViCAS-RAG, Legal-RAG):
                 # the rules state the scope of the thing named last, which "hãng đó" or "siro lúc nãy" may not mean.
+                # The restatement says what the question is about: a carried name it no longer writes is dropped and the
+                # names it writes are taken, else the last turn's slots scope the tools to the thing "nó" no longer
+                # means ("nó" = chè khô after nước mắm searched the fish-sauce sheet). The route stays a follow-up.
                 recent = safe_session["memory"]["recent"]
                 if self.llm is not None and recent and followup_model.refers_back(query):
                     if restated := followup_model.propose(self.llm, query, recent[::-1]):
                         effective, method = restated, "model_rewrite"
+                        kept = {
+                            key: value
+                            for key, value in choice.slots.items()
+                            if not isinstance(value, str) or fold(value) in fold(restated)
+                        }
+                        choice = choice.model_copy(
+                            update={"slots": {**kept, **extract_slots(restated, catalog=self._catalog())}}
+                        )
             elif choice.intent == Intent.FOLLOWUP:
                 previous = str(session.get("last_query") or "")
                 if "years" in updates:
