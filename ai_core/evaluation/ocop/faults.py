@@ -50,6 +50,9 @@ class SimulatedToolFailure:
     def record_scores(self) -> dict:
         return {}
 
+    def abbreviations(self) -> dict:
+        return {}
+
     def dispatch(self, name: str, *, query: str, slots: dict, context=None, auth=None) -> dict:
         self.calls.append(name)
         if name != self.target:

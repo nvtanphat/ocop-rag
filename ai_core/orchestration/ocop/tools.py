@@ -1300,6 +1300,10 @@ class ToolRegistry:
             if name == "lookup_recognition" and (slots.get("region") or slots.get("star_rating")):
                 rows = _recognition_records_in_scope(rows, region=slots.get("region"), stars=slots.get("star_rating"))
                 if not rows:
+                    # "Sản phẩm 2 sao có được công nhận không?" names no place, product, owner or decision: no record
+                    # of that level is no evidence about records, the rule text answers it.
+                    if not any(slots.get(key) for key in ("region", "document_code", "product_name", "organization_name")):
+                        return {"results": [], "status": "no_results", "input_missing": True}
                     return {
                         "results": [],
                         "status": "recognition_scope_unverified",

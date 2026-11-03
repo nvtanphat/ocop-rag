@@ -763,6 +763,7 @@ def _ranks_checked_scores(text: str, numbers: list[int], citations: list[dict], 
 def _judge_claims(claims, citations, selected, catalog=None, question="", checked=None):
     """Per-claim gate: marker identity, score/star support and entailment; returns (accepted, rejected)."""
     accepted, rejected = [], []
+    checked = checked or {}
     for text, numbers, quote in claims:
         soft_excerpt = ""
         quote_metadata = ""
@@ -834,6 +835,12 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
                     # its number: "Hải Phòng có 13 chủ thể…" names the decision's issuer, read from source metadata.
                     + [str(((r or {}).get("context") or {}).get("jurisdiction") or "") for r in cited]
                 )
+                # The source writes "HTX Sen Huế", the claim "Hợp tác xã Sen Huế": an abbreviation in the excerpt also
+                # reads as the phrase the corpus writes it for (learned from the corpus, see tools.abbreviations).
+                abbreviations = checked.get("abbreviations") or {}
+                union += chr(10) + " ".join(
+                    abbreviations[word] for word in set(re.findall(r"[a-z]+", fold(union))) if word in abbreviations
+                )
                 # A real quote is an anchor, not an entailment verdict. Deterministic checks run first;
                 # lexical failures can only be reconsidered by the independent review below.
                 ids = " ".join(str(citations[n - 1].get("source_id") or "")
@@ -867,7 +874,6 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
                         soft_excerpt = union
             else:
                 reasons.extend(failures)
-        checked = checked or {}
         if reasons and set(reasons) <= BAND_REASONS and _applies_star_band(text, numbers, citations, question, checked.get("star_bands", ())):
             reasons, tier = [], "star_band_applied"
         elif reasons and set(reasons) <= COUNT_REASONS and _counts_checked_records(text, numbers, citations, checked.get("recognized", {})):
