@@ -62,3 +62,10 @@ def test_a_score_written_after_its_noun_is_read_as_the_asked_score():
 
     assert _scores("điểm 69 thì được mấy sao") == {69.0}
     assert _scores("đạt 69,5 điểm") == {69.5}
+
+
+def test_the_points_missing_for_a_star_level_are_the_floor_less_the_asked_score():
+    asked = "sản phẩm mình đạt 68 điểm, cần thêm bao nhiêu để lên 4 sao"
+    claim = "Hạng 4 sao bắt đầu từ 70 điểm; với 68 điểm, sản phẩm cần thêm 2 điểm để đạt 4 sao."
+    assert _applies_star_band(claim, [1], CITED, asked, (BAND4,))
+    assert not _applies_star_band(claim.replace("thêm 2 điểm", "thêm 3 điểm"), [1], CITED, asked, (BAND4,))

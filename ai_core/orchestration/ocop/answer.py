@@ -673,7 +673,13 @@ def _applies_star_band(text: str, numbers: list[int], citations: list[dict], que
         if band.get("star_level") not in levels or not (band["places"] & places):
             continue
         bounds = {float(x) for x in (band.get("min_points"), band.get("max_points")) if x is not None}
-        if _scores(text) <= asked | bounds and all(_in_band(v, band) for v in asked & _scores(text) or asked):
+        stated = _scores(text)
+        if stated <= asked | bounds and all(_in_band(v, band) for v in asked & stated or asked):
+            return True
+        # "68 điểm … cần thêm 2 điểm để lên 4 sao": the gap is the band's floor less the asked score, nothing else.
+        low = band.get("min_points")
+        gaps = {round(float(low) - a, 2) for a in asked if low is not None and a < float(low)}
+        if stated & gaps and stated <= asked | bounds | gaps:
             return True
     return False
 
