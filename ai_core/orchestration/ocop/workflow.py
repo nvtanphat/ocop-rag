@@ -124,7 +124,7 @@ class OcopAgent:
             query, self.tools.abbreviations(), self.tools._corpus_words()
         ):
             if restored := diacritics_model.propose(self.llm, query, self.tools.abbreviations()):
-                query, method = restored, "diacritics_restored"
+                query, method = diacritics_model.settle(restored, *self.tools.word_pairs()), "diacritics_restored"
         choice = decide(query)
         effective = query
         # A reference the rules cannot place ("phiếu đó" when no sheet number was ever typed) is not dangling when the

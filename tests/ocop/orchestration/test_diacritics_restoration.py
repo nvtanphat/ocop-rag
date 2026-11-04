@@ -36,3 +36,15 @@ def test_an_abbreviation_may_be_written_out_only_as_the_words_its_initials_name(
     good = "Sản phẩm mình đạt 4 sao rồi, muốn lên 5 sao thì phải làm gì"
     assert diacritics_model.propose(Model(good), asked, CORPUS) == good
     assert diacritics_model.propose(Model("Siro phúc mình đạt 4 sao rồi, muốn lên 5 sao thì phải làm gì"), asked, CORPUS) is None
+
+
+def test_a_restored_spelling_the_corpus_never_writes_yields_to_the_one_beside_the_same_neighbours():
+    from collections import Counter
+
+    from ai_core.orchestration.ocop.diacritics_model import settle
+
+    pairs = Counter({("của", "bộ"): 40, ("bộ", "sản"): 90, ("bó", "hoa"): 0, ("hàng", "hóa"): 20, ("hóa", "được"): 5})
+    spellings = {"bo": frozenset({"bộ"}), "hoa": frozenset({"hoa", "hóa"})}
+    assert settle("tiêu chí của bó chè tươi", pairs, spellings) == "tiêu chí của bộ chè tươi"
+    # "hoa" is a spelling the corpus writes: the user's word stays even where "hóa được" is more common.
+    assert settle("Bó hoa được không", pairs, spellings) == "Bó hoa được không"

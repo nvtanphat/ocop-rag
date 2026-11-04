@@ -73,3 +73,27 @@ def _same_words(asked: str, restored: str, abbreviations: dict[str, str]) -> boo
             return False
         i, j = i + 1, j + len(phrase)
     return i == len(have) and j == len(got)
+
+
+def settle(text: str, pairs, spellings: dict[str, frozenset[str]], *, least: int = 3) -> str:
+    """Marks the corpus clearly prefers: a restored spelling the corpus never writes gives way to the spelling of the
+    same letters that stands next to the same neighbours ("của bó chè" -> "của bộ chè": "của bộ" is common, "bó" absent).
+    Only the marks change, so the text still folds back to the user's own."""
+    tokens = re.findall(r"[^\W\d_]+|[^\w]+|\w+", text)
+    words = [i for i, t in enumerate(tokens) if re.fullmatch(r"[^\W\d_]+", t)]
+    for position, index in enumerate(words):
+        word = tokens[index].casefold()
+        left = tokens[words[position - 1]].casefold() if position else None
+        right = tokens[words[position + 1]].casefold() if position + 1 < len(words) else None
+
+        def support(spelling: str) -> int:
+            return (pairs.get((left, spelling), 0) if left else 0) + (pairs.get((spelling, right), 0) if right else 0)
+
+        # A spelling the corpus uses ("hoa", the Hoa product set) is the user's word; only one it never writes yields.
+        if support(word) or word in spellings.get(fold(word), ()):
+            continue
+        best = max(spellings.get(fold(word), ()), key=support, default=None)
+        if best and best != word and support(best) >= least:
+            original = tokens[index]
+            tokens[index] = best.capitalize() if original[:1].isupper() else best
+    return "".join(tokens)

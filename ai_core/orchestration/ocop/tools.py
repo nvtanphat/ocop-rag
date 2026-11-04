@@ -222,6 +222,7 @@ class ToolRegistry:
         self._scores: dict | None = None
         self._score_by_id: dict[str, float] = {}
         self._criterion_points: dict | None = None
+        self._pairs: tuple[Counter, dict[str, frozenset[str]]] | None = None
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
         """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
@@ -299,6 +300,24 @@ class ToolRegistry:
                     by_id[node["node_id"]] = float(score)
             self._scores, self._score_by_id = grouped, by_id
         return self._scores
+
+    def word_pairs(self) -> tuple[Counter, dict[str, frozenset[str]]]:
+        """Adjacent accented word pairs of the indexed evidence ("của bộ") and, for each folded word, the accented
+        spellings the corpus uses ("bo" -> {"bộ", "bó", ...}): what a restored question's marks are settled against."""
+        if self._pairs is None:
+            pairs: Counter = Counter()
+            path = self.index_dir / "evidence_units.jsonl"
+            if path.is_file():
+                with path.open(encoding="utf-8") as handle:
+                    for line in handle:
+                        words = re.findall(r"[^\W\d_]+", (json.loads(line).get("text") or "").casefold())
+                        pairs.update(zip(words, words[1:]))
+            spellings: dict[str, set[str]] = {}
+            for pair in pairs:
+                for word in pair:
+                    spellings.setdefault(fold(word), set()).add(word)
+            self._pairs = (pairs, {k: frozenset(v) for k, v in spellings.items()})
+        return self._pairs
 
     def criterion_points(self) -> dict[tuple[str, int], list[tuple[float, str, str]]]:
         """(source, page) -> (max points, folded criterion title, folded product-set name) of each checked criterion the
