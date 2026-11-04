@@ -954,6 +954,10 @@ def _route_business(
         scores[Intent.RECOGNITION_LOOKUP] = max(75, scores.get(Intent.RECOGNITION_LOOKUP, 0))
     if facets.rating_assertion and slots.get("star_rating") and not facets.scoring_method:
         scores[Intent.RECOGNITION_LOOKUP] = max(78, scores.get(Intent.RECOGNITION_LOOKUP, 0))
+    # A star level placed in a locality ("ở Hải Phòng có nước mắm nào được 4 sao") asks that locality's recognised
+    # products; a question about what a star level requires names no locality.
+    if slots.get("region") and slots.get("star_rating") and not (facets.normative_star or facets.scoring_method):
+        scores[Intent.RECOGNITION_LOOKUP] = max(78, scores.get(Intent.RECOGNITION_LOOKUP, 0))
     if facets.normative_star:
         scores[Intent.CRITERIA_LOOKUP] = max(85, scores.get(Intent.CRITERIA_LOOKUP, 0))
     if lang.hit(q, "procedure_own"):

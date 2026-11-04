@@ -328,7 +328,10 @@ class ToolRegistry:
                 name = sheet(node["node_id"])
                 if not name:
                     continue
+                # "3.5.Sở hữu trí tuệ" -> "so huu tri tue"; "Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)" -> "chat luong san pham".
                 title = fold(re.sub(r"^\s*(?:\d+(?:[.,]\d+)*[.,)]?|[^\W\d_]\))\s*", "", node["label"]))
+                if (node.get("properties") or {}).get("part_letter"):
+                    title = re.sub(r"^\S+\s+[a-c]\s*[:.]?\s*|\s*\([^)]*\)\s*$", "", title)
                 product_set = fold(name.split(":", 1)[-1])
                 for citation in node.get("citations") or []:
                     if citation.get("pdf_page") is not None:
@@ -1568,7 +1571,10 @@ class ToolRegistry:
                     (asked_orgs, [n for n in graph.nodes.values() if n["node_type"] == "Organization"], "DECLARED_BY"),
                 ):
                     for asked in requested:
-                        matches = _matching_entity_ids(entity_nodes, asked)
+                        # A kind of product ("nước mắm") is represented by the records of the products it names.
+                        matches = _matching_entity_ids(entity_nodes, asked) or (
+                            products if relation == "RECOGNIZES" and generic else set()
+                        )
                         if not any(edge["relation_type"] == relation and edge["source_entity_id"] in represented
                                    and edge["target_entity_id"] in matches for edge in graph.edges):
                             missing_entities.append(asked)

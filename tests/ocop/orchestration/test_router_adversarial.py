@@ -353,3 +353,9 @@ def test_the_evidence_fingerprint_is_the_one_the_built_corpus_carries():
     from ai_core.processing.ocop import knowledge_extract
 
     assert knowledge_extract.VERSION == "ocop-evidence-511b22cb55d2"
+
+
+def test_a_star_level_in_a_locality_asks_the_recognition_records():
+    route = route_query("ở hải phòng có sản phẩm nước mắm nào được 4 sao không")
+    assert route.intent == Intent.RECOGNITION_LOOKUP
+    assert "lookup_recognition" in route.required_tools + route.secondary_tools
