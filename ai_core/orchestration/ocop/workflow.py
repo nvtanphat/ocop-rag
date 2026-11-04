@@ -1024,8 +1024,8 @@ class OcopAgent:
         elif scope_gap:
             return {
                 "answer": {
-                    "answer": "Chưa có bản ghi công nhận đã xác minh khớp đầy đủ "
-                    "địa phương và mức sao bạn hỏi, nên mình không ước đoán số liệu.",
+                    "answer": "Các quyết định công nhận đã lập chỉ mục chưa có bản ghi nào khớp phạm vi bạn hỏi "
+                    "(địa phương hoặc mức sao), nên mình không ước đoán số liệu.",
                     "status": "insufficient_recognition_scope",
                     "citations": [],
                 }
