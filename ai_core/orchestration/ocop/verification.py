@@ -277,12 +277,15 @@ def check_sensitive_claims(
         assertions |= stated
         cited = _cited_rows([int(i) for i in MARKER.findall(sentence)], citations, evidence_rows)
         verified = _row_text(cited)
-        # An enumeration ("Phần A … 40 điểm; Phần B … 25 điểm; Phần C … 35 điểm") binds each figure to its own item:
-        # each assertion is aligned with the item that states it, the whole sentence only when it is one item.
-        items = [part for part in re.split(r";\s*", sentence) if part.strip()]
+        # An enumeration ("Phần A … (40 điểm), Phần B … (25 điểm) và Phần C … (35 điểm)", with commas or semicolons)
+        # binds each figure to its own item: the words from the previous figure up to this one.
+        own_of, start = {}, 0
+        for match in score_assertion().finditer(sentence):
+            own_of.setdefault(re.sub(r"\s+", " ", match.group(0).casefold()).strip(), sentence[start:match.end()])
+            start = match.end()
         for assertion in stated:
             present = _stated_in(assertion, verified)
-            own = next((part for part in items if assertion in {a for a in found(part)}), sentence) if len(items) > 1 else sentence
+            own = own_of.get(assertion, sentence) if len(own_of) > 1 else sentence
             aligned = present and (
                 _sensitive_records_agree(own, assertion, cited, frozenset(found(own)))
                 or _sensitive_records_agree(sentence, assertion, cited, frozenset(stated))

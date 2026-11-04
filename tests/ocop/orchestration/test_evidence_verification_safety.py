@@ -295,3 +295,21 @@ def test_a_score_claim_binds_to_the_item_it_names_not_the_heading_or_a_sibling()
     agree = lambda claim, assertion: _sensitive_records_agree(claim, assertion, [row], frozenset({assertion}))  # noqa: E731
     assert agree("Phần A trong bộ tiêu chí tại Điều 3 có tối đa 40 điểm.", "40 điểm")
     assert not agree("Phần B trong bộ tiêu chí có tối đa 40 điểm.", "40 điểm")
+
+
+def test_a_comma_enumeration_binds_each_score_to_its_own_item():
+    from ai_core.orchestration.ocop.verification import check_sensitive_claims
+
+    source = (
+        "1. Bộ tiêu chí gồm 03 phần:\n"
+        "a) Phần A: Các tiêu chí về sản phẩm và sức mạnh cộng đồng (40 điểm), gồm tổ chức sản xuất.\n"
+        "b) Phần B: Các tiêu chí về khả năng tiếp thị (25 điểm), gồm tiếp thị.\n"
+        "c) Phần C: Các tiêu chí về chất lượng sản phẩm (35 điểm), gồm chỉ tiêu cảm quan."
+    )
+    rows = [{"text": source, "source_id": "DOC", "pdf_page": 2, "review_status": "verified"}]
+    citations = [{"source_id": "DOC", "pdf_page": 2, "review_status": "verified"}]
+    claim = ("Bộ tiêu chí gồm 3 phần: Phần A về sức mạnh cộng đồng (40 điểm), Phần B về khả năng tiếp thị (25 điểm), "
+             "và Phần C về chất lượng sản phẩm (35 điểm) [S1].")
+    assert not check_sensitive_claims(claim, rows, citations)["unsupported_score_or_star_claims"]
+    swapped = claim.replace("(25 điểm)", "(X)").replace("(35 điểm)", "(25 điểm)").replace("(X)", "(35 điểm)")
+    assert check_sensitive_claims(swapped, rows, citations)["unsupported_score_or_star_claims"]
