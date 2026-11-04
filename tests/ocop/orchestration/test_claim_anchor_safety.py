@@ -252,8 +252,8 @@ def test_a_criterion_score_claim_is_checked_against_the_graph_criterion_on_the_c
 
     citations = [{"source_id": "DOC.CURRENT", "pdf_page": 146}]
     points = {
-        ("DOC.CURRENT", 146): [(4.0, "chat luong phuc vu", "dich vu du lich cong dong, du lich sinh thai")],
-        ("DOC.CURRENT", 90): [(5.0, "mui", "ruou trang")],
+        ("DOC.CURRENT", 146): [(4.0, "chat luong phuc vu", "dich vu du lich cong dong, du lich sinh thai", "")],
+        ("DOC.CURRENT", 90): [(5.0, "mui", "ruou trang", "")],
     }
     claim = "Trong bộ Dịch vụ du lịch cộng đồng, tiêu chí 14 «Chất lượng phục vụ» có thang điểm 4."
     assert _states_criterion_points(claim, [1], citations, points)
@@ -266,8 +266,24 @@ def test_a_criterion_score_claim_without_a_product_set_holds_only_when_every_cit
     from ai_core.orchestration.ocop.answer import _states_criterion_points
 
     citations = [{"source_id": "DOC", "pdf_page": 20}, {"source_id": "DOC", "pdf_page": 30}]
-    same = {("DOC", 20): [(1.0, "dai dien phap luat la nu", "rau, cu")], ("DOC", 30): [(1.0, "dai dien phap luat la nu", "mat ong")]}
+    same = {("DOC", 20): [(1.0, "dai dien phap luat la nu", "rau, cu", "")], ("DOC", 30): [(1.0, "dai dien phap luat la nu", "mat ong", "")]}
     claim = "Tiêu chí 3.2 đại diện pháp luật là nữ được 1 điểm."
     assert _states_criterion_points(claim, [1, 2], citations, same)
-    differ = {**same, ("DOC", 30): [(2.0, "dai dien phap luat la nu", "mat ong")]}
+    differ = {**same, ("DOC", 30): [(2.0, "dai dien phap luat la nu", "mat ong", "")]}
     assert not _states_criterion_points(claim, [1, 2], citations, differ)
+
+
+def test_a_listed_claim_holds_when_each_item_is_a_graph_part_of_the_named_criterion():
+    from ai_core.orchestration.ocop.answer import _states_criterion_parts
+
+    citations = [{"source_id": "DOC", "pdf_page": 26}]
+    points = {("DOC", 26): [
+        (15.0, "chi tieu cam quan", "thit", ""),
+        (4.0, "tap chat", "thit", "chi tieu cam quan"),
+        (5.0, "mau sac", "thit", "chi tieu cam quan"),
+        (3.0, "mui", "thit", "chi tieu cam quan"),
+    ]}
+    claim = "Chỉ tiêu cảm quan của bộ thịt gồm tạp chất, màu sắc và mùi."
+    assert _states_criterion_parts(claim, [1], citations, points)
+    assert not _states_criterion_parts("Chỉ tiêu cảm quan của bộ thịt gồm tạp chất và độ ẩm.", [1], citations, points)
+    assert not _states_criterion_parts("Chỉ tiêu cảm quan gồm tạp chất được 4 điểm.", [1], citations, points)

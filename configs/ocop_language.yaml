@@ -208,6 +208,8 @@ cues:
   scoring_negation: [không, đừng, chưa, không cần]
   # The programme's own name is vocabulary of the whole corpus, not an entity a passage must introduce.
   claim_program_names: [OCOP]
+  # Words that join the items of a listed claim ("gồm tạp chất, màu sắc và mùi"): nothing else may follow the items.
+  list_joiners: [và, cùng, với, các, mục, tiêu chí, chỉ tiêu, hoặc]
   claim_negation: [không, chưa, miễn]
   # Negations that, once a claim states them, the quoted passage must carry too ("chưa" alone may be a tense).
   claim_hard_negation: [không, miễn]

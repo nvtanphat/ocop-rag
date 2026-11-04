@@ -319,10 +319,11 @@ class ToolRegistry:
             self._pairs = (pairs, {k: frozenset(v) for k, v in spellings.items()})
         return self._pairs
 
-    def criterion_points(self) -> dict[tuple[str, int], list[tuple[float, str, str]]]:
-        """(source, page) -> (max points, folded criterion title, folded product-set name) of each checked criterion the
-        page shows, its sheet found up the HAS_CRITERION/HAS_SUBCRITERION edges: what "tiêu chí 14 «Chất lượng phục vụ»
-        của bộ Dịch vụ du lịch cộng đồng có thang điểm 4" is checked against."""
+    def criterion_points(self) -> dict[tuple[str, int], list[tuple[float | None, str, str, str]]]:
+        """(source, page) -> (max points or None, folded criterion title, folded product-set name, folded parent title)
+        of each checked criterion the page shows, its sheet found up the HAS_CRITERION/HAS_SUBCRITERION edges: what
+        "tiêu chí 14 «Chất lượng phục vụ» của bộ Dịch vụ du lịch cộng đồng có thang điểm 4" and "chỉ tiêu cảm quan
+        gồm tạp chất, màu sắc" are checked against."""
         if self._criterion_points is None:
             nodes = {n["node_id"]: n for n in records(self.graph_dir / "nodes.jsonl")}
             parent = {
@@ -339,23 +340,31 @@ class ToolRegistry:
                 node = nodes.get(node_id) or {}
                 return node.get("label", "") if node.get("node_type") == "CriterionSheet" else ""
 
-            table: dict[tuple[str, int], list[tuple[float, str, str]]] = {}
+            def title(node: dict) -> str:
+                # "3.5.Sở hữu trí tuệ" -> "so huu tri tue"; "Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)" -> "chat luong san pham".
+                text = fold(re.sub(r"^\s*(?:\d+(?:[.,]\d+)*[.,)]?|[^\W\d_]\))\s*", "", node.get("label", "")))
+                if (node.get("properties") or {}).get("part_letter"):
+                    text = re.sub(r"^\S+\s+[a-c]\s*[:.]?\s*|\s*\([^)]*\)\s*$", "", text)
+                return re.split(r"\s*\(", text, maxsplit=1)[0].strip()
+
+            table: dict[tuple[str, int], list[tuple[float | None, str, str, str]]] = {}
             for node in nodes.values():
-                points = (node.get("properties") or {}).get("max_points")
-                if node.get("node_type") != "Criterion" or node.get("check") != "passed" or points is None:
+                if node.get("node_type") != "Criterion" or node.get("check") != "passed":
                     continue
                 name = sheet(node["node_id"])
                 if not name:
                     continue
-                # "3.5.Sở hữu trí tuệ" -> "so huu tri tue"; "Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)" -> "chat luong san pham".
-                title = fold(re.sub(r"^\s*(?:\d+(?:[.,]\d+)*[.,)]?|[^\W\d_]\))\s*", "", node["label"]))
-                if (node.get("properties") or {}).get("part_letter"):
-                    title = re.sub(r"^\S+\s+[a-c]\s*[:.]?\s*|\s*\([^)]*\)\s*$", "", title)
-                product_set = fold(name.split(":", 1)[-1])
+                points = (node.get("properties") or {}).get("max_points")
+                above = nodes.get(parent.get(node["node_id"], ""), {})
+                entry = (
+                    float(points) if points is not None else None,
+                    title(node),
+                    fold(name.split(":", 1)[-1]),
+                    title(above) if above.get("node_type") == "Criterion" else "",
+                )
                 for citation in node.get("citations") or []:
                     if citation.get("pdf_page") is not None:
-                        key = (node["source_id"], int(citation["pdf_page"]))
-                        table.setdefault(key, []).append((float(points), title, product_set))
+                        table.setdefault((node["source_id"], int(citation["pdf_page"])), []).append(entry)
             self._criterion_points = table
         return self._criterion_points
 

@@ -741,6 +741,40 @@ def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], 
 RANK_REASONS = COUNT_REASONS | {"quote_not_verbatim"}
 
 
+def _cited_criteria(numbers: list[int], citations: list[dict], points: dict) -> list[tuple]:
+    """The graph criteria on the pages a claim cites."""
+    return [
+        entry
+        for n in numbers
+        if 0 < n <= len(citations)
+        for entry in points.get((citations[n - 1].get("source_id"), int(citations[n - 1].get("pdf_page") or 0)), ())
+    ]
+
+
+def _names(folded: str, phrase: str) -> bool:
+    return bool(phrase) and re.search(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", folded) is not None
+
+
+def _states_criterion_parts(text: str, numbers: list[int], citations: list[dict], points: dict) -> bool:
+    """A claim listing what a criterion covers ("chỉ tiêu cảm quan … gồm tạp chất, màu sắc và mùi") holds when the
+    checked graph places each named part under that criterion on a cited page. It states no score: those are checked
+    by ``_states_criterion_points``."""
+    if _scores(text):
+        return False
+    folded = fold(text)
+    entries = _cited_criteria(numbers, citations, points)
+    parents = {parent for _, _, _, parent in entries if _names(folded, parent)}
+    parts = [title for _, title, _, parent in entries if parent in parents and _names(folded, title)]
+    if not parts:
+        return False
+    # Nothing else is listed: from the first named part on, only the parts and joining words ("và", "các") remain.
+    tail = folded[min(folded.find(part) for part in parts):]
+    for part in sorted(set(parts), key=len, reverse=True):
+        tail = tail.replace(part, " ")
+    joiners = {fold(w) for w in get_language().cues.get("list_joiners", [])}
+    return set(re.findall(r"[a-z]+", tail)) <= joiners
+
+
 def _states_criterion_points(text: str, numbers: list[int], citations: list[dict], points: dict) -> bool:
     """A claim giving one criterion's score in a named product set ("tiêu chí «Chất lượng phục vụ» của bộ Dịch vụ du lịch
     cộng đồng có thang điểm 4") holds when a cited page shows that criterion of that set with exactly that max score
@@ -758,9 +792,7 @@ def _states_criterion_points(text: str, numbers: list[int], citations: list[dict
         (score, product_set)
         for n in numbers
         if 0 < n <= len(citations)
-        for score, title, product_set in points.get(
-            (citations[n - 1].get("source_id"), int(citations[n - 1].get("pdf_page") or 0)), ()
-        )
+        for score, title, product_set, _ in _cited_criteria(numbers, citations, points)
         if names(title)
     ]
     if any(score == value and names(product_set.split(",")[0].strip()) for score, product_set in named):
@@ -927,6 +959,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
             text, numbers, citations, checked.get("criterion_points", {})
         ):
             reasons, tier = [], "criterion_points_checked"
+        elif reasons and set(reasons) <= RANK_REASONS and _states_criterion_parts(
+            text, numbers, citations, checked.get("criterion_points", {})
+        ):
+            reasons, tier = [], "criterion_parts_checked"
         (rejected if reasons else accepted).append(
             {
                 "text": text,
