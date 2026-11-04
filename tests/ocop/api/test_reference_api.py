@@ -74,7 +74,7 @@ def test_verified_view_keeps_complete_provenance_and_exports_only_public_fields(
     result = client.get(f"/api/ocop/{kind}").json()
     assert result["status"] == "verified"
     item = result["items"][0]
-    assert set(item) == {"id", "label", "citations"}
+    assert set(item) == {"id", "label", "group", "points", "citations"}
     assert "internal_notes" not in item
     assert item["citations"][0].items() >= record["citations"][0].items()
 
@@ -161,9 +161,14 @@ def test_exported_references_list_only_checked_nodes_with_allowed_citation_field
         _graph_node("n4", "Criterion", "Tiêu chí bị loại", citation, status="rejected"),
         _graph_node("n5", "Product", "Sản phẩm A", citation),
         _graph_node("n6", "Regulation", "Không thuộc danh sách", citation),
+        _graph_node("s1", "CriterionSheet", "Bộ sản phẩm: Rau củ", citation),
     ]
+    # n1 belongs to a sheet; n2, of the same name, belongs to none and is not a criterion of any product set.
+    edges = [{"edge_id": "e1", "relation_type": "HAS_CRITERION", "source_entity_id": "s1", "target_entity_id": "n1",
+              "check": "passed"}]
     (data / "graph").mkdir()
     (data / "graph/nodes.jsonl").write_text("\n".join(json.dumps(n) for n in nodes) + "\n")
+    (data / "graph/edges.jsonl").write_text("\n".join(json.dumps(e) for e in edges) + "\n")
     root = data.parents[2]
     assert export_reference_files(root)["exported"] == {"criteria": 1, "products": 1}
     exported = json.loads((data / "knowledge/verified_criteria.jsonl").read_text())
@@ -174,7 +179,7 @@ def test_exported_references_list_only_checked_nodes_with_allowed_citation_field
     }
     served = client.get("/api/ocop/criteria").json()
     assert served["status"] == "verified"
-    assert [item["label"] for item in served["items"]] == ["Tiêu chí kiểm tra"]
+    assert [(item["label"], item["group"]) for item in served["items"]] == [("Tiêu chí kiểm tra", "Rau củ")]
     assert [item["label"] for item in client.get("/api/ocop/products").json()["items"]] == ["Sản phẩm A"]
 
 

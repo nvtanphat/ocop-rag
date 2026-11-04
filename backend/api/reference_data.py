@@ -25,6 +25,8 @@ class ReferenceCitation(SourceSpan):
 class ReferenceItem(BaseModel):
     id: str
     label: str
+    group: str | None = None  # the product set a criterion scores
+    points: float | None = None  # a criterion's maximum, as its cited row writes it
     citations: list[ReferenceCitation] = Field(min_length=1)
 
 

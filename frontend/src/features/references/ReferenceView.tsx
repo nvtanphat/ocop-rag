@@ -31,6 +31,7 @@ export function ReferenceView({
 }) {
   const products = kind === "products";
   const [doc, setDoc] = useState("");
+  const [group, setGroup] = useState("");
   const [perPage, setPerPage] = useState(products ? 20 : 25);
   const [table, setTable] = useState(false);
   const [page, setPage] = useState(1);
@@ -38,22 +39,30 @@ export function ReferenceView({
   const query = normalize(search);
   const items = data?.items ?? [];
   const docs = Array.from(new Set(items.flatMap((item) => item.citations.map((c) => c.source_id))));
-  const filtered = items.filter(
+  const inDoc = items.filter((item) => !doc || item.citations.some((c) => c.source_id === doc));
+  const groups = Array.from(new Set(inDoc.map((item) => item.group).filter((g): g is string => !!g)));
+  const filtered = inDoc.filter(
     (item) =>
-      (!doc || item.citations.some((c) => c.source_id === doc)) &&
-      (!query || normalize(item.label).includes(query)),
+      (!group || item.group === group) &&
+      (!query || normalize(`${item.label} ${item.group ?? ""}`).includes(query)),
   );
-  useEffect(() => setPage(1), [search, doc, perPage, table]);
+  useEffect(() => setGroup(""), [doc]);
+  useEffect(() => setPage(1), [search, doc, group, perPage, table]);
   const start = (page - 1) * perPage;
   const rows = filtered.slice(start, start + perPage);
 
   const exportCsv = () => {
     const cell = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
     const csv =
-      "\uFEFFSTT,Nội dung,Văn bản,Trang\n" +
+      (products ? "\uFEFFSTT,Nội dung,Văn bản,Trang\n" : "\uFEFFSTT,Bộ sản phẩm,Tiêu chí,Điểm tối đa,Văn bản,Trang\n") +
       filtered
         .map((item, index) =>
-          [index + 1, item.label, item.citations.map((c) => docName(c.source_id)).join("; "), item.citations.map((c) => c.pdf_page).join("; ")]
+          [
+            index + 1,
+            ...(products ? [item.label] : [item.group ?? "", item.label, item.points ?? ""]),
+            Array.from(new Set(item.citations.map((c) => docName(c.source_id)))).join("; "),
+            item.citations.map((c) => c.pdf_page).join("; "),
+          ]
             .map(cell)
             .join(","),
         )
@@ -117,6 +126,22 @@ export function ReferenceView({
             </option>
           ))}
         </select>
+        {!products && (
+          <select
+            className="sel"
+            style={{ width: 260 }}
+            aria-label="Bộ sản phẩm"
+            value={group}
+            onChange={(event) => setGroup(event.target.value)}
+          >
+            <option value="">Tất cả bộ sản phẩm</option>
+            {groups.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        )}
         <button type="button" className="btn-b" onClick={exportCsv} disabled={!filtered.length}>
           <Icon name="download" size={16} strokeWidth={2} />
           Xuất danh sách
@@ -217,15 +242,19 @@ export function ReferenceView({
             <thead>
               <tr>
                 <th style={{ width: 60 }}>#</th>
-                <th>Nội dung tiêu chí</th>
-                <th style={{ width: 280 }}>Căn cứ văn bản</th>
+                <th style={{ width: 200 }}>Bộ sản phẩm</th>
+                <th>Tiêu chí</th>
+                <th style={{ width: 90 }}>Điểm tối đa</th>
+                <th style={{ width: 260 }}>Căn cứ văn bản</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((item, index) => (
                 <tr key={item.id}>
                   <td className="n">{start + index + 1}</td>
+                  <td>{item.group}</td>
                   <td className="lbl">{item.label}</td>
+                  <td className="n">{item.points ?? "—"}</td>
                   <td>{links(item)}</td>
                 </tr>
               ))}

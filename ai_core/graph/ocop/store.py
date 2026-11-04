@@ -7,6 +7,7 @@ all :OcopNode nodes, which can contain retained historical snapshots.
 
 from __future__ import annotations
 import json
+import re
 from pathlib import Path
 from ai_core.graph.ocop.builder import records
 from ai_core.graph.ocop.integrity import validate_graph_snapshot
@@ -159,6 +160,7 @@ def publish_reviewed_graph(root, *, uri: str, user: str, password: str) -> dict:
 
 
 _REFERENCE_KINDS = {"criteria": "Criterion", "products": "Product"}
+_LETTERS = "abcd" + chr(0x111) + "eghiklmnopqrstuvxy"  # letter items in Vietnamese alphabetical order
 _CITATION_FIELDS = (
     "source_id", "evidence_unit_id", "source_sha256", "pdf_page", "bbox", "printed_page", "table_bbox",
     "block_id", "table_id", "cell_id",
@@ -176,38 +178,85 @@ def export_reference_files(root) -> dict:
 
     base = Path(root) / "data/processed/ocop"
     version = json.loads((base / "index/manifest.json").read_text(encoding="utf-8"))["corpus_version"]
-    nodes = [json.loads(line) for line in (base / "graph/nodes.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    nodes = {
+        node["node_id"]: node
+        for node in (json.loads(line) for line in (base / "graph/nodes.jsonl").read_text(encoding="utf-8").splitlines() if line)
+    }
+    edges = list(records(base / "graph/edges.jsonl"))
+    parent = {
+        e["target_entity_id"]: e["source_entity_id"]
+        for e in edges
+        if e.get("relation_type") in ("HAS_CRITERION", "HAS_SUBCRITERION") and e.get("check") == "passed"
+    }
+    documents = {n["node_id"]: n["source_id"] for n in nodes.values() if n.get("node_type") == "SourceDocument"}
+    replaced = {documents[e["target_entity_id"]] for e in edges
+                if e.get("relation_type") == "REPLACES" and e.get("target_entity_id") in documents}
+
+    def sheet(node_id: str) -> dict:
+        seen = set()
+        while node_id in parent and node_id not in seen:
+            seen.add(node_id)
+            node_id = parent[node_id]
+        node = nodes.get(node_id, {})
+        return node if node.get("node_type") == "CriterionSheet" else {}
+
+    def position(node_id: str) -> tuple:
+        """Where a criterion stands in its sheet as the document numbers it: its part (A, B, C), then its number
+        ("1.2" before "1.10"), a lettered criterion ("b)") right after its numbered group."""
+        chain, seen = [], set()
+        while node_id in nodes and node_id not in seen:
+            seen.add(node_id)
+            chain.append(nodes[node_id])
+            node_id = parent.get(node_id, "")
+        part = next((str((n.get("properties") or {}).get("part_letter") or "") for n in chain
+                     if (n.get("properties") or {}).get("part_letter")), "")
+        numbers: list[int] = []
+        for n in reversed(chain):
+            label = str(n.get("label") or "")
+            if match := re.match(r"\s*(\d+(?:\.\d+)*)", label):
+                numbers = [int(x) for x in match[1].split(".")]
+            elif (letter := re.match(r"\s*([^\W\d_])\)", label)) and letter[1].lower() in _LETTERS:
+                numbers = numbers[:1] + [_LETTERS.index(letter[1].lower()) + 1]
+        return part, tuple(numbers)
+
     counts = {}
     for kind, node_type in _REFERENCE_KINDS.items():
-        lines, seen = [], set()
-        for node in nodes:
+        rows, seen = [], set()
+        for node in nodes.values():
             if node.get("node_type") != node_type or not usable(node) or node.get("review_status") != "verified":
                 continue
-            citations, keys = [], set()
+            # One citation per page: the regions of one node on one page open the same evidence.
+            citations, pages = [], set()
             for citation in node.get("citations", []):
-                key = (citation.get("evidence_unit_id"), citation.get("pdf_page"), tuple(citation.get("bbox") or ()))
-                if key in keys or not all(citation.get(f) for f in ("source_id", "evidence_unit_id", "pdf_page", "bbox")):
+                page = (citation.get("evidence_unit_id"), citation.get("pdf_page"))
+                if page in pages or not all(citation.get(f) for f in ("source_id", "evidence_unit_id", "pdf_page", "bbox")):
                     continue
-                keys.add(key)
+                pages.add(page)
                 citations.append({f: citation[f] for f in _CITATION_FIELDS if citation.get(f) is not None})
             label = " ".join(str(node.get("label", "")).split())
-            if not citations or not label or (label, citations[0]["source_id"]) in seen:
+            if not citations or not label:
                 continue
-            seen.add((label, citations[0]["source_id"]))
-            lines.append(
-                json.dumps(
-                    {
-                        "id": node["node_id"],
-                        "label": label,
-                        "corpus_version": version,
-                        "review_status": "verified",
-                        "visibility": "public",
-                        "citations": citations,
-                    },
-                    ensure_ascii=False,
-                    sort_keys=True,
-                )
-            )
+            record = {"id": node["node_id"], "label": label, "corpus_version": version, "review_status": "verified",
+                      "visibility": "public", "citations": citations}
+            if kind == "criteria":
+                # Each sheet's criterion is its own row: the product set it scores and its maximum, which the graph
+                # holds only when the criterion's own cited row writes it.
+                owner = sheet(node["node_id"])
+                if not owner:
+                    continue
+                props = node.get("properties") or {}
+                record["group"] = " ".join(str(owner["label"]).split(":", 1)[-1].split())
+                if props.get("max_points") is not None:
+                    record["points"] = props["max_points"]
+                order = (citations[0]["source_id"] in replaced, citations[0]["source_id"],
+                         int((owner.get("properties") or {}).get("sheet_number") or 0), position(node["node_id"]))
+            else:
+                if (label, citations[0]["source_id"]) in seen:
+                    continue
+                seen.add((label, citations[0]["source_id"]))
+                order = (citations[0]["source_id"] in replaced, citations[0]["source_id"], min(c["pdf_page"] for c in citations), 0)
+            rows.append((order, json.dumps(record, ensure_ascii=False, sort_keys=True)))
+        lines = [line for _, line in sorted(rows, key=lambda item: item[0])]
         target = base / "knowledge" / f"verified_{kind}.jsonl"
         temporary = target.with_suffix(".jsonl.tmp")
         temporary.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")

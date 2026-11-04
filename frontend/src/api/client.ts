@@ -87,6 +87,8 @@ export interface Health {
 export interface ReferenceItem {
   id: string
   label: string
+  group?: string | null
+  points?: number | null
   citations: Array<Citation & { evidence_unit_id: string; source_sha256: string; bbox: Box }>
 }
 export interface ReferenceResponse {
