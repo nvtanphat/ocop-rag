@@ -283,3 +283,15 @@ def test_a_star_level_after_a_pdf_line_wrap_belongs_to_the_record_that_names_the
     records = _split_claims(_unwrapped(text))
     assert records[0].startswith("1. Công nhận sản phẩm Mứt Atiso đỏ") and records[0].endswith("4 sao.")
     assert _split_claims(_unwrapped("Cột: A | B\n1 | x\n2 | y")) == ["Cột: A | B", "1 | x", "2 | y"]
+
+
+def test_a_score_claim_binds_to_the_item_it_names_not_the_heading_or_a_sibling():
+    from ai_core.orchestration.ocop.verification import _sensitive_records_agree
+
+    text = ("Điều 3. Bộ tiêu chí\n1. Bộ tiêu chí gồm 03 phần:\na) Phần A: Các tiêu chí về sản phẩm (40 điểm), gồm tổ chức.\n"
+            "b) Phần B: Các tiêu chí về tiếp thị (25 điểm), gồm tiếp thị.\n"
+            "3. Phân hạng. Tổng điểm đánh giá cho mỗi sản phẩm tối đa là 100 điểm và được phân thành 05 hạng:")
+    row = {"source_id": "X", "evidence_unit_id": "u", "text": text, "review_status": "verified", "source_spans": [{"pdf_page": 2}]}
+    agree = lambda claim, assertion: _sensitive_records_agree(claim, assertion, [row], frozenset({assertion}))  # noqa: E731
+    assert agree("Phần A trong bộ tiêu chí tại Điều 3 có tối đa 40 điểm.", "40 điểm")
+    assert not agree("Phần B trong bộ tiêu chí có tối đa 40 điểm.", "40 điểm")

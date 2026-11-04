@@ -200,23 +200,46 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
         else:
             identity = (index,)
         groups.setdefault(identity, []).append(_unwrapped(_labelled_text(row)))
-    records = [
-        part
-        for identity, texts in groups.items()
-        for part in ([" ".join(texts)] if identity[0] == "criterion_block" else _split_claims(" ".join(texts)))
-    ]
+    # Each record is read with the lead-in above it ("Điều 3. Bộ tiêu chí … gồm 03 phần:" over "a) Phần A … (40 điểm)"):
+    # the heading's words then belong to every item under it, so they cannot make the heading itself the subject
+    # record, and the item's own words decide. The assertion must still be stated by the item itself.
+    records, leads = [], []
+    for identity, texts in groups.items():
+        if identity[0] == "criterion_block":
+            records.append(" ".join(texts))
+            leads.append("")
+            continue
+        lead = ""
+        for part in _split_claims(" ".join(texts)):
+            records.append(part)
+            leads.append(lead)
+            if "|" not in part and not re.search(r"[.!?]\s*$", part):
+                lead = lead + " " + part
     lang = get_language()
     terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)), accent_aware=True)
              if not word.isdigit()}
-    scores = [len(terms & set(lang.content_words(record, accent_aware=True))) for record in records]
+    # A score or star claim is about a record that states a score or star: a heading that states none ("Điều 3. Bộ
+    # tiêu chí …") is not its subject however many words it shares. A record of the wrong item still states its own.
+    scores = [len(terms & set(lang.content_words(lead + " " + record, accent_aware=True)))
+              if score_assertion().search(record) or "|" in record else -1
+              for lead, record in zip(leads, records)]
+    # An item the claim names by its letter ("Phần A") is the record that carries that letter, before any word count:
+    # "Tổng điểm … tối đa là 100 điểm" shares "tối đa" with the claim but is not item A.
+    letters = set(re.findall(r"\b[A-Z]\b", score_assertion().sub(" ", MARKER.sub("", claim))))
+    lettered = [bool(letters & set(re.findall(r"\b[A-Z]\b", record))) for record in records]
+    if letters and any(flag and score >= 0 for flag, score in zip(lettered, scores)):
+        scores = [score if flag else -1 for flag, score in zip(lettered, scores)]
     best = max(scores, default=0)
-    candidates = [record for record, score in zip(records, scores) if score == best]
+    pairs = [(lead, record) for lead, record, score in zip(leads, records, scores) if score == best]
     # Parallel items tie on words ("a) 4 sao: 26 sản phẩm của 07 chủ thể", "b) 3 sao: 32 sản phẩm của 13 chủ thể"): the
-    # one that also carries the claim's other figures ("13 chủ thể") is the record the claim is about.
-    figures = set(re.findall(r"\d+(?:[.,]\d+)?", score_assertion().sub(" ", MARKER.sub("", claim))))
-    if figures and len(candidates) > 1:
-        carrying = [record for record in candidates if figures <= set(re.findall(r"\d+(?:[.,]\d+)?", record))]
-        candidates = carrying or candidates
+    # one that also carries most of the claim's other figures ("13 chủ thể") or item letters ("Phần A") is the record
+    # the claim is about.
+    marks = re.compile(r"\d+(?:[.,]\d+)?|\b[A-Z]\b")
+    figures = set(marks.findall(score_assertion().sub(" ", MARKER.sub("", claim))))
+    if figures and len(pairs) > 1:
+        carried = [len(figures & set(marks.findall(record))) for _, record in pairs]
+        pairs = [pair for pair, count in zip(pairs, carried) if count == max(carried)]
+    candidates = [record for _, record in pairs]
     squashed = [re.sub(r"\s+", " ", record.casefold()) for record in candidates]
     if not candidates:
         return False
