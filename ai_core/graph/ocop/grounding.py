@@ -15,7 +15,7 @@ import json
 
 from ai_core.knowledge.ocop.authorities import find_authorities, resolve
 from ai_core.knowledge.ocop.procedures import _subjects, _scope_header, ACTION, collective_authorities
-from ai_core.processing.ocop.business_candidates import _row_text
+from ai_core.processing.ocop.business_candidates import _row_text, unbold
 from ai_core.knowledge.ocop.shapes import PARENT_SHAPES
 from ai_core.knowledge.ocop.contracts import (
     ENTITY_ATTRIBUTE_KEYS,
@@ -114,8 +114,9 @@ def norm(text):
 
 
 def _literal(node):
+    # The label was read without the reviewer's bold ("**4.2. Tổ chức phân phối** *(Gồm …)*"); so is the quote.
     label = norm(node["label"])
-    return len(label) >= 3 and any(label in norm(c.get("quote")) for c in node.get("citations", []))
+    return len(label) >= 3 and any(label in norm(unbold(str(c.get("quote") or ""))) for c in node.get("citations", []))
 
 
 def _star_band_literal(node):
@@ -289,6 +290,13 @@ def _record_rows(node, units):
                 yield row, columns, ref["evidence_unit_id"]
 
 
+def _part_titled(props: dict, text: str) -> bool:
+    """A part heading written as the document's own title of that part behind a short OCR remnant of its "Phần B:" lead
+    ("Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)"); the extractor records that title (``part_title``)."""
+    title = props.get("part_title")
+    return bool(title) and re.match(r"\S{0,4}\s*" + re.escape(norm(title)) + r"\b", text) is not None
+
+
 def _entity_typed(node, units):
     """Reject unsupported role assignments even when the label occurs literally."""
     kind, label = node["node_type"], node["label"]
@@ -300,7 +308,8 @@ def _entity_typed(node, units):
     if kind == "Point":
         return bool(re.match(r"[a-zđ][.)]\s", norm(label)))
     if kind == "Criterion":
-        return bool(_number(node) or _criterion_letter(node) or re.match(r"phần\s+[abc]\b", norm(label)))
+        return bool(_number(node) or _criterion_letter(node) or re.match(r"phần\s+[abc]\b", norm(label))
+                    or _part_titled(node.get("properties", {}), norm(label)))
     if kind == "CriterionSheet":
         return bool(re.search(r"(?:bộ\s+)?sản phẩm\s*:", norm(label)))
     if kind == "ScoreOption":
@@ -494,7 +503,10 @@ def _entails(edge, source, target, units):
             and b.get("part_letter")
             and any(
                 re.match(r"phần\s+" + re.escape(str(b["part_letter"]).casefold()) + r"\b", q)
-                for q in _quotes(target)
+                # "Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)": the heading is the document's own title of that part, behind a short
+                # OCR remnant of its lead.
+                or _part_titled(b, q)
+                for q in (re.sub(r"^[*_\s]+", "", q) for q in _quotes(target))
             )
         )
     if relation == "HAS_SUBCRITERION":

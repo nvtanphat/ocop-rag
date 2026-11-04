@@ -319,3 +319,15 @@ def test_reviewed_bold_ocr_cut_part_title_and_sentence_case_groups_keep_the_shee
     }
     assert parents["Thái độ thân thiện"] == "4. Chất lượng phục vụ"
     assert "Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)" not in parents
+
+
+def test_an_ocr_cut_part_heading_records_the_document_title_it_was_read_from():
+    from tests.fixtures.criteria import table
+
+    other = unit("DOC.CURRENT", 2, "Phần B: KHẢ NĂNG TIẾP THỊ (25 điểm)", "paragraph")
+    previous = table(2, [("Phần B: KHẢ NĂNG TIẾP THỊ (25 điểm)", 25), ("4. TIẾP THỊ", 13)])
+    header = unit("DOC.CURRENT", 3, "1. Bộ sản phẩm: Rau củ\n(Sản phẩm: Thực phẩm. Nhóm: Thực phẩm tươi sống)", "paragraph")
+    rows = table(3, [("Phần A: SẢN PHẨM", 40), ("Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)", 25)])
+    result = extract([other, previous, header, rows])
+    cut = next(e for e in result["business_entities"] if e["label"] == "Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)")
+    assert cut["attributes"]["part_title"] == "khả năng tiếp thị"

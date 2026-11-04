@@ -1,6 +1,6 @@
 {
-  "pipeline_version": "ocop-evidence-511b22cb55d2",
-  "corpus_version": "e1a9a59e63b81c8278b0",
+  "pipeline_version": "ocop-evidence-8ff9780fc90d",
+  "corpus_version": "06ac6698eb3c2ef1d61c",
   "semantic_proposals": {
     "enabled": true,
     "model": "gpt-6-sol:72c16826fa67c922fa41",

@@ -408,6 +408,11 @@ def extract_semantics(
                         "max_points_candidate": score,
                         "level": 0 if part else 3 if letter else number.count(".") + 1 if number else None,
                         "part_letter": part,
+                        # The same document's full part title the letter was read from ("khả năng tiếp thị" of "Phần B:
+                        # KHẢ NĂNG TIẾP THỊ"), when OCR lost the "Phần B" lead of this heading: what grounding checks.
+                        "part_title": next(
+                            (t for t in part_titles[row["source_id"]] if t and part_title(label).endswith(t)), None
+                        ) if part and not part_re.match(label) else None,
                         "criterion_letter": letter[1].casefold() if letter else None,
                         "table_id": row.get("table_id"),
                         "row": row.get("row"),

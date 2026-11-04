@@ -1,8 +1,8 @@
 {
   "bm25": {
-    "corpus_hash": "44767301448220fec28fa502529baeeb4c475d293736ecf7a3cf104eafca8a89",
+    "corpus_hash": "7b31e8815a274205692276f7948522f8e2e80baf2c9c48b3b5ff55554f241f79",
     "documents": 2655,
-    "records_hash": "e90151db0e21a847cd42ac5f4ed5ce7a244945b42af501eede2ddddf8ce52a2b",
+    "records_hash": "25a7dfb94371b39d1dc009b80faf98e600c15bb3822a4a8fc97503858565f339",
     "tokenizer": "unicode_casefold_vi_folded",
     "vocabulary_size": 3527
   },
@@ -19,7 +19,7 @@
     "token_budget": 512,
     "tokenizer_path": null
   },
-  "corpus_version": "a02cea050891523de45d",
+  "corpus_version": "ee1578bfb74bdf6cd84c",
   "counts": {
     "chunks": 2655,
     "evidence_units": 1666,
@@ -27,7 +27,7 @@
     "structured_records": 8951
   },
   "dense": {
-    "collection": "ocop_a02cea050891523de45d_8dec3ae85428",
+    "collection": "ocop_ee1578bfb74bdf6cd84c_8dec3ae85428",
     "dimension": 768,
     "enabled": true,
     "host": "localhost",
@@ -51,7 +51,7 @@
   },
   "index_version": "ocop-retrieval-ec655b9ea0fc",
   "source_complete": true,
-  "source_knowledge_version": "e1a9a59e63b81c8278b0",
+  "source_knowledge_version": "06ac6698eb3c2ef1d61c",
   "status": "hybrid_ready",
-  "structural_graph_version": "24a16c40a301d68594ba"
+  "structural_graph_version": "6fe7e27a8edaa6321f33"
 }

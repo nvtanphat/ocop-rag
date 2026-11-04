@@ -547,6 +547,37 @@ class ToolRegistry:
         }
         return chosen + [graph.nodes[i] for i in (*sorted(subgroups), *sorted(groups)) if i in graph.nodes]
 
+    def _named_sheet_parts(self, graph, linked: list[dict], query: str) -> list[dict]:
+        """The part or criterion of a linked sheet the question names ("Phần B", "khả năng tiếp thị", "tổ chức sản xuất")
+        with the criteria directly under it: the sheet's structure from the checked graph, so a listing question ("gồm
+        những tiêu chí gì", "có mấy tiêu chí nhỏ") reads every item instead of the passages a text search happened to rank."""
+        sheets = {n["node_id"] for n in linked if n["node_type"] == "CriterionSheet"}
+        children: dict[str, list[str]] = {}
+        for edge in graph.edges:
+            if edge["relation_type"] in ("HAS_CRITERION", "HAS_SUBCRITERION"):
+                children.setdefault(edge["source_entity_id"], []).append(edge["target_entity_id"])
+        folded = fold(query)
+        letters = {m.casefold() for m in re.findall(r"(?<![^\W\d_])([A-Ca-c])(?![^\W\d_])", query)}
+        named, stack = [], [c for sheet in sheets for c in children.get(sheet, [])]
+        while stack:
+            node = graph.nodes.get(stack.pop())
+            if not node or node["node_type"] != "Criterion":
+                continue
+            stack.extend(children.get(node["node_id"], []))
+            title = fold(re.sub(r"^\s*(?:\d+(?:[.,]\d+)*[.,)]?|[^\W\d_]\))\s*", "", node["label"]))
+            title = re.split(r"\s*[(:]", re.sub(r"^\S{1,4}\s+(?:[a-c]\s*[:.]?\s+)?", "", title) if (node.get("properties") or {}).get("part_letter") else title)[0].strip()
+            letter = str((node.get("properties") or {}).get("part_letter") or "").casefold()
+            if (len(title.split()) >= 2 and re.search(r"(?<![a-z0-9])" + re.escape(title) + r"(?![a-z0-9])", folded)) or (
+                letter and letter in letters and re.search(r"(?<![a-z0-9])phan\s+" + letter + r"(?![a-z0-9])", folded)
+            ):
+                named.append(node)
+        parts = {n["node_id"]: n for n in named}
+        for node in named:
+            for child in children.get(node["node_id"], []):
+                if child in graph.nodes and graph.nodes[child]["node_type"] == "Criterion":
+                    parts.setdefault(child, graph.nodes[child])
+        return list(parts.values())
+
     def _star_level_seeds(self, nodes: list[dict], query: str, slots: dict) -> list[str]:
         """Star-level nodes of the current framework that the question names by level or by a score inside their range."""
         framework = self._framework_source()
@@ -1247,8 +1278,10 @@ class ToolRegistry:
             }
             nodes = [n for n in graph.nodes.values() if n["node_type"] in mapping[name]]
             linked = self._linked_product_sheets(graph, slots, query) if name == "lookup_product_subgroup" else None
+            parts: list[dict] = []
             if linked:
-                nodes = linked
+                parts = self._named_sheet_parts(graph, linked, query)
+                nodes = parts + linked
             elif name == "lookup_product_subgroup" and not slots.get("product_name"):
                 # The question names no product set. Returning the first taxonomy nodes would answer every product
                 # with the same group; an ordinary miss lets the planner's text recovery search instead.
@@ -1357,6 +1390,16 @@ class ToolRegistry:
                 scoped_units = _section_evidence_units(graph, graph.nodes[sheets[0]], scoped_units)
                 nodes = [n for n in nodes if n["node_id"] in scope]
             rows = graph.node_rows(nodes)
+            if parts:
+                # One passage per named part: the sheet's structure is the list of its parts, not every page they recur on.
+                # The sheet's own pages stay as they were.
+                part_ids = {n["node_id"] for n in parts}
+                seen_nodes: set = set()
+                rows = [
+                    r for r in rows
+                    if not (set(r.get("graph_node_ids") or ()) & part_ids)
+                    or not (tuple(r.get("graph_node_ids") or ()) in seen_nodes or seen_nodes.add(tuple(r.get("graph_node_ids") or ())))
+                ]
             if name == "lookup_recognition" and asked_products:
                 for row in rows:
                     links = [
