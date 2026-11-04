@@ -255,7 +255,7 @@ def check_sensitive_claims(
 
     With ``citations`` each sentence is checked against the verified text of the sources *it cites*: "5 sao" in
     one sentence is not excused by a different verified source that happens to contain "5 sao". Without them the
-    pooled verified text is used (legacy behaviour). Still a guard, not semantic entailment: a matching number
+    pooled verified text of all rows is used. Still a guard, not semantic entailment: a matching number
     alone cannot establish application to a particular sheet.
     """
 

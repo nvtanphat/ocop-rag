@@ -16,7 +16,7 @@ Các dự án tham khảo ViCAS-RAG và Legal-RAG giải quyết vấn đề nà
 ## Quyết định
 
 1. **Lưu lịch sử câu hỏi độc lập gần nhất trong bộ nhớ phiên**:
-   - Mở rộng cấu trúc trạng thái phiên tại `ai_core/orchestration/ocop/memory.py` với trường `recent`: lưu tối đa 3 câu hỏi độc lập gần nhất (`MAX_TURNS = 3`), câu mới nhất đứng đầu.
+   - Trạng thái phiên tại `ai_core/orchestration/ocop/memory.py` có trường `recent`: tối đa 3 câu hỏi độc lập gần nhất (`MAX_TURNS = 3`), câu mới nhất đứng đầu.
    - Khi sanitize phiên, chỉ các chuỗi hợp lệ dưới 600 ký tự mới được giữ lại trong `recent`.
 
 2. **Tầng mô hình viết lại câu hỏi nối tiếp (`ai_core/orchestration/ocop/followup_model.py`)**:
@@ -30,15 +30,14 @@ Các dự án tham khảo ViCAS-RAG và Legal-RAG giải quyết vấn đề nà
      - **Giữ lại ý hỏi**: Câu viết lại phải giữ lại ít nhất một phần từ nội dung cốt lõi của câu hỏi gốc (`not own.isdisjoint(words)`).
    - Văn bản viết lại chỉ dùng làm chuỗi tìm kiếm văn bản (`effective_query`), không dùng làm bằng chứng pháp lý; các slot cấu trúc phục vụ công cụ tra cứu bảng vẫn do luật quản lý.
 
-3. **Bảo tồn câu hỏi người dùng khi thực thể mới không có trong câu trước (commit `5e200b2`)**:
+3. **Bảo tồn câu hỏi người dùng khi thực thể mới không có trong câu trước**:
    - Trong `memory.py:rewrite`, nếu người dùng hỏi về một sản phẩm hoặc chủ thể mới mà tên cũ không xuất hiện trong văn bản câu trước để hoán đổi (ví dụ: "Còn hạt sen của HTX Sen Huế được mấy sao?" sau câu hỏi "Siro của Hichagol..."), hệ thống nhận diện `unplaced` và chuyển sang phương pháp `state_scope`: giữ nguyên câu hỏi của người dùng kèm phạm vi bổ sung, thay vì viết lại nhầm thành sản phẩm cũ.
 
 ## Hệ quả
 
-Đo lường ngày 2026-11-01 trên bộ dữ liệu `data/evaluations/ocop/ocop_session_memory_gold_50.json` (50 lượt hội thoại):
-- Commit `6630d15`: số lượt tìm đúng trang vàng (`gold page found`) tăng từ 41/50 lên 44/50.
-- Commit `5e200b2`: các ca SM013 và SM014 khôi phục đúng tên sản phẩm thay vì bị kéo theo sản phẩm cũ; tỷ lệ tìm đúng trang duy trì ổn định 44/50.
-- Commit `909470f`: bổ sung nhận diện viết tắt tên chủ thể ("HTX" và "Hợp tác xã") trong `tools.py` giúp 4 hội thoại bị ảnh hưởng tăng từ 14/20 lên 16/20 trang vàng (SM013, SM015).
+- Câu trỏ ngược tới chủ thể, sản phẩm hay nhóm ở các lượt trước được viết thành câu độc lập để truy xuất, kể cả khi tên không nằm ở lượt liền kề.
+- Câu viết lại không thể thêm số hay tên riêng mà hội thoại chưa nhắc; câu không qua `validate` bị bỏ và luật quản lý phạm vi.
+- Mỗi câu trỏ ngược tốn thêm một lượt gọi mô hình.
 
 ## Phương án đã cân nhắc
 

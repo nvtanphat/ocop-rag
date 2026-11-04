@@ -10,7 +10,7 @@
 3. Mọi lỗi mô hình/hạ tầng ở nhánh dense rơi về sparse với `dense_unavailable:<loại lỗi>`.
 4. Tham số truy xuất (RRF k và trọng số, kích thước pool, số ứng viên rerank, batch, số luồng, cache) nằm ở `configs/ocop_retrieval.yaml`.
 5. Rerank: tối đa `rerank_candidates` cặp; `max_length` bằng ngân sách cặp (cặp quá dài bị cắt và gắn cờ `rerank_input_truncated`); batch nhỏ; luồng torch theo cấu hình; cache điểm LRU theo mô hình/câu hỏi/đoạn. Cờ rerank áp dụng cho cả nhánh tìm trong phiếu và trong Điều.
-6. Không dùng ONNX/int8: bản ONNX của bge-reranker-v2-m3 chỉ do cộng đồng phát hành, lượng tử hóa động của torch không ổn định với bản transformers được ghim, và chất lượng sau lượng tử hóa chưa được đo.
+6. Rerank chạy bản ONNX int8 của cross-encoder do `tools/export_reranker_onnx.py` xuất từ mô hình torch đã ghim, khi thư mục `<tên-model>-onnx-int8` có trong kho mô hình (`retrieval.rerank_onnx`); thiếu thư mục thì dùng mô hình torch. Bản int8 cho cùng thứ hạng trên bộ truy xuất và nhanh hơn trên CPU.
 
 ## Hệ quả
 Các danh sách tại `SCHEMA_REVISION` và `INDEX_VERSION` xác định mã làm đổi phiên bản

@@ -706,8 +706,7 @@ class ToolRegistry:
             )
             earlier.extend(found.get("results", [])[:4])
             # A part adds its best retrieval.part_new_pages pages the other searches did not find: rows already found and further
-            # chunks of an admitted page are free. Its first four rows were often chunks of the local guidance the whole
-            # question had already returned, and cut the national rule page it found at rank 5-8 (MH011: QĐ26 p.4, p.5).
+            # chunks of an admitted page are free, so a page the whole question already returned cannot crowd out a new one.
             pages: set = set()
             for row in found.get("results", []):
                 key = self._hit_key(row)

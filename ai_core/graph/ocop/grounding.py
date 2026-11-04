@@ -843,7 +843,6 @@ def check_graph(nodes, edges, units, *, registry=None):
         _add_supported_attributes(view, node, nodes, exclude)
         if kind == "EvidenceUnit" and len(node.get("evidence_unit_ids", [])) == 1:
             # Copy the backing transcription, never candidate business attributes.
-            # Runtime lookup no longer needs a parallel candidates/evidence store.
             backing = units.get(node["evidence_unit_ids"][0], {})
             view["properties"].update(
                 {

@@ -38,10 +38,9 @@ SCHEMA_REVISION = code_fingerprint(
     ],
 )
 
+# Criterion, form and recognition rows are built by the typed business layer; the remaining candidates stay
+# unverified facts beside it.
 CANDIDATE_FILES = {
-    "criterion_candidates": "Criterion",
-    "form_candidates": "FormTemplate",
-    "recognition_candidates": "CandidateFact",
     "taxonomy_candidates": "CandidateFact",
     "temporal_candidates": "CandidateFact",
     "domain_facts": "CandidateFact",
@@ -485,16 +484,9 @@ def build_graph(
                 label=source,
             )
         add_edge("LOCATED_IN", eid, source_node, evid, source, _status(row))
-    has_business_layer = (knowledge / "business_entities.jsonl").exists()
     # Domain candidates with evidence references but no fabricated structured score options.
     if include_candidates:
         for stem, kind in CANDIDATE_FILES.items():
-            if has_business_layer and stem in (
-                "criterion_candidates",
-                "form_candidates",
-                "recognition_candidates",
-            ):
-                continue  # replaced by typed, grounded business ontology
             for row in records(knowledge / (stem + ".jsonl")):
                 evid = row.get("evidence_unit_id")
                 if evid not in evidence_by_id:
@@ -539,42 +531,9 @@ def build_graph(
                 )
                 evidence_node = evidence_node_ids[(source, evid)]
                 add_edge("SUPPORTED_BY", cid, evidence_node, evid, source, _status(row))
-    # Form-field candidates are derived from OCR field labels, never promoted
-    # to verified required fields at this stage.
-    for row in (
-        records(knowledge / "form_candidates.jsonl") if include_candidates and not has_business_layer else ()
-    ):
-        form_id = row.get("candidate_id")
-        source = row.get("source_id")
-        evid = row.get("evidence_unit_id")
-        if (
-            not form_id
-            or not source
-            or evid not in evidence_by_id
-            or evidence_by_id[evid]["source_id"] != source
-            or form_id not in nodes
-        ):
-            continue
-        for position, label in enumerate(row.get("fields_candidate", [])[:35]):
-            value = str(label).strip()
-            if not value:
-                continue
-            fid = stable_id("form_field_candidate", source, [form_id, position, value], revision=version)
-            add_node(
-                fid,
-                "FormField",
-                source_id=source,
-                evidence_ids=[evid],
-                status="needs_review",
-                label=value,
-                properties={"field_position": position},
-                citations=_span_citations(evidence_by_id[evid], evid, source) or [],
-            )
-            add_edge("HAS_FIELD", form_id, fid, evid, source, "needs_review")
-    # Business-grounded, strictly typed layer. This REPLACES legacy domain
-    # candidate materialization when available, avoiding duplicate products,
-    # decisions and form fields. All OCR candidates remain unverified.
-    if has_business_layer and include_candidates:
+    # Business-grounded, strictly typed layer: products, decisions, criteria and form fields, each once. All OCR
+    # candidates remain unverified.
+    if include_candidates:
         business_rows = list(records(knowledge / "business_entities.jsonl"))
         # Debug extraction layers remain in knowledge/index. The agent graph
         # exposes typed criteria/options and MINIMUM_FOR instead of their shadows.

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from ai_core.orchestration.ocop.router import route_query, extract_slots
 from ai_core.orchestration.ocop.contracts import Intent, Route
-from ai_core.orchestration.ocop.planner import build_plan, needs_recovery
+from ai_core.orchestration.ocop.planner import build_plan, evidence_ids, recovery_safe
 from ai_core.orchestration.ocop.workflow import OcopAgent
 from ai_core.retrieval.ocop.index_pipeline import create_bm25
 
@@ -109,13 +109,10 @@ def test_tool_plan_rejects_private_public_mix():
 def test_planner_budget_and_single_safe_recovery():
     route = route_query("Mẫu số 02 cần điền gì?")
     plan = build_plan(route)
-    assert needs_recovery(route, [{"tool": "lookup_form", "output": {"results": []}}], plan)
-    assert not needs_recovery(
-        route,
-        [{"tool": "lookup_form", "output": {"results": [{"evidence_unit_id": "u", "source_id": "D"}]}}],
-        plan,
-    )
-    assert not needs_recovery(
+    empty = [{"tool": "lookup_form", "output": {"results": []}}]
+    assert recovery_safe(route, empty, plan) and not evidence_ids(empty)
+    assert evidence_ids([{"tool": "lookup_form", "output": {"results": [{"evidence_unit_id": "u", "source_id": "D"}]}}])
+    assert not recovery_safe(
         route,
         [{"tool": "lookup_form", "output": {"status": "document_not_found_or_ambiguous", "results": []}}],
         plan,

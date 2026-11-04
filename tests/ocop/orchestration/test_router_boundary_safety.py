@@ -7,7 +7,7 @@ import pytest
 from ai_core.orchestration.ocop.tools import ToolRegistry
 from ai_core.orchestration.ocop.router import route_query
 from ai_core.orchestration.ocop.workflow import OcopAgent
-from ai_core.orchestration.ocop.planner import build_plan, needs_recovery
+from ai_core.orchestration.ocop.planner import build_plan, recovery_safe
 
 
 def jsonl(path: Path, rows: list[dict]):
@@ -56,7 +56,7 @@ def test_form_request_fails_closed_on_partial_match(fixture_index):
         }
     )["answer"]
     assert output["status"] == "insufficient_form_scope"
-    assert not needs_recovery(route, [{"tool": "lookup_form", "output": result}], build_plan(route))
+    assert not recovery_safe(route, [{"tool": "lookup_form", "output": result}], build_plan(route))
 
 
 def test_form_number_with_leading_zero_matches(fixture_index):

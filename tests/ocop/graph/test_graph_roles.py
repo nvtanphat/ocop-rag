@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ai_core.graph.ocop.roles import edge_roles, node_roles, project, role_names
+from ai_core.graph.ocop.roles import _config, edge_roles, node_roles, project
 
 
 def node(identity, kind, label="", evidence=("u1",), **properties):
@@ -24,7 +24,7 @@ def edge(identity, relation, start, end):
 
 
 def test_every_mapped_type_has_one_role_and_roles_are_the_declared_vocabulary():
-    nodes, edges = role_names()
+    nodes, edges = frozenset(_config()["nodes"]), frozenset(_config()["edges"])
     assert set(node_roles().values()) == nodes and set(edge_roles().values()) == edges
     assert len(nodes) == 14
 

@@ -563,10 +563,10 @@ def test_a_requested_criterion_code_keeps_its_row_when_question_terms_would_pick
         {},
         True,
     )
-    kept = _most_relevant(prose + [row], ["danh", "gia", "tieu", "yeu", "cau"], 3, None, ["1.6"])
+    kept = _most_relevant(prose + [row], ["danh", "gia", "tieu", "yeu", "cau"], 3, facets=["1.6"])
     assert row in kept
     assert row not in _most_relevant(
-        prose + [row], ["danh", "gia", "tieu", "yeu", "cau"], 3, None, []
+        prose + [row], ["danh", "gia", "tieu", "yeu", "cau"], 3, facets=[]
     )  # without the facet it lost
 
 

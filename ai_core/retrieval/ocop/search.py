@@ -605,15 +605,15 @@ def search(
             else "deterministic_" + mode + "_order; reranker_not_requested",
         )
     # A document another one replaces is read after the version in force (ViHERMES: the end of a validity chain first),
-    # before the top_k cut, so the current page is not displaced by its older twin (MH007: QĐ1489 p.5 over QĐ26 p.5).
+    # before the top_k cut, so the current page is not displaced by its older twin.
     if demote_sources:
         results = [r for r in results if r["source_id"] not in demote_sources] + [
             r for r in results if r["source_id"] in demote_sources
         ]
     # ViCAS-RAG diversify_hits: a short document whose every page matches the question's place or topic must not take all
     # top_k places; each document takes at most max_hits_per_document pages first, the rest fill the free places in rank
-    # order. ViCAS counts chunks because its chunk is one article; here a page is split into several chunks, and counting
-    # them let one page use up its document's places (R048: three chunks of p.21 pushed out p.20, the answer).
+    # order. ViCAS counts chunks because its chunk is one article; here a page is split into several chunks, so pages are
+    # counted: chunks of one page cannot use up its document's places.
     cap = settings.max_hits_per_document
     pages: dict[str, set] = {}
     first, later = [], []

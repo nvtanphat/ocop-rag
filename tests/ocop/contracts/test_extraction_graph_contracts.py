@@ -149,9 +149,9 @@ def test_traversal_excludes_rejected_assertions_and_caps_initial_seeds(tmp_path)
         }
         for i, status in enumerate(["needs_review", "rejected", "needs_review"])
     ]
-    (tmp_path / "nodes.jsonl").write_text("".join(json.dumps(n) + "\n" for n in nodes))
-    (tmp_path / "edges.jsonl").write_text("")
-    result = traverse(tmp_path, ["1", "0", "2"], hops=0, limit=1)
+    from tests.fixtures.checked_graph import write_checked_graph
+
+    result = traverse(write_checked_graph(tmp_path / "graph", nodes, []), ["1", "0", "2"], hops=0, limit=1)
     assert [n["node_id"] for n in result["nodes"]] == ["0"]
 
 

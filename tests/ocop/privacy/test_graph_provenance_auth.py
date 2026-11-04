@@ -120,18 +120,18 @@ def test_graph_does_not_duplicate_document_and_evidence_nodes(tmp_path):
 def test_graph_candidate_recognition_and_forms_are_not_verified(tmp_path):
     kb = graph_fixture(tmp_path)
     save_rows(
-        kb / "recognition_candidates.jsonl",
+        kb / "taxonomy_candidates.jsonl",
         [
             {
-                "candidate_id": "r1",
+                "candidate_id": "t1",
                 "source_id": "VN.HUE.QD797.2026",
                 "evidence_unit_id": "u1",
-                "row_text": "1 | Hạt sen | Hợp tác xã Sen Huế | Phường | 3 sao",
+                "heading": "Phụ lục I DANH SÁCH SẢN PHẨM OCOP 4 SAO",
                 "review_status": "needs_review",
             },
         ],
     )
-    # Foreign source is rejected, not invented as a verified recognition.
+    # A candidate whose source differs from its evidence unit's is rejected, not invented as a fact.
     result = build_graph(kb, tmp_path / "graph")
     assert result["counts"]["rejected"] == 1
 
@@ -237,10 +237,10 @@ def test_router_does_not_use_question_words_as_product_name():
 
 
 def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
-    graph = tmp_path / "graph"
-    graph.mkdir()
-    save_rows(
-        graph / "nodes.jsonl",
+    from tests.fixtures.checked_graph import write_checked_graph
+
+    graph = write_checked_graph(
+        tmp_path / "graph",
         [
             {
                 "node_id": "d",
@@ -251,9 +251,6 @@ def test_recognition_hub_does_not_leak_unrelated_products(tmp_path):
             {"node_id": "p1", "node_type": "Product", "review_status": "verified", "check": "passed"},
             {"node_id": "p2", "node_type": "Product", "review_status": "verified", "check": "passed"},
         ],
-    )
-    save_rows(
-        graph / "edges.jsonl",
         [
             {
                 "edge_id": "e1",

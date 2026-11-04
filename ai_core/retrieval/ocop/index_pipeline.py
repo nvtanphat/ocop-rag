@@ -149,17 +149,6 @@ def structured_records(knowledge: Path, units: list[dict]) -> list[dict]:
     return out
 
 
-def split_units(
-    unit: dict, *, max_words: int = 200, overlap: int = 24, token_budget: int = DEFAULT_TARGET_CHUNK_TOKENS
-) -> list[str]:
-    """Backward-compatible text API; structured child metadata comes from build_chunks."""
-    from ai_core.retrieval.ocop.structure_chunker import plan_chunks
-
-    return [
-        p.text for p in plan_chunks(unit, max_words=max_words, overlap=overlap, token_budget=token_budget)
-    ]
-
-
 def build_chunks(
     units: Iterable[dict],
     version: str,

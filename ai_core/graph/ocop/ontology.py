@@ -77,8 +77,7 @@ EDGE_ENDPOINTS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
 }
 
 
-# Business triples have one authority. Broader legacy structural types remain
-# compatible, but adding a business endpoint never requires editing two schemas.
+# Business triples have one authority: adding a business endpoint never requires editing two schemas.
 def _kind_names(value):
     return frozenset(k.value for k in (value if isinstance(value, frozenset) else (value,)))
 

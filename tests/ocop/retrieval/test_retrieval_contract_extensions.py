@@ -6,8 +6,13 @@ import json
 
 from ai_core.processing.ocop.knowledge_extract import page_units
 from ai_core.processing.ocop.temporal_candidates import temporal_candidates
-from ai_core.retrieval.ocop.index_pipeline import build_index, split_units
+from ai_core.retrieval.ocop.index_pipeline import build_index
+from ai_core.retrieval.ocop.structure_chunker import plan_chunks
 from ai_core.retrieval.ocop.lookup import exact_lookup
+
+
+def split_units(unit, **options):
+    return [part.text for part in plan_chunks(unit, **options)]
 
 
 def _page(text: str) -> dict:

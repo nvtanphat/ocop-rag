@@ -4,8 +4,13 @@ from __future__ import annotations
 import json
 import pytest
 from ai_core.processing.ocop.knowledge_extract import page_units
-from ai_core.retrieval.ocop.index_pipeline import split_units, build_chunks, build_index
+from ai_core.retrieval.ocop.index_pipeline import build_chunks, build_index
+from ai_core.retrieval.ocop.structure_chunker import plan_chunks
 from ai_core.retrieval.ocop.search import search
+
+
+def split_units(unit, **options):
+    return [part.text for part in plan_chunks(unit, **options)]
 
 
 def make_unit(text, *, kind="article", structured=None, cells=None, page=7):

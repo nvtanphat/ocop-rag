@@ -16214,12 +16214,12 @@
     "edges.jsonl": "27bba75d8116af477a9760474cd9965d167b0012d44c95506e0bc49c796530e2",
     "nodes.jsonl": "f5464533d3bdedefb351034ba36105d95a3eec25678b5ff33855222778e8a616"
   },
-  "graph_version": "6fe7e27a8edaa6321f33",
+  "graph_version": "695849b8e63b7e72e46e",
   "neo4j": {
     "enabled": false
   },
   "node_ids_sha256": "b4360cbbedc939ea2fae0e1f3e4584c5094fa35dfd14ccc44a26595b69d9944d",
-  "schema_revision": "ocop-graph-b19707cd8f8b",
+  "schema_revision": "ocop-graph-0a984ccb2bdf",
   "semantic_projection": {
     "config_sha256": "9fce00e7d0438791a841c42353fa1a775d10d72d39824aac1be9f6cf97ca951a",
     "edges": {

@@ -7,14 +7,18 @@ import pytest
 
 from ai_core.processing.ocop.knowledge_extract import page_units, extract_entities_relations
 from ai_core.processing.ocop.business_candidates import candidates
+from ai_core.retrieval.ocop.structure_chunker import plan_chunks
 from ai_core.retrieval.ocop.index_pipeline import (
     build_chunks,
     BM25Search,
     create_bm25,
-    split_units,
     build_index,
 )
 from ai_core.retrieval.ocop.search import rrf, search
+
+
+def split_units(unit, **options):
+    return [part.text for part in plan_chunks(unit, **options)]
 
 
 def page(text="Điều 3. Bộ tiêu chí OCOP\n1. Chất lượng 35 điểm", tables=None, status="needs_review"):

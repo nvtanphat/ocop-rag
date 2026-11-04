@@ -24,10 +24,6 @@ def edge_roles() -> dict[str, str]:
     return {relation: role for role, relations in _config()["edges"].items() for relation in relations}
 
 
-def role_names() -> tuple[frozenset[str], frozenset[str]]:
-    return frozenset(_config()["nodes"]), frozenset(_config()["edges"])
-
-
 def _flat(row: dict) -> dict:
     """Provenance as flat fields, taken from the first citation (the quote that grounds the row)."""
     citation = next(iter(row.get("citations") or ()), {})

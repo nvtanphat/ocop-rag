@@ -148,7 +148,7 @@ def _merge_continuations(entries):
     return out
 
 
-def _most_relevant(entries, terms, limit, fill_min=None, facets=()):
+def _most_relevant(entries, terms, limit, facets=()):
     """Keep `limit` blocks: first the reserved ones, then the rest in the fused retrieval order.
 
     Reserved: the best block of each requested part (criterion code, form number, query part), of each graph hop and

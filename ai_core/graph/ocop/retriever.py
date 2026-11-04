@@ -184,9 +184,9 @@ def traverse(
     allowed = set(relations or known)
     if not allowed.issubset(known):
         raise ValueError("Unknown graph relation")
-    # Version-aware fail-closed read; legacy isolated graph fixtures may omit a manifest.
-    manifest = validate_graph_snapshot(graph_dir, allow_legacy=True, allow_partial=allow_partial_debug)
-    if manifest.get("status") != "legacy_unverified" and not include_failed:
+    # Version-aware fail-closed read.
+    manifest = validate_graph_snapshot(graph_dir, allow_partial=allow_partial_debug)
+    if not include_failed:
         if not manifest.get("checks") or manifest.get("schema_revision") != SCHEMA_REVISION:
             raise ValueError("graph check policy changed; rebuild corpus")
     immutable = graph_dir / "snapshots" / str(manifest.get("graph_version", ""))

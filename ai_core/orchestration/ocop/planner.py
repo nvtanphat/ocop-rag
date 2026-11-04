@@ -219,7 +219,3 @@ def evidence_ids(outputs: list[dict], *, verified_only: bool = False) -> list[st
     return ids[:20]
 
 
-def needs_recovery(route: Route, outputs: list[dict], plan: ToolPlan) -> bool:
-    if not recovery_safe(route, outputs, plan):
-        return False
-    return not evidence_ids(outputs)

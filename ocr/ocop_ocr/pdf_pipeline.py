@@ -462,7 +462,7 @@ def _hms(seconds: float) -> str:
 def run_pipeline(
     root: Path, *, registry: Path, lock: Path, output: Path, cache_dir: Path, workers: int = 1, **options
 ) -> dict:
-    """Legacy Python calls default to serial; independent CLI defaults to three."""
+    """Runs serially by default; the CLI passes three workers."""
     if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
         raise ValueError("workers must be a positive integer")
     if workers == 1:

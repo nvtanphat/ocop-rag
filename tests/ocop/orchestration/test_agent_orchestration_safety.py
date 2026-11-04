@@ -320,7 +320,7 @@ def test_checkpoint_preserves_valid_public_followup_capabilities():
 
 
 def test_recovery_budget_and_scope_match_between_planner_and_workflow(tmp_path):
-    from ai_core.orchestration.ocop.planner import needs_recovery
+    from ai_core.orchestration.ocop.planner import recovery_safe
 
     agent = OcopAgent(tmp_path)
     for scope in (
@@ -332,7 +332,8 @@ def test_recovery_budget_and_scope_match_between_planner_and_workflow(tmp_path):
         route = _route(["lookup_form"], slots=scope)
         outputs = [{"tool": "lookup_form", "output": {"results": []}}]
         state = {**_state(route), "results": outputs}
-        assert needs_recovery(route, outputs, build_plan(route)) == agent._should_recover(state)
+        # Nothing found: the workflow recovers exactly when the planner deems recovery safe for that scope.
+        assert recovery_safe(route, outputs, build_plan(route)) == agent._should_recover(state)
 
 
 def test_recovery_invalid_output_fails_closed(tmp_path, monkeypatch):
