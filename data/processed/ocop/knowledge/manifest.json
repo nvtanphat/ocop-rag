@@ -127,5 +127,7 @@
     "business_llm_errors": "business_llm_errors.jsonl",
     "business_llm_omissions": "business_llm_omissions.jsonl",
     "business_llm_unit_statuses": "business_llm_unit_statuses.jsonl"
-  }
+  },
+  "ocr_dataset_version": "ocop-pdf-17bf8730f9e7",
+  "ocr_dataset_digest": "1204caa0ea1699b6a7f92c6ed7bdee8c7499eab482c5a4943aaca9e95c93514a"
 }
