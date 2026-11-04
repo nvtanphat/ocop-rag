@@ -64,6 +64,7 @@ def test_text_evidence_keeps_ocr_block_bbox_and_source_hash():
             "cell_id": None,
             "printed_page": None,
             "source_sha256": source_hash,
+            "line": 0,
         },
         {
             "pdf_page": 7,
@@ -74,8 +75,22 @@ def test_text_evidence_keeps_ocr_block_bbox_and_source_hash():
             "cell_id": None,
             "printed_page": None,
             "source_sha256": source_hash,
+            "line": 1,
         },
     ]
+
+
+def test_a_passage_cut_from_a_unit_keeps_only_the_regions_of_its_own_lines():
+    from ai_core.retrieval.ocop.index_pipeline import _passage_spans
+
+    unit = {"text": "dòng một\ndòng hai\ndòng ba", "spans": [
+        {"pdf_page": 1, "bbox": [0, 0, 10, 10], "line": 0},
+        {"pdf_page": 1, "bbox": [0, 20, 10, 30], "line": 1},
+        {"pdf_page": 1, "bbox": [0, 40, 10, 50], "line": 2},
+    ]}
+    start = unit["text"].index("dòng hai")
+    assert [s["line"] for s in _passage_spans(unit, start, len(unit["text"]))] == [1, 2]
+    assert len(_passage_spans({**unit, "spans": [{"pdf_page": 1, "bbox": [0, 0, 1, 1]}]}, start, 20)) == 1
 
 
 def test_table_chunks_keep_source_hash_in_cell_spans():

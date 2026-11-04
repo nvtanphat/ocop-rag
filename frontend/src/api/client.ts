@@ -195,10 +195,8 @@ export const api = {
     const params = new URLSearchParams({ dpi: String(EVIDENCE_DPI) })
     if (citation.source_sha256) params.set('sha', citation.source_sha256)
     if (highlight) {
+      // Only the cited regions are marked: a heading's citation spans its whole section, so shading it covers the page.
       for (const box of evidenceBoxes(citation, page)) params.append('box', box.join(','))
-      for (const span of citation.context_source_spans || []) {
-        if (span.pdf_page === page && span.bbox) params.append('context', span.bbox.join(','))
-      }
     }
     return `${BASE}/sources/${encodeURIComponent(citation.source_id)}/pages/${page}/evidence.png?${params}`
   },

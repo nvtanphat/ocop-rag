@@ -102,9 +102,10 @@ def _jsonl_atomic(path: Path, records: Iterable[dict]) -> int:
 
 
 def _span(
-    page: dict, *, bbox=None, table_bbox=None, table_id=None, cell_id=None, block_id=None
+    page: dict, *, bbox=None, table_bbox=None, table_id=None, cell_id=None, block_id=None, line=None
 ) -> SourceSpan:
     return SourceSpan(
+        line=line,
         pdf_page=page["pdf_page"],
         bbox=tuple(bbox) if bbox is not None else None,
         table_bbox=tuple(table_bbox) if table_bbox is not None else None,
@@ -240,13 +241,14 @@ def _segment_spans(page: dict, line_indices: list[int]) -> list[SourceSpan]:
         return [_span(page)]
     spans = []
     seen = set()
-    for line_index in line_indices:
+    # Each region keeps the line of the segment it was read from, so a passage cut from the segment keeps its own regions.
+    for position, line_index in enumerate(line_indices):
         for block in line_blocks[line_index]:
             key = (line_index, block.get("block_id"))
             if key in seen:
                 continue
             seen.add(key)
-            spans.append(_span(page, bbox=block.get("bbox"), block_id=block.get("block_id")))
+            spans.append(_span(page, bbox=block.get("bbox"), block_id=block.get("block_id"), line=position))
     return spans or [_span(page)]
 
 

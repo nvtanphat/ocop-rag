@@ -149,6 +149,16 @@ def structured_records(knowledge: Path, units: list[dict]) -> list[dict]:
     return out
 
 
+def _passage_spans(unit: dict, start: int | None, end: int | None) -> list[dict]:
+    """The unit regions behind the lines a passage covers; every region when the unit's regions carry no line."""
+    spans = unit["spans"]
+    if start is None or end is None or not all(isinstance(s.get("line"), int) for s in spans):
+        return list(spans)
+    text = unit.get("text") or ""
+    first, last = text.count("\n", 0, start), text.count("\n", 0, max(start, end - 1))
+    return [s for s in spans if first <= s["line"] <= last] or list(spans)
+
+
 def build_chunks(
     units: Iterable[dict],
     version: str,
@@ -205,7 +215,7 @@ def build_chunks(
                 text_for_embedding=part.text,
                 text_for_bm25=part.text,
                 corpus_version=version,
-                spans=list(part.spans or unit["spans"]),
+                spans=list(part.spans or _passage_spans(unit, part.char_start, part.char_end)),
                 review_status=unit["review_status"],
                 raw_text=part.raw_text,
                 parent_unit_id=unit.get("parent_unit_id"),

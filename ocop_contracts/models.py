@@ -85,6 +85,7 @@ class SourceSpan(StrictModel):
     table_id: str | None = None
     cell_id: str | None = None
     source_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    line: int | None = Field(default=None, ge=0)  # line of the evidence unit's text the region was read from
 
     @field_validator("bbox", "table_bbox")
     @classmethod
