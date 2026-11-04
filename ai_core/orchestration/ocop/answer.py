@@ -644,9 +644,12 @@ BAND_REASONS = frozenset({"unsupported_score_or_star_claims", "source_missing_cl
 
 def _scores(text: str) -> set[float]:
     score = get_language().alternation("score_noun")
+    # "69 điểm" and, as people also write it, "điểm 69".
+    value = r"(?<![\d.,])(\d{1,3}(?:[.,]\d+)?)(?![\d.,]*\d)"
     return {
         float(m.group(1).replace(",", "."))
-        for m in re.finditer(r"(?<![\d.,])(\d{1,3}(?:[.,]\d+)?)\s*" + score + r"\b", text, re.I)
+        for pattern in (value + r"\s*" + score + r"\b", r"\b" + score + r"\s*" + value)
+        for m in re.finditer(pattern, text, re.I)
     }
 
 

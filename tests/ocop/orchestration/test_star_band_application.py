@@ -55,3 +55,10 @@ def test_a_highest_score_passes_only_for_the_record_that_holds_the_top_score():
     assert _ranks_checked_scores("Chuối sấy dẻo phủ Tiramisu có điểm cao nhất, 87,2 điểm.", [1], cited, scores)
     assert not _ranks_checked_scores("Nước mắm cá thu có điểm cao nhất, 84,1 điểm.", [1], cited, scores)
     assert not _ranks_checked_scores("Chuối sấy dẻo phủ Tiramisu có 87,2 điểm.", [1], cited, scores)
+
+
+def test_a_score_written_after_its_noun_is_read_as_the_asked_score():
+    from ai_core.orchestration.ocop.answer import _scores
+
+    assert _scores("điểm 69 thì được mấy sao") == {69.0}
+    assert _scores("đạt 69,5 điểm") == {69.5}

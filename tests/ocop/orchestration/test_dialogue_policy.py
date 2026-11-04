@@ -310,3 +310,14 @@ def test_http_fast_path_normalizes_decomposed_unicode_before_model_construction(
 
     decision, remainder = understand(unicodedata.normalize("NFD", "Xin chào bạn nhé!"))
     assert decision.action == "respond" and not remainder
+
+
+def test_asking_leave_to_ask_is_a_greeting_move_and_a_question_after_it_stays_the_task():
+    from ai_core.orchestration.ocop.dialogue import understand
+
+    decision, rest = understand("cho mình hỏi chút")
+    assert decision.acts == ["greeting"] and decision.action == "respond" and rest == ""
+    decision, rest = understand("cho mình hỏi chút, nước mắm thuộc nhóm nào")
+    assert decision.action == "task" and rest == "nước mắm thuộc nhóm nào"
+    decision, rest = understand("tôi muốn hỏi về hồ sơ")
+    assert decision.acts == [] and rest == "tôi muốn hỏi về hồ sơ"
