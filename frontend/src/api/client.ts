@@ -17,6 +17,7 @@ export interface Citation extends SourceSpan {
   source_spans?: SourceSpan[]
   context_source_spans?: SourceSpan[]
   review_status?: string
+  graph_node_ids?: string[] | null
 }
 export interface AskRequest {
   query: string
@@ -130,7 +131,7 @@ export interface Subgraph {
   edges: SubgraphEdge[]
   truncated: boolean
 }
-export type SubgraphSeed = { evidenceUnitId: string } | { nodeId: string }
+export type SubgraphSeed = { evidenceUnitId: string } | { nodeId: string } | { nodeIds: string[] }
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status?: number) { super(message) }
@@ -164,6 +165,16 @@ export async function request<T>(path: string, init?: RequestInit, timeoutMs = 9
   } finally { clearTimeout(timeout) }
 }
 
+/** Resolution of the rendered evidence page: a PDF point is EVIDENCE_DPI / 72 image pixels. */
+export const EVIDENCE_DPI = 110
+
+/** The regions a citation marks on a page: its own boxes; the table's frame only when the page has none of them. */
+export function evidenceBoxes(citation: Citation, page: number): Box[] {
+  const spans = (citation.source_spans?.length ? citation.source_spans : [citation]).filter(s => s.pdf_page === page)
+  const own = spans.map(s => s.bbox).filter((box): box is Box => !!box)
+  return own.length ? own : spans.map(s => s.table_bbox).filter((box): box is Box => !!box).slice(0, 1)
+}
+
 export const api = {
   health: () => request<Health>('/health'),
   sources: () => request<Source[]>('/sources'),
@@ -175,19 +186,16 @@ export const api = {
   subgraph: (seed: SubgraphSeed, hops = 1, limit = 50) => {
     const params = new URLSearchParams({ hops: String(hops), limit: String(limit) })
     if ('evidenceUnitId' in seed) params.set('evidence_unit_id', seed.evidenceUnitId)
+    else if ('nodeIds' in seed) seed.nodeIds.forEach(id => params.append('node_id', id))
     else params.set('node_id', seed.nodeId)
     return request<Subgraph>(`/graph/subgraph?${params}`)
   },
   pdf: (sourceId: string, page = 1) => `${BASE}/sources/${encodeURIComponent(sourceId)}/pdf#page=${page}`,
   evidence: (citation: Citation, page = citation.pdf_page, highlight = true) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ dpi: String(EVIDENCE_DPI) })
     if (citation.source_sha256) params.set('sha', citation.source_sha256)
-    const spans = citation.source_spans?.length ? citation.source_spans : [citation]
     if (highlight) {
-      for (const span of spans.filter(s => s.pdf_page === page)) {
-        const box = span.bbox || span.table_bbox
-        if (box) params.append('box', box.join(','))
-      }
+      for (const box of evidenceBoxes(citation, page)) params.append('box', box.join(','))
       for (const span of citation.context_source_spans || []) {
         if (span.pdf_page === page && span.bbox) params.append('context', span.bbox.join(','))
       }

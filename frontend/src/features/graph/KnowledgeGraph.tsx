@@ -57,7 +57,8 @@ export function KnowledgeGraph({
   const [graph, setGraph] = useState<Subgraph | null>(null);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const seedKey = "evidenceUnitId" in seed ? `e:${seed.evidenceUnitId}` : `n:${seed.nodeId}`;
+  const seedKey =
+    "evidenceUnitId" in seed ? `e:${seed.evidenceUnitId}` : "nodeIds" in seed ? `n:${seed.nodeIds.join(",")}` : `n:${seed.nodeId}`;
 
   useEffect(() => {
     let live = true;

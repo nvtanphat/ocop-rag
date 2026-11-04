@@ -145,18 +145,42 @@ class GraphEvidence:
         )
 
     def node_rows(self, nodes):
+        """One evidence row per node and page. A criterion's row also holds the score options under it on that page
+        (its checked HAS_OPTION children), in table order: the passage shown and highlighted is the whole criterion."""
+        if not hasattr(self, "_options"):
+            self._options = {}
+            for edge in self.edges:
+                if edge["relation_type"] == "HAS_OPTION":
+                    self._options.setdefault(edge["source_entity_id"], []).append(edge["target_entity_id"])
         rows = []
         for node in nodes:
-            for row in self.evidence(
-                node.get("citations", []),
-                node_ids=[node["node_id"]],
-                check=node["check"],
-                review_status=node["review_status"],
-            ):
+            refs = list(node.get("citations", []))
+            for option in self._options.get(node["node_id"], ()):
+                refs += self.nodes[option].get("citations", [])
+            pages: dict[tuple, list[dict]] = {}
+            for row in self.evidence(refs, node_ids=[node["node_id"]], check=node["check"],
+                                     review_status=node["review_status"]):
+                pages.setdefault((row["evidence_unit_id"], row["pdf_page"]), []).append(row)
+            own = {(c.get("evidence_unit_id"), c.get("pdf_page")) for c in node.get("citations", [])}
+            for key, group in pages.items():
+                if key not in own:
+                    continue  # an option cited on a page its criterion is not
+                group.sort(key=lambda r: (r["spans"][0].get("row") is None, r["spans"][0].get("row") or 0))
+                merged = dict(group[0])
+                if len(group) > 1:
+                    seen, lines, spans = set(), [], []
+                    for row in group:
+                        # A score cell's own citation ("1") repeats the number its row already ends with.
+                        if row["text"] not in seen and not row["text"].strip().isdigit():
+                            seen.add(row["text"])
+                            lines.append(row["text"])
+                        spans += row["spans"]
+                    merged.update(text="\n".join(lines), spans=spans, source_spans=spans,
+                                  chunk_id="graph-evidence:" + content_sha256(json.dumps(spans, sort_keys=True))[:24])
                 rows.append(
                     {
                         **node.get("properties", {}),
-                        **row,
+                        **merged,
                         "label_candidate": node["label"],
                         "title": node["label"],
                         "graph_node_type": node["node_type"],

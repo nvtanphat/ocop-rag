@@ -36,11 +36,19 @@ export function EvidenceGraph({
     return { x: WIDTH / 2 + (slot - (inRow - 1) / 2) * SPACING, y: 190 + Math.floor(index / COLUMNS) * 86 };
   };
   const chosen = selected === null ? null : citations[selected];
-  const firstEvidence = citations.find((citation) => citation.evidence_unit_id)?.evidence_unit_id;
-  const activeSeed: SubgraphSeed | null = seed ?? (firstEvidence ? { evidenceUnitId: firstEvidence } : null);
+  // A citation names the graph entities its passage grounds; the whole page is the seed only when it names none.
+  const seedOf = (citation: Citation): SubgraphSeed | null =>
+    citation.graph_node_ids?.length
+      ? { nodeIds: citation.graph_node_ids.slice(0, 5) }
+      : citation.evidence_unit_id
+        ? { evidenceUnitId: citation.evidence_unit_id }
+        : null;
+  const firstSeed = citations.map(seedOf).find((candidate) => candidate !== null) ?? null;
+  const activeSeed: SubgraphSeed | null = seed ?? firstSeed;
   const explore = (citation: Citation) => {
-    if (!citation.evidence_unit_id) return;
-    setSeed({ evidenceUnitId: citation.evidence_unit_id });
+    const next = seedOf(citation);
+    if (!next) return;
+    setSeed(next);
     setTab("knowledge");
   };
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, ApiError, request, retrievalModeFor, type Citation, type Health } from './client'
+import { api, ApiError, evidenceBoxes, request, retrievalModeFor, type Citation, type Health } from './client'
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
@@ -68,6 +68,17 @@ describe('OCOP API client', () => {
     expect(url.searchParams.get('sha')).toBe(citation.source_sha256)
     expect(url.searchParams.getAll('box')).toEqual(['10,20,30,40', '50,60,70,80'])
     expect(citation.evidence_unit_id).toBe('evidence')
+  })
+
+  it('marks a table row, not the whole table, and the table only when the page has no own region', () => {
+    const table: [number, number, number, number] = [80, 70, 560, 750]
+    const row: Citation = {
+      source_id: 'd', evidence_unit_id: 'e', pdf_page: 3,
+      source_spans: [{ pdf_page: 3, table_bbox: table }, { pdf_page: 3, bbox: [84, 656, 492, 673], table_bbox: table }],
+    }
+    expect(evidenceBoxes(row, 3)).toEqual([[84, 656, 492, 673]])
+    const frameOnly: Citation = { source_id: 'd', evidence_unit_id: 'e', pdf_page: 3, source_spans: [{ pdf_page: 3, table_bbox: table }] }
+    expect(evidenceBoxes(frameOnly, 3)).toEqual([table])
   })
 
   it('retains a useful status when the server returns non-JSON errors', async () => {

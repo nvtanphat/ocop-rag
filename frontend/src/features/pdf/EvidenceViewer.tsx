@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react";
-import { api, type Citation, type Source } from "../../api/client";
+﻿import { useEffect, useRef, useState } from "react";
+import { api, EVIDENCE_DPI, evidenceBoxes, type Citation, type Source } from "../../api/client";
 import { sourceTitle } from "../../app/sourceLabels";
 import { Icon } from "../../components/Icon";
 
@@ -18,6 +18,7 @@ export function EvidenceViewer({
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const scroller = useRef<HTMLDivElement>(null);
 
   const cited = Array.from(
     new Set([citation.pdf_page, ...(citation.source_spans || []).map((span) => span.pdf_page)]),
@@ -37,7 +38,16 @@ export function EvidenceViewer({
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const goto = (next: number) => next >= 1 && setPage(next);
+  const last = source?.page_count || total;
+  const goto = (next: number) => next >= 1 && next <= last && setPage(next);
+  // Bring the marked region into view: on a long page it may sit far below the top.
+  const reveal = (image: HTMLImageElement) => {
+    const boxes = highlight ? evidenceBoxes(citation, page) : [];
+    if (!boxes.length || !scroller.current) return;
+    const scale = image.clientWidth / (image.naturalWidth * 72 / EVIDENCE_DPI);
+    const top = Math.min(...boxes.map((b) => b[1])) * scale;
+    scroller.current.scrollTop = Math.max(0, image.offsetTop + top - scroller.current.clientHeight / 3);
+  };
   const copyCitation = async () => {
     const text = `${title}, trang ${page}${box ? `, BBox [${box.join(", ")}]` : ""}${citation.evidence_unit_id ? `, ${citation.evidence_unit_id}` : ""}`;
     try {
@@ -65,7 +75,7 @@ export function EvidenceViewer({
               Trang {page}
               {source?.page_count ? ` / ${source.page_count}` : ""}
             </span>
-            <button type="button" onClick={() => goto(page + 1)} aria-label="Trang sau">
+            <button type="button" disabled={page >= last} onClick={() => goto(page + 1)} aria-label="Trang sau">
               ›
             </button>
           </div>
@@ -109,7 +119,7 @@ export function EvidenceViewer({
             </button>
           ))}
         </div>
-        <div className="scroller" id="scroller">
+        <div className="scroller" id="scroller" ref={scroller}>
           {loading && !error && <div className="loading">Đang mở trang nguồn…</div>}
           {error ? (
             <div className="vstate err" role="alert">
@@ -125,7 +135,10 @@ export function EvidenceViewer({
                 key={imageUrl}
                 src={imageUrl}
                 alt={`Trang ${page} của ${citation.source_id}, vùng bằng chứng được đánh dấu`}
-                onLoad={() => setLoading(false)}
+                onLoad={(event) => {
+                  setLoading(false);
+                  reveal(event.currentTarget);
+                }}
                 onError={() => {
                   setError(true);
                   setLoading(false);

@@ -8,6 +8,7 @@ its supporting evidence so the UI can open the exact PDF region.
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -59,6 +60,34 @@ class SubgraphResponse(BaseModel):
 
 def _graph_dir(root: Path) -> Path:
     return root / "data" / "processed" / "ocop" / "graph"
+
+
+STRUCTURE = ("HAS_CRITERION", "HAS_SUBCRITERION")
+
+
+@lru_cache(maxsize=2)
+def _parents(edges_file: str, graph_version: str) -> dict[str, dict]:
+    """Criterion -> its checked HAS_CRITERION/HAS_SUBCRITERION edge from the item above, read once per graph version."""
+    return {
+        e["target_entity_id"]: e
+        for e in records(Path(edges_file))
+        if e.get("relation_type") in STRUCTURE and e.get("check") == "passed"
+    }
+
+
+def _ancestry(graph: Path, version: str, seeds: list[str]) -> tuple[list[str], list[dict]]:
+    """The sheet, part and group above each seed criterion, with the edges that place it there."""
+    snapshot = graph / "snapshots" / version
+    parents = _parents(str((snapshot if snapshot.is_dir() else graph) / "edges.jsonl"), version)
+    ids, edges = [], []
+    for seed in seeds:
+        node = seed
+        while node in parents and parents[node]["source_entity_id"] not in ids:
+            edge = parents[node]
+            edges.append(edge)
+            node = edge["source_entity_id"]
+            ids.append(node)
+    return ids, edges
 
 
 def _seeds(graph: Path, node_ids: list[str], evidence_unit_id: str | None) -> list[str]:
@@ -114,6 +143,15 @@ def read_subgraph(
     result = traverse(graph, seeds, hops=hops, limit=limit)
     if not result["seed_ids"]:
         return SubgraphResponse(status="no_seed", graph_version=result["graph_version"])
+    # A criterion is read in its place: the sheet, part and group above it join the neighbourhood.
+    above, chain = _ancestry(graph, str(result["graph_version"]), result["seed_ids"])
+    if above:
+        known = {n["node_id"] for n in result["nodes"]}
+        result["nodes"] += [n for n in traverse(graph, above, hops=0, limit=len(above))["nodes"] if n["node_id"] not in known]
+        present = {n["node_id"] for n in result["nodes"]}
+        linked = {e["edge_id"] for e in result["edges"]}
+        result["edges"] += [e for e in chain if e["edge_id"] not in linked
+                            and e["source_entity_id"] in present and e["target_entity_id"] in present]
     nodes = [
         SubgraphNode(
             node_id=n["node_id"],
