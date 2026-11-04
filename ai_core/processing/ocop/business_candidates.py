@@ -13,6 +13,16 @@ from collections import defaultdict
 from ocop_contracts.ids import stable_id
 
 FORM_HEADER = re.compile(r"\bM[ẫâ]u\s*(?:s[ốo])?\s*0?(\d{1,3})(?!\d)", re.I)
+# A reviewed Markdown table keeps the reviewer's bold ("**3.4. Tăng trưởng …** | **2**"): presentation, not text. Only a
+# pair around asterisk-free text is unwrapped, so "****" after a phrase (the star-level footnote marker) stays.
+BOLD = re.compile(r"(?<!\*)\*\*(?=[^\s*])([^*\n]+?)(?<=[^\s*])\*\*(?!\*)")
+
+
+def unbold(text: str) -> str:
+    """Text as read, without the reviewer's bold; quotes keep the cell text as written."""
+    return BOLD.sub(r"\1", text)
+
+
 AMOUNT = re.compile(r"(?<!\d)(\d{1,3})(?:[,.]0+)?\s*(?:điểm)?\s*$", re.I)
 STARS = re.compile(r"(?<!\d)(" + level_class() + r")\s*sao\b", re.I)
 
@@ -236,7 +246,7 @@ def candidates(units: list[dict], source_kinds: dict[str, str]) -> dict[str, lis
             for row in rows:
                 if not row["text"]:
                     continue
-                vals = [str(x.get("text") or "").strip() for x in row["cells"]]
+                vals = [unbold(str(x.get("text") or "")).strip() for x in row["cells"]]
                 score = None
                 # Read numeric score only if the last cell has a single obvious number.
                 if vals:

@@ -272,3 +272,50 @@ def test_a_second_part_a_without_a_sheet_heading_starts_the_next_listed_sheet():
         if r["relation_type"] == "HAS_CRITERION" and entities[r["target_entity_id"]]["evidence"][0]["pdf_page"] == 5
     }
     assert owners == {"2"}
+
+
+def test_reviewed_bold_ocr_cut_part_title_and_sentence_case_groups_keep_the_sheet_tree():
+    """A reviewed table's "**3.4. …** | **2**", a "Ph KHẢ NĂNG TIẾP THỊ" heading whose "Phần B:" OCR lost, and a
+    sentence-case group "4. Chất lượng phục vụ" over its own options are criteria, not options of the row above."""
+    from tests.fixtures.criteria import table
+
+    header = unit(
+        "DOC.CURRENT",
+        3,
+        "1. Bộ sản phẩm: Rau củ\n(Sản phẩm: Thực phẩm. Nhóm: Thực phẩm tươi sống)",
+        "paragraph",
+    )
+    other = unit(
+        "DOC.CURRENT",
+        2,
+        "Phần B: KHẢ NĂNG TIẾP THỊ (25 điểm)",
+        "paragraph",
+    )
+    rows = table(
+        3,
+        [
+            ("Phần A: SẢN PHẨM", 40),
+            ("1. TỔ CHỨC SẢN XUẤT", 5),
+            ("**1.1. Nguồn gốc sản phẩm**", "**2**"),
+            ("Sản phẩm trồng tại xã", 2),
+            ("Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)", 25),
+            ("4. Chất lượng phục vụ", 4),
+            ("Thái độ thân thiện", 1),
+            ("Thái độ thân thiện, được đánh giá cao", 4),
+        ],
+    )
+    previous = table(2, [("Phần B: KHẢ NĂNG TIẾP THỊ (25 điểm)", 25), ("4. TIẾP THỊ", 13)])
+    result = extract([other, previous, header, rows])
+    entities = {e["entity_id"]: e for e in result["business_entities"]}
+    criteria = {e["label"]: e for e in entities.values() if e["kind"] == "Criterion"}
+    assert "1.1. Nguồn gốc sản phẩm" in criteria
+    assert criteria["1.1. Nguồn gốc sản phẩm"]["attributes"]["max_points_candidate"] == 2
+    assert criteria["Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)"]["attributes"]["part_letter"] == "B"
+    assert "4. Chất lượng phục vụ" in criteria
+    parents = {
+        entities[r["target_entity_id"]]["label"]: entities[r["source_entity_id"]]["label"]
+        for r in result["business_relations"]
+        if r["relation_type"] == "HAS_OPTION"
+    }
+    assert parents["Thái độ thân thiện"] == "4. Chất lượng phục vụ"
+    assert "Ph KHẢ NĂNG TIẾP THỊ (25 ĐIỂM)" not in parents

@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from ocop_contracts.ids import stable_id
+from ai_core.processing.ocop.business_candidates import unbold
 from .contracts import EntityType, ambiguous_numbered_heading
 from .star_requirements import SHEET
 
@@ -233,7 +234,7 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
             ev = ref(row, index)
             cid = identity(EntityType.CRITERION, sid, f"numbered:{row['candidate_id']}")
             oid = identity(EntityType.SCORE_OPTION, sid, f"score-option:{row['candidate_id']}")
-            label = str(row.get("label_candidate") or "").split("|")[0].strip()
+            label = unbold(str(row.get("label_candidate") or "").split("|")[0]).strip()
             if ambiguous_numbered_heading(label):
                 state["parent"] = None
                 continue

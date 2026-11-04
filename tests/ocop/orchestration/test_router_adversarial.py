@@ -352,4 +352,4 @@ def test_the_evidence_fingerprint_is_the_one_the_built_corpus_carries():
     of the corpus (docs/DEVELOPMENT.md), never to make a stray edit pass."""
     from ai_core.processing.ocop import knowledge_extract
 
-    assert knowledge_extract.VERSION == "ocop-evidence-b41daefec1f4"
+    assert knowledge_extract.VERSION == "ocop-evidence-511b22cb55d2"

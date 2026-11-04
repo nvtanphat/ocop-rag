@@ -1,6 +1,6 @@
 {
-  "pipeline_version": "ocop-evidence-b41daefec1f4",
-  "corpus_version": "5db31f85b39420163388",
+  "pipeline_version": "ocop-evidence-511b22cb55d2",
+  "corpus_version": "e1a9a59e63b81c8278b0",
   "semantic_proposals": {
     "enabled": true,
     "model": "gpt-6-sol:72c16826fa67c922fa41",
@@ -24,11 +24,11 @@
       "dropped_rules": 0
     },
     "reconciled": {
-      "merged_entities": 704,
+      "merged_entities": 712,
       "enriched_attributes": 67,
       "duplicate_relations": 65,
-      "ungrounded_after_merge": 342,
-      "unanchored_scoring_entities": 532,
+      "ungrounded_after_merge": 327,
+      "unanchored_scoring_entities": 519,
       "kind_conflicts": 49
     },
     "eligible_unit_count": 1037,
@@ -87,13 +87,13 @@
     }
   },
   "counts": {
-    "business_entities": 20155,
+    "business_entities": 20167,
     "business_llm_errors": 0,
     "business_llm_omissions": 0,
     "business_llm_unit_statuses": 1037,
-    "business_omissions": 30,
-    "business_relations": 12637,
-    "business_rules": 8787,
+    "business_omissions": 29,
+    "business_relations": 12638,
+    "business_rules": 8773,
     "criterion_candidates": 8035,
     "entities": 1487,
     "facts": 605,

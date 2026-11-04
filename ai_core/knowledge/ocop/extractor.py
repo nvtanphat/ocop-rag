@@ -12,6 +12,7 @@ from ocop_contracts.ratings import asterisk_quantifier, level_class
 from collections import Counter
 
 from ai_core.domain.ocop_citations import quote_bbox
+from ai_core.processing.ocop.business_candidates import unbold
 from ocop_contracts.ids import stable_id
 from .contracts import (
     BusinessEntity,
@@ -306,6 +307,30 @@ def extract_semantics(
     part_re = re.compile(r"^\s*Phần\s+([ABC])\b", re.I)
     markers_re = re.compile(r"(?<!\*)\*" + asterisk_quantifier() + r"(?!\*)")
 
+    def part_title(text: str) -> str:
+        return re.sub(r"\s+", " ", re.split(r"[(|]", text, maxsplit=1)[0]).strip(" :.").casefold()
+
+    # Part titles as the same document writes them in full ("Phần B: KHẢ NĂNG TIẾP THỊ (25 điểm)"). An unnumbered row
+    # ending in one of them is that part's heading even when OCR lost the "Phần B:" lead ("Ph KHẢ NĂNG TIẾP THỊ").
+    part_titles = defaultdict(dict)
+    for row in candidate_sets.get("criterion_candidates", []):
+        label = str(row.get("label_candidate") or "").split("|")[0]
+        if match := part_re.match(label):
+            part_titles[row["source_id"]][part_title(label[match.end():])] = match[1].upper()
+
+    def part_letter(label: str, source_id: str) -> str | None:
+        if match := part_re.match(label):
+            return match[1].upper()
+        letters = [c for c in re.split(r"[(|]", label, maxsplit=1)[0] if c.isalpha()]
+        if numbering_re.match(label) or sum(c.isupper() for c in letters) < 0.8 * max(len(letters), 1):
+            return None
+        title = part_title(label)
+        # Only a short OCR remnant ("Ph") may precede the title.
+        return next(
+            (v for t, v in part_titles[source_id].items() if t and title.endswith(t) and len(title) - len(t) <= 4),
+            None,
+        )
+
     def is_section(label: str) -> bool:
         # A heading cell may include a lower-case explanatory paragraph, or an OCR-mixed tail ("11. TÍNH ĐỘC ĐÁO Chất
         # lượng (...)"): the first two words after the number in capitals name the heading, an option ("1. Có ...") never
@@ -320,13 +345,33 @@ def extract_semantics(
         words = re.findall(r"[^\W\d_]+", label[match.end(1):])[:2]
         return len(words) == 2 and all(w.isupper() for w in words) and sum(map(len, words)) >= 4
 
+    def heads_its_options(ordered: list[dict], at: int) -> bool:
+        # "14. Chất lượng phục vụ | 4" in sentence case: a numbered row whose score is the top score of the unnumbered
+        # rows under it (up to the next numbered row) is the criterion over those options. A numbered option
+        # ("1. Có ...") is followed by its numbered siblings, not by options of its own.
+        # A group closing its page table ("7. Kiến trúc …" with one option, the rest on the next page) only needs
+        # its options so far to stay under its score.
+        own = ordered[at].get("score_candidate")
+        below, closed = [], False
+        for row in ordered[at + 1 :]:
+            text = unbold(str(row.get("label_candidate") or ""))
+            if numbering_re.match(text) or note_re.match(text):
+                closed = True
+                break
+            below.append(row.get("score_candidate"))
+        scores = [s for s in below if isinstance(s, int) and not isinstance(s, bool)]
+        if not isinstance(own, int) or not scores:
+            return False
+        return max(scores) == own or (not closed and max(scores) < own)
+
     for _, rows in sorted(score_tables.items(), key=lambda item: str(item[0])):
         parent_id = None
         group_number = None
         criteria_by_number: dict[str, str] = {}
-        for row in sorted(rows, key=lambda rec: int(rec.get("row", 0))):
+        ordered = sorted(rows, key=lambda rec: int(rec.get("row", 0)))
+        for at, row in enumerate(ordered):
             raw = str(row.get("label_candidate") or "")
-            parts = [part.strip() for part in raw.split("|")]
+            parts = [unbold(part).strip() for part in raw.split("|")]
             label = parts[0] if parts else ""
             try:
                 ev = _ref(row, evidence_by_id)
@@ -340,13 +385,14 @@ def extract_semantics(
                 parent_id = None
                 omitted["criterion_numbering_prefix_unresolved"] += 1
                 continue
-            part = part_re.match(label)
+            part = part_letter(label, row["source_id"])
             letter = (
                 re.match(r"^\s*([a-zđ])\)\s+\S", label, re.I)
                 if source_kinds.get(row["source_id"]) == "ocop_historical"
                 else None
             )
-            if part or heading_re.match(label) or is_section(label) or letter:
+            section = is_section(label) or (bool(section_re.match(label)) and heads_its_options(ordered, at))
+            if part or heading_re.match(label) or section or letter:
                 number = numbering_re.match(label).group(1) if numbering_re.match(label) else None
                 if part:
                     group_number = None
@@ -361,7 +407,7 @@ def extract_semantics(
                     attributes={
                         "max_points_candidate": score,
                         "level": 0 if part else 3 if letter else number.count(".") + 1 if number else None,
-                        "part_letter": part[1].upper() if part else None,
+                        "part_letter": part,
                         "criterion_letter": letter[1].casefold() if letter else None,
                         "table_id": row.get("table_id"),
                         "row": row.get("row"),
