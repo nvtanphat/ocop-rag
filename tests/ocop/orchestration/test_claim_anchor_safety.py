@@ -251,9 +251,23 @@ def test_a_criterion_score_claim_is_checked_against_the_graph_criterion_on_the_c
     from ai_core.orchestration.ocop.answer import _states_criterion_points
 
     citations = [{"source_id": "DOC.CURRENT", "pdf_page": 146}]
-    points = {("DOC.CURRENT", 146): [(4.0, "chat luong phuc vu", "dich vu du lich cong dong, du lich sinh thai")]}
+    points = {
+        ("DOC.CURRENT", 146): [(4.0, "chat luong phuc vu", "dich vu du lich cong dong, du lich sinh thai")],
+        ("DOC.CURRENT", 90): [(5.0, "mui", "ruou trang")],
+    }
     claim = "Trong bộ Dịch vụ du lịch cộng đồng, tiêu chí 14 «Chất lượng phục vụ» có thang điểm 4."
     assert _states_criterion_points(claim, [1], citations, points)
     assert not _states_criterion_points(claim.replace("điểm 4", "điểm 5"), [1], citations, points)
     assert not _states_criterion_points(claim.replace("Dịch vụ du lịch cộng đồng", "Rượu trắng"), [1], citations, points)
     assert not _states_criterion_points(claim, [1], [{"source_id": "DOC.CURRENT", "pdf_page": 20}], points)
+
+
+def test_a_criterion_score_claim_without_a_product_set_holds_only_when_every_cited_sheet_agrees():
+    from ai_core.orchestration.ocop.answer import _states_criterion_points
+
+    citations = [{"source_id": "DOC", "pdf_page": 20}, {"source_id": "DOC", "pdf_page": 30}]
+    same = {("DOC", 20): [(1.0, "dai dien phap luat la nu", "rau, cu")], ("DOC", 30): [(1.0, "dai dien phap luat la nu", "mat ong")]}
+    claim = "Tiêu chí 3.2 đại diện pháp luật là nữ được 1 điểm."
+    assert _states_criterion_points(claim, [1, 2], citations, same)
+    differ = {**same, ("DOC", 30): [(2.0, "dai dien phap luat la nu", "mat ong")]}
+    assert not _states_criterion_points(claim, [1, 2], citations, differ)

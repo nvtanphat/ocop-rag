@@ -754,17 +754,21 @@ def _states_criterion_points(text: str, numbers: list[int], citations: list[dict
     def names(phrase: str) -> bool:
         return bool(phrase) and re.search(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", folded) is not None
 
-    for n in numbers:
-        if not 0 < n <= len(citations):
-            continue
-        citation = citations[n - 1]
-        key = (citation.get("source_id"), int(citation.get("pdf_page") or 0))
-        if any(
-            score == value and names(title) and names(product_set.split(",")[0].strip())
-            for score, title, product_set in points.get(key, ())
-        ):
-            return True
-    return False
+    named = [
+        (score, product_set)
+        for n in numbers
+        if 0 < n <= len(citations)
+        for score, title, product_set in points.get(
+            (citations[n - 1].get("source_id"), int(citations[n - 1].get("pdf_page") or 0)), ()
+        )
+        if names(title)
+    ]
+    if any(score == value and names(product_set.split(",")[0].strip()) for score, product_set in named):
+        return True
+    # A claim naming no product set ("tiêu chí 3.2 … được 1 điểm") holds when that criterion scores the same in every
+    # cited sheet.
+    every_set = {entry[2].split(",")[0].strip() for entries in points.values() for entry in entries}
+    return bool(named) and not any(names(s) for s in every_set) and all(score == value for score, _ in named)
 
 
 def _ranks_checked_scores(text: str, numbers: list[int], citations: list[dict], scores: dict) -> bool:
