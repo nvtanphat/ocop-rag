@@ -220,7 +220,7 @@ def test_a_form_gap_is_reported_while_the_rest_of_the_evidence_is_answered():
 
     agent = OcopAgent.__new__(OcopAgent)
     agent.rerank = False
-    agent.tools = SimpleNamespace(replaced_sources=frozenset, star_bands=tuple, recognized_products=dict, owner_records=dict, record_scores=dict, abbreviations=dict)
+    agent.tools = SimpleNamespace(replaced_sources=frozenset, star_bands=tuple, recognized_products=dict, owner_records=dict, record_scores=dict, criterion_points=dict, abbreviations=dict)
     row = {
         "source_id": "VN.X",
         "evidence_unit_id": "u1",

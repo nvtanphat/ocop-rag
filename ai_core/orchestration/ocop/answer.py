@@ -741,6 +741,32 @@ def _counts_owner_records(text: str, numbers: list[int], citations: list[dict], 
 RANK_REASONS = COUNT_REASONS | {"quote_not_verbatim"}
 
 
+def _states_criterion_points(text: str, numbers: list[int], citations: list[dict], points: dict) -> bool:
+    """A claim giving one criterion's score in a named product set ("tiêu chí «Chất lượng phục vụ» của bộ Dịch vụ du lịch
+    cộng đồng có thang điểm 4") holds when a cited page shows that criterion of that set with exactly that max score
+    in the checked graph. The claim states one score; criterion title and the set's leading name are both in it."""
+    stated = _scores(text)
+    if len(stated) != 1:
+        return False
+    value = next(iter(stated))
+    folded = fold(text)
+
+    def names(phrase: str) -> bool:
+        return bool(phrase) and re.search(r"(?<![a-z0-9])" + re.escape(phrase) + r"(?![a-z0-9])", folded) is not None
+
+    for n in numbers:
+        if not 0 < n <= len(citations):
+            continue
+        citation = citations[n - 1]
+        key = (citation.get("source_id"), int(citation.get("pdf_page") or 0))
+        if any(
+            score == value and names(title) and names(product_set.split(",")[0].strip())
+            for score, title, product_set in points.get(key, ())
+        ):
+            return True
+    return False
+
+
 def _ranks_checked_scores(text: str, numbers: list[int], citations: list[dict], scores: dict) -> bool:
     lang = get_language()
     high, low = lang.hit(text, "superlative_high"), lang.hit(text, "superlative_low")
@@ -893,6 +919,10 @@ def _judge_claims(claims, citations, selected, catalog=None, question="", checke
             text, numbers, citations, checked.get("scores", {})
         ):
             reasons, tier = [], "score_rank_checked"
+        elif reasons and set(reasons) <= RANK_REASONS and _states_criterion_points(
+            text, numbers, citations, checked.get("criterion_points", {})
+        ):
+            reasons, tier = [], "criterion_points_checked"
         (rejected if reasons else accepted).append(
             {
                 "text": text,

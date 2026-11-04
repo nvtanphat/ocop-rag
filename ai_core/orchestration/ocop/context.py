@@ -15,7 +15,10 @@ from dataclasses import dataclass
 
 from ai_core.orchestration.ocop.language import fold, get_language
 from ai_core.retrieval.ocop.settings import ContextSettings
+from ai_core.retrieval.ocop.graph_context import CONTEXT_PREFIX
 from ai_core.retrieval.ocop.structure_chunker import estimated_tokens
+
+COLUMN_PREFIX = "Cột: "  # the column-header line shown above a table excerpt
 
 ELLIPSIS = "…"
 MIN_EXCERPT_CHARS = 300
@@ -215,9 +218,9 @@ def render_row(
     else:
         window, left, right = select_window(raw, terms, limit)
         headers = row.get("table_headers") or []
-        header = ("Cột: " + " | ".join(str(h) for h in headers[:1])) if (table_backed and headers) else ""
+        header = (COLUMN_PREFIX + " | ".join(str(h) for h in headers[:1])) if (table_backed and headers) else ""
     parent = _context_line(row)
-    lines = [x for x in (("Ngữ cảnh: " + parent) if parent else "", header) if x]
+    lines = [x for x in ((CONTEXT_PREFIX + parent) if parent else "", header) if x]
     display = "\n".join(
         [
             *lines,

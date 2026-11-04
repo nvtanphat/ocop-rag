@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import re
 
+from ai_core.orchestration.ocop.context import COLUMN_PREFIX
 from ai_core.orchestration.ocop.language import fold
+from ai_core.retrieval.ocop.graph_context import CONTEXT_PREFIX
 from ai_core.retrieval.ocop.settings import get_settings
 from ai_core.orchestration.ocop.verification import _numbers, _range_numbers, negation_conflict, numeric_binding_conflict
 
@@ -60,13 +62,30 @@ def verbatim(quote: str, source: str) -> bool:
     return len(plain(quote)) >= MIN_QUOTE_CHARS and plain(quote) in plain(source)
 
 
+def _unframed(quote: str) -> str:
+    """A quote copied with the framing the prompt shows around an excerpt — "[S2] 26/2026/QĐ-TTg, trang 146:", the
+    "Ngữ cảnh: A > B" heading line, the "Cột: …" header — keeps only source text: framing is dropped and the heading
+    path is split into its headings, each of which must still be verbatim."""
+    lines = []
+    for line in quote.split("\n"):
+        line = re.sub(r"^\s*(?:\[S\d+\]\s*)?[^\n:]{1,80}?,\s*trang\s+\d+\s*:\s*", "", line)
+        line = line.strip()
+        if line.startswith(COLUMN_PREFIX.strip()):
+            continue
+        context = line.startswith(CONTEXT_PREFIX.strip())
+        lines.extend(line[len(CONTEXT_PREFIX.strip()):].strip().split(" > ") if context else [line])
+    return "\n".join(lines)
+
+
 def quoted_from(quote: str, source: str) -> bool:
     """A quote of one passage, or of one passage per cited source on separate lines (a comparison of two records).
 
     Every part must be verbatim by itself; a part that is not in the source, or a long run of stitched lines, fails."""
     if verbatim(quote, source):
         return True
-    parts = [part for part in quote.split("\n") if part.strip()]
+    parts = [part for part in _unframed(quote).split("\n") if part.strip()]
+    if len(parts) == 1:
+        return verbatim(parts[0], source)
     return 1 < len(parts) <= MAX_QUOTE_PARTS and all(verbatim(part, source) for part in parts)
 
 

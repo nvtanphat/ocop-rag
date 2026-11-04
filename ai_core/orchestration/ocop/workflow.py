@@ -1081,6 +1081,7 @@ class OcopAgent:
                 "recognized": self.tools.recognized_products(),
                 "owners": self.tools.owner_records(),
                 "scores": self.tools.record_scores(),
+                "criterion_points": self.tools.criterion_points(),
                 "abbreviations": self.tools.abbreviations(),
             },
             **({"style": "simple"} if route.dialogue.action == "rephrase" else {}),

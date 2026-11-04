@@ -50,6 +50,9 @@ class SimulatedToolFailure:
     def record_scores(self) -> dict:
         return {}
 
+    def criterion_points(self) -> dict:
+        return {}
+
     def abbreviations(self) -> dict:
         return {}
 

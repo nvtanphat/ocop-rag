@@ -228,3 +228,32 @@ def test_a_citation_box_comes_from_a_span_of_the_cited_page_when_the_first_span_
            "source_spans": [{"pdf_page": 3, "table_bbox": [1, 2, 3, 4]}, {"pdf_page": 3, "bbox": [10, 20, 30, 40]}]}
     citations, _, _ = _evidence([row], question="Điều kiện về hồ sơ sản phẩm")
     assert citations and citations[0]["pdf_page"] == 3 and citations[0]["bbox"] == [10, 20, 30, 40]
+
+
+def test_a_quote_copied_with_the_excerpt_framing_is_checked_on_its_source_text():
+    from ai_core.orchestration.ocop.entailment import quoted_from
+
+    source = (
+        "14. Chất lượng phục vụ | 4\nThái độ phục vụ thân thiện | 1\n"
+        "Bộ sản phẩm: Dịch vụ du lịch cộng đồng\nPhần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)"
+    )
+    framed = (
+        "26/2026/QĐ-TTg, trang 146: Ngữ cảnh: Bộ sản phẩm: Dịch vụ du lịch cộng đồng > "
+        "Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)\n14. Chất lượng phục vụ | 4"
+    )
+    assert quoted_from(framed, source)
+    assert quoted_from("[S2] 26/2026/QĐ-TTg, trang 146: 14. Chất lượng phục vụ | 4", source)
+    assert not quoted_from(framed.replace("| 4", "| 5"), source)
+    assert not quoted_from("Ngữ cảnh: Bộ sản phẩm: Rượu trắng > Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)", source)
+
+
+def test_a_criterion_score_claim_is_checked_against_the_graph_criterion_on_the_cited_page():
+    from ai_core.orchestration.ocop.answer import _states_criterion_points
+
+    citations = [{"source_id": "DOC.CURRENT", "pdf_page": 146}]
+    points = {("DOC.CURRENT", 146): [(4.0, "chat luong phuc vu", "dich vu du lich cong dong, du lich sinh thai")]}
+    claim = "Trong bộ Dịch vụ du lịch cộng đồng, tiêu chí 14 «Chất lượng phục vụ» có thang điểm 4."
+    assert _states_criterion_points(claim, [1], citations, points)
+    assert not _states_criterion_points(claim.replace("điểm 4", "điểm 5"), [1], citations, points)
+    assert not _states_criterion_points(claim.replace("Dịch vụ du lịch cộng đồng", "Rượu trắng"), [1], citations, points)
+    assert not _states_criterion_points(claim, [1], [{"source_id": "DOC.CURRENT", "pdf_page": 20}], points)

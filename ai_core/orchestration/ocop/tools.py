@@ -221,6 +221,7 @@ class ToolRegistry:
         self._owners: dict[str, dict] | None = None
         self._scores: dict | None = None
         self._score_by_id: dict[str, float] = {}
+        self._criterion_points: dict | None = None
 
     def recognized_products(self) -> dict[tuple[str, int], frozenset[str]]:
         """(decision source, star level) -> its checked recognition records of that level (one per listed row), read
@@ -298,6 +299,43 @@ class ToolRegistry:
                     by_id[node["node_id"]] = float(score)
             self._scores, self._score_by_id = grouped, by_id
         return self._scores
+
+    def criterion_points(self) -> dict[tuple[str, int], list[tuple[float, str, str]]]:
+        """(source, page) -> (max points, folded criterion title, folded product-set name) of each checked criterion the
+        page shows, its sheet found up the HAS_CRITERION/HAS_SUBCRITERION edges: what "tiêu chí 14 «Chất lượng phục vụ»
+        của bộ Dịch vụ du lịch cộng đồng có thang điểm 4" is checked against."""
+        if self._criterion_points is None:
+            nodes = {n["node_id"]: n for n in records(self.graph_dir / "nodes.jsonl")}
+            parent = {
+                edge["target_entity_id"]: edge["source_entity_id"]
+                for edge in records(self.graph_dir / "edges.jsonl")
+                if edge.get("relation_type") in ("HAS_CRITERION", "HAS_SUBCRITERION") and edge.get("check") == "passed"
+            }
+
+            def sheet(node_id: str) -> str:
+                seen = set()
+                while node_id in parent and node_id not in seen:
+                    seen.add(node_id)
+                    node_id = parent[node_id]
+                node = nodes.get(node_id) or {}
+                return node.get("label", "") if node.get("node_type") == "CriterionSheet" else ""
+
+            table: dict[tuple[str, int], list[tuple[float, str, str]]] = {}
+            for node in nodes.values():
+                points = (node.get("properties") or {}).get("max_points")
+                if node.get("node_type") != "Criterion" or node.get("check") != "passed" or points is None:
+                    continue
+                name = sheet(node["node_id"])
+                if not name:
+                    continue
+                title = fold(re.sub(r"^\s*(?:\d+(?:[.,]\d+)*[.,)]?|[^\W\d_]\))\s*", "", node["label"]))
+                product_set = fold(name.split(":", 1)[-1])
+                for citation in node.get("citations") or []:
+                    if citation.get("pdf_page") is not None:
+                        key = (node["source_id"], int(citation["pdf_page"]))
+                        table.setdefault(key, []).append((float(points), title, product_set))
+            self._criterion_points = table
+        return self._criterion_points
 
     def owner_records(self) -> dict[str, dict]:
         """Organisation label -> the words only its name carries among the organisations ("hichagol") and its checked
