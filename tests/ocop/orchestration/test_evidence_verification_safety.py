@@ -273,3 +273,13 @@ def test_a_score_stated_in_a_table_cell_may_be_bound_to_points_in_a_claim():
     )
     assert not numeric_binding_conflict("Tiêu chí có thang điểm 4: nhãn đầy đủ được 1 điểm; có mã truy xuất được 4 điểm.", source)
     assert numeric_binding_conflict("Nhãn đầy đủ được 7 điểm.", "Nhãn đầy đủ được 1 điểm.")
+
+
+def test_a_star_level_after_a_pdf_line_wrap_belongs_to_the_record_that_names_the_product():
+    from ai_core.orchestration.ocop.verification import _split_claims, _unwrapped
+
+    text = ("1. Công nhận sản phẩm Mứt Atiso đỏ của Công ty TNHH\nMTV Hichagol, thành phố\nHuế đạt sản phẩm OCOP 4 sao.\n"
+            "2. Công nhận sản phẩm Trà sen đạt 3 sao.")
+    records = _split_claims(_unwrapped(text))
+    assert records[0].startswith("1. Công nhận sản phẩm Mứt Atiso đỏ") and records[0].endswith("4 sao.")
+    assert _split_claims(_unwrapped("Cột: A | B\n1 | x\n2 | y")) == ["Cột: A | B", "1 | x", "2 | y"]

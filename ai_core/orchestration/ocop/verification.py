@@ -167,6 +167,12 @@ def _row_text(rows: list[dict]) -> str:
     return re.sub(r"\s+", " ", text.casefold())
 
 
+def _unwrapped(text: str) -> str:
+    """Join the PDF's line wraps ("... Công ty TNHH\nMTV ... đạt sản phẩm OCOP 4 sao."): a line break ends a record only
+    after closing punctuation, before a list item ("2. ", "b) ", "- ") or in a table ("a | b")."""
+    return re.sub(r"(?<![.:;!?|])[ \t]*\n(?![ \t]*(?:\d+[.)]|[^\W\d_]\)|[-•+])\s)(?![^\n]*\|)", " ", text)
+
+
 def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], together: frozenset[str] = frozenset()) -> bool:
     """Use the most subject-specific source records, preserving cells of the same table row.
 
@@ -193,7 +199,7 @@ def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], toget
             identity = (row.get("source_id"), tuple(sorted(node_ids)))
         else:
             identity = (index,)
-        groups.setdefault(identity, []).append(_labelled_text(row))
+        groups.setdefault(identity, []).append(_unwrapped(_labelled_text(row)))
     records = [
         part
         for identity, texts in groups.items()
