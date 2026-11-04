@@ -256,3 +256,19 @@ def test_spaced_legal_number_is_parsed_without_rewriting_its_evidence():
     assert document["attributes"]["document_number_candidate"] == "26/2026/QĐ-TTg"
     assert any("26 /2026/QĐ-TTg" in ref["quote"] for ref in document["evidence"])
     assert "26 /2026/QĐ-TTg" in heading["text"]
+
+
+def test_a_second_part_a_without_a_sheet_heading_starts_the_next_listed_sheet():
+    from tests.fixtures.criteria import table
+
+    units = fixture()
+    # Sheet 2's title page reads "2. Sản phẩm dạng thử" with no "Bộ sản phẩm:" heading the extractor can see.
+    units.append(table(5, [("Phần A: SẢN PHẨM", 40), ("1. TỔ CHỨC SẢN XUẤT", 40), ("1.1. Tiêu chí riêng", 40)]))
+    result = extract(units)
+    entities = {e["entity_id"]: e for e in result["business_entities"]}
+    owners = {
+        entities[r["source_entity_id"]]["attributes"].get("sheet_number")
+        for r in result["business_relations"]
+        if r["relation_type"] == "HAS_CRITERION" and entities[r["target_entity_id"]]["evidence"][0]["pdf_page"] == 5
+    }
+    assert owners == {"2"}

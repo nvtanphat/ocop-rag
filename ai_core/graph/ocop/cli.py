@@ -21,7 +21,8 @@ def main():
     a = p.parse_args()
     knowledge = a.knowledge if a.knowledge.is_absolute() else ROOT / a.knowledge
     output = a.output if a.output.is_absolute() else ROOT / a.output
-    result = build_graph(knowledge, output)
+    # The owner's edits to the extraction file always apply, as in the graph refresh.
+    result = build_graph(knowledge, output, extraction_dir=ROOT / "data/extraction")
     if a.neo4j:
         password = os.getenv("NEO4J_PASSWORD")
         if not password:

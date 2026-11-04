@@ -250,7 +250,7 @@ dialogue:
   # (alone or before punctuation), so "tôi muốn hỏi về hồ sơ" stays one task.
   greeting: '(?:(?:xin )?chao|hello|hi|hey)(?: {address})?|(?:(?:cho|de) )?(?:minh|toi|em|chau) (?:muon )?hoi(?: (?:chut|xiu|ti|mot chut|mot cau|cai nay|cai))?(?: (?:duoc khong|dc khong|duoc ko|dc ko|duoc))?(?= *(?:$|[,.:;!?]))'
   thanks: '(?:(?:ok|okay|oke|okie|vang|da|thoi)(?: (?:duoc roi|vay))? )?(?:cam on|camon|thank you|thanks|thank|tks|thks|ty)(?: {address})?'
-  acknowledgment: '(?:ok|okay|vang|da|(?:(?:ok|okay|vang|da) )?(?:(?:minh|toi) )?(?:da )?hieu(?: roi)?)'
+  acknowledgment: '(?:ok|okay|vang|da|thoi (?:duoc roi|vay|duoc)|duoc roi|(?:(?:ok|okay|vang|da) )?(?:(?:minh|toi) )?(?:da )?hieu(?: roi)?)'
   farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
   identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'
   help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?(?:viec |dieu |chuc nang )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'

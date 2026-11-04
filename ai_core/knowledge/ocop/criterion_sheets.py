@@ -16,6 +16,8 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
     headers = defaultdict(dict)
     boundaries = defaultdict(list)
     ambiguous_headers = defaultdict(set)
+    listed = defaultdict(dict)  # sheet number -> (sheet id, evidence) from the framework's numbered list of sheets
+    opened = set()  # sheets whose score table has already begun ("Phần A …")
 
     def attach(eid, ev):
         if ev not in entities[eid].evidence:
@@ -92,7 +94,7 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
             if number:
                 row = {**record, "row": cell["row"], "table_id": u["structured"].get("table_id")}
                 ev = ref(row, index)
-                sheet(sid, str(int(number)), label, row, ev)
+                listed[sid][str(int(number))] = (sheet(sid, str(int(number)), label, row, ev), ev)
             elif same:
                 row = {**record, "row": cell["row"], "table_id": u["structured"].get("table_id")}
                 ev = ref(row, index)
@@ -181,6 +183,19 @@ def extract_criterion_sheets(units, kinds, candidates, index, entities, relation
         if any(start[0] < boundary <= page for boundary in boundaries[sid]):
             omitted["score_table_after_next_annex"] += 1
             continue
+        # Each sheet has one score table that opens with Part A. A second Part A under the same header is the next
+        # sheet of the numbered list whose title page carries no "Bộ sản phẩm:" heading ("12. Sản phẩm trà từ thực vật
+        # khác" in QĐ26): it starts at this table, named and numbered by the list, never by guessed text.
+        part_a = any(re.match(r"^\s*Phần\s+A\b", str(r.get("label_candidate") or ""), re.I) for r in records)
+        following = str(int(number) + 1)
+        if (part_a and sheet_id in opened and following in listed[sid]
+                and following not in {h[0] for h in headers[sid].values()}):
+            start = (page, table_top)
+            headers[sid][start] = (following, *listed[sid][following])
+            number, sheet_id, header_ev = headers[sid][start]
+            omitted["sheet_started_by_listed_number"] += 1
+        if part_a:
+            opened.add(sheet_id)
         state = states.get(sid)
         if not state or state["sheet"] != sheet_id:
             state = {

@@ -1,28 +1,41 @@
 {
-  "business_quality": "business_quality.json",
-  "complete": true,
-  "corpus_version": "2679e2b66082b9297ee2",
-  "counts": {
-    "business_entities": 20155,
-    "business_llm_errors": 0,
-    "business_llm_omissions": 0,
-    "business_llm_unit_statuses": 1037,
-    "business_omissions": 30,
-    "business_relations": 12637,
-    "business_rules": 8787,
-    "criterion_candidates": 8035,
-    "entities": 1487,
-    "facts": 605,
-    "form_candidates": 6,
-    "ocr_pages": 315,
-    "pages": 583,
-    "recognition_candidates": 68,
-    "relations": 3692,
-    "tables": 338,
-    "taxonomy_candidates": 7,
-    "temporal_candidates": 230,
-    "units": 1666
+  "pipeline_version": "ocop-evidence-b41daefec1f4",
+  "corpus_version": "5db31f85b39420163388",
+  "semantic_proposals": {
+    "enabled": true,
+    "model": "gpt-6-sol:72c16826fa67c922fa41",
+    "processed_unit_count": 1037,
+    "errors": 0,
+    "client_identity": {
+      "provider": "openai",
+      "endpoint": "https://api.modelapi.vn/v1",
+      "model": "gpt-6-sol",
+      "revision": "",
+      "params": {
+        "temperature": 0.1,
+        "reasoning_budget": 2048
+      }
+    },
+    "chunk_count": 1130,
+    "grounding_dropped": {
+      "dropped_entities": 44,
+      "dropped_attributes": 290,
+      "dropped_relations": 133,
+      "dropped_rules": 0
+    },
+    "reconciled": {
+      "merged_entities": 704,
+      "enriched_attributes": 67,
+      "duplicate_relations": 65,
+      "ungrounded_after_merge": 342,
+      "unanchored_scoring_entities": 532,
+      "kind_conflicts": 49
+    },
+    "eligible_unit_count": 1037,
+    "selected_unit_count": 1037,
+    "omitted_unit_count": 0
   },
+  "source_snapshot_sha256": "d322a4f34c0fecd2b2322662c8d32dece6a16733c2bfa932bf46177da6100dbb",
   "document_registry": {
     "VN.HAIPHONG.QD525.2026": {
       "document_number": "525/QĐ-UBND",
@@ -73,61 +86,46 @@
       "source_kind": "ocop_framework"
     }
   },
+  "counts": {
+    "business_entities": 20155,
+    "business_llm_errors": 0,
+    "business_llm_omissions": 0,
+    "business_llm_unit_statuses": 1037,
+    "business_omissions": 30,
+    "business_relations": 12637,
+    "business_rules": 8787,
+    "criterion_candidates": 8035,
+    "entities": 1487,
+    "facts": 605,
+    "form_candidates": 6,
+    "ocr_pages": 315,
+    "pages": 583,
+    "recognition_candidates": 68,
+    "relations": 3692,
+    "tables": 338,
+    "taxonomy_candidates": 7,
+    "temporal_candidates": 230,
+    "units": 1666
+  },
+  "business_quality": "business_quality.json",
+  "complete": true,
+  "status": "machine_extracted_not_verified",
   "files": {
-    "business_entities": "business_entities.jsonl",
-    "business_llm_errors": "business_llm_errors.jsonl",
-    "business_llm_omissions": "business_llm_omissions.jsonl",
-    "business_llm_unit_statuses": "business_llm_unit_statuses.jsonl",
-    "business_omissions": "business_omissions.jsonl",
-    "business_relations": "business_relations.jsonl",
-    "business_rules": "business_rules.jsonl",
-    "criterion_candidates": "criterion_candidates.jsonl",
+    "evidence_units": "evidence_units.jsonl",
     "domain_facts": "domain_facts.jsonl",
     "entities": "entities.jsonl",
-    "evidence_units": "evidence_units.jsonl",
+    "relations": "relations.jsonl",
+    "criterion_candidates": "criterion_candidates.jsonl",
     "form_candidates": "form_candidates.jsonl",
     "recognition_candidates": "recognition_candidates.jsonl",
-    "relations": "relations.jsonl",
     "taxonomy_candidates": "taxonomy_candidates.jsonl",
-    "temporal_candidates": "temporal_candidates.jsonl"
-  },
-  "ocr_dataset_digest": "1204caa0ea1699b6a7f92c6ed7bdee8c7499eab482c5a4943aaca9e95c93514a",
-  "ocr_dataset_version": "ocop-pdf-17bf8730f9e7",
-  "pipeline_version": "ocop-evidence-b0a6cb2fc994",
-  "semantic_proposals": {
-    "chunk_count": 1130,
-    "client_identity": {
-      "endpoint": "https://api.modelapi.vn/v1",
-      "model": "gpt-6-sol",
-      "params": {
-        "reasoning_budget": 2048,
-        "temperature": 0.1
-      },
-      "provider": "openai",
-      "revision": ""
-    },
-    "eligible_unit_count": 1037,
-    "enabled": true,
-    "errors": 0,
-    "grounding_dropped": {
-      "dropped_attributes": 290,
-      "dropped_entities": 44,
-      "dropped_relations": 133,
-      "dropped_rules": 0
-    },
-    "model": "gpt-6-sol:72c16826fa67c922fa41",
-    "omitted_unit_count": 0,
-    "processed_unit_count": 1037,
-    "reconciled": {
-      "duplicate_relations": 65,
-      "enriched_attributes": 67,
-      "kind_conflicts": 49,
-      "merged_entities": 704,
-      "unanchored_scoring_entities": 532,
-      "ungrounded_after_merge": 342
-    },
-    "selected_unit_count": 1037
-  },
-  "source_snapshot_sha256": "d322a4f34c0fecd2b2322662c8d32dece6a16733c2bfa932bf46177da6100dbb",
-  "status": "machine_extracted_not_verified"
+    "temporal_candidates": "temporal_candidates.jsonl",
+    "business_entities": "business_entities.jsonl",
+    "business_relations": "business_relations.jsonl",
+    "business_rules": "business_rules.jsonl",
+    "business_omissions": "business_omissions.jsonl",
+    "business_llm_errors": "business_llm_errors.jsonl",
+    "business_llm_omissions": "business_llm_omissions.jsonl",
+    "business_llm_unit_statuses": "business_llm_unit_statuses.jsonl"
+  }
 }
