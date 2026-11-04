@@ -139,7 +139,7 @@ Trạng thái kiểm tra của mỗi nút và cạnh chỉ có hai giá trị t�
 
 Xuất bản graph hiện hành sang Neo4j (idempotent, theo snapshot bất biến, ghi trạng thái vào manifest của graph): `docker compose --profile stores up -d neo4j`, sau đó `python tools/cli.py graph publish-neo4j` (đọc `NEO4J_PASSWORD` từ môi trường hoặc `.env`). Dựng lại graph xoá trạng thái này, tức bản trên Neo4j đã cũ: chạy lại lệnh.
 
-Danh sách cho `/criteria` và `/products`: `python tools/cli.py graph export-references` ghi `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` từ graph hiện hành. Chạy lại sau mỗi lần dựng lại graph hoặc index.
+Danh sách cho `/criteria` và `/products`: `python tools/cli.py graph export-references` ghi `knowledge/verified_criteria.jsonl` và `verified_products.jsonl` từ graph hiện hành. Bước làm mới index và pipeline hệ thống tự chạy việc này mỗi khi corpus đổi.
 
 ## Quan sát
 

@@ -170,7 +170,7 @@ def export_reference_files(root) -> dict:
 
     Only nodes in the graph's verified bucket are listed, each with the citations the graph holds for it. The file is
     bound to the active index corpus; the endpoint re-validates every citation against the locked PDF, so a stale or
-    inconsistent file lists nothing. Run again after any graph or index rebuild.
+    inconsistent file lists nothing. The index refresh and the system pipeline call it whenever the corpus changes.
     """
     import json
 

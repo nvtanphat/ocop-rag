@@ -90,6 +90,10 @@ def _refresh(root: Path) -> dict:
     old_collection, new_collection = dense.get("collection"), (new.get("dense") or {}).get("collection")
     if old_collection and old_collection != new_collection:
         _drop_collection(dense, old_collection)
+    # The reference lists the API serves carry the corpus version; a new corpus gets its own lists.
+    from ai_core.graph.ocop.store import export_reference_files
+
+    export_reference_files(root)
     return {
         "status": "refreshed",
         "graph_version": graph["graph_version"],

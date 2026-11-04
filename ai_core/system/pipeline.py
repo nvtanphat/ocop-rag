@@ -414,6 +414,10 @@ class OcopSystemPipeline:
             result = self.status(validate_sources=True)
             if result["state"] != "ready":
                 raise RuntimeError(f"Post-publish corpus validation failed: {result}")
+            # The reference lists the API serves carry the corpus version; a new corpus gets its own lists.
+            from ai_core.graph.ocop.store import export_reference_files
+
+            export_reference_files(self.root)
             return {**result, "reused": False}
 
     def _promote(self, staging_dir: Path) -> None:
@@ -438,8 +442,6 @@ class OcopSystemPipeline:
                 (staging_dir / name).rename(target)
                 installed.append(name)
             # Validate the *installed* bundle while backups are still on disk.
-            # Prior behavior could publish an invalid bundle and only notice
-            # after TemporaryDirectory had already discarded the backup.
             ready = self.status(validate_sources=True)
             if not ready["lineage_ok"]:
                 raise RuntimeError("Promoted OCOP corpus failed cross-store/source validation")
