@@ -55,6 +55,11 @@ def propose(llm, question: str, abbreviations: dict[str, str]) -> str | None:
     if not isinstance(text, str):
         return None
     text = " ".join(text.split())
+    # Restoring adds marks, not names: in a question typed in lower case, a word capitalised like a name inside the
+    # sentence goes back to lower case ("sp minh dat 68 diem" is "sản phẩm mình đạt", never a product "Minh Đạt");
+    # an acronym written in capitals ("HTX", "OCOP") and the opening word keep theirs.
+    if question == question.lower():
+        text = re.sub(r"(?<=\s)([^\W\d_])([^\W\d_]*[^\W\d_A-Z])", lambda m: m.group(0).lower() if m.group(2).islower() else m.group(0), text)
     return text if _same_words(_plain(question), _plain(text), abbreviations) and _plain(text) != _plain(question) else None
 
 

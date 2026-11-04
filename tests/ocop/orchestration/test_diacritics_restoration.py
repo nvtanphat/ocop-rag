@@ -48,3 +48,14 @@ def test_a_restored_spelling_the_corpus_never_writes_yields_to_the_one_beside_th
     assert settle("tiêu chí của bó chè tươi", pairs, spellings) == "tiêu chí của bộ chè tươi"
     # "hoa" is a spelling the corpus writes: the user's word stays even where "hóa được" is more common.
     assert settle("Bó hoa được không", pairs, spellings) == "Bó hoa được không"
+
+
+def test_a_lower_case_question_is_not_given_capitalised_names():
+    import json as _json
+
+    class Model:
+        def chat_structured(self, system, prompt, schema=None, max_tokens=0):
+            return _json.dumps({"text": "sản phẩm Minh Đạt 68 điểm, cần thêm bao nhiêu để lên 4 sao"})
+
+    restored = diacritics_model.propose(Model(), "sp minh dat 68 diem, can them bao nhieu de len 4 sao", {"sp": "san pham"})
+    assert restored == "sản phẩm minh đạt 68 điểm, cần thêm bao nhiêu để lên 4 sao"
