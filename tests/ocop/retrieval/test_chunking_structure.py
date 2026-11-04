@@ -395,6 +395,17 @@ def test_a_parent_chain_over_the_cap_drops_middle_levels_and_keeps_the_sheet():
     assert _fit_chain([sheet, leaf], words, 5) == []
 
 
+def test_a_long_clause_heading_is_cut_before_the_article_it_belongs_to_is_dropped():
+    from ai_core.retrieval.ocop.graph_context import _fit_chain
+
+    def words(text):
+        return len(text.split())
+
+    article = "Điều 6. Hồ sơ đánh giá"
+    clause = "2. Hồ sơ đề nghị đánh giá cấp tỉnh do UBND cấp xã chuẩn bị"
+    assert _fit_chain([article, clause], words, 14) == [article, "2. Hồ sơ đề nghị…"]
+
+
 def test_a_section_heading_opens_its_own_section_not_the_end_of_the_previous_criterion():
     content = "\n".join(
         [

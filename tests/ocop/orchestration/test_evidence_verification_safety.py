@@ -261,3 +261,15 @@ def test_star_claim_is_checked_against_the_source_it_cites_not_a_pool_of_verifie
     assert check_sensitive_claims("Sản phẩm X đạt 3 sao.", rows, citations)[
         "unsupported_score_or_star_claims"
     ] == ["3 sao"]
+
+
+def test_a_score_stated_in_a_table_cell_may_be_bound_to_points_in_a_claim():
+    from ai_core.orchestration.ocop.verification import numeric_binding_conflict
+
+    source = (
+        "Cột: Các tiêu chí | Thang điểm\n2.2. Bao bì, ghi nhãn sản phẩm | 4\n"
+        "Có nhãn, ghi nhãn hàng hóa đầy đủ | 1\nGhi nhãn đẹp và có mã truy xuất | 4\n"
+        "Phần A SẢN PHẨM (40 Điểm)"
+    )
+    assert not numeric_binding_conflict("Tiêu chí có thang điểm 4: nhãn đầy đủ được 1 điểm; có mã truy xuất được 4 điểm.", source)
+    assert numeric_binding_conflict("Nhãn đầy đủ được 7 điểm.", "Nhãn đầy đủ được 1 điểm.")

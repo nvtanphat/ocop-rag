@@ -58,6 +58,15 @@ def _fit_chain(labels: list[str], count, cap: int) -> list[str]:
     kept = list(labels)
     while len(kept) > 2 and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
         del kept[1]
+    # Root and nearest still too long ("Điều 6. Hồ sơ …" > "2. Hồ sơ đề nghị … cấp tỉnh, do UBND cấp xã chuẩn bị"):
+    # the nearest label is cut word by word before the root is given up, so the article a clause belongs to stays.
+    if len(kept) == 2 and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
+        words = kept[1].split()
+        for size in range(len(words) - 1, 2, -1):
+            cut = [kept[0], " ".join(words[:size]).rstrip(" ,;:-…") + "…"]
+            if count(CONTEXT_PREFIX + " > ".join(cut)) <= cap:
+                kept = cut
+                break
     if kept and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:
         kept = kept[-1:]
     if kept and count(CONTEXT_PREFIX + " > ".join(kept)) > cap:

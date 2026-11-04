@@ -326,7 +326,8 @@ def numeric_binding_conflict(claim: str, source: str) -> bool:
                   for m in _range().finditer(text) if 0 < int(m[2]) - int(m[1]) <= 20}
         for match in re.finditer(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text):
             value = match[0].replace(",", ".").lstrip("0") or "0"
-            prefix = re.search(r"([^\W\d_]+)[ \t]*$", text[:match.start()])
+            # \Z, not $: in "Thang điểm\n2.2" the header labels the column below, not the next line's number.
+            prefix = re.search(r"([^\W\d_]+)[ \t]*\Z", text[:match.start()])
             if prefix and fold(prefix[1]) in units:
                 result.append((value, ("prefix", fold(prefix[1]))))
             tail = re.match(r"[ \t]+([^\W\d_]+(?:[ \t]+[^\W\d_]+){0,7})", text[match.end():])
@@ -347,7 +348,12 @@ def numeric_binding_conflict(claim: str, source: str) -> bool:
     available = {}
     for value, label in bindings(source):
         available.setdefault(label, set()).add(value)
-    return any(label in available and value not in available[label] for value, label in bindings(claim))
+    # A table cell ("... | 3") states its value under a column header the row text does not repeat, so the unit is
+    # the column's: a claim may bind that value to a unit.
+    cells = {m[1].replace(",", ".").lstrip("0") or "0"
+             for m in re.finditer(r"\|[ \t]*(\d+(?:[.,]\d+)?)[ \t]*$", source, re.M)}
+    return any(label in available and value not in available[label] and value not in cells
+               for value, label in bindings(claim))
 
 
 def _split_claims(answer: str) -> list[str]:
