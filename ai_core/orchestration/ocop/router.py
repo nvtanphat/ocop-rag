@@ -524,6 +524,14 @@ class Facets:
             )
         )
         stars = bool(slots.get("star_rating"))
+        # A score set against a star level ("điểm 49 thì mấy sao", "68 điểm cần thêm bao nhiêu để lên 4 sao"): the rating
+        # bands of the framework answer it, whatever product it concerns.
+        score = lang.alternation("score_noun")
+        star_noun = lang.alternation(list(lang.star_noun))
+        self.score_to_star = bool(
+            re.search(r"\d\s*" + score + r"\b|\b" + score + r"\s*\d", text, re.I)
+            and re.search(r"\b" + star_noun + r"\b", text, re.I)
+        )
         # "sản phẩm bên mình đã được 3 sao": the asker states their own unnamed product's level; no record names it.
         own = h("own_subject") and not (slots.get("product_name") or slots.get("organization_name"))
         self.normative_star = stars and h("normative_star") and not h("recognition_listing_negative")
@@ -695,6 +703,8 @@ def _select_tools(caps: list[Capability], slots: dict, facets: Facets) -> tuple[
         # product, the provision an amendment changes, the body that grants a star level): the graph hops from the
         # evidence found by the other tools, as an enrichment that never blocks the answer.
         secondary.append("search_graph")
+    if facets.score_to_star and not located and "lookup_star_bands" not in primary + secondary:
+        secondary.insert(0, "lookup_star_bands")
     if explicit == {Capability.EXACT_ARTICLE} and not facets.authority:
         primary = ["lookup_legal_unit"]
     if facets.authority:

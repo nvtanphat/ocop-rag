@@ -47,6 +47,7 @@ class Messages(BaseModel):
     out_of_scope: str
     private_unsupported: str
     answer_row: dict[str, str]
+    replaced_document: str
     clarify_prefix: str
     clarify_slots: dict[str, str]
 

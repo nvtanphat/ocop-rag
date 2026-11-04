@@ -308,7 +308,7 @@ def _drop_repeats(entries):
 
 
 def _evidence(
-    records: list[dict], *, question: str = "", overhead_tokens: int = 0
+    records: list[dict], *, question: str = "", overhead_tokens: int = 0, replaced: frozenset[str] = frozenset()
 ) -> tuple[list[dict], list[str], list[dict]]:
     """Select source-backed evidence visible to the LLM and the verifier.
 
@@ -318,6 +318,12 @@ def _evidence(
     """
     cfg = get_settings().context
     terms = question_terms(question)
+
+    def _label(source_id: str) -> str:
+        # A replaced document says so in its header, so the version in force is the one the answer is drawn from.
+        note = f" ({get_language().messages.replaced_document})" if source_id in replaced else ""
+        return _document_label(source_id) + note
+
     # Multi-step questions ("which documents does X replace, and when do they expire?"): what the graph step found (the
     # other end of a relation) is what the next step's passage must be about, so it also steers which part of a long
     # passage is shown. It only guides the choice of window; coverage and ranking still use the question's own terms.
@@ -412,7 +418,7 @@ def _evidence(
     budget = cfg.prompt_token_budget - cfg.output_reserve_tokens - overhead_tokens
     headers = [
         estimated_tokens(
-            f"[S{i}] {_document_label(key[0])}, trang {key[1]}: "
+            f"[S{i}] {_label(key[0])}, trang {key[1]}: "
         )
         for i, (key, row, span, _) in enumerate(entries, 1)
     ]
@@ -462,7 +468,7 @@ def _evidence(
         selected.append(chosen)
         contexts.append(
             # The document's own number ("26/2026/QĐ-TTg"), not the corpus id: what the answer will call it.
-            f"[S{len(citations)}] {_document_label(key[0])}, trang {key[1]}"
+            f"[S{len(citations)}] {_label(key[0])}, trang {key[1]}"
             + (f" ({get_language().messages.answer_row[row['answer_row']]})" if row.get("answer_row") else "")
             + f": {excerpt.display}"
         )
@@ -475,6 +481,7 @@ SYSTEM_PROMPT = (
     "Nếu OCR chưa verified phải nêu chưa xác minh. Tránh chỉ dẫn mang tính quyết định cấp sao chính thức. "
     "Với dòng bảng dạng 'Nhãn cột: giá trị', chỉ dùng đúng nhãn cột, không suy ra vai trò khác. "
     "Không kết luận văn bản hay phiên bản nào áp dụng cho một năm/ngày cụ thể; chỉ nêu điều nguồn ghi (ngày hiệu lực ghi trong văn bản là được). "
+    "SOURCE có nhãn 'văn bản cũ, đã được thay thế' chỉ dùng cho phần câu hỏi mà văn bản không mang nhãn đó không trả lời được, và claim phải nói rõ đó là quy định của văn bản cũ. "
     "Mỗi claim được hiển thị riêng nên phải tự đứng được: gọi tên đối tượng (số hiệu văn bản, điều, mẫu, sản phẩm) thay vì “hai quyết định này”, “văn bản đó”. Viết claim như một câu khẳng định tự nhiên về nội dung nguồn; KHÔNG thêm lời rào kiểu 'theo đoạn trích chưa xác minh' "
     "(hệ thống tự gắn nhãn chưa duyệt) và không dùng dấu ba chấm của đoạn bị cắt làm nội dung. "
     "Với câu hỏi có/không, claim nêu đúng điều nguồn quy định (ai làm, khi nào, điều kiện gì) để người hỏi tự thấy câu trả lời; "
@@ -1231,6 +1238,7 @@ def _assemble(
         records,
         question=question,
         overhead_tokens=estimated_tokens(SYSTEM_PROMPT) + estimated_tokens(question) + 30,
+        replaced=replaced,
     )
     facets = query_facets(question)
     fusion = {

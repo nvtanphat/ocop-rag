@@ -100,6 +100,12 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         description="Typed source-backed graph traversal",
         public_description="tìm liên hệ giữa các văn bản",
     ),
+    "lookup_star_bands": ToolSpec(
+        "lookup_star_bands",
+        produces=("evidence_unit_id",),
+        description="Checked star-level score bands, version in force first",
+        public_description="tra khung điểm các hạng sao",
+    ),
     "open_source_span": ToolSpec(
         "open_source_span", input_slots=("evidence_unit_id",), description="Open exact PDF source evidence"
     ),
@@ -128,5 +134,5 @@ TOOL_DEPENDENCIES: dict[str, tuple[str, ...]] = {
 }
 
 # Tools that only enrich an answer: finding nothing is not a gap in what was asked, so it is not reported as one.
-ENRICHMENT_TOOLS = frozenset({"search_graph"})
+ENRICHMENT_TOOLS = frozenset({"search_graph", "lookup_star_bands"})
 PRIVATE_TOOLS = frozenset(name for name, spec in TOOL_REGISTRY.items() if spec.requires_auth)

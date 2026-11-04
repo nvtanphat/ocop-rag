@@ -268,6 +268,8 @@ messages:
   answer_row:
     highest: bản ghi có điểm cao nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
     lowest: bản ghi có điểm thấp nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
+  # Header note on an excerpt of a document another corpus document replaces (graph REPLACES edges, e.g. QĐ148 by QĐ26).
+  replaced_document: văn bản cũ, đã được thay thế
   clarify_prefix: "Cần bổ sung thông tin để xử lý: "
   clarify_slots:
     correction_detail: 'Bạn muốn sửa phần nào? Hãy nêu ý đúng hoặc phạm vi cần tra cứu lại.'

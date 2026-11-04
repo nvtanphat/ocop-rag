@@ -359,3 +359,11 @@ def test_a_star_level_in_a_locality_asks_the_recognition_records():
     route = route_query("ở hải phòng có sản phẩm nước mắm nào được 4 sao không")
     assert route.intent == Intent.RECOGNITION_LOOKUP
     assert "lookup_recognition" in route.required_tools + route.secondary_tools
+
+
+def test_a_score_set_against_a_star_level_reads_the_rating_bands():
+    for question in ("điểm 49 thì mấy sao", "sản phẩm mình đạt 68 điểm, cần thêm bao nhiêu để lên 4 sao"):
+        route = route_query(question)
+        assert "lookup_star_bands" in route.required_tools + route.secondary_tools
+    route = route_query("tiêu chí sở hữu trí tuệ tối đa mấy điểm")
+    assert "lookup_star_bands" not in route.required_tools + route.secondary_tools

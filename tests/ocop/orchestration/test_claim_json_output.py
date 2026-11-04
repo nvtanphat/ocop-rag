@@ -715,3 +715,13 @@ def test_a_claim_may_write_the_document_number_as_the_source_header_does():
     reasons = lambda text: {c["reason"] for c in verify_claims(text, cites, rows)["claims"]}  # noqa: E731
     assert "source_missing_claim_numbers" not in reasons(said)
     assert "source_missing_claim_numbers" in reasons(said.replace("26.2026", "27.2026"))
+
+
+def test_an_excerpt_of_a_replaced_document_is_labelled_as_such_for_the_model():
+    from ai_core.orchestration.ocop.answer import _evidence
+
+    old = {**row("Hội đồng có từ 07 đến 09 thành viên.", unit="u-old"), "source_id": "OLD"}
+    new = row("Hội đồng gồm Chủ tịch và các thành viên.", unit="u-new")
+    _, contexts, _ = _evidence([new, old], question="Hội đồng gồm những ai", replaced=frozenset({"OLD"}))
+    assert any("đã được thay thế" in c and "trang 2" in c for c in contexts if "07 đến 09" in c)
+    assert not any("đã được thay thế" in c for c in contexts if "Chủ tịch" in c)

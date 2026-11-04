@@ -1609,6 +1609,20 @@ class ToolRegistry:
             return {"results": rows, "verified": False,
                     "status": "incomplete_entity_set" if rows and missing_entities else "ok" if rows else "no_results",
                     **({"missing_entities": missing_entities} if missing_entities else {})}
+        if name == "lookup_star_bands":
+            # The passages stating each star level's score band, from the graph's checked StarLevel nodes; the version
+            # in force first unless the question asks about an older one.
+            demoted = self.replaced_sources() if context.get("prefer_current") else frozenset()
+            units = list(dict.fromkeys(
+                citation["evidence_unit_id"]
+                for node in records(self.graph_dir / "nodes.jsonl")
+                if node.get("node_type") == "StarLevel" and node.get("check") == "passed"
+                for citation in node.get("citations") or []
+                if citation.get("evidence_unit_id")
+            ))
+            rows = [row for uid in units for row in exact_lookup(self.index_dir, identity=uid, limit=1, include_candidates=False)]
+            rows = [r for r in rows if r.get("source_id") not in demoted] + [r for r in rows if r.get("source_id") in demoted]
+            return {"results": rows[: get_settings().agent.lookup_max_rows], "status": "ok" if rows else "no_results"}
         if name == "search_graph":
             document_code = slots.get("document_code")
             source_filter = self._resolve_source_id(document_code) if document_code else None
