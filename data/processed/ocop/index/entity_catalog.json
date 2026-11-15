@@ -1,0 +1,1640 @@
+{
+ "entities": {
+  "authority": [
+   {
+    "label": "Bộ Công Thương",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.NQ.15.2026"
+    ]
+   },
+   {
+    "label": "Bộ Khoa học và Công nghệ",
+    "source_ids": [
+     "VN.NQ.15.2026",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ Nông nghiệp và Môi trường",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026",
+     "VN.NQ.15.2026",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ Nông nghiệp và Phát triển nông thôn",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Bộ Y tế",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.ND.15.2018",
+     "VN.NQ.15.2026"
+    ]
+   },
+   {
+    "label": "Bộ trưởng Bộ Nông nghiệp và Môi trường",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Chính phủ",
+    "source_ids": [
+     "VN.NQ.15.2026"
+    ]
+   },
+   {
+    "label": "Chủ tịch UBND cấp tỉnh",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD1489.2025"
+    ]
+   },
+   {
+    "label": "Cơ quan tham mưu quản lý OCOP",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Cơ quan tham mưu quản lý OCOP cấp tỉnh",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Cơ quan tham mưu quản lý OCOP của Bộ Nông nghiệp và Môi trường",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Hội đồng cấp trung ương",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Hội đồng cấp tỉnh",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Sở Nông nghiệp và Môi trường",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Tổ tư vấn Hội đồng cấp trung ương",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Tổ tư vấn Hội đồng cấp tỉnh",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "UBND cấp huyện",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "UBND cấp tỉnh",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026",
+     "VN.OCOP.QD1489.2025",
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "UBND cấp xã",
+    "source_ids": [
+     "VN.OCOP.QD1489.2025",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "UBND phường Thành Sen",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026"
+    ]
+   },
+   {
+    "label": "UBND tỉnh, thành phố trực thuộc trung ương",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   }
+  ],
+  "document": [
+   {
+    "digits": [
+     "111",
+     "2021"
+    ],
+    "label": "111/2021/NĐ-CP",
+    "source_ids": [
+     "VN.ND.111.2021"
+    ],
+    "type": "decree",
+    "year": "2021"
+   },
+   {
+    "digits": [
+     "148"
+    ],
+    "label": "148/QĐ-TTg",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ],
+    "type": "decision",
+    "year": "2023"
+   },
+   {
+    "digits": [
+     "1489"
+    ],
+    "label": "1489/QĐ-TTg",
+    "source_ids": [
+     "VN.OCOP.QD1489.2025"
+    ],
+    "type": "decision",
+    "year": "2025"
+   },
+   {
+    "digits": [
+     "15",
+     "2018"
+    ],
+    "label": "15/2018/NĐ-CP",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ],
+    "type": "decree",
+    "year": "2018"
+   },
+   {
+    "digits": [
+     "15",
+     "2026"
+    ],
+    "label": "15/2026/NQ-CP",
+    "source_ids": [
+     "VN.NQ.15.2026"
+    ],
+    "type": "resolution",
+    "year": "2026"
+   },
+   {
+    "digits": [
+     "17",
+     "2023",
+     "15"
+    ],
+    "label": "17/2023/QH15",
+    "source_ids": [
+     "VN.LAW.17.2023"
+    ],
+    "type": "law",
+    "year": "2023"
+   },
+   {
+    "digits": [
+     "26",
+     "2026"
+    ],
+    "label": "26/2026/QĐ-TTg",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ],
+    "type": "decision",
+    "year": "2026"
+   },
+   {
+    "digits": [
+     "43",
+     "2017"
+    ],
+    "label": "43/2017/NĐ-CP",
+    "source_ids": [
+     "VN.ND.43.2017"
+    ],
+    "type": "decree",
+    "year": "2017"
+   },
+   {
+    "digits": [
+     "525"
+    ],
+    "label": "525/QĐ-UBND",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ],
+    "type": "decision",
+    "year": "2026"
+   },
+   {
+    "digits": [
+     "55",
+     "2010",
+     "12"
+    ],
+    "label": "55/2010/QH12",
+    "source_ids": [
+     "VN.LAW.55.2010"
+    ],
+    "type": "law",
+    "year": "2010"
+   },
+   {
+    "digits": [
+     "797"
+    ],
+    "label": "797/QĐ-UBND",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ],
+    "type": "decision",
+    "year": "2026"
+   }
+  ],
+  "form": [
+   {
+    "label": "Mẫu số 01",
+    "number": "01",
+    "source_ids": [
+     "VN.ND.15.2018",
+     "VN.HATINH.THANHSEN.2026",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 01 Phụ lục I",
+    "number": "01",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 01 Phụ lục III",
+    "number": "01",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 01, Phụ lục III",
+    "number": "01",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 01: Phiếu đăng ký đánh giá, phân hạng sản phẩm OCOP",
+    "number": "1",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 02",
+    "number": "02",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.HATINH.THANHSEN.2026",
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 02 Phụ lục I",
+    "number": "02",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 02 Phụ lục III",
+    "number": "02",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 02, Phụ lục III",
+    "number": "02",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 02: Báo cáo tự đánh giá về sản phẩm",
+    "number": "2",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 03",
+    "number": "03",
+    "source_ids": [
+     "VN.ND.15.2018",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 03 Phụ lục I",
+    "number": "03",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 03 Phụ lục III",
+    "number": "03",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 03: Báo cáo đánh giá một số nội dung của hồ sơ đăng ký tham gia đánh giá, phân hạng sản phẩm OCOP",
+    "number": "3",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Mẫu số 04",
+    "number": "04",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 05",
+    "number": "05",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 05 Phụ lục I",
+    "number": "05",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 06",
+    "number": "06",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 06 Phụ lục I",
+    "number": "06",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 07",
+    "number": "07",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 07 Phụ lục I",
+    "number": "07",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 08",
+    "number": "08",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 08 Phụ lục I",
+    "number": "08",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 09",
+    "number": "09",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 09 Phụ lục I",
+    "number": "09",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 10",
+    "number": "10",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 10 Phụ lục I",
+    "number": "10",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 11",
+    "number": "11",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 11 Phụ lục I",
+    "number": "11",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 12",
+    "number": "12",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 13",
+    "number": "13",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 13 Phụ lục I",
+    "number": "13",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 14",
+    "number": "14",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Mẫu số 14 Phụ lục I",
+    "number": "14",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "mẫu 1",
+    "number": "1",
+    "source_ids": [
+     "VN.OCOP.QD1489.2025"
+    ]
+   },
+   {
+    "label": "mẫu số 3",
+    "number": "3",
+    "source_ids": [
+     "VN.OCOP.QD1489.2025",
+     "VN.OCOP.QD148.2023"
+    ]
+   }
+  ],
+  "organization": [
+   {
+    "label": "Công ty Cổ phần Ameii Việt Nam - Chi nhánh Hải Dương",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty Cổ phần Quốc tế sức sống xanh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty TNHH Gia Bảo",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty TNHH Hà Huy Công",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Công ty TNHH Sản xuất và Thương mại Hoài Thành",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty TNHH một thành viên Phương Khiêm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty Trách nhiệm hữu hạn Quang Hải",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Công ty Trách nhiệm hữu hạn Thủy Sản Song Hải",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "HTX Sen Huế",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh - Cửa hàng bánh mứt Trọng Kiểm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Lê Văn Tưởng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Nguyễn Lê Tuấn",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Nguyễn Quang Phước",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Nguyễn Thị Huyền",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Ngô Minh Kha",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Phạm Quý Ngọc - Cơ sở sản xuất bánh đa Ngọc Xinh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Trần Văn Tiến 66",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh Tạ Vân Anh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hộ kinh doanh bánh ngọt Hải Ninh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hợp tác xã Sen Huế",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Hợp tác xã sản xuất kinh doanh dịch vụ nông nghiệp Thụy Hương",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Tổ hợp tác trồng táo Bàng La",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   }
+  ],
+  "product": [
+   {
+    "label": "Bánh Chả",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh Phu thê Hải Ninh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh cốm Hải Ninh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh dẻo Trọng Kiểm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh nhãn",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh nướng Trọng Kiểm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh vòng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đa trắng khô",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đa trắng ướt",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đa đỏ khô",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đa đỏ ướt",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bánh đậu xanh Gia Bảo",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ điếu bát lân tài lộc",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ điếu bát rồng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ điếu bát rồng theo phong cách hình rồng thời Lý",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ ấm chén lân tài lộc",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ ấm chén rồng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bộ ấm chén rồng theo phong cách hình rồng thời Lý",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bột chuối",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Bột đậu đen uống liền Gia Bảo",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Chuối sấy dẻo phủ Tiramisu",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Chuối sấy dẻo phủ dâu tây",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Chả Sụn Phúc Quân",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Giò Bò Phúc Quân",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Giò Lụa Phúc Quân",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi Hạt ngọc 9",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi Nếp cái hoa vàng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi Nếp nhung",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi RVT",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi ST25",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi Tím thảo dược",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi giống HANA",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Gạo ruộng rươi giống Huyết rồng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Hạt sen",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Mứt Atiso đỏ",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Nem Lụi Phúc Quân",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm cao cấp hương vị cổ xưa",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm chắt mực nguyên chất",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm chắt nguyên cốt",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm cá thu",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm loại cá thu ủ chum",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm truyền thống sản xuất tại Cát Hải loại Cao đạm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm truyền thống sản xuất tại Cát Hải loại Chắt cao cấp",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm truyền thống sản xuất tại Cát Hải loại Cá Thu",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Nước mắm truyền thống đảo Cát Hải loại Đặc Biệt",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Rượu Tiến Mơ (Rượu trắng)",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Rượu gạo Bình Phước",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Rượu nếp cái hoa vàng Phương Khiêm",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Rượu nếp cái hoa vàng Văn Tưởng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Rượu vang nếp",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Sinh vật cảnh",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Siro Atiso đỏ",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Tang ký sinh tầm gửi cây dâu",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Táo Bàng La",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Táo Bàng La (sức sống xanh)",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Vải sấy",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Xôi khúc",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Điếu cày rồng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Đèn rồng theo phong cách hình rồng thời Lý",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Đèn trâu hóa rồng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Đèn tích Sơn Tinh, Thủy Tinh",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   }
+  ],
+  "product_group": [
+   {
+    "label": "Bia",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Bia chai",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Bia hơi",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Bia lon",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Chè",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Dược dược khác",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Dược liệu",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Gia vị",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Mỹ phẩm",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Ngũ cốc",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Ngũ cốc đã sơ chế, chế biến (xay xát, cắt, tách vỏ, tách cám, dạng mảnh, nảy mầm, xử lý nhiệt,...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Nông sản chế biến",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Nước giải khát",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Nước giải khát cần pha loãng trước khi dùng",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Nước giải khát dùng ngay",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Phụ phẩm thủy sản dùng làm thực phẩm (da, vây, bóng, mỡ, gan, trứng,... của các loài thủy sản)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Phụ phẩm ăn được của gia súc, gia cầm (nội tạng, xương, chân, cổ, cánh, mỡ, máu,...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu cao độ",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu mùi",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu trái cây",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu trắng, rượu vodka",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu vang",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu vang có gas (vang nổ)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu vang không có gas",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Rượu, cồn và đồ uống có cồn",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Sản phẩm chế biến từ thịt và phụ phẩm ăn của gia súc, gia cầm (khô, hun khói, đồ hộp, xử lý nhiệt, ướp muối, collagen, gelatin...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Sản phẩm phối chế có chứa thịt (giò, chả, nem, lạp sườn, salami, xúc xích, Jăm bông, Pa tê, thịt bao bột, tẩm bột, tẩm bột, ngâm dầu, súp, nước ép, nước chiết,...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Sữa chế biến",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Thảo dược",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Thảo dược khác",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Thịt dạng tươi, ướp đá, giữ mát, đông lạnh (nguyên con, pha lọc, cắt lát, mảnh, xay, viên,...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Thịt và các sản phẩm từ thịt",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Thủ công mỹ nghệ gia dụng, trang trí",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Thủy sản sống, tươi, ướp đá, bảo quản lạnh (dạng nguyên con, sơ chế, fillet, xay, viên, cắt lát, bóc vỏ, cán mỏng,...)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Thủy sản và sản phẩm thủy sản (bao gồm các loài lưỡng cư)",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Thực phẩm chế biến",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Thực phẩm chức năng, thuốc từ dược liệu, thuốc cổ truyền",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Thực phẩm thô, sơ chế",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Thực phẩm tươi sống",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Vải, may mặc",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Vải, may mặc Tên sản phẩm: ........................................................ Mã số sản phẩm: (T",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "dược liệu và sản phẩm từ dược liệu",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "hàng thủ công mỹ nghệ",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "sinh vật cảnh",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "thực phẩm",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Đồ uống có cồn",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Đồ uống có cồn khác",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "Đồ uống không cồn",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Đồ uống đóng hộp, bao gồm nước ép rau, quả",
+    "source_ids": [
+     "VN.ND.15.2018"
+    ]
+   },
+   {
+    "label": "đồ uống",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   }
+  ],
+  "region": [
+   {
+    "label": "Huế",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Hà Tĩnh",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026"
+    ]
+   },
+   {
+    "label": "Hải Phòng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   },
+   {
+    "label": "Thành Sen",
+    "source_ids": [
+     "VN.HATINH.THANHSEN.2026"
+    ]
+   },
+   {
+    "label": "Thành phố Huế",
+    "source_ids": [
+     "VN.HUE.QD797.2026"
+    ]
+   },
+   {
+    "label": "Thành phố Hải Phòng",
+    "source_ids": [
+     "VN.HAIPHONG.QD525.2026"
+    ]
+   }
+  ],
+  "sheet": [
+   {
+    "label": "Bộ sản phẩm: Chè tươi, chè chế biến",
+    "number": "11",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Chế biến từ gạo, ngũ cốc",
+    "number": "6",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Chế biến từ rau, củ, quả, hạt",
+    "number": "7",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Chế biến từ thịt, thủy sản, trứng, sữa, các sản phẩm từ mật ong, mật khác và nông sản thực phẩm khác",
+    "number": "8",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Cà phê, cacao",
+    "number": "13",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Cây cảnh",
+    "number": "24",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch",
+    "number": "26",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Gia vị khác (muối, hành, tỏi, tiêu)",
+    "number": "10",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Gạo, ngũ cốc, hạt sơ chế khác",
+    "number": "3",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Hoa",
+    "number": "23",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Mật ong, mật khác và nông sản thực phẩm khác",
+    "number": "4",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Mỹ phẩm có thành phần từ dược liệu",
+    "number": "19",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Mỹ phẩm có thành phần từ thảo dược",
+    "number": "19",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Nước khoáng thiên nhiên, nước tinh khiết",
+    "number": "16",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Nước khoáng thiên nhiên, nước uống đóng chai",
+    "number": "16",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Rau, củ, quả, hạt tươi",
+    "number": "1",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Rượu trắng",
+    "number": "14",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Sản phẩm trà từ thực vật khác",
+    "number": "12",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Thịt, thủy sản, trứng, sữa tươi",
+    "number": "2",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Thủ công mỹ nghệ",
+    "number": "21",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Thực phẩm chức năng, thuốc dược liệu, thuốc cổ truyền",
+    "number": "18",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Thực phẩm chức năng, thuốc dược liệu, thuốc y học cổ truyền",
+    "number": "18",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Tinh dầu và dược liệu khác",
+    "number": "20",
+    "source_ids": [
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Tinh dầu và thảo dược khác",
+    "number": "20",
+    "source_ids": [
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Tương, nước mắm, gia vị dạng lỏng khác",
+    "number": "9",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Vải, may mặc",
+    "number": "22",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Đồ uống có cồn khác",
+    "number": "15",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Đồ uống không cồn khác",
+    "number": "17",
+    "source_ids": [
+     "VN.OCOP.QD148.2023",
+     "VN.OCOP.QD26.2026"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Đồ ăn nhanh",
+    "number": "5",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   },
+   {
+    "label": "Bộ sản phẩm: Động vật cảnh",
+    "number": "25",
+    "source_ids": [
+     "VN.OCOP.QD26.2026",
+     "VN.OCOP.QD148.2023"
+    ]
+   }
+  ]
+ },
+ "schema_version": 1
+}

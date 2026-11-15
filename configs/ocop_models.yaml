@@ -1,0 +1,34 @@
+# OCOP model profile. The LLM is an OpenAI-compatible API (endpoint and key in .env); embedding and reranker load locally on demand.
+profile: laptop_small
+llm:
+  provider: openai
+  model_id: gpt-6-sol
+  answer_and_router_shared: true
+  router_policy: deterministic_first
+  context_tokens: 8192
+  temperature: 0.1
+embedding:
+  provider: sentence_transformers
+  model_id: google/embeddinggemma-300m
+  revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  dimension: 768
+  encode_query: encode_query
+  encode_document: encode_document
+  model_max_tokens: 2048
+  min_transformers_version: "4.57.0"  # model card config uses use_bidirectional_attention (older versions ignore it silently)
+  requires_license_acceptance: true
+reranker:
+  provider: sentence_transformers
+  model_id: BAAI/bge-reranker-v2-m3
+  revision: 953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e
+  pair_token_budget: 512
+ocr:
+  provider: easyocr_craft_vietocr_vgg_transformer_local_only
+  candidates_require_human_review: true
+  handwritten_or_uncertain_table_cells: needs_review
+safety:
+  verified_rules_only: true
+  forbid_cross_tenant_retrieval: true
+activation:
+  enabled: true  # Model availability checked at runtime; do not auto-download.
+  downloads_automatic: false

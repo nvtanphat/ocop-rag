@@ -1,0 +1,211 @@
+"""Single OCOP source-to-answer pipeline.
+
+python tools/cli.py run                  # prepare corpus and serve API
+python tools/cli.py run --query "..."    # prepare corpus and answer once
+python tools/cli.py run --build-only      # prepare corpus without serving
+python tools/cli.py status               # inspect corpus readiness
+python tools/cli.py debug --help         # advanced operator commands
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+for _stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if callable(_reconfigure):
+        _reconfigure(encoding="utf-8", errors="replace")
+
+
+def main() -> None:
+    cli = argparse.ArgumentParser(description="OCOP GraphRAG — one end-to-end pipeline")
+    sub = cli.add_subparsers(dest="command", required=True)
+    run = sub.add_parser("run", help="OCR dataset -> evidence -> retrieval/graph -> API or answer")
+    run.add_argument("--root", type=Path, default=ROOT)
+    run.add_argument("--ocr-dataset", type=Path, help="Complete source-locked OCR dataset directory")
+    run.add_argument(
+        "--reviewed-text",
+        type=Path,
+        help="Whole-document reviewed Markdown to import into --ocr-dataset before building (idempotent)",
+    )
+    run.add_argument("--query", help="Answer one question after preparing the corpus")
+    run.add_argument("--build-only", action="store_true", help="Prepare corpus without starting the API")
+    run.add_argument(
+        "--refresh", action="store_true", help="Rebuild all derived artifacts (OCR cache reused)"
+    )
+    run.add_argument("--dense", action="store_true", help="Build real EmbeddingGemma/Qdrant vectors")
+    run.add_argument(
+        "--semantic-extract",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use the extraction LLM (OCOP_EXTRACT_LLM_PROVIDER) for source-grounded candidate entities, features, relations and rules (enabled by default; --no-semantic-extract disables it)",
+    )
+    run.add_argument(
+        "--semantic-max-units",
+        type=int,
+        default=None,
+        help="Maximum EvidenceUnits sent to the extraction LLM (default: all eligible units)",
+    )
+    run.add_argument("--full", action="store_true", help="Require Dense, Neo4j and the answer LLM")
+    run.add_argument(
+        "--require-eval-gate",
+        action="store_true",
+        help="Block serving when verified production evaluation gates fail",
+    )
+    run.add_argument("--neo4j", action="store_true", help="Also publish graph into Neo4j")
+    run.add_argument("--dpi", type=int, default=300)
+    run.add_argument("--embedding-model", default="google/embeddinggemma-300m")
+    run.add_argument("--embedding-revision")
+    run.add_argument("--qdrant-host", default="localhost")
+    run.add_argument("--qdrant-port", type=int, default=6333)
+    run.add_argument("--neo4j-uri", default="bolt://localhost:7687")
+    run.add_argument("--no-llm", action="store_true", help="Use evidence-only answer mode")
+    run.add_argument("--retrieval-mode", choices=("auto", "sparse", "dense", "hybrid"), default="auto")
+    run.add_argument("--rerank", action="store_true")
+    run.add_argument("--host", default="127.0.0.1")
+    run.add_argument("--port", type=int, default=8000)
+    eval_cmd = sub.add_parser("evaluate", help="Independent retrieval/agent eval; does not OCR PDFs")
+    eval_cmd.add_argument("arguments", nargs=argparse.REMAINDER)
+    status = sub.add_parser("status", help="Validate current unified corpus readiness")
+    status.add_argument("--root", type=Path, default=ROOT)
+    graph = sub.add_parser("graph", help="Refresh the graph or index, publish to Neo4j, export the editable extraction file or reference lists")
+    graph.add_argument("action", choices=["refresh-graph", "refresh-index", "publish-neo4j", "export-references", "export-extraction"])
+    graph.add_argument("--neo4j-uri", default="bolt://localhost:7687")
+    graph.add_argument("--neo4j-user", default="neo4j")
+    graph.add_argument("--root", type=Path, default=ROOT)
+    debug = sub.add_parser("debug", help="Developer commands for inspecting individual internal components")
+    debug.add_argument("arguments", nargs=argparse.REMAINDER)
+    if len(sys.argv) > 1 and sys.argv[1] == "evaluate":
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "evaluate_ocop.py"), *sys.argv[2:]], cwd=ROOT, check=False
+        )
+        raise SystemExit(completed.returncode)
+    args = cli.parse_args()
+    if args.command == "graph":
+        try:
+            if args.action == "refresh-graph":
+                from ai_core.system.graph_publication import rebuild_additive_graph
+
+                result = rebuild_additive_graph(args.root)
+            elif args.action == "refresh-index":
+                from ai_core.system.index_refresh import refresh_index_after_graph_change
+
+                result = refresh_index_after_graph_change(args.root)
+            elif args.action == "publish-neo4j":
+                from ai_core.graph.ocop.store import publish_reviewed_graph
+                from ai_core.orchestration.ocop.llm import load_env_file
+
+                load_env_file()
+                if not os.getenv("NEO4J_PASSWORD"):
+                    raise RuntimeError("NEO4J_PASSWORD is required for Neo4j publishing")
+                result = publish_reviewed_graph(
+                    args.root, uri=args.neo4j_uri, user=args.neo4j_user, password=os.environ["NEO4J_PASSWORD"]
+                )
+            elif args.action == "export-extraction":
+                from ai_core.graph.ocop.extraction_file import export_file
+
+                result = export_file(args.root / "data/processed/ocop/graph", args.root / "data/extraction")
+            else:
+                from ai_core.graph.ocop.store import export_reference_files
+
+                result = export_reference_files(args.root)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        except (ValueError, OSError, RuntimeError) as exc:
+            print("OCOP graph error: " + str(exc), file=sys.stderr)
+            raise SystemExit(1) from exc
+        return
+    if args.command == "debug":
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "debug_cli.py"), *args.arguments], cwd=ROOT, check=False
+        )
+        raise SystemExit(completed.returncode)
+
+    from ai_core.system.pipeline import OcopSystemPipeline, PipelineOptions
+
+    system = OcopSystemPipeline(args.root.resolve())
+    if args.command == "status":
+        print(json.dumps(system.status(validate_sources=True), indent=2, ensure_ascii=False))
+        return
+
+    if args.build_only and args.query:
+        cli.error("--build-only and --query are mutually exclusive")
+    try:
+        if args.reviewed_text:
+            if not args.ocr_dataset:
+                cli.error("--reviewed-text requires --ocr-dataset")
+            sys.path.insert(0, str(ROOT / "ocr"))
+            from ocop_ocr.reviewed_text import import_reviewed_text
+
+            summary = import_reviewed_text(args.ocr_dataset.resolve(), args.reviewed_text.resolve())
+            print(json.dumps({"import_text": summary.get("import_text_summary", "unchanged")}, ensure_ascii=False))
+        prepared = system.ensure(
+            PipelineOptions(
+                ocr_dataset=args.ocr_dataset,
+                refresh=args.refresh,
+                semantic_extract=args.semantic_extract,
+                semantic_max_units=args.semantic_max_units,
+                dense=args.dense or args.full,
+                neo4j=args.neo4j or args.full,
+                dpi=args.dpi,
+                embedding_model=args.embedding_model,
+                embedding_revision=args.embedding_revision,
+                qdrant_host=args.qdrant_host,
+                qdrant_port=args.qdrant_port,
+                neo4j_uri=args.neo4j_uri,
+            )
+        )
+        print(json.dumps({"pipeline": prepared}, indent=2, ensure_ascii=False), flush=True)
+        if args.require_eval_gate or os.environ.get("OCOP_ENFORCE_RELEASE_GATE") == "1":
+            from ai_core.evaluation.ocop.release import validate_latest
+
+            gate = validate_latest(system.root, corpus_version=prepared.get("corpus_version"))
+            if gate["status"] != "pass":
+                raise RuntimeError("OCOP production release blocked: " + ", ".join(gate["failures"]))
+        if args.build_only:
+            return
+        if args.query:
+            effective_mode = (
+                ("hybrid" if prepared["dense_ready"] else "sparse")
+                if args.retrieval_mode == "auto"
+                else args.retrieval_mode
+            )
+            if effective_mode != "sparse" and not prepared["dense_ready"]:
+                raise RuntimeError(
+                    "Dense vectors missing. Re-run with --dense or use --retrieval-mode sparse"
+                )
+            from ai_core.orchestration.ocop.workflow import OcopAgent
+            from ai_core.orchestration.ocop.llm import make_answer_client
+
+            llm = None if args.no_llm else make_answer_client()
+            answer = OcopAgent(system.root, llm=llm, retrieval_mode=effective_mode, rerank=args.rerank).ask(
+                args.query
+            )
+            print(answer.model_dump_json(indent=2))
+            return
+        # API modules resolve their source/index/graph roots on import. Serve
+        # exactly the corpus just prepared, even if an older OCOP_ROOT exists.
+        os.environ["OCOP_ROOT"] = str(system.root)
+        # The deployment's retrieval profile and rerank switch come from .env; read it now, not as a side effect of the
+        # first model call, so a request that reaches /query first is served with the same profile as one after /health.
+        from ai_core.orchestration.ocop.llm import load_env_file
+        from uvicorn import run as serve
+
+        load_env_file()
+
+        serve("backend.api.ocop_main:app", host=args.host, port=args.port)
+    except (RuntimeError, ValueError, FileNotFoundError, OSError) as exc:
+        print(f"OCOP pipeline error: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+if __name__ == "__main__":
+    main()

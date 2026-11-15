@@ -1,0 +1,290 @@
+# Vietnamese query vocabulary for the OCOP router, planner and fusion.
+# Every list is matched accent-insensitively on whole words/phrases (see docs/CONFIGURATION.md).
+# Corpus entities (documents, products, organisations, localities, sheets, forms) do NOT belong
+# here: they come from the entity catalog generated at index build time.
+schema_version: 1
+
+# Question/function words: never part of an entity name, ignored when counting content words.
+stopwords: [ai, cái, các, có, của, để, gì, gồm, không, là, mà, mỗi, nào, như, những, phải, sao, thì, và, về, với, ở,
+  tại, trong, ngoài, cần, được, này, đó, hôm, nay, tuần, bên, thế, cùng, một, số, hãy, bao, nhiêu, mấy, ra, rồi, đã,
+  đang, cho, theo, khi, nếu, thì, hay, hoặc, bị, bằng, từ, đến, trên, dưới, nữa, lại, vậy, còn, nó, tôi, mình, bạn,
+  xin, vui, lòng, giúp, biết, nói, cho, hỏi, quy, định]
+
+# Imperative/politeness words that tell the system what to do, not what to find.
+instruction_words: [thứ, nhất, trình, bày, cả, hai, liệt, kê, nêu, cho, biết, hãy, giải, thích, tóm, tắt, so, sánh, kiểm, tra, tìm, tra, cứu]
+
+# Reporting verbs an answer adds when it restates a passage ("QĐ525 ghi có 26 sản phẩm"): they say nothing about the
+# passage's content, so the claim-grounding word-coverage check ignores them.
+claim_filler: [ghi, nêu, nói, đề, cập, cho, biết, trình, bày, quy, định, có]
+
+# Words naming a table part ("không phải cột người đại diện"): they label the rejected alternative, they are not part of it.
+table_words: [cột, dòng, hàng, ô, bảng]
+
+# Words that open a document reference, e.g. "QĐ 26/2026", "Nghị định 15".
+document_types:
+  decision: [quyết định, qđ]
+  decree: [nghị định, nđ]
+  resolution: [nghị quyết, nq]
+  law: [luật]
+  circular: [thông tư, tt]
+
+# Suffix letters of an official document number that identify its type: "17/2023/QH15" -> law.
+document_number_markers:
+  decision: [QĐ]
+  decree: [NĐ]
+  resolution: [NQ]
+  law: [QH]
+  circular: [TT]
+
+# Nouns that introduce a numbered structural reference.
+structure_nouns:
+  number: [số]
+  article: [điều]
+  form: [mẫu số, mẫu]
+  sheet: [phiếu]
+  product: [sản phẩm, mặt hàng]
+  page: [trang pdf, trang]
+  criterion: [tiêu chí, mục]
+  # In a statute ("Chương II", "Luật ...") "Mục N" is a section of the chapter, not a scoring criterion.
+  chapter: [chương]
+star_noun: [sao]
+# Rating ladder of the evaluation framework. `certified_star_levels` are the levels that carry a certificate and an
+# asterisk legend; the asterisk quantifier in table legends is derived from them.
+star_levels: [1, 2, 3, 4, 5]
+certified_star_levels: [3, 4, 5]
+
+# Jurisdiction labels that mean "whole country" (never a locality name).
+nationwide_labels: [Vietnam, Việt Nam, toàn quốc, nationwide]
+
+# A locality explicitly written by the user: marker + capitalised words (no gazetteer in code).
+locality_markers: [phường, xã, tỉnh, thành phố, thị xã, thị trấn, huyện, quận, đặc khu]
+# Provincial-level administrative names (current 34 units after the 2025 merger, plus common legacy names).
+# World knowledge, not corpus data: a locality is recognised even when no corpus document mentions it, so a
+# question about an uncovered province is answered "not in corpus" instead of with a national document.
+localities: [Hà Nội, Huế, Thừa Thiên Huế, Lai Châu, Điện Biên, Sơn La, Lạng Sơn, Quảng Ninh, Thanh Hóa, Nghệ An, Hà Tĩnh, Cao Bằng,
+  Tuyên Quang, Lào Cai, Thái Nguyên, Phú Thọ, Bắc Ninh, Hưng Yên, Hải Phòng, Ninh Bình, Quảng Trị, Đà Nẵng, Quảng Ngãi,
+  Gia Lai, Khánh Hòa, Lâm Đồng, Đắk Lắk, Hồ Chí Minh, Đồng Nai, Tây Ninh, Cần Thơ, Vĩnh Long, Đồng Tháp, Cà Mau, An Giang,
+  Quảng Nam, Bình Định, Bình Dương, Bà Rịa - Vũng Tàu, Long An, Tiền Giang, Bến Tre, Trà Vinh, Sóc Trăng, Bạc Liêu, Kiên Giang,
+  Hậu Giang, Phú Yên, Ninh Thuận, Bình Thuận, Kon Tum, Đắk Nông, Bình Phước, Hà Giang, Yên Bái, Bắc Kạn, Bắc Giang, Vĩnh Phúc,
+  Hòa Bình, Hà Nam, Nam Định, Thái Bình, Hải Dương, Quảng Bình]
+
+# A marker right after one of these is not a locality ("cấp xã", "hợp tác xã").
+locality_marker_blockers: [cấp, hợp tác, liên hiệp hợp tác, tổ hợp tác, ubnd, ủy ban nhân dân, uỷ ban nhân dân]
+
+# Phrases that end an entity name when it is extracted from "sản phẩm <name> ...".
+entity_terminators: [thì, thuộc, là, theo, ở, được, có, cần, nên, trong, đạt, của, do, bởi, liên hệ, không, nào, gì, bao
+  nhiêu, như thế nào, ra sao, ocop, liên quan, quy định, đăng ký, trên địa bàn, tại, và, hay, để, khi]
+# Words/phrases that cannot be a product name even after the marker.
+non_entity_phrases: [nào, gì, này, đó, kia, ocop, của tôi, công nhận, đạt sao, được công nhận, được chứng nhận, được
+  đánh giá, tôi, chúng tôi, mình, mấy sao, bao nhiêu sao, mấy điểm, bao nhiêu điểm, hạng mấy]
+product_markers: [sản phẩm, có sản phẩm, với sản phẩm, mặt hàng]
+
+# Whole-question follow-up behaviour.
+followup:
+  # Zero denotes an uncounted plural: use the bounded set of recent referents.
+  reference_quantities: {hai: 2, '2': 2, ba: 3, '3': 3, cả hai: 2, cả ba: 3, các: 0, những: 0}
+  demonstrative: '(?:nay|do|ay|tren|vua\s+(?:noi|nhac|hoi|roi)|kia|nhac\s+den)'
+  alternative_reference: 'khac'
+  openers: [thế, vậy, còn, nếu vậy, với năm đó, đổi sang, chuyển sang, thế còn, vậy còn, thế thì, vậy thì]
+  pronouns: [nó, cái đó, cái này, điều đó, điều này, đó, ý đó, mục đó, phần đó, văn bản đó, quyết định đó]
+  # Closing phrases that ask about the same thing again for a new part ("Nơi tiếp nhận thì sao?").
+  tail_cues: [thì sao, thì thế nào, thì ra sao]
+  # A follow-up that names a new thing the earlier question never mentioned ("Còn Điều 7?" after a question about hồ sơ) is asked
+  # afresh about that thing, inside the scope the conversation carries; the old topic words would only mislead retrieval.
+  generic_question: '{target}{scope} nói gì?'
+  scope_of: của
+
+# Cue lists by question facet.
+cues:
+  graph_semantic_definition_scope: [giải thích từ ngữ]
+  graph_semantic_definition_copula: [còn gọi là, là]
+  graph_semantic_subject_definition: [tổ chức, cá nhân, pháp nhân, chủ thể, hộ gia đình]
+  graph_semantic_deadline_prefix: [trong vòng, trong thời hạn, không quá, chậm nhất, ít nhất]
+  graph_semantic_deadline_unit: [ngày làm việc, ngày, tháng, năm, giờ]
+  graph_semantic_product_set: [bộ sản phẩm]
+  graph_semantic_action_cues:
+    obligation: [phải]
+    permission: [được phép, có quyền]
+    prohibition: [không được, nghiêm cấm, cấm]
+    exemption: [không phải, được miễn]
+    temporal: [tiếp tục, có hiệu lực, áp dụng]
+  # Complete record questions can stop after a source-backed identity lookup.
+  # These are cue-family references, not copies of the phrases below.
+  direct_lookup:
+    lookup_recognition: [producer, recognition_attribute, recognition_score_attribute, recognition]
+  direct_lookup_exclusion: [tại sao, vì sao, bằng cách nào]
+  recognition_score_attribute: [bao nhiêu điểm, mấy điểm, điểm đánh giá, tổng điểm]
+  # Words that join or contrast the parts of one question; each part is searched on its own as well.
+  part_separators: [khác gì, khác nhau, khác với, khác, so với, so sánh, và, đồng thời, cũng như, còn, hay là, hoặc, rồi, vậy]
+  # Words that make a clause a question; two clauses that both ask, joined by a comma, are two questions.
+  question_words: [nào, gì, đâu, bao nhiêu, mấy, ai, bao giờ, ra sao, thế nào]
+  in_domain: [ocop, tiêu chí, phiếu đánh giá, thang điểm, hồ sơ, thủ tục, công nhận, chứng nhận, an toàn thực phẩm, quy định,
+    nghị định, quyết định, biểu mẫu, phân nhóm, minh chứng, truy xuất, nhãn hàng hóa, luật, nông sản, nhóm nào,
+    điểm, mẫu, đăng ký, nộp hồ sơ, phiếu nào, phiếu số, được chấm, chấm điểm, chấm theo, phân hạng, hạng sao,
+    mấy sao, hợp tác xã, htx, tổ hợp tác, liên hiệp hợp tác xã]
+  # A one-syllable catalog name ("chè", "điều") is an entity only right after one of these heads, or when an entity
+  # terminator follows it; otherwise it is the first syllable of a compound ("điều kiện", "chè" in "chè chén").
+  single_syllable_entity_heads: [sản phẩm, mặt hàng, hạt, nhóm, phân nhóm, bộ sản phẩm, loại, các loại, cây]
+  explicit_out_of_scope: [kết quả bóng đá, giá bitcoin, xem tarot, dự báo thời tiết, viết mã độc]
+  authority: [thẩm quyền, cơ quan nào, ai công nhận, ai có thẩm quyền, ai quyết định, cấp nào công nhận, cấp nào có thẩm quyền]
+  producer: [chủ thể nào, chủ thể của, ai sản xuất, do ai, cơ sở nào sản xuất, đơn vị nào sản xuất, sản xuất bởi,
+    của doanh nghiệp nào, của hợp tác xã nào, của htx nào, thuộc chủ thể nào]
+  recognition: [công nhận, đã đạt ocop, được chứng nhận ocop, sản phẩm đạt sao, danh sách sản phẩm ocop, liệt kê sản phẩm ocop]
+  rating_assertion: [chắc chắn, chấm, kết luận, khẳng định, xác nhận, cho biết chắc]
+  recognition_listing: [danh sách, liệt kê, các sản phẩm]
+  # Leading words of a locality name that the registry spells without ("Thành phố Huế" vs the source tag HUE).
+  administrative_prefix: [thành phố, tỉnh, thị xã, quận, huyện, tp]
+  # Asking for the rating a named product or producer received (not for the thresholds that define a rating).
+  recognition_attribute: [mấy sao, bao nhiêu sao, xếp loại gì, xếp hạng gì, hạng mấy]
+  recognition_listing_negative: [danh sách, liệt kê, đã được công nhận, sản phẩm nào được công nhận, bao nhiêu sản phẩm]
+  procedure: [mẫu, biểu mẫu, điền, đăng ký, thủ tục, hồ sơ lần đầu, hồ sơ ocop, hồ sơ gồm, cần nộp hồ sơ]
+  procedure_own: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị]
+  # The asker's own unnamed product: its star level or score is a premise they state, not a public record to look up.
+  own_subject: [bên mình, của mình, nhà mình, bên tôi, của tôi, nhà tôi, chúng tôi, chúng mình, bọn mình, của em, bên em]
+  criteria: [tiêu chí, thang điểm, mức điểm, điểm tối đa, điểm chấm, phiếu chấm, phiếu đánh giá]
+  multihop: [liên quan đến, mối quan hệ, căn cứ vào những, đối chiếu, liên hệ với, dựa trên những, liên hệ giữa, yêu cầu minh chứng,
+    minh chứng nào, đòi hỏi giấy tờ]
+  temporal: [so sánh, chuyển tiếp, trước và sau, thay đổi theo năm, khác nhau, hiệu lực, năm nào áp dụng]
+  # "Hiệu lực" alone is a validity question only when it does not ask for a plain duration (how long it lasts).
+  temporal_validity: [hiệu lực]
+  # Asks which version is in force now: answered by the clauses that replace older versions (the validity chain).
+  current_version: [mới nhất, hiện hành, đang áp dụng, còn áp dụng, bản mới]
+  temporal_fact: [bao lâu, thời hạn, mấy tháng, mấy năm, bao nhiêu tháng, bao nhiêu năm]
+  temporal_strong: [chuyển tiếp, thời điểm áp dụng, năm nào áp dụng, thay đổi theo năm, theo thời điểm,
+    quy định năm, trước và sau khi, có còn áp dụng, hết hiệu lực]
+  temporal_compare: [so sánh, khác nhau, khác biệt, đối chiếu, thay đổi]
+  temporal_compare_scope: [phiên bản, quy định, tiêu chí]
+  temporal_compare_old_new: [quy định cũ, quy định mới, văn bản cũ, văn bản mới]
+  temporal_legal_scope: [quy định, bộ tiêu chí, tiêu chí, mẫu, hồ sơ, ocop, chính sách, văn bản, luật, hiệu lực, công nhận, năm]
+  compliance: [an toàn thực phẩm, giấy attt, giấy chứng nhận cơ sở, nhãn hàng hóa, miễn giấy, vệ sinh thực phẩm,
+    đủ điều kiện attt, miễn chứng nhận, attp, an toàn vệ sinh thực phẩm, điều kiện vệ sinh]
+  classification: [thuộc nhóm, thuộc phân nhóm, thuộc loại, nhóm nào, nhóm gì, phân nhóm, phân loại sản phẩm,
+    nằm trong danh mục sản phẩm, thuộc danh mục sản phẩm]
+  # Query interpretation only; do not broaden ingestion's amendment predicates.
+  document_change: [sửa, sửa đổi, thay thế, bổ sung, bãi bỏ]
+  evidence_requirements: [minh chứng, giấy tờ cần, hồ sơ cần có, cần chứng nhận gì, yêu cầu giấy tờ, loại giấy tờ, cần giấy tờ]
+  evidence_search_terms: [minh chứng giấy tờ tiêu chí]
+  relation: [thay thế, sửa đổi văn bản, sửa đổi quyết định, bổ sung văn bản, căn cứ văn bản]
+  relation_open: [liên quan đến, mối quan hệ, đối chiếu, liên hệ với, kết hợp các, liên hệ giữa]
+  relation_predicates:
+    REPLACES: [thay thế]
+    AMENDS: [sửa đổi]
+    BASED_ON: [căn cứ văn bản]
+    SUSPENDS: [đình chỉ hiệu lực]
+  normative_star: [điều kiện, yêu cầu, cần đáp ứng, để được, để đạt, tiêu chí, cần những gì, quy định thế nào]
+  deadline: [hạn nộp, trước ngày, hạn cuối, thời hạn nộp, hạn đăng ký, thời hạn đăng ký]
+  local_document: [văn bản ở, văn bản của, tài liệu ở, tài liệu của, quyết định của, quyết định ở, văn bản địa phương]
+  # Words of a provision reference ("khoản 1 Điều 7", "Phụ lục II", "Mẫu số 01") and of the verbs that change one.
+  # Units are linked across documents by them (graph/ocop/links.py).
+  provision_clause: [khoản]
+  provision_point: [điểm]
+  provision_annex: [phụ lục]
+  provision_form: [mẫu số, biểu số]
+  amend_verb: [sửa đổi bổ sung, sửa đổi, bổ sung, bãi bỏ, thay thế]
+  amend_object: [một số nội dung, một số điều, một số quy định]
+  reference_connector: [của, tại]
+  own_document_marker: [này]
+  # A year right after these names a version of the rules ("theo quy trình năm 2023"), not the year of an event.
+  version_reference: [quy trình, bộ quy định, quy định, bộ tiêu chí, bộ hồ sơ, hồ sơ ocop, bộ ocop, phiên bản, bản sửa, bản]
+  event_year_scope: [công nhận, được công nhận, sản phẩm ocop đạt sao, sản phẩm đạt sao]
+  assessment_year_scope: [đánh giá, chấm điểm, xét hạng]
+  assessment_year_marker: [năm đánh giá, kỳ đánh giá, chấm điểm năm]
+  recognition_year_marker: [công nhận, sản phẩm ocop, sản phẩm đạt sao]
+  # Questions about a private dossier (needs a trusted AuthContext).
+  private_dossier: [rà soát hồ sơ của tôi, kiểm tra hồ sơ của tôi, hồ sơ của tôi còn thiếu, hồ sơ tôi còn thiếu, hồ sơ tôi thiếu gì,
+    hồ sơ tôi cần bổ sung minh chứng, hồ sơ của tôi đạt chưa, hồ sơ của tôi có đạt, rà soát hồ sơ, đánh giá hồ sơ của tôi,
+    hồ sơ riêng, dossier riêng, hồ sơ nội bộ]
+  private_dossier_negative: [hồ sơ tôi cần chuẩn bị, hồ sơ của tôi cần chuẩn bị, hồ sơ tôi cần nộp, tôi cần chuẩn bị hồ sơ,
+    hồ sơ gồm những gì, hồ sơ cần có gì, bộ hồ sơ riêng, hồ sơ riêng hay]
+  private_scope: [tenant, dossier, hồ sơ của doanh nghiệp khác, hồ sơ của công ty khác, hồ sơ doanh nghiệp khác, tôi là admin,
+    quyền quản trị, hồ sơ riêng của]
+  private_open: [mở hồ sơ, xem hồ sơ, truy cập hồ sơ, lấy hồ sơ, tải hồ sơ]
+  private_scoring: [chấm điểm hồ sơ của tôi, tính điểm hồ sơ của tôi, ước tính điểm hồ sơ, dự tính điểm hồ sơ, tính điểm cho hồ sơ,
+    hồ sơ của tôi được bao nhiêu điểm, bao nhiêu sao nếu, hãy tính điểm, chấm điểm giúp tôi, đánh giá điểm cho tôi]
+  private_scoring_verbs: [tính điểm, ước tính điểm, dự tính điểm, chấm điểm]
+  private_scoring_object: [hồ sơ này, hồ sơ của tôi, cho sản phẩm của tôi]
+  scoring_method: [cách tính điểm, hướng dẫn tính điểm, công thức tính điểm, quy trình chấm điểm, tính điểm như thế nào,
+    tính điểm ra sao, tính điểm ocop như thế nào, thang điểm, phương pháp chấm điểm, điểm được tính thế nào]
+  scoring_negation: [không, đừng, chưa, không cần]
+  # The programme's own name is vocabulary of the whole corpus, not an entity a passage must introduce.
+  claim_program_names: [OCOP]
+  # Words that join the items of a listed claim ("gồm tạp chất, màu sắc và mùi"): nothing else may follow the items.
+  list_joiners: [và, cùng, với, các, mục, tiêu chí, chỉ tiêu, hoặc]
+  claim_negation: [không, chưa, miễn]
+  # Negations that, once a claim states them, the quoted passage must carry too ("chưa" alone may be a tense).
+  claim_hard_negation: [không, miễn]
+  # Words that open a follow-up and are dropped when the question is rebuilt around the previous one.
+  followup_rewrite_openers: [thế còn, vậy còn, còn, thế thì, vậy thì, thế, vậy, nếu vậy]
+  # Words appended to a question to search again for the source a missing structured lookup should have found.
+  tool_search_terms:
+    lookup_criterion: [bộ tiêu chí]
+    lookup_evidence_requirements: [yêu cầu minh chứng]
+    lookup_form: [biểu mẫu hồ sơ]
+    lookup_product_subgroup: [phân nhóm sản phẩm]
+    resolve_temporal_applicability: [hiệu lực điều khoản chuyển tiếp]
+    lookup_recognition: [quyết định công nhận]
+  # A claim that states one of these (besides a score, star level or year) is held to the stricter grounding.
+  claim_critical: [bắt buộc, miễn, không phải, hiệu lực, được công nhận, hạn cuối]
+  # How a score or star level is written: "74,6 điểm", "5 sao", "từ 90 đến dưới 100 điểm".
+  score_noun: [điểm]
+  # A claim that a score is the highest or lowest of a list ("điểm cao nhất"): checked against every record of the decision.
+  superlative_high: [cao nhất, lớn nhất, nhiều điểm nhất]
+  superlative_low: [thấp nhất, ít điểm nhất]
+  range_start: [từ]
+  range_connector: [đến, tới, "-", "–"]
+  range_below: [dưới]
+  # "..., không phải X": the user's own alternative, rejected, is not a new assertion.
+  rejected_alternative: [chứ không phải là, chứ không phải, không phải là, không phải]
+  # An answer line that only says its source is unreviewed ("nguồn OCR chưa được xác minh") states no fact.
+  review_disclaimer: [chưa được xác minh, chưa xác minh, chưa được duyệt, chưa duyệt]
+  review_disclaimer_subject: [OCR, trích xuất]
+  review_disclaimer_state: [chưa]
+  claim_quantity_units: [điểm, sao, ngày, tháng, năm, bản, bộ, giờ, phút, lần, đợt, phần, trang]
+  claim_quantity_boundaries: [trước, sau, kể, tính]
+  scoring_hypothetical: [nếu, giả sử]
+
+# Full-utterance dialogue grammar. Unknown remainder always abstains; these are
+# compositional language forms, never substring triggers or business rules.
+dialogue:
+  address: '(?:ban|anh|chi|em|ad|bot|assistant)'
+  particle: '(?:nhe|nha|a|ah|nhi|voi|di|nhieu|lam|rat nhieu|vay)'
+  # An opener that asks leave to ask ("cho mình hỏi chút") is a greeting move; only as a whole move
+  # (alone or before punctuation), so "tôi muốn hỏi về hồ sơ" stays one task.
+  greeting: '(?:(?:xin )?chao|hello|hi|hey)(?: {address})?|(?:(?:cho|de) )?(?:minh|toi|em|chau) (?:muon )?hoi(?: (?:chut|xiu|ti|mot chut|mot cau|cai nay|cai))?(?: (?:duoc khong|dc khong|duoc ko|dc ko|duoc))?(?= *(?:$|[,.:;!?]))'
+  thanks: '(?:(?:ok|okay|oke|okie|vang|da|thoi)(?: (?:duoc roi|vay))? )?(?:cam on|camon|thank you|thanks|thank|tks|thks|ty)(?: {address})?'
+  acknowledgment: '(?:ok|okay|vang|da|thoi (?:duoc roi|vay|duoc)|duoc roi|(?:(?:ok|okay|vang|da) )?(?:(?:minh|toi) )?(?:da )?hieu(?: roi)?)'
+  farewell: '(?:tam biet|hen gap lai|bye|goodbye)(?: {address})?'
+  identity: '(?:{address} (?:la ai|ten (?:la )?gi)|who are you|what is your name)'
+  help: '(?:{address} (?:co the )?(?:giup|ho tro|lam)(?: duoc)?(?: minh| toi)? (?:nhung )?(?:viec |dieu |chuc nang )?gi|(?:minh|toi) co the hoi gi|huong dan (?:cach )?(?:dung|su dung)|how (?:can you help|do i use this))'
+  rephrase: '(?:(?:minh|toi) chua hieu|(?:hay )?(?:giai thich|noi)(?: lai)? (?:de hieu|don gian|de)(?: hon)?(?: duoc khong)?|explain (?:that )?(?:more simply|again))'
+  correction: '(?:(?:khong phai|sai roi)(?: y (?:minh|toi))?|{address} (?:tra loi )?sai roi|that is wrong)'
+  sources: '(?:(?:cho (?:minh|toi) )?(?:xem )?nguon(?: cua cau (?:do|nay))?|show (?:me )?(?:the )?sources?)'
+
+# Messages shown for non-answer routes.
+messages:
+  out_of_scope: Mình chỉ hỗ trợ tra cứu kiến thức OCOP từ các văn bản đã lập chỉ mục. Bạn thử hỏi về quy định, phiếu chấm, hồ sơ cần chuẩn bị hoặc sản phẩm đã được công nhận nhé.
+  private_unsupported: Hồ sơ riêng của một đơn vị không nằm trong dữ liệu công khai mà mình tra cứu, nên mình không xem hay rà soát được. Mình có thể giải thích quy định, phiếu chấm và hồ sơ cần chuẩn bị chung cho OCOP.
+  # Header note on the row a lookup picked by comparing every record in scope (computed by the system, not source text).
+  answer_row:
+    highest: bản ghi có điểm cao nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
+    lowest: bản ghi có điểm thấp nhất trong phạm vi câu hỏi, hệ thống đã đối chiếu toàn bộ danh sách
+  # Header note on an excerpt of a document another corpus document replaces (graph REPLACES edges, e.g. QĐ148 by QĐ26).
+  replaced_document: văn bản cũ, đã được thay thế
+  clarify_prefix: "Cần bổ sung thông tin để xử lý: "
+  clarify_slots:
+    correction_detail: 'Bạn muốn sửa phần nào? Hãy nêu ý đúng hoặc phạm vi cần tra cứu lại.'
+    question: câu hỏi
+    topic: chủ đề (văn bản, điều, phiếu hoặc sản phẩm cụ thể)
+    document_or_sheet: văn bản hoặc phiếu mà mã/chỉ mục này thuộc về
+    authentication: đăng nhập để mở hồ sơ riêng
+    tenant_id: đơn vị (tenant)
+    dossier_id: mã hồ sơ
+    document_or_sheet_for_code: phiếu hoặc văn bản chứa mã tiêu chí này
+    document_for_locator: văn bản chứa điều này (số hiệu cụ thể)
+    document_version_or_event_year: văn bản hoặc năm sự kiện cần áp dụng
+    split_question: tách thành từng câu hỏi riêng
+    referent_form: hai biểu mẫu bạn muốn nói tới (số mẫu cụ thể)
+    referent_sheet: các phiếu bạn muốn nói tới (số phiếu cụ thể)
+    referent_article: các điều bạn muốn nói tới (số điều cụ thể)
+    referent_document: các văn bản bạn muốn nói tới (số hiệu cụ thể)
+    referent_product: các sản phẩm bạn muốn nói tới (tên sản phẩm cụ thể)

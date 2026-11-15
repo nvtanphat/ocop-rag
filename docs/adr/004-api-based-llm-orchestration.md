@@ -1,0 +1,13 @@
+# ADR 004: Tích hợp mô hình ngôn ngữ (LLM) qua giao thức API chuẩn
+
+## Bối cảnh
+Việc gắn chặt mã nguồn với một thư viện nội bộ hoặc nhúng thẳng trọng số LLM vào tiến trình ứng dụng gây lãng phí tài nguyên RAM/VRAM, khó scale độc lập và không linh hoạt khi chuyển đổi giữa môi trường phát triển cục bộ và môi trường máy chủ đám mây.
+
+## Quyết định
+* Tách biệt hoàn toàn tầng điều phối LLM thông qua giao diện API đồng nhất (`ai_core/orchestration/ocop/llm.py`):
+  * **API tương thích OpenAI (duy nhất)**: Mô hình mặc định `gpt-6-sol`. Cấu hình cấu hình qua `OCOP_ANSWER_OPENAI_BASE_URL` và `OCOP_EXTRACT_OPENAI_BASE_URL`.
+* Khi LLM không sẵn sàng hoặc gặp lỗi kết nối, hệ thống trả bằng chứng với `model_unavailable_retrieval_only`. CLI mặc định không sinh bằng LLM; cờ `--with-llm` bật sinh câu trả lời.
+
+## Hệ quả
+* Ứng dụng nhẹ, dễ đóng gói container và chạy thử nghiệm.
+* Tách bạch chi phí tính toán giữa việc chuẩn bị chỉ mục (chủ yếu là CPU/GPU cho embedding/OCR) và việc sinh câu trả lời.

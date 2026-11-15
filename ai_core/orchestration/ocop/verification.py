@@ -1,0 +1,652 @@
+"""Citation identity guard. It cannot prove semantic entailment from OCR content."""
+
+from __future__ import annotations
+import json
+import re
+import unicodedata
+from functools import lru_cache
+from pathlib import Path
+
+from ai_core.orchestration.ocop.language import get_language
+
+MARKER = re.compile(r"\[S(\d+)\]")
+
+
+@lru_cache(maxsize=1)
+def _corpus_sources() -> frozenset[str]:
+    """Source ids registered in the locked corpus."""
+    path = Path(__file__).resolve().parents[3] / "configs" / "ocop_sources.json"
+    try:
+        return frozenset(s["source_id"] for s in json.loads(path.read_text(encoding="utf-8")).get("sources", []))
+    except (OSError, ValueError, KeyError):
+        return frozenset()
+
+
+def approved(row: dict) -> bool:
+    """A row is trusted as source text when it is verified itself or comes from a source of the locked corpus.
+
+    The corpus is approved as a whole; its per-row machine status (needs_review) says nothing against it. Rows of
+    any other source stay unapproved. Every deterministic check on the claim (numbers, negation, binding, subject)
+    still applies to an approved row.
+    """
+    return row.get("review_status") == "verified" or row.get("source_id") in _corpus_sources()
+
+
+def check_source_markers(answer: str, citations: list[dict]) -> dict:
+    references = {int(x) for x in MARKER.findall(answer)}
+    valid = set(range(1, len(citations) + 1))
+    invalid = sorted(references - valid)
+    missing = not references and bool(answer.strip()) and bool(citations)
+    status = (
+        "missing_citations" if missing else ("markers_valid" if not invalid else "unknown_citation_markers")
+    )
+    # Only the sources the answer actually cites decide whether it is labelled unreviewed. A source of the locked
+    # corpus is approved as a whole; its per-row machine status (needs_review) never reaches the reader. Sources
+    # outside the corpus keep the label. This is labelling only: score and star claims are gated on the row itself.
+    used = [x for i, x in enumerate(citations, 1) if i in references] or citations
+    unverified = any(not approved(x) for x in used)
+    return {
+        "status": status,
+        "invalid_markers": invalid,
+        "unverified_source": unverified,
+        "marker_count": len(references),
+        "citation_count": len(citations),
+        "missing_citations": missing,
+    }
+
+
+# A range ("từ 90 đến 100 điểm", "70 đến dưới 90 điểm") is one assertion: both bounds must be the source's, not
+# each bound found somewhere in the same passage.
+def score_assertion() -> re.Pattern:
+    """A score or star level as the corpus writes it, built from the vocabulary file (no wording in this module)."""
+    lang = get_language()
+
+    def build() -> re.Pattern:
+        number = r"\d+(?:[.,]\d+)?"
+        units = lang.alternation([*lang.star_noun, *lang.cues["score_noun"]])
+        joined = r"\s*" + lang.alternation("range_connector") + r"\s*(?:" + lang.alternation("range_below") + r"\s+)?"
+        return re.compile(r"(?<!\w)" + number + "(?:" + joined + number + r")?\s*" + units + r"\b", re.I)
+
+    return lang.compiled("score_assertion", build)
+
+
+def _cites(row: dict, citation: dict) -> bool:
+    return (
+        row.get("source_id") == citation.get("source_id")
+        and (row.get("evidence_unit_id") or row.get("unit_id")) == citation.get("evidence_unit_id")
+        and (not citation.get("chunk_id") or row.get("chunk_id") == citation.get("chunk_id"))
+    )
+
+
+def _cited_rows(marker_ids: list[int], citations: list[dict], evidence_rows: list[dict]) -> list[dict]:
+    return [
+        r
+        for n in marker_ids
+        if 0 < n <= len(citations)
+        for r in evidence_rows
+        if _cites(r, citations[n - 1])
+    ]
+
+
+def _stated_in(assertion: str, verified: str) -> bool:
+    """A score/star assertion is in the verified text literally, or ("74,6 điểm") as the number of a score label ("Điểm đánh giá: 74,6")."""
+    if assertion in verified:
+        return True
+    score = get_language().alternation("score_noun")
+    number = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*" + score, assertion, re.I)
+    if not number:
+        return False
+    value = re.escape(number[1])
+    # A score sheet writes the points as a table cell under a score column ("Các tiêu chí | Thang điểm", then
+    # "Có nhãn, ghi nhãn hàng hóa đầy đủ ... | 1"): the number closing a cell of such a table is the score.
+    return bool(
+        re.search(score + r"[^\d;|]{0,40}(?<!\d)" + value + r"(?![\d.,]*\d)", verified, re.I)
+        or (re.search(r"\|[^|]{0,30}" + score, verified, re.I) and re.search(r"\|\s*" + value + r"(?![\d.,]*\d)", verified))
+    )
+
+
+@lru_cache(maxsize=1)
+def _source_table_headers() -> dict[str, str]:
+    """Header line of the tables of each source that has exactly one table schema (a continuation chunk of such a
+    table, cut away from its header, takes its column names from here; sources with several schemas stay unlabelled)."""
+    path = Path(__file__).resolve().parents[3] / "data/processed/ocop/index/evidence_units.jsonl"
+    seen: dict[str, set[str]] = {}
+    try:
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                unit = json.loads(line)
+                if unit.get("unit_kind") == "table":
+                    seen.setdefault(unit["source_id"], set()).add(str(unit.get("text") or "").split("\n")[0])
+    except (OSError, ValueError, KeyError):
+        return {}
+    return {source: next(iter(heads)) for source, heads in seen.items() if len(heads) == 1}
+
+
+def label_table_rows(text: str, fallback_header: str | None = None) -> str:
+    """Rewrite a packed table ("Cột: A | B | C" then one row per line) so every data line names its own columns.
+
+    A row quoted without its header line cannot say which cell is the score; with ``label: value`` pairs a score is
+    stated next to its label and a row binds to its own claim. Cells align from the right because merged cells
+    (rowspan) leave the leading cells out of the continuation rows. A chunk cut away from its header takes the single
+    header its source's tables have (``fallback_header``). Text that is not a table is returned unchanged."""
+    lines = text.split("\n")
+    head = re.sub(r"^[^|:\n]{1,20}:\s*", "", lines[0])
+    labels = [cell.strip() for cell in head.split(" | ")]
+    headed = len(lines) >= 2 and len(labels) >= 3 and all(labels)
+    if headed and fallback_header and not head.startswith(fallback_header.split(" | ")[0]):
+        headed = False  # the first line is a row cut from a table, not the table's own header
+    if headed:
+        body, out = lines[1:], [lines[0]]
+    elif fallback_header:
+        labels = [cell.strip() for cell in fallback_header.split(" | ")]
+        body, out = lines, []
+    else:
+        return text
+    for line in body:
+        cells = [cell.strip() for cell in line.strip().strip("|").split(" | ")]
+        if len(cells) >= 2 and (headed and len(cells) <= len(labels) or not headed):
+            cells = cells[-len(labels):]
+            offset = len(labels) - len(cells)
+            line = " | ".join(f"{labels[offset + i]}: {cell}" for i, cell in enumerate(cells))
+        out.append(line)
+    return "\n".join(out)
+
+
+def _labelled_text(row: dict) -> str:
+    # The headings the passage sits under ("Phần C: CHẤT LƯỢNG SẢN PHẨM (35 Điểm)") are source text of the same page
+    # structure: a score they state is stated by the source.
+    headings = " ".join(((row.get("context") or {}).get("parent_chain")) or [])
+    return (headings + "\n" if headings else "") + label_table_rows(
+        str(row.get("text") or row.get("evidence_text") or row.get("row_text") or ""),
+        _source_table_headers().get(str(row.get("source_id"))),
+    )
+
+
+def _row_text(rows: list[dict]) -> str:
+    text = " ".join(_labelled_text(row) for row in rows if approved(row))
+    return re.sub(r"\s+", " ", text.casefold())
+
+
+def _unwrapped(text: str) -> str:
+    """Join the PDF's line wraps ("... Công ty TNHH\nMTV ... đạt sản phẩm OCOP 4 sao."): a line break ends a record only
+    after closing punctuation, before a list item ("2. ", "b) ", "- ") or in a table ("a | b")."""
+    return re.sub(r"(?<![.:;!?|])[ \t]*\n(?![ \t]*(?:\d+[.)]|[^\W\d_]\)|[-•+])\s)(?![^\n]*\|)", " ", text)
+
+
+def _sensitive_records_agree(claim: str, assertion: str, rows: list[dict], together: frozenset[str] = frozenset()) -> bool:
+    """Use the most subject-specific source records, preserving cells of the same table row.
+
+    Records that match the subject equally well are ambiguous: every one of them must state the assertion. Parallel
+    items (the tiers "Hạng 5 sao: 90 đến 100 điểm", "Hạng 4 sao: ...") all match a claim about one tier equally; there
+    the claim is bound when a single record states all of the sentence's assertions together (``together``)."""
+    from ai_core.orchestration.ocop.language import get_language
+
+    groups = {}
+    for index, row in enumerate(rows):
+        if not approved(row):
+            continue
+        spans = row.get("source_spans") or row.get("spans") or []
+        span = next((s for s in spans if isinstance(s, dict)), {}) if isinstance(spans, list) else {}
+        node_ids = row.get("graph_node_ids")
+        # A criterion block (one criterion and its score options, kept together by the chunker) is one record: a
+        # claim naming two of its options ("2 điểm…; thêm … thì 3 điểm") states them of the same criterion. Rows of
+        # a recognition table stay separate, each one a different product.
+        if (row.get("context") or {}).get("unit_kind") == "criterion_table_candidate" and row.get("chunk_id"):
+            identity = ("criterion_block", row.get("source_id"), row["chunk_id"])
+        elif span.get("table_id") and isinstance(span.get("row"), int):
+            identity = (row.get("source_id"), span["table_id"], span["row"])
+        elif isinstance(node_ids, list) and node_ids and all(isinstance(value, str) for value in node_ids):
+            identity = (row.get("source_id"), tuple(sorted(node_ids)))
+        else:
+            identity = (index,)
+        groups.setdefault(identity, []).append(_unwrapped(_labelled_text(row)))
+    # Each record is read with the lead-in above it ("Điều 3. Bộ tiêu chí … gồm 03 phần:" over "a) Phần A … (40 điểm)"):
+    # the heading's words then belong to every item under it, so they cannot make the heading itself the subject
+    # record, and the item's own words decide. The assertion must still be stated by the item itself.
+    records, leads = [], []
+    for identity, texts in groups.items():
+        if identity[0] == "criterion_block":
+            records.append(" ".join(texts))
+            leads.append("")
+            continue
+        lead = ""
+        for part in _split_claims(" ".join(texts)):
+            records.append(part)
+            leads.append(lead)
+            if "|" not in part and not re.search(r"[.!?]\s*$", part):
+                lead = lead + " " + part
+    lang = get_language()
+    terms = {word for word in lang.content_words(score_assertion().sub(" ", MARKER.sub("", claim)), accent_aware=True)
+             if not word.isdigit()}
+    # A score or star claim is about a record that states a score or star: a heading that states none ("Điều 3. Bộ
+    # tiêu chí …") is not its subject however many words it shares. A record of the wrong item still states its own.
+    scores = [len(terms & set(lang.content_words(lead + " " + record, accent_aware=True)))
+              if score_assertion().search(record) or "|" in record else -1
+              for lead, record in zip(leads, records)]
+    # An item the claim names by its letter ("Phần A") is the record that carries that letter, before any word count:
+    # "Tổng điểm … tối đa là 100 điểm" shares "tối đa" with the claim but is not item A.
+    letters = set(re.findall(r"\b[A-Z]\b", score_assertion().sub(" ", MARKER.sub("", claim))))
+    lettered = [bool(letters & set(re.findall(r"\b[A-Z]\b", record))) for record in records]
+    if letters and any(flag and score >= 0 for flag, score in zip(lettered, scores)):
+        scores = [score if flag else -1 for flag, score in zip(lettered, scores)]
+    best = max(scores, default=0)
+    pairs = [(lead, record) for lead, record, score in zip(leads, records, scores) if score == best]
+    # Parallel items tie on words ("a) 4 sao: 26 sản phẩm của 07 chủ thể", "b) 3 sao: 32 sản phẩm của 13 chủ thể"): the
+    # one that also carries most of the claim's other figures ("13 chủ thể") or item letters ("Phần A") is the record
+    # the claim is about.
+    marks = re.compile(r"\d+(?:[.,]\d+)?|\b[A-Z]\b")
+    figures = set(marks.findall(score_assertion().sub(" ", MARKER.sub("", claim))))
+    if figures and len(pairs) > 1:
+        carried = [len(figures & set(marks.findall(record))) for _, record in pairs]
+        pairs = [pair for pair, count in zip(pairs, carried) if count == max(carried)]
+    candidates = [record for _, record in pairs]
+    squashed = [re.sub(r"\s+", " ", record.casefold()) for record in candidates]
+    if not candidates:
+        return False
+    if all(_stated_in(assertion, record) for record in squashed):
+        return True
+    return len(together) > 1 and any(all(_stated_in(a, record) for a in together) for record in squashed)
+
+
+def check_sensitive_claims(
+    answer: str, evidence_rows: list[dict], citations: list[dict] | None = None
+) -> dict:
+    """Fail-closed on numeric score/star claims without verified textual support.
+
+    With ``citations`` each sentence is checked against the verified text of the sources *it cites*: "5 sao" in
+    one sentence is not excused by a different verified source that happens to contain "5 sao". Without them the
+    pooled verified text of all rows is used. Still a guard, not semantic entailment: a matching number
+    alone cannot establish application to a particular sheet.
+    """
+
+    def found(text):
+        return {re.sub(r"\s+", " ", m.group(0).casefold()).strip() for m in score_assertion().finditer(text)}
+
+    if citations is None:
+        assertions = found(answer)
+        verified = _row_text(evidence_rows)
+        return {
+            "unsupported_score_or_star_claims": sorted(x for x in assertions if not _stated_in(x, verified)),
+            "sensitive_claim_count": len(assertions),
+        }
+    assertions, unsupported, misbound = set(), set(), set()
+    for sentence in _split_claims(answer):
+        stated = found(sentence)
+        if not stated:
+            continue
+        assertions |= stated
+        cited = _cited_rows([int(i) for i in MARKER.findall(sentence)], citations, evidence_rows)
+        verified = _row_text(cited)
+        # An enumeration ("Phần A … (40 điểm), Phần B … (25 điểm) và Phần C … (35 điểm)", with commas or semicolons)
+        # binds each figure to its own item: the words from the previous figure up to this one.
+        own_of, start = {}, 0
+        for match in score_assertion().finditer(sentence):
+            own_of.setdefault(re.sub(r"\s+", " ", match.group(0).casefold()).strip(), sentence[start:match.end()])
+            start = match.end()
+        for assertion in stated:
+            present = _stated_in(assertion, verified)
+            own = own_of.get(assertion, sentence) if len(own_of) > 1 else sentence
+            aligned = present and (
+                _sensitive_records_agree(own, assertion, cited, frozenset(found(own)))
+                or _sensitive_records_agree(sentence, assertion, cited, frozenset(stated))
+            )
+            if not aligned:
+                unsupported.add(assertion)
+            if present and not aligned:
+                misbound.add(assertion)
+    return {"unsupported_score_or_star_claims": sorted(unsupported),
+            "misbound_score_or_star_claims": sorted(misbound), "sensitive_claim_count": len(assertions)}
+
+
+# Claim-level verification. Supports an optional audited semantic entailment
+# backend; lexical overlap alone is never called semantic proof.
+
+# Do not split decimal numbers such as 3.5 (which would create two claims).
+# Trailing citation markers immediately following end-of-sentence punctuation (. or ! or ?)
+# belong to the preceding claim.
+SENTENCE_TERMINATOR = re.compile(
+    r"((?:(?<=[!?])|(?<!\d)\.)(?:\s*\[S\d+\])*)(?:\s+|\n+|$)|(?:\s*\[S\d+\])*\n+"
+)
+def critical_claim(text: str) -> bool:
+    """A claim that states a score, a year or a duty/exemption/validity: it is held to the stricter grounding."""
+    lang = get_language()
+
+    def build() -> re.Pattern:
+        units = lang.alternation([*lang.star_noun, *lang.cues["score_noun"]])
+        return re.compile(r"\b(?:\d{1,3}\s*" + units + r"|\d{4}|" + lang.alternation("claim_critical") + r")\b", re.I)
+
+    return bool(lang.compiled("claim_critical", build).search(text))
+WORD = re.compile(r"[\wÀ-ỹ]+", re.U)
+
+
+def _normalize(s: str) -> str:
+    return " ".join(WORD.findall(unicodedata.normalize("NFC", s).casefold()))
+
+
+def negation_conflict(claim: str, source: str) -> bool:
+    """Detect a changed polarity on the matching clause, not an unrelated negative elsewhere."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    lang = get_language()
+    negative = lang.words("claim_negation", lang.cues["claim_negation"])
+
+    def signature(text):
+        text = fold(text)
+        polarity = bool(negative.search(text))
+        words = " ".join(lang.content_words(negative.sub(" ", text)))
+        return polarity, words
+
+    polarity, words = signature(claim)
+    if not words:
+        return False
+    matches = [other for part in re.split(r"[;!?\n]|(?<!\d)\.(?!\d)", source)
+               for other, body in [signature(part)] if " " + words + " " in " " + body + " "]
+    return bool(matches) and polarity not in matches
+
+
+def numeric_binding_conflict(claim: str, source: str) -> bool:
+    """A present number cannot be moved to another identically worded quantity label."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    lang = get_language()
+    units = {fold(word) for word in lang.cues["claim_quantity_units"]}
+    boundaries = lang.stop | {fold(word) for word in lang.cues["claim_quantity_boundaries"]}
+
+    def bindings(text):
+        result = []
+        ranges = {m.start(2): {str(n) for n in range(int(m[1]), int(m[2]) + 1)}
+                  for m in _range().finditer(text) if 0 < int(m[2]) - int(m[1]) <= 20}
+        for match in re.finditer(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", text):
+            value = match[0].replace(",", ".").lstrip("0") or "0"
+            # \Z, not $: in "Thang điểm\n2.2" the header labels the column below, not the next line's number.
+            prefix = re.search(r"([^\W\d_]+)[ \t]*\Z", text[:match.start()])
+            if prefix and fold(prefix[1]) in units:
+                result.append((value, ("prefix", fold(prefix[1]))))
+            tail = re.match(r"[ \t]+([^\W\d_]+(?:[ \t]+[^\W\d_]+){0,7})", text[match.end():])
+            if not tail:
+                continue
+            words = re.findall(r"[a-z]+", fold(tail[1]))
+            if not words or words[0] not in units:
+                continue
+            label = [words[0]]
+            for word in words[1:3]:
+                if word in boundaries:
+                    break
+                label.append(word)
+            values = ranges.get(match.start(), {value})
+            result.extend((value, tuple(label)) for value in values)
+        return result
+
+    available = {}
+    for value, label in bindings(source):
+        available.setdefault(label, set()).add(value)
+    # A table cell ("... | 3") states its value under a column header the row text does not repeat, so the unit is
+    # the column's: a claim may bind that value to a unit.
+    cells = {m[1].replace(",", ".").lstrip("0") or "0"
+             for m in re.finditer(r"\|[ \t]*(\d+(?:[.,]\d+)?)[ \t]*$", source, re.M)}
+    return any(label in available and value not in available[label] and value not in cells
+               for value, label in bindings(claim))
+
+
+def _split_claims(answer: str) -> list[str]:
+    # Marker-bearing lines can contain several independent claims.
+    # Attach markers standing immediately after sentence terminators ("A. [S1] B") to sentence A.
+    parts = []
+    last = 0
+    for m in SENTENCE_TERMINATOR.finditer(answer):
+        part = answer[last : m.end()].strip()
+        if part:
+            parts.append(part)
+        last = m.end()
+    if last < len(answer):
+        tail = answer[last:].strip()
+        if tail:
+            parts.append(tail)
+    return parts
+
+
+def verify_claims(
+    answer: str, citations: list[dict], evidence_rows: list[dict], semantic_verifier=None
+) -> dict:
+    """Return claim-level support labels: supported/unsupported/unknown.
+
+    `supported` requires verified source, a matching source-backed numeric/date
+    invariant when critical, and either exact entailment (claim text is within
+    source) or explicit audited semantic verifier approval. No language model
+    text from retrieval has authority to declare itself verified.
+    """
+    evidence = {}
+    for row in evidence_rows:
+        spans = row.get("source_spans") or row.get("spans") or []
+        for i, c in enumerate(citations, 1):
+            if (
+                _cites(row, c)
+                and isinstance(spans, list)
+                and any(
+                    isinstance(span, dict)
+                    and span.get("pdf_page") == c.get("pdf_page")
+                    and isinstance(span.get("pdf_page"), int)
+                    and span["pdf_page"] > 0
+                    for span in spans
+                )
+            ):
+                evidence.setdefault(i, []).append(row)
+    claims = []
+    for claim in _split_claims(answer):
+        markers = [int(i) for i in MARKER.findall(claim)]
+        prose = MARKER.sub("", claim).strip(" .,:;\n-")
+        if not prose:
+            continue
+        sensitive = critical_claim(prose)
+        if not markers:
+            claims.append(
+                {
+                    "claim": prose,
+                    "cited": [],
+                    "status": "unsupported",
+                    "reason": "missing_claim_citation",
+                    "critical": sensitive,
+                }
+            )
+            continue
+        rows = [r for n in markers for r in evidence.get(n, [])]
+        if not rows:
+            claims.append(
+                {
+                    "claim": prose,
+                    "cited": markers,
+                    "status": "unsupported",
+                    "reason": "citation_does_not_map_to_evidence",
+                    "critical": sensitive,
+                }
+            )
+            continue
+        checked = []
+        for row in rows:
+            if not approved(row):
+                checked.append(("unknown", "source_not_verified"))
+                continue
+            source = str(row.get("text") or row.get("evidence_text") or row.get("row_text") or "")
+            if not source.strip():
+                checked.append(("unknown", "empty_source_text"))
+                continue
+            nums = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", prose))
+            source_nums = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", source))
+            # The excerpt header the model was shown names the document ("QD525.2026"), so its numbers are grounded too.
+            source_nums |= set(re.findall(r"\d+", str(row.get("source_id") or "")))
+            # ...and as the header writes it ("QD26.2026"), which a claim may repeat as "26.2026".
+            source_nums |= set(re.findall(r"\d+(?:\.\d+)+", str(row.get("source_id") or "")))
+            if nums - source_nums:
+                checked.append(("unsupported", "source_missing_claim_numbers"))
+                continue
+
+            if negation_conflict(prose, source):
+                checked.append(("unknown", "negation_scope_unresolved"))
+                continue
+            if numeric_binding_conflict(prose, source):
+                checked.append(("unsupported", "source_numeric_binding_mismatch"))
+                continue
+            if _normalize(prose) and _normalize(prose) in _normalize(source):
+                checked.append(("supported", "exact_verbatim_support"))
+                continue
+            if semantic_verifier is not None:
+                verdict = semantic_verifier(prose, source)
+                if verdict not in ("entails", "contradicts", "unknown"):
+                    raise ValueError("Semantic verifier must return entails/contradicts/unknown")
+                checked.append(
+                    (
+                        "supported"
+                        if verdict == "entails"
+                        else "unsupported"
+                        if verdict == "contradicts"
+                        else "unknown",
+                        "audited_semantic_" + verdict,
+                    )
+                )
+                continue
+            checked.append(("unknown", "needs_semantic_entailment_check"))
+        # All cited sources must agree with a factual claim. A valid citation
+        # cannot launder a conflicting or irrelevant second citation.
+        status = (
+            "supported"
+            if checked and all(a == "supported" for a, b in checked)
+            else "unsupported"
+            if checked and all(a == "unsupported" for a, b in checked)
+            else "unknown"
+        )
+        claims.append(
+            {
+                "claim": prose,
+                "cited": markers,
+                "status": status,
+                "reason": ",".join(dict.fromkeys(b for a, b in checked)),
+                "critical": sensitive,
+            }
+        )
+    bad = [x for x in claims if x["status"] == "unsupported"]
+    uncertain = [x for x in claims if x["status"] == "unknown"]
+    return {
+        "status": "verified"
+        if claims and not bad and not uncertain
+        else "unsupported"
+        if bad
+        else "not_verified",
+        "claims": claims,
+        "supported": sum(c["status"] == "supported" for c in claims),
+        "unsupported": len(bad),
+        "unknown": len(uncertain),
+        "unsupported_critical": any(c["critical"] for c in bad + uncertain),
+    }
+
+
+def _numbers(text: str) -> set[str]:
+    """Digit runs compared by value, so ``05``/``5`` and ``22/5/2026``/``22 tháng 5 năm 2026`` agree."""
+    return {run.lstrip("0") or "0" for run in re.findall(r"\d+", text)}
+
+
+def _range() -> re.Pattern:
+    """"từ A [unit] đến B": a stated range, from the start and connector words of the vocabulary file."""
+    lang = get_language()
+    return lang.compiled(
+        "range",
+        lambda: re.compile(
+            lang.alternation("range_start")
+            + r"\s+(\d+)\s*(?:[^\W\d_]+\s+){0,2}?"
+            + lang.alternation("range_connector")
+            + r"\s*(\d+)",
+            re.I,
+        ),
+    )
+
+
+def _range_numbers(text: str) -> set[str]:
+    """Integers lying inside a stated "từ A đến B" range (short ranges only): "từ 3 sao đến 5 sao" covers 4."""
+    covered: set[str] = set()
+    for m in _range().finditer(text):
+        low, high = int(m.group(1)), int(m.group(2))
+        if low < high and high - low <= 20:
+            covered.update(str(n) for n in range(low, high + 1))
+    return covered
+
+
+def _rejected_alternative() -> re.Pattern:
+    lang = get_language()
+    return lang.compiled(
+        "rejected_alternative",
+        lambda: re.compile(r"[,;]?\s*" + lang.alternation("rejected_alternative") + r"\s+([^.,;]+)", re.I),
+    )
+
+
+def _spelled_out(text: str) -> str:
+    """ "QĐ26" -> "quyết định 26": a document-type abbreviation glued to its number is expanded to the type's full name."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    folded = fold(text)
+    for names in get_language().document_types.values():
+        for short in names[1:]:
+            folded = re.sub(
+                r"(?<![a-z0-9])" + re.escape(fold(short)) + r"(?=\s*\d)", fold(names[0]) + " ", folded
+            )
+    return folded
+
+
+def _without_rejected_alternative(prose: str, asked: str) -> str:
+    """Drop ", không phải X" when X is something the user offered ("A hay X?"): it answers the question's
+    alternative instead of asserting a new fact, and the positive part that remains is still checked."""
+    from ai_core.orchestration.ocop.language import fold, get_language
+
+    if not asked:
+        return prose
+    lang = get_language()
+    words = set(lang.content_words(_spelled_out(asked)))
+
+    def keep(match: re.Match) -> str:
+        labels = {fold(w) for w in lang.table_words}
+        named = [w for w in lang.content_words(_spelled_out(match.group(1))) if w not in labels]
+        return "" if named and set(named) <= words else match.group(0)
+
+    return _rejected_alternative().sub(keep, prose)
+
+
+def grounded_in_excerpt(
+    prose: str, source: str, *, min_term_coverage: float, critical: bool = False, asked: str = ""
+) -> tuple[bool, str]:
+    """Deterministic grounding of a claim in the excerpt the model was shown (not a proof of legal truth).
+
+    Used for a claim that is not a verbatim copy of its source (an unreviewed source, or a paraphrase of a verified one,
+    or one that combines several cited rows): such a claim may be shown, labelled as unreviewed when its source is, when
+    (1) every number in it occurs in the excerpt or inside a range the excerpt states,
+    (2) negation/exemption wording agrees with the excerpt,
+    (3) enough of its content words occur in the excerpt (stricter for critical claims) and (4) its words are not
+    merely scattered: a run of consecutive content words from the claim occurs in the excerpt.
+    """
+    from ai_core.orchestration.ocop.language import get_language
+
+    prose = _without_rejected_alternative(prose, asked)
+    # A user's number is not authority for a factual assertion. Values must occur in the source or its stated range.
+    if _numbers(prose) - _numbers(source) - _range_numbers(source):
+        return False, "grounding_numbers_missing"
+    if negation_conflict(prose, source):
+        return False, "grounding_negation_mismatch"
+    if numeric_binding_conflict(prose, source):
+        return False, "grounding_numeric_binding_mismatch"
+    lang = get_language()
+    from ai_core.orchestration.ocop.language import fold
+
+    filler = {fold(w) for w in lang.claim_filler}
+    claim_terms = [t for t in lang.content_words(prose) if t not in filler]
+    if not claim_terms:
+        return False, "grounding_no_content"
+    source_terms = lang.content_words(source)
+    present = set(source_terms)
+    coverage = sum(t in present for t in claim_terms) / len(claim_terms)
+    if coverage < (0.9 if critical else min_term_coverage):
+        return False, "grounding_terms_missing"
+    # longest run of consecutive claim words that is also consecutive in the source (not tied to a word's first occurrence)
+    best, widths = 0, [0] * (len(source_terms) + 1)
+    for term in claim_terms:
+        widths = [0] + [widths[j] + 1 if source_terms[j] == term else 0 for j in range(len(source_terms))]
+        best = max(best, *widths)
+    if best < min(3, len(claim_terms)):
+        return False, "grounding_terms_scattered"
+    return True, "grounded_in_unreviewed_excerpt"

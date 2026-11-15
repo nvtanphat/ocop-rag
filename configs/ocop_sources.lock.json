@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "algorithm": "sha256",
+  "aggregate_sha256": "d322a4f34c0fecd2b2322662c8d32dece6a16733c2bfa932bf46177da6100dbb",
+  "sources": [
+    {
+      "source_id": "VN.HAIPHONG.QD525.2026",
+      "path": "data/raw/ocop/recognition_decisions/qd-cong-nhan-san-pham-ocop-2025-1-..signed639060091328998926.pdf",
+      "bytes": 820342,
+      "sha256": "b6d12a12fa40c88c6b05e7378b07623d241b9646da712735bd30527d4e9534cb"
+    },
+    {
+      "source_id": "VN.HATINH.THANHSEN.2026",
+      "path": "data/raw/ocop/local_guidance/OCOP_ThanhSen_2026.pdf",
+      "bytes": 978880,
+      "sha256": "b7abbcf2f519ba9adfd01f9a6794101dbc6da6c0c3906bf3346d238ad768d827"
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "path": "data/raw/ocop/recognition_decisions/00.00.H57-797-QD-UBND-2026-PL1_signed.pdf",
+      "bytes": 634626,
+      "sha256": "d1701843595625d18f405eba5c79e8b510432782f00ac63be55b6e8bd2a1caa3"
+    },
+    {
+      "source_id": "VN.LAW.17.2023",
+      "path": "data/raw/ocop/sectoral/2023_861 + 862_17-2023-QH15.pdf",
+      "bytes": 821679,
+      "sha256": "f2ad6e583e0f0dc05ea88b88bdb25fea4b76267bde0df49c642039b2d415a675"
+    },
+    {
+      "source_id": "VN.LAW.55.2010",
+      "path": "data/raw/ocop/sectoral/2010_564 + 565-55_2010_QH12.pdf",
+      "bytes": 435584,
+      "sha256": "281e6810d4e16417a5938555b3238e28fe54963273687ad7455e57ada4df6ab2"
+    },
+    {
+      "source_id": "VN.ND.111.2021",
+      "path": "data/raw/ocop/sectoral/2021_1051 + 1052_111-2021-NĐ-CP (1).pdf",
+      "bytes": 486705,
+      "sha256": "dc0888355fdb8c82a6c271bffd66dca75d042ca126a47886e4caf65b217a6a75"
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "path": "data/raw/ocop/sectoral/2018_375 + 376_15-2018-NĐ-CP_2.pdf",
+      "bytes": 807646,
+      "sha256": "9dec41b53cb1568a50fc3a98b41a95df2e6595341e5dd8dcf5926d22dde4b1b2"
+    },
+    {
+      "source_id": "VN.ND.43.2017",
+      "path": "data/raw/ocop/sectoral/43_2017_NĐ-CP(17292).pdf",
+      "bytes": 489992,
+      "sha256": "d5771b9da7a7f898b7eeef23a21966c85a49c57572e9c71788f24b7f04f0cbdb"
+    },
+    {
+      "source_id": "VN.NQ.15.2026",
+      "path": "data/raw/ocop/sectoral/2026_242_15_2026_NQ-CP.pdf",
+      "bytes": 592776,
+      "sha256": "f76f585b4a3066bf9ae1511deff62690bf03fc88eca3eeddfc1fb922543689ec"
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "path": "data/raw/ocop/central_historical/148-ttg.signed.pdf",
+      "bytes": 6579881,
+      "sha256": "4fec9058fe2d4024d00d1994151fbe4849eb8f45b73ee6bba236933ba15336a5"
+    },
+    {
+      "source_id": "VN.OCOP.QD1489.2025",
+      "path": "data/raw/ocop/central_historical/1489-ttg.signed.pdf",
+      "bytes": 323889,
+      "sha256": "c8feaadc85cece82579b90aaf7b5899920630f1546d08ddd3860c75cb388e4b7"
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "path": "data/raw/ocop/central_current/26-ttg-2026.signed.pdf",
+      "bytes": 6793843,
+      "sha256": "1916672a65212ad2591e2cc91718c626717c4f81b81457743da4374a72dfdd7a"
+    }
+  ]
+}

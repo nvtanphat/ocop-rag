@@ -1,0 +1,66 @@
+# Retrieval, context and fusion parameters. Each value's reason is in docs/CONFIGURATION.md.
+schema_version: 1
+context:
+  # Whole answer prompt (system + question + SOURCE blocks) budget in estimated tokens. The answer model
+  # window is llm.context_tokens in ocop_models.yaml; the rest is kept for the generated claims.
+  prompt_token_budget: 6400
+  output_reserve_tokens: 1024
+  excerpt_max_chars: 1500          # prose chunk window
+  table_excerpt_max_chars: 5000    # table rows are short; keep the whole matched table chunk
+  parent_chain_max_tokens: 40      # graph parent labels prepended to an indexed chunk
+  parent_label_max_chars: 90
+  max_source_blocks: 20            # SOURCE blocks in one prompt after merging continuations and dropping repeats
+  max_link_blocks: 3               # source blocks kept for the far end of a proved graph link, one per kind of link
+  max_enrichment_blocks: 3         # at most this many blocks from optional graph enrichment, so it never pushes out the primary evidence
+  max_blocks_per_document: 3       # free places go to other documents first; leftovers fill from the same document after
+  max_table_siblings: 3            # related cells share max_source_blocks; never increase the block limit
+  grounding_min_term_coverage: 0.8 # share of an unreviewed-source claim's content words found in its cited excerpt (0.9 for critical claims)
+  min_term_coverage: 0.25          # share of question content terms present in the prompt SOURCE text; below it no generation
+  min_quote_chars: 15              # a quote shorter than this proves nothing about the claim it backs
+  max_quote_parts: 4               # lines of one quote: one passage per cited source of a comparison
+retrieval:
+  top_k: 8                         # passages one search returns; the cross-encoder and the token budget choose what reaches the prompt
+  max_hits_per_document: 3         # one search keeps at most this many pages of a document before filling with the rest (ViCAS diversify_hits)
+  part_new_pages: 4                # pages one part of a compound question adds that the other searches did not find
+  candidate_pool_min: 40           # sparse/dense candidates before fusion
+  rrf_k: 60
+  rrf_weight_sparse: 1.0
+  rrf_weight_dense: 1.0
+  rrf_weight_title: 1.0             # third RRF list: passages whose own heading the question names (title seeding)
+  title_seed_min_share: 0.5        # share of a heading's title words that must appear in the question
+  title_seed_max: 3                # headings seeded per query
+  rrf_tool_weights: {}             # per-tool weight in the rank fusion of all tool rows (default 1.0), e.g. {search_graph: 0.9}
+  rerank_candidates: 24            # first-stage hits the cross-encoder re-scores (it can only promote what it is given); ~0.7 s per pair on CPU; 12 lost gold chunks ranked 15-24 by the first stage
+  rerank_first_stage_weight: 1.0   # weight of the first-stage rank when merged with the cross-encoder order (RRF); 0 = cross-encoder alone
+  rerank_skip_on_agreement: true   # sparse and dense agree on the first chunk: keep the fused order, no cross-encoder pass
+  rerank_batch_size: 4
+  rerank_threads: 6
+  rerank_onnx: true                # int8 ONNX copy of the cross-encoder when tools/export_reranker_onnx.py has built it (~2x faster); false = torch
+  tensor_reader_backend: auto    # pread on Windows (safetensors>=0.8), mmap elsewhere; tensor values are unchanged
+  rerank_cache_entries: 512
+  query_max_chars: 1500
+  neighbor_chunks: 2               # top hits cut mid-sentence also bring the chunk that continues them
+agent:
+  graph_definition_max_words: 12
+  max_tool_calls: 5                # AGENTS.md: default maximum of five tool calls per question
+  lookup_max_rows: 15              # structured lookup evidence rows; recognition shares this budget across records
+  compound_pair_min_share: 0.01    # adjacent-word pair in this share of evidence units is one compound word ("tiêu chí"), not two
+  link_word_max_share: 0.05        # a lone word in more than this share of evidence units is too common to link a product set
+  grader_min_relevance: 0.13       # min share of question terms in a row for it to count as relevant evidence
+  scope_min_bigram_coverage: 0.60  # share of query content bigrams in one indexed chunk that reopens an unrecognised question
+  part_min_coverage: 0.34          # share of a question part's content words that one evidence row must hold to cover it
+  source_agreement_share: 0.60     # share of earlier evidence rows from one source needed to pin a follow-up to that source
+  rule_confident_score: 60         # router: an intent the rules scored below this is a weak guess the embedding tier may overrule
+  semantic_min_score: 0.55         # router, semantic tier: similarity of the closest example utterance of the winning intent
+  semantic_min_margin: 0.03        # router, semantic tier: its lead over the best example of any other intent
+  graph_hops: 3
+  graph_node_limit: 75
+  graph_max_facts: 32
+  graph_secondary: true            # recognition, temporal, compliance and compound questions also hop through the graph (optional tool)
+  graph_facts_per_relation: 5      # graph facts of one relation type shown at most, so one kind of link cannot fill the context
+  graph_entry_nodes: 8             # entities (rows, products, documents) a seed unit's text may hand to the graph hops
+  graph_document_seed_nodes: 1
+  graph_pagerank: true
+  graph_pagerank_damping: 0.85
+  graph_pagerank_iterations: 30
+  graph_pagerank_tolerance: 0.000001

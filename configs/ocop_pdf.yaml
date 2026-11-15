@@ -1,0 +1,13 @@
+# Reference settings for the one supported OCR path. This file is not loaded at runtime.
+engine: easyocr_vietocr
+detector: easyocr_craft
+recognizer: vietocr_vgg_transformer
+ocr_dpi: 300
+source_registry: configs/ocop_sources.json
+source_lock: configs/ocop_sources.lock.json
+output_dir: data/processed/ocop/pages
+cache_dir: data/processed/ocop/cache
+qa:
+  allow_uncertain_tables_for_authoritative_scoring: false
+  scanned_pages_need_human_review: true
+  accept_unverified_numeric_ocr: false

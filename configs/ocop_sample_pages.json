@@ -1,0 +1,214 @@
+{
+  "purpose": "sample_reference_corpus",
+  "pages": [
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 23
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 24
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 25
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 26
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 27
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 58
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 59
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 60
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 61
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 62
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 78
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 79
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 113
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 114
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 142
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 143
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 146
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 147
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 148
+    },
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 150
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 13
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 22
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 23
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 24
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 28
+    },
+    {
+      "source_id": "VN.OCOP.QD148.2023",
+      "pdf_page": 29
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "pdf_page": 2
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "pdf_page": 3
+    },
+    {
+      "source_id": "VN.HUE.QD797.2026",
+      "pdf_page": 4
+    },
+    {
+      "source_id": "VN.LAW.17.2023",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.LAW.17.2023",
+      "pdf_page": 2
+    },
+    {
+      "source_id": "VN.LAW.17.2023",
+      "pdf_page": 86
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "pdf_page": 2
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "pdf_page": 60
+    },
+    {
+      "source_id": "VN.ND.43.2017",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.ND.43.2017",
+      "pdf_page": 32
+    },
+    {
+      "source_id": "VN.ND.111.2021",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.ND.111.2021",
+      "pdf_page": 31
+    },
+    {
+      "source_id": "VN.LAW.55.2010",
+      "pdf_page": 1
+    },
+    {
+      "source_id": "VN.LAW.55.2010",
+      "pdf_page": 38
+    },
+    {
+      "source_id": "VN.HATINH.THANHSEN.2026",
+      "pdf_page": 5
+    },
+    {
+      "source_id": "VN.HATINH.THANHSEN.2026",
+      "pdf_page": 6
+    }
+  ],
+  "validation_anchor_pages": [
+    {
+      "source_id": "VN.OCOP.QD26.2026",
+      "pdf_page": 13,
+      "reason": "Evidence for superseded_by/REPLACES; already present in regression 22, no extra OCR beyond the 71-page union"
+    }
+  ],
+  "supplemental_pages": [
+    {
+      "source_id": "VN.LAW.17.2023",
+      "pdf_page": 87
+    },
+    {
+      "source_id": "VN.LAW.55.2010",
+      "pdf_page": 39
+    },
+    {
+      "source_id": "VN.ND.15.2018",
+      "pdf_page": 34
+    },
+    {
+      "source_id": "VN.ND.43.2017",
+      "pdf_page": 12
+    },
+    {
+      "source_id": "VN.ND.111.2021",
+      "pdf_page": 7
+    }
+  ]
+}

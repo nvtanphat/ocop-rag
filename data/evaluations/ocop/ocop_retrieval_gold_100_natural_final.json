@@ -1,0 +1,1291 @@
+{
+  "dataset_name": "OCOP-RAG Retrieval 100 — câu hỏi tiếng Việt tự nhiên",
+  "dataset_version": "1.2.2-natural-query",
+  "task": "evidence_unit_retrieval",
+  "language": "vi",
+  "corpus_version": "9e8f7e46a64a74e80dd8",
+  "evidence_id_fingerprint": "ocop-evidence-b531594eddc8",
+  "source_inventory": "evidence_unit_ids.md",
+  "evaluation_unit": "evidence_unit_id (not chunk_id)",
+  "notes": [
+    "For multi_evidence queries, all listed evidence units are required; calculate complete_evidence_recall and standard any-relevant recall separately.",
+    "Correlate a returned chunk with its parent evidence_unit_id; do not score by chunk_id.",
+    "No unanswerable questions are included in this retrieval ranking benchmark.",
+    "alternative_evidence: a unit that answers the question as completely as the gold_evidence on its own. A question is satisfied when all gold_evidence is returned or any alternative_evidence unit is.",
+    "2026-10-31: R025 accepts QĐ26 page 4 as alternative evidence (Điều 6: 'Báo cáo tự đánh giá về sản phẩm theo Mẫu số 02 Phụ lục III'), which names the same form as page 150.",
+    "R064 (2026-11-02): Điều 9 Luật Hợp tác xã 2023 starts at the end of p.7 (clauses 1-2) and continues on p.8 (clauses 3 onward), so p.8 is added as alternative_evidence; checked against the source text."
+  ],
+  "counts": {
+    "questions": 100,
+    "single_evidence": 90,
+    "multi_evidence": 10,
+    "evidence_links": 110
+  },
+  "questions": [
+    {
+      "id": "R001",
+      "query": "Quyết định 26/2026/QĐ-TTg áp dụng cho những nội dung và đối tượng nào trong chương trình OCOP?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:8494d772f6506de70736fa2d"
+        }
+      ]
+    },
+    {
+      "id": "R002",
+      "query": "Nếu muốn đưa sản phẩm tham gia đánh giá OCOP thì những loại sản phẩm và chủ thể nào được phép đăng ký theo quy định năm 2026?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        }
+      ]
+    },
+    {
+      "id": "R003",
+      "query": "Trong Quyết định 26, điều nào nói về bộ tiêu chí dùng để chấm và phân hạng sản phẩm OCOP?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:6f7d7dbcf79df92c8e22c4ff"
+        }
+      ]
+    },
+    {
+      "id": "R004",
+      "query": "Đợt đánh giá OCOP ở cấp tỉnh do ai tổ chức và thường được tiến hành vào thời điểm nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:be59d98ad6ad73058c5818be"
+        }
+      ]
+    },
+    {
+      "id": "R005",
+      "query": "Theo Quyết định 26, việc đánh giá và công nhận một sản phẩm OCOP được tổ chức ra sao?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        }
+      ]
+    },
+    {
+      "id": "R006",
+      "query": "Muốn đạt OCOP 5 sao cấp quốc gia thì sản phẩm phải được ít nhất bao nhiêu điểm theo quy định năm 2026?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f"
+        }
+      ]
+    },
+    {
+      "id": "R007",
+      "query": "Tôi đang chuẩn bị đăng ký OCOP, cần xem quy định về bộ hồ sơ đánh giá ở điều nào của Quyết định 26?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ]
+    },
+    {
+      "id": "R008",
+      "query": "Sau khi chuẩn bị hồ sơ OCOP, các bước tiếp theo để được đánh giá và phân hạng là gì?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:8e6fecfc75f0ad717c2ef49a"
+        }
+      ]
+    },
+    {
+      "id": "R009",
+      "query": "Danh mục những nhóm sản phẩm được tham gia OCOP nằm ở phụ lục nào của Quyết định 26/2026?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 15,
+          "evidence_unit_id": "ocop:evidence:ff7866be323aa271fcadbc11"
+        }
+      ]
+    },
+    {
+      "id": "R010",
+      "query": "Tôi muốn xem mẫu phiếu chấm điểm OCOP theo bộ tiêu chí năm 2026 thì tìm ở phần nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:d5fb356eec131b12fe6ca0a7"
+        }
+      ]
+    },
+    {
+      "id": "R011",
+      "query": "Rau, củ, quả tươi đăng ký OCOP thì được xếp vào nhóm sản phẩm nào trên phiếu đánh giá?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:d67083b90b27013c918636e1"
+        }
+      ]
+    },
+    {
+      "id": "R012",
+      "query": "Nếu cơ sở sản xuất rau củ dùng trên 75% lao động tại xã thì mục lao động địa phương được bao nhiêu điểm?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 20,
+          "evidence_unit_id": "ocop:evidence:5d78de9c4e188b860fe4800e"
+        }
+      ]
+    },
+    {
+      "id": "R013",
+      "query": "Đối với rau củ quả tươi, tiêu chí về câu chuyện sản phẩm có những mức chấm điểm nào?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 21,
+          "evidence_unit_id": "ocop:evidence:f3f7c072c11b0ad623366f9d"
+        }
+      ]
+    },
+    {
+      "id": "R014",
+      "query": "Trong phiếu đánh giá OCOP cho rau củ quả tươi, phần dinh dưỡng yêu cầu thể hiện những chỉ tiêu gì?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:7bc769748735be1685c6062d"
+        }
+      ]
+    },
+    {
+      "id": "R015",
+      "query": "Gạo và ngũ cốc chỉ mới sơ chế thì khi đánh giá OCOP được tính vào nhóm sản phẩm nào?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 28,
+          "evidence_unit_id": "ocop:evidence:867d51e649a312b5a5016d8b"
+        }
+      ]
+    },
+    {
+      "id": "R016",
+      "query": "Sản phẩm mật ong thuộc nhóm nào trong bộ phiếu chấm OCOP năm 2026?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 33,
+          "evidence_unit_id": "ocop:evidence:dcdcbc558e0eaf35a626b22a"
+        }
+      ]
+    },
+    {
+      "id": "R017",
+      "query": "Nếu làm đồ ăn nhanh để tham gia OCOP thì sản phẩm nằm ở nhóm thực phẩm nào?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 38,
+          "evidence_unit_id": "ocop:evidence:95f7de073027f332a1d92e37"
+        }
+      ]
+    },
+    {
+      "id": "R018",
+      "query": "Đồ chế biến từ gạo, ngũ cốc có phiếu đánh giá OCOP riêng hay dùng chung với nhóm thực phẩm khác?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 43,
+          "evidence_unit_id": "ocop:evidence:5e38f258adf2a8f89f34f803"
+        }
+      ]
+    },
+    {
+      "id": "R019",
+      "query": "Mứt và các sản phẩm chế biến từ rau củ quả, hạt thuộc nhóm nào khi đăng ký OCOP?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 48,
+          "evidence_unit_id": "ocop:evidence:1597b73da973e5110061c569"
+        }
+      ]
+    },
+    {
+      "id": "R020",
+      "query": "Cơ sở chế biến thịt, cá, trứng hoặc sữa thì nên dùng phiếu chấm OCOP dành cho bộ sản phẩm nào?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 53,
+          "evidence_unit_id": "ocop:evidence:86c262d543873f0325808929"
+        }
+      ]
+    },
+    {
+      "id": "R021",
+      "query": "Làm nước mắm hoặc tương thì cần chọn nhóm sản phẩm nào trong bộ tiêu chí OCOP 2026?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        }
+      ]
+    },
+    {
+      "id": "R022",
+      "query": "Chè tươi và chè đã chế biến được xếp chung vào nhóm nào khi chấm OCOP?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 68,
+          "evidence_unit_id": "ocop:evidence:543723e66db14d0e31a3abfa"
+        }
+      ]
+    },
+    {
+      "id": "R023",
+      "query": "Muối, tỏi và hồ tiêu nằm trong bộ sản phẩm OCOP nào vậy?",
+      "question_type": "category",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 63,
+          "evidence_unit_id": "ocop:evidence:730f832dd6967319ad3e8af7"
+        }
+      ]
+    },
+    {
+      "id": "R024",
+      "query": "Mẫu số 01 trong hồ sơ OCOP năm 2026 là phiếu dùng để đăng ký nội dung gì?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 148,
+          "evidence_unit_id": "ocop:evidence:31b097b5b638199fa9d71770"
+        }
+      ]
+    },
+    {
+      "id": "R025",
+      "query": "Chủ thể tham gia OCOP cần dùng mẫu nào để tự đánh giá sản phẩm theo Quyết định 26?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 150,
+          "evidence_unit_id": "ocop:evidence:81033a3f4e7472c7fe3367e7"
+        }
+      ],
+      "alternative_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ]
+    },
+    {
+      "id": "R026",
+      "query": "Báo cáo đánh giá theo Mẫu số 03 của Quyết định 26 do cơ quan cấp nào lập?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 154,
+          "evidence_unit_id": "ocop:evidence:f4a040ffc7fc0afbc95a43a4"
+        }
+      ]
+    },
+    {
+      "id": "R027",
+      "query": "Một cơ sở chế biến rau củ sử dụng khoảng 60% lao động tại xã thì được chấm mấy điểm ở tiêu chí này theo bộ OCOP 2026?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 50,
+          "evidence_unit_id": "ocop:evidence:0f8c4387091b3e34ad8f6409"
+        }
+      ]
+    },
+    {
+      "id": "R028",
+      "query": "Quyết định 148/QĐ-TTg năm 2023 ban hành kèm những bộ tiêu chí và quy trình nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:3560e41762b48c3f78c22df4"
+        }
+      ]
+    },
+    {
+      "id": "R029",
+      "query": "Trong quy định OCOP năm 2023, sản phẩm được chia thành những nhóm chính nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:68b68f23172c848ea02b866e"
+        }
+      ]
+    },
+    {
+      "id": "R030",
+      "query": "Quyết định 148/QĐ-TTg có hiệu lực từ khi nào và đã thay thế quyết định cũ nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:1a97fe8e92994d154a5d81dc"
+        }
+      ]
+    },
+    {
+      "id": "R031",
+      "query": "Theo Quyết định 148 năm 2023, bộ nào được giao chủ trì phối hợp triển khai chương trình OCOP?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:50419373a89328220469473b"
+        }
+      ]
+    },
+    {
+      "id": "R032",
+      "query": "Trong quy trình OCOP năm 2023, sản phẩm đạt 4 sao sẽ do cấp nào phê duyệt?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:5956d9136c1be1b8caa5cdd5"
+        }
+      ]
+    },
+    {
+      "id": "R033",
+      "query": "Tôi muốn đọc đầy đủ quy trình đánh giá, phân hạng OCOP theo Quyết định 148 thì xem phụ lục nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:9fc06f496c5121b2b26f00e9"
+        }
+      ]
+    },
+    {
+      "id": "R034",
+      "query": "Hội đồng đánh giá OCOP cấp trung ương năm 2023 gồm bao nhiêu người và được tổ chức như thế nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:20c8d3b7a763f7f67e5bc244"
+        }
+      ]
+    },
+    {
+      "id": "R035",
+      "query": "Ai có thẩm quyền ký quyết định công nhận và cấp giấy chứng nhận OCOP 4 sao theo quy trình năm 2023?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:c28cf37978e2d3d9c0a43782"
+        }
+      ]
+    },
+    {
+      "id": "R036",
+      "query": "Khi đề xuất đánh giá sản phẩm OCOP ở cấp tỉnh theo quy trình năm 2023, hồ sơ cần có những giấy tờ nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ed6f686f138f29cf3ff81f20"
+        }
+      ]
+    },
+    {
+      "id": "R037",
+      "query": "Phiếu đăng ký đánh giá, phân hạng OCOP theo Quyết định 148 là biểu mẫu số mấy?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 16,
+          "evidence_unit_id": "ocop:evidence:6c7ce388e68e6b65405a2516"
+        }
+      ]
+    },
+    {
+      "id": "R038",
+      "query": "Biểu số 2 trong bộ hồ sơ OCOP năm 2023 dành cho chủ thể báo cáo về nội dung gì?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:6c65f6bc59d89c8b8c05db2d"
+        }
+      ]
+    },
+    {
+      "id": "R039",
+      "query": "UBND cấp xã đánh giá hồ sơ OCOP theo mẫu báo cáo số mấy trong Quyết định 148?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 21,
+          "evidence_unit_id": "ocop:evidence:b4bc895aabec3c29b9639567"
+        }
+      ]
+    },
+    {
+      "id": "R040",
+      "query": "Bộ tiêu chí kiêm phiếu chấm điểm OCOP năm 2023 nằm ở phụ lục nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:1d01a87ff52f3fb01af2fee2"
+        }
+      ]
+    },
+    {
+      "id": "R041",
+      "query": "Sản phẩm thực phẩm nào thì doanh nghiệp được tự công bố theo Nghị định 15/2018?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:7e23081983930b9474d62035"
+        }
+      ]
+    },
+    {
+      "id": "R042",
+      "query": "Muốn tự công bố một sản phẩm thực phẩm, cơ sở cần chuẩn bị hồ sơ và thực hiện thủ tục ra sao?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d"
+        }
+      ]
+    },
+    {
+      "id": "R043",
+      "query": "Những loại thực phẩm nào phải đăng ký bản công bố sản phẩm, không chỉ làm thủ tục tự công bố?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:4d3da94a28de44493c428333"
+        }
+      ]
+    },
+    {
+      "id": "R044",
+      "query": "Tôi nhập khẩu thực phẩm để bán, hồ sơ đăng ký bản công bố sản phẩm cần những tài liệu gì theo Nghị định 15?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:28f0f823e55eb535052ffc26"
+        }
+      ]
+    },
+    {
+      "id": "R045",
+      "query": "Cơ sở kinh doanh thực phẩm nào không phải xin giấy chứng nhận đủ điều kiện an toàn thực phẩm?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        }
+      ]
+    },
+    {
+      "id": "R046",
+      "query": "Có những trường hợp nhập khẩu thực phẩm nào được miễn kiểm tra nhà nước về an toàn thực phẩm không?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 11,
+          "evidence_unit_id": "ocop:evidence:69b0bbd68d0a1a29866c302a"
+        }
+      ]
+    },
+    {
+      "id": "R047",
+      "query": "Tôi muốn kiểm tra phần thông tin bắt buộc trên nhãn thực phẩm, Nghị định 15/2018 quy định ở điều nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 19,
+          "evidence_unit_id": "ocop:evidence:f38a8d11b561ba3f63ab9396"
+        }
+      ]
+    },
+    {
+      "id": "R048",
+      "query": "Trước khi quảng cáo, những nhóm thực phẩm nào phải đăng ký nội dung quảng cáo?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 20,
+          "evidence_unit_id": "ocop:evidence:08746df6c091d881a0157e57"
+        }
+      ]
+    },
+    {
+      "id": "R049",
+      "query": "Nếu phát hiện lô thực phẩm không an toàn thì quy định về truy xuất nguồn gốc nằm ở điều nào của Nghị định 15?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 27,
+          "evidence_unit_id": "ocop:evidence:12ac221b59d176c6594fe009"
+        }
+      ]
+    },
+    {
+      "id": "R050",
+      "query": "Nghị định 15/2018 có mẫu tự công bố sản phẩm và mẫu công bố sản phẩm ở phần phụ lục nào?",
+      "question_type": "form",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 35,
+          "evidence_unit_id": "ocop:evidence:7aca4a52855ccd48f5253bf4"
+        }
+      ]
+    },
+    {
+      "id": "R051",
+      "query": "Dán nhãn hàng hóa ở vị trí nào trên sản phẩm hoặc bao bì thì đúng quy định?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:b3c6286e66098d7248a17ac9"
+        }
+      ]
+    },
+    {
+      "id": "R052",
+      "query": "Thông tin bắt buộc trên nhãn hàng hóa có phải viết bằng tiếng Việt không?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:d9bac91e4c6aa86e5b4998f0"
+        }
+      ]
+    },
+    {
+      "id": "R053",
+      "query": "Hàng nhập khẩu đã có nhãn nước ngoài thì khi nào cần dán thêm nhãn phụ?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:9a8ff47a58f5c1e59db93eba"
+        }
+      ]
+    },
+    {
+      "id": "R054",
+      "query": "Nếu chuẩn bị thiết kế bao bì sản phẩm, tôi cần xem danh sách nội dung bắt buộc ghi nhãn ở điều nào của Nghị định 43?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7c38d1d9466bc27231b59587"
+        }
+      ]
+    },
+    {
+      "id": "R055",
+      "query": "Ngày sản xuất và hạn sử dụng trên nhãn phải ghi theo thứ tự nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:15fb74ac89dd684c740ed10a"
+        }
+      ]
+    },
+    {
+      "id": "R056",
+      "query": "Đối với hàng nhập khẩu, ai là người phải xác định và ghi xuất xứ hàng hóa lên nhãn?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:fae686cbf6b2d43e5451b030"
+        }
+      ]
+    },
+    {
+      "id": "R057",
+      "query": "Bao bì gạo và các loại lương thực phải ghi những thông tin gì theo phụ lục về nhãn hàng hóa?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:78142ff38b3a0c68a6fe9dc1"
+        }
+      ]
+    },
+    {
+      "id": "R058",
+      "query": "Nghị định 111/2021 đã sửa đổi những điểm nào trong quy định ghi nhãn hàng hóa trước đây?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d7df93a4ced814efba306478"
+        }
+      ]
+    },
+    {
+      "id": "R059",
+      "query": "Các nội dung bị bãi bỏ hoặc thay thế của Nghị định 43 được nêu ở điều nào trong Nghị định 111?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 6,
+          "evidence_unit_id": "ocop:evidence:7ca091c4b938903d17b9e88a"
+        }
+      ]
+    },
+    {
+      "id": "R060",
+      "query": "Từ ngày nào thì Nghị định 111/2021 về ghi nhãn hàng hóa bắt đầu có hiệu lực?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:2f321a79048ca3534c6e9ce9"
+        }
+      ]
+    },
+    {
+      "id": "R061",
+      "query": "Nếu bán rượu đóng chai thì trên nhãn bắt buộc phải có những thông tin gì theo Nghị định 111?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:99b223b1296100ccd7ed0ad4"
+        }
+      ]
+    },
+    {
+      "id": "R062",
+      "query": "Nhãn thức ăn thủy sản dạng hỗn hợp phải ghi thành phần định lượng như thế nào?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 26,
+          "evidence_unit_id": "ocop:evidence:87da04783291eb5d3f20afa4"
+        }
+      ]
+    },
+    {
+      "id": "R063",
+      "query": "Trong Luật Hợp tác xã 2023, giao dịch nội bộ được hiểu là gì?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:b96e8524486f04beb935be65"
+        }
+      ]
+    },
+    {
+      "id": "R064",
+      "query": "Một hợp tác xã được phép thực hiện những quyền gì theo Luật Hợp tác xã năm 2023?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:a4cf95beb18a457e467ae3c6"
+        }
+      ],
+      "alternative_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 8,
+          "evidence_unit_id": "ocop:evidence:e4f635687f4ec7b446dad840"
+        }
+      ]
+    },
+    {
+      "id": "R065",
+      "query": "Tôi muốn thành lập hợp tác xã thì thủ tục đăng ký ban đầu được quy định như thế nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 31,
+          "evidence_unit_id": "ocop:evidence:96e07444f1788e1790b19297"
+        }
+      ]
+    },
+    {
+      "id": "R066",
+      "query": "Muốn được cấp giấy chứng nhận đăng ký hợp tác xã thì phải đáp ứng những điều kiện gì?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 32,
+          "evidence_unit_id": "ocop:evidence:1270a05a47a8324450ae9727"
+        }
+      ]
+    },
+    {
+      "id": "R067",
+      "query": "Luật Hợp tác xã 2023 có điều nào nói về chính sách hỗ trợ đất đai cho hợp tác xã?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 15,
+          "evidence_unit_id": "ocop:evidence:c1b081879d9ce854e9967153"
+        }
+      ]
+    },
+    {
+      "id": "R068",
+      "query": "Hợp tác xã có được hỗ trợ ứng dụng công nghệ hoặc chuyển đổi số theo Luật năm 2023 không, cụ thể là gì?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:c1b22a9c4a18c2a2859fffe6"
+        }
+      ]
+    },
+    {
+      "id": "R069",
+      "query": "Khi soạn điều lệ cho hợp tác xã, cần đưa vào những nội dung cơ bản nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 29,
+          "evidence_unit_id": "ocop:evidence:c5fc7a79dd33a92ab11491f5"
+        }
+      ]
+    },
+    {
+      "id": "R070",
+      "query": "Trong hoạt động chế biến thực phẩm, những hành vi nào bị Luật An toàn thực phẩm cấm?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:007cda58b7afb420a78fc0c2"
+        }
+      ]
+    },
+    {
+      "id": "R071",
+      "query": "Khi mua thực phẩm, người tiêu dùng có những quyền gì và phải thực hiện nghĩa vụ gì?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 9,
+          "evidence_unit_id": "ocop:evidence:038dbc889f371c5e7cbeacd6"
+        }
+      ]
+    },
+    {
+      "id": "R072",
+      "query": "Muốn sản xuất hoặc kinh doanh thực phẩm an toàn thì sản phẩm phải đáp ứng những điều kiện chung nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:a2784a181736e3b8cb7f5bd1"
+        }
+      ]
+    },
+    {
+      "id": "R073",
+      "query": "Thủ tục xin giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm nằm ở điều mấy của Luật An toàn thực phẩm?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 20,
+          "evidence_unit_id": "ocop:evidence:12790fbe0e6637a7b67f8c89"
+        }
+      ]
+    },
+    {
+      "id": "R074",
+      "query": "Khi có thực phẩm không bảo đảm an toàn, việc truy xuất nguồn gốc phải thực hiện như thế nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 29,
+          "evidence_unit_id": "ocop:evidence:0d25ff4ebf54127f3a233538"
+        }
+      ]
+    },
+    {
+      "id": "R075",
+      "query": "Những trường hợp nào doanh nghiệp buộc phải thu hồi thực phẩm không an toàn?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 29,
+          "evidence_unit_id": "ocop:evidence:291ac76685ddb2515deb268a"
+        }
+      ]
+    },
+    {
+      "id": "R076",
+      "query": "Quyết định 525 của Hải Phòng công nhận sản phẩm OCOP của năm nào?",
+      "question_type": "exact",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        }
+      ]
+    },
+    {
+      "id": "R077",
+      "query": "Giấy chứng nhận OCOP được cấp theo Quyết định 525 của Hải Phòng có giá trị trong bao nhiêu tháng?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:449c6a8c3a6c0af3829b368e"
+        }
+      ]
+    },
+    {
+      "id": "R078",
+      "query": "Ở Hải Phòng, cơ quan nào có trách nhiệm công bố kết quả và trao giấy chứng nhận OCOP theo Quyết định 525?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:20b15899f8894ea863f49091"
+        }
+      ]
+    },
+    {
+      "id": "R079",
+      "query": "Trong đợt công nhận OCOP năm 2025 của Hải Phòng có bao nhiêu sản phẩm thuộc bao nhiêu chủ thể?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:3bd4cf0ea9de5b2f8fe5f0f5"
+        }
+      ]
+    },
+    {
+      "id": "R080",
+      "query": "HTX Thụy Hương có những loại gạo nào được ghi trong danh sách OCOP của Hải Phòng?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:9389d4a597f0832525a7a2c5"
+        }
+      ]
+    },
+    {
+      "id": "R081",
+      "query": "Đợt phê duyệt OCOP theo Quyết định 797/2026 của Huế có tổng cộng bao nhiêu sản phẩm 3 sao và 4 sao?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        }
+      ]
+    },
+    {
+      "id": "R082",
+      "query": "Hạt sen của Hợp tác xã Sen Huế được công nhận đạt mấy sao OCOP vậy?",
+      "question_type": "numeric",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:4fd125a39ba20f34f854e4b5"
+        }
+      ]
+    },
+    {
+      "id": "R083",
+      "query": "Ở Huế, sản phẩm mứt nào xuất hiện trong danh sách được công nhận OCOP 4 sao?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        }
+      ]
+    },
+    {
+      "id": "R084",
+      "query": "Theo danh sách OCOP 3 sao tại Huế, Hợp tác xã Sen Huế có sản phẩm gì?",
+      "question_type": "table",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        }
+      ]
+    },
+    {
+      "id": "R085",
+      "query": "Quyết định 1489/QĐ-TTg năm 2025 đã sửa đổi hoặc bổ sung những phần nào của Quyết định 148 trước đó?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+        }
+      ]
+    },
+    {
+      "id": "R086",
+      "query": "Các hồ sơ OCOP đang xử lý dở thì Quyết định 1489/2025 có hướng dẫn chuyển tiếp như thế nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:864bb61b6e05ff93adbd3a67"
+        }
+      ]
+    },
+    {
+      "id": "R087",
+      "query": "Theo quy trình sửa đổi năm 2025, sản phẩm OCOP được 90–100 điểm sẽ do cấp tỉnh chuyển hồ sơ lên cơ quan nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:5a53d48ca118a57170850405"
+        }
+      ]
+    },
+    {
+      "id": "R088",
+      "query": "Nghị quyết 15/2026/NQ-CP đang tạm ngưng áp dụng những văn bản nào về an toàn thực phẩm?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:6c04452a709f29d5d12441d0"
+        }
+      ]
+    },
+    {
+      "id": "R089",
+      "query": "Hồ sơ đã nộp trước ngày Nghị quyết 15/2026 có hiệu lực thì tiếp tục được giải quyết như thế nào?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f40601f5553d8103a8180c66"
+        }
+      ]
+    },
+    {
+      "id": "R090",
+      "query": "Nếu ở phường Thành Sen muốn hỏi nơi nộp hồ sơ OCOP và đầu mối hỗ trợ thì liên hệ ở đâu?",
+      "question_type": "semantic",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        }
+      ]
+    },
+    {
+      "id": "R091",
+      "query": "Tôi muốn đối chiếu bộ tiêu chí chấm OCOP của năm 2023 và năm 2026 thì mỗi bộ nằm ở phụ lục nào?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:d5fb356eec131b12fe6ca0a7"
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 22,
+          "evidence_unit_id": "ocop:evidence:1d01a87ff52f3fb01af2fee2"
+        }
+      ]
+    },
+    {
+      "id": "R092",
+      "query": "Người ở phường Thành Sen muốn nâng hạng OCOP thì hồ sơ địa phương yêu cầu có gì, so với hồ sơ theo Quyết định 26/2026?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6"
+        }
+      ]
+    },
+    {
+      "id": "R093",
+      "query": "Bộ tiêu chí OCOP ban hành theo Quyết định 148 năm 2023 đã được Quyết định 1489 năm 2025 sửa đổi ở những phần nào?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:3560e41762b48c3f78c22df4"
+        },
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+        }
+      ]
+    },
+    {
+      "id": "R094",
+      "query": "Để kiểm tra quy định ghi nhãn hàng hóa, Nghị định 43 nói gì về vị trí nhãn và Nghị định 111 là văn bản sửa đổi những quy định nào?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:b3c6286e66098d7248a17ac9"
+        },
+        {
+          "source_id": "VN.ND.111.2021",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d7df93a4ced814efba306478"
+        }
+      ]
+    },
+    {
+      "id": "R095",
+      "query": "Một cơ sở làm thực phẩm cần đáp ứng điều kiện an toàn chung nào và thủ tục tự công bố sản phẩm phải chuẩn bị gì?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d"
+        },
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:a2784a181736e3b8cb7f5bd1"
+        }
+      ]
+    },
+    {
+      "id": "R096",
+      "query": "Số sản phẩm OCOP được công nhận trong quyết định của Hải Phòng và quyết định của Huế chênh lệch nhau bao nhiêu?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:3bd4cf0ea9de5b2f8fe5f0f5"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        }
+      ]
+    },
+    {
+      "id": "R097",
+      "query": "Quy trình đánh giá OCOP được mô tả trong Quyết định 148/2023 và Quyết định 26/2026 có những bước gì để mình đối chiếu?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:8e6fecfc75f0ad717c2ef49a"
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:9fc06f496c5121b2b26f00e9"
+        }
+      ]
+    },
+    {
+      "id": "R098",
+      "query": "Phiếu chấm OCOP cho rau củ quả tươi ở bộ năm 2023 và bộ năm 2026 nằm ở đâu, có cùng nhóm sản phẩm không?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:d67083b90b27013c918636e1"
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 23,
+          "evidence_unit_id": "ocop:evidence:c0e2f7c1869181181edd4da3"
+        }
+      ]
+    },
+    {
+      "id": "R099",
+      "query": "Nghị định 15/2018 có quy định chuyển tiếp gì, và Nghị quyết 15/2026 nói gì về việc tạm ngưng áp dụng văn bản an toàn thực phẩm?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 33,
+          "evidence_unit_id": "ocop:evidence:8b12086c7ed3b23bf8b5a850"
+        },
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:6c04452a709f29d5d12441d0"
+        }
+      ]
+    },
+    {
+      "id": "R100",
+      "query": "Phiếu đăng ký đánh giá OCOP theo bộ quy định 2023 và bộ 2026 có phải đều là mẫu số 1 không?",
+      "question_type": "cross_document",
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 148,
+          "evidence_unit_id": "ocop:evidence:31b097b5b638199fa9d71770"
+        },
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 16,
+          "evidence_unit_id": "ocop:evidence:6c7ce388e68e6b65405a2516"
+        }
+      ]
+    }
+  ],
+  "query_style": "natural_vietnamese_user_questions; edited_manually; mixed_short_formal_situational; no_question_answer_leakage"
+}

@@ -1,0 +1,1312 @@
+{
+  "dataset_name": "OCOP-RAG GraphRAG Multi-hop — 25 câu hỏi tự nhiên",
+  "dataset_version": "1.0.0",
+  "task": "multi_hop_evidence_chain",
+  "language": "vi",
+  "corpus_version": "9e8f7e46a64a74e80dd8",
+  "evidence_id_fingerprint": "ocop-evidence-b531594eddc8",
+  "evaluation_unit": "evidence_unit_id",
+  "annotation_policy": "Gold viết từ OCR đã rà soát + index EvidenceUnit, không dựa vào output router/GraphRAG; reasoning_steps là đường suy luận kỳ vọng, không phải cạnh đã xác nhận tồn tại trong graph backend.",
+  "scoring_guidance": {
+    "complete_chain_recall_at_k": "Số query có đủ tất cả gold_evidence trong top-k / tổng query; tách riêng với any-relevant recall.",
+    "hop_evidence_recall": "Tỷ lệ reasoning_steps có ít nhất 1 bằng chứng phù hợp được truy xuất.",
+    "multi_hop_answer_accuracy": "Tỷ lệ query trả lời đúng đầy đủ các ý gold_answer; chấm theo meaning, không exact-string.",
+    "no_shortcut": "Không xem query là multi-hop thành công nếu chỉ tìm một văn bản nhưng thiếu bước kết nối cần thiết.",
+    "evaluation_protocol": "Khóa gold trước khi chạy. So sánh Text-RAG và GraphRAG trên cùng corpus và cùng 25 query."
+  },
+  "counts": {
+    "questions": 25,
+    "distinct_queries": 25,
+    "evidence_links": 67,
+    "cross_document_queries": 20,
+    "reasoning_steps": 64,
+    "category_distribution": {
+      "product_eligibility": 1,
+      "local_procedure": 2,
+      "criteria_application": 1,
+      "recognition_to_classification": 2,
+      "score_to_rating": 1,
+      "recognition_to_authority": 2,
+      "recognition_to_certificate": 1,
+      "service_eligibility": 1,
+      "upgrade_procedure": 1,
+      "score_to_authority": 1,
+      "certificate_rules": 1,
+      "cross_document_aggregate": 1,
+      "temporal_amendment": 1,
+      "versioned_form": 1,
+      "temporal_validity": 1,
+      "temporal_grandfathering": 1,
+      "cross_regulation_procedure": 1,
+      "parallel_compliance": 1,
+      "exception_vs_obligation": 1,
+      "compliance_chain": 1,
+      "temporal_applicability": 1,
+      "policy_to_eligibility": 1
+    }
+  },
+  "questions": [
+    {
+      "id": "MH001",
+      "query": "Nhà mình nuôi ong lấy mật, có đăng ký OCOP được không? Nếu được thì phải xem phiếu chấm của nhóm nào?",
+      "question_type": "multi_hop",
+      "category": "product_eligibility",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Hộ sản xuất hoặc hộ gia đình có đăng ký kinh doanh thuộc nhóm chủ thể được đăng ký OCOP. Mật ong nằm trong bộ sản phẩm “Mật ong, mật khác và nông sản thực phẩm khác”, thuộc nhóm thực phẩm thô, sơ chế; việc đánh giá dùng phiếu tương ứng tại Phụ lục II Quyết định 26/2026.",
+      "reasoning_steps": [
+        {
+          "relation": "ELIGIBLE_SUBJECT",
+          "finding": "Xác định loại chủ thể được tham gia OCOP",
+          "evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        },
+        {
+          "relation": "CLASSIFIED_AS",
+          "finding": "Gắn sản phẩm mật ong với bộ sản phẩm OCOP tương ứng",
+          "evidence_unit_ids": [
+            "ocop:evidence:dcdcbc558e0eaf35a626b22a"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 33,
+          "evidence_unit_id": "ocop:evidence:dcdcbc558e0eaf35a626b22a"
+        }
+      ],
+      "tags": [
+        "natural",
+        "household",
+        "product_to_criteria"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH002",
+      "query": "Mình làm nước mắm ở Thành Sen, lúc đăng ký OCOP thì chọn nhóm nào, chuẩn bị mẫu gì và nộp ở đâu?",
+      "question_type": "multi_hop",
+      "category": "local_procedure",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Nước mắm dùng bộ sản phẩm “Tương, nước mắm, gia vị dạng lỏng khác”, nhóm gia vị. Hồ sơ đăng ký lần đầu gồm Mẫu số 01 và Mẫu số 02 ở Phụ lục III Quyết định 26/2026; tại phường Thành Sen, nơi tiếp nhận được thông báo là UBND phường qua Phòng Nông nghiệp và Môi trường.",
+      "reasoning_steps": [
+        {
+          "relation": "CLASSIFIED_AS",
+          "finding": "Nước mắm thuộc nhóm gia vị dạng lỏng",
+          "evidence_unit_ids": [
+            "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+          ]
+        },
+        {
+          "relation": "REQUIRES_FORM",
+          "finding": "Hồ sơ OCOP lần đầu yêu cầu Mẫu 01 và 02",
+          "evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        },
+        {
+          "relation": "SUBMITTED_AT",
+          "finding": "Địa điểm tiếp nhận tại phường Thành Sen",
+          "evidence_unit_ids": [
+            "ocop:evidence:870aa24f7962f051f33211f8"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        }
+      ],
+      "tags": [
+        "natural",
+        "locality",
+        "product_to_form"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH003",
+      "query": "Mình trồng rau tươi, khoảng 60% người làm là dân trong xã. Vậy dùng phiếu chấm nào và mục lao động địa phương tính mấy điểm?",
+      "question_type": "multi_hop",
+      "category": "criteria_application",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Rau tươi thuộc bộ sản phẩm rau, củ, quả, hạt tươi, nhóm thực phẩm tươi sống. Trong bảng chấm tương ứng, mức sử dụng từ 50% đến dưới 75% lao động địa phương được 2 điểm ở tiêu chí này (với giả định tỷ lệ 60% được xác minh).",
+      "reasoning_steps": [
+        {
+          "relation": "CLASSIFIED_AS",
+          "finding": "Tìm phiếu của rau, củ, quả, hạt tươi",
+          "evidence_unit_ids": [
+            "ocop:evidence:d67083b90b27013c918636e1"
+          ]
+        },
+        {
+          "relation": "MEETS_SCORE_BAND",
+          "finding": "Đối chiếu 60% với ngưỡng sử dụng lao động địa phương",
+          "evidence_unit_ids": [
+            "ocop:evidence:35d32f6848bc55d0336fae22"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:d67083b90b27013c918636e1"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 19,
+          "evidence_unit_id": "ocop:evidence:35d32f6848bc55d0336fae22"
+        }
+      ],
+      "tags": [
+        "natural",
+        "numeric",
+        "criteria"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH004",
+      "query": "Gạo ruộng rươi ST25 của HTX Thụy Hương đã được Hải Phòng công nhận mấy sao? Nếu tra tiêu chí 2026 thì xem bộ sản phẩm nào?",
+      "question_type": "multi_hop",
+      "category": "recognition_to_classification",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Theo Quyết định 525/2026 của Hải Phòng, Gạo ruộng rươi ST25 của HTX Thụy Hương được công nhận OCOP 4 sao trong đợt năm 2025. Với sản phẩm gạo ở dạng gạo sơ chế như tên gọi, bộ phiếu tương ứng trong Quyết định 26/2026 là “Gạo, ngũ cốc, hạt sơ chế khác” (nhóm thực phẩm thô, sơ chế).",
+      "reasoning_steps": [
+        {
+          "relation": "RECOGNIZED_AS",
+          "finding": "Đối chiếu sản phẩm, chủ thể và hạng sao trong danh sách công nhận",
+          "evidence_unit_ids": [
+            "ocop:evidence:839ef88f1c68333a44e54be5"
+          ]
+        },
+        {
+          "relation": "CLASSIFIED_AS",
+          "finding": "Đối chiếu loại gạo với bộ sản phẩm tương ứng năm 2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:867d51e649a312b5a5016d8b"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 28,
+          "evidence_unit_id": "ocop:evidence:867d51e649a312b5a5016d8b"
+        }
+      ],
+      "tags": [
+        "recognition",
+        "historical",
+        "product_to_criteria"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH005",
+      "query": "Gạo HANA của HTX Thụy Hương được Hải Phòng chấm bao nhiêu điểm, và nếu đối chiếu thang OCOP 2026 thì thuộc mấy sao?",
+      "question_type": "multi_hop",
+      "category": "score_to_rating",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Quyết định 525/2026 ghi sản phẩm Gạo ruộng rươi giống HANA của HTX Thụy Hương đạt 74,6 điểm và được công nhận 4 sao. Theo Quyết định 26/2026, mức từ 70 đến dưới 90 điểm thuộc hạng 4 sao, nên 74,6 điểm nằm trong khoảng 4 sao.",
+      "reasoning_steps": [
+        {
+          "relation": "HAS_SCORE",
+          "finding": "Lấy điểm số thật của sản phẩm HANA",
+          "evidence_unit_ids": [
+            "ocop:evidence:839ef88f1c68333a44e54be5"
+          ]
+        },
+        {
+          "relation": "SCORE_MAPS_TO_RATING",
+          "finding": "Áp mức điểm 4 sao theo khung năm 2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:fbdded1356619ad0cc90994f"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f"
+        }
+      ],
+      "tags": [
+        "numeric",
+        "recognition",
+        "historical"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH006",
+      "query": "Chai nước mắm Chắt cao cấp Cát Hải trong danh sách OCOP là của đơn vị nào vậy, với nó thì tra bộ tiêu chí nào?",
+      "question_type": "multi_hop",
+      "category": "recognition_to_classification",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Sản phẩm “Nước mắm truyền thống sản xuất tại Cát Hải loại Chắt cao cấp” trong Quyết định 525/2026 thuộc Công ty TNHH Quang Hải và được công nhận 4 sao. Khi tra bộ tiêu chí OCOP 2026 cho loại hàng này, dùng bộ sản phẩm “Tương, nước mắm, gia vị dạng lỏng khác”.",
+      "reasoning_steps": [
+        {
+          "relation": "PRODUCED_BY",
+          "finding": "Xác định chủ thể và tên sản phẩm trong danh sách Hải Phòng",
+          "evidence_unit_ids": [
+            "ocop:evidence:839ef88f1c68333a44e54be5"
+          ]
+        },
+        {
+          "relation": "CLASSIFIED_AS",
+          "finding": "Tìm bộ tiêu chí theo nhóm sản phẩm nước mắm",
+          "evidence_unit_ids": [
+            "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:839ef88f1c68333a44e54be5"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 58,
+          "evidence_unit_id": "ocop:evidence:68fe8bdd33a82f9dabf75b13"
+        }
+      ],
+      "tags": [
+        "recognition",
+        "product_to_criteria",
+        "casual"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH007",
+      "query": "Công ty làm mứt Atiso đỏ ở Huế muốn nâng lên 5 sao, vậy sản phẩm đang ở hạng nào và hồ sơ phải qua cấp nào?",
+      "question_type": "multi_hop",
+      "category": "recognition_to_authority",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Mứt Atiso đỏ của Hichagol được Huế công nhận OCOP 4 sao. Nếu muốn đăng ký nâng lên 5 sao theo Quyết định 26/2026 thì thẩm quyền đánh giá, công nhận là Bộ Nông nghiệp và Môi trường; hồ sơ đề nghị đánh giá 5 sao do UBND cấp tỉnh chuẩn bị, gửi lên Bộ. Không phải UBND thành phố Huế tự công nhận hạng 5 sao.",
+      "reasoning_steps": [
+        {
+          "relation": "RECOGNIZED_AS",
+          "finding": "Xác minh công nhận OCOP 4 sao đối với Mứt Atiso đỏ",
+          "evidence_unit_ids": [
+            "ocop:evidence:26f4393ef78a866246e696f0"
+          ]
+        },
+        {
+          "relation": "CERTIFIED_BY",
+          "finding": "Xác định thẩm quyền đánh giá nâng hạng 5 sao",
+          "evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        },
+        {
+          "relation": "SUBMITS_FOR_EVALUATION",
+          "finding": "Xác định đơn vị chuẩn bị hồ sơ gửi đề nghị 5 sao",
+          "evidence_unit_ids": [
+            "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+        }
+      ],
+      "tags": [
+        "recognition",
+        "upgrade",
+        "authority"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH008",
+      "query": "Hạt sen của HTX Sen Huế đạt 3 sao thật không? Hạng này thì cấp tỉnh hay trung ương cấp giấy chứng nhận?",
+      "question_type": "multi_hop",
+      "category": "recognition_to_authority",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Theo Quyết định 797/2026 của Huế, Hạt sen của HTX Sen Huế được công nhận OCOP 3 sao. Theo Quyết định 26/2026, sản phẩm 3 sao và 4 sao do UBND cấp tỉnh đánh giá, công nhận và cấp giấy chứng nhận; hạng 5 sao do Bộ Nông nghiệp và Môi trường thực hiện.",
+      "reasoning_steps": [
+        {
+          "relation": "RECOGNIZED_AS",
+          "finding": "Xác minh sản phẩm Hạt sen đã đạt hạng 3 sao",
+          "evidence_unit_ids": [
+            "ocop:evidence:f02df27668983011e7f138fc"
+          ]
+        },
+        {
+          "relation": "CERTIFIED_BY",
+          "finding": "Ánh xạ hạng 3 sao sang cơ quan có thẩm quyền cấp giấy",
+          "evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        }
+      ],
+      "tags": [
+        "recognition",
+        "authority"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH009",
+      "query": "Siro Atiso đỏ của công ty nào được Huế công nhận OCOP 4 sao, và giấy chứng nhận trong quyết định đó dùng được mấy năm?",
+      "question_type": "multi_hop",
+      "category": "recognition_to_certificate",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Siro Atiso đỏ thuộc Công ty TNHH MTV sản xuất thương mại và dịch vụ Hichagol, được Huế công nhận OCOP 4 sao. Theo Quyết định 797/2026, giấy chứng nhận có thời hạn 36 tháng, tức 3 năm, kể từ ngày ký quyết định.",
+      "reasoning_steps": [
+        {
+          "relation": "PRODUCED_BY",
+          "finding": "Tìm tên chủ thể và hạng sao của Siro Atiso đỏ",
+          "evidence_unit_ids": [
+            "ocop:evidence:26f4393ef78a866246e696f0"
+          ]
+        },
+        {
+          "relation": "CERT_VALID_FOR",
+          "finding": "Lấy thời hạn giấy chứng nhận của chính quyết định công nhận",
+          "evidence_unit_ids": [
+            "ocop:evidence:40ac677a47c582ec08f642bb"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:26f4393ef78a866246e696f0"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:40ac677a47c582ec08f642bb"
+        }
+      ],
+      "tags": [
+        "recognition",
+        "certificate",
+        "numeric"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH010",
+      "query": "Bọn mình làm du lịch cộng đồng chứ không bán đặc sản. Hội ở địa phương có đứng tên đăng ký OCOP được không, rồi xem bộ tiêu chí ở đâu?",
+      "question_type": "multi_hop",
+      "category": "service_eligibility",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Nhóm dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch là một nhóm OCOP. Với nhóm này, đối tượng tham gia còn bao gồm hội, hiệp hội, trung tâm điều hành hoặc tổ chức tương đương. Bộ phiếu tương ứng nằm tại Phụ lục II Quyết định 26/2026, phần dịch vụ du lịch cộng đồng, du lịch sinh thái và điểm du lịch.",
+      "reasoning_steps": [
+        {
+          "relation": "ELIGIBLE_SUBJECT",
+          "finding": "Xác minh ngoại lệ về loại chủ thể là hội/hiệp hội đối với dịch vụ du lịch",
+          "evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        },
+        {
+          "relation": "USES_CRITERIA_SHEET",
+          "finding": "Liên kết đến phiếu đánh giá đúng loại dịch vụ",
+          "evidence_unit_ids": [
+            "ocop:evidence:cbb3de0b10a7f1ff36bc3e10"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 142,
+          "evidence_unit_id": "ocop:evidence:cbb3de0b10a7f1ff36bc3e10"
+        }
+      ],
+      "tags": [
+        "natural",
+        "tourism",
+        "exception"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH011",
+      "query": "Đợt OCOP 2026 ở phường Thành Sen hạn nộp hồ sơ là ngày nào, đăng ký lần đầu cần hai mẫu gì và nộp chỗ nào?",
+      "question_type": "multi_hop",
+      "category": "local_procedure",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Theo thông báo của phường Thành Sen cho đợt năm 2026, thời hạn nộp là trước ngày 15/10/2026, nơi tiếp nhận là UBND phường Thành Sen qua Phòng Nông nghiệp và Môi trường. Hồ sơ lần đầu dùng Phiếu đăng ký Mẫu số 01 và Báo cáo tự đánh giá Mẫu số 02 theo Quyết định 26/2026.",
+      "reasoning_steps": [
+        {
+          "relation": "HAS_LOCAL_DEADLINE",
+          "finding": "Tra mốc thời hạn đăng ký tại phường Thành Sen",
+          "evidence_unit_ids": [
+            "ocop:evidence:d34db57b8cd81da672860604"
+          ]
+        },
+        {
+          "relation": "SUBMITTED_AT",
+          "finding": "Tra nơi nhận hồ sơ địa phương",
+          "evidence_unit_ids": [
+            "ocop:evidence:870aa24f7962f051f33211f8"
+          ]
+        },
+        {
+          "relation": "REQUIRES_FORM",
+          "finding": "Xác định hai biểu mẫu bắt buộc theo quy định trung ương",
+          "evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:d34db57b8cd81da672860604"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "locality",
+        "date",
+        "form"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH012",
+      "query": "Sản phẩm bên mình ở Thành Sen đã được 3 sao, giờ xin nâng lên 4 sao thì ngoài hồ sơ cũ cần thêm gì, gửi đâu?",
+      "question_type": "multi_hop",
+      "category": "upgrade_procedure",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Hồ sơ nâng hạng gồm Phiếu đăng ký Mẫu 01, Báo cáo tự đánh giá Mẫu 02 và tài liệu minh chứng nêu rõ nội dung, kết quả đã thay đổi so với lần được công nhận. Theo hướng dẫn đợt 2026 tại Thành Sen, hồ sơ gửi UBND phường Thành Sen qua Phòng Nông nghiệp và Môi trường.",
+      "reasoning_steps": [
+        {
+          "relation": "UPGRADE_REQUIRES",
+          "finding": "Xác định yêu cầu hồ sơ nâng hạng theo Quyết định 26/2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        },
+        {
+          "relation": "LOCAL_GUIDANCE",
+          "finding": "Đối chiếu hướng dẫn bổ sung minh chứng ở Thành Sen",
+          "evidence_unit_ids": [
+            "ocop:evidence:975f19d44898e2dd5a6789d6"
+          ]
+        },
+        {
+          "relation": "SUBMITTED_AT",
+          "finding": "Xác định nơi tiếp nhận tại địa phương",
+          "evidence_unit_ids": [
+            "ocop:evidence:870aa24f7962f051f33211f8"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:975f19d44898e2dd5a6789d6"
+        },
+        {
+          "source_id": "VN.HATINH.THANHSEN.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:870aa24f7962f051f33211f8"
+        }
+      ],
+      "tags": [
+        "locality",
+        "upgrade",
+        "procedure"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH013",
+      "query": "Nếu sản phẩm của mình chấm được 92 điểm thì xã xử lý hồ sơ thôi hay phải lên cấp nào mới được công nhận 5 sao?",
+      "question_type": "multi_hop",
+      "category": "score_to_authority",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "92 điểm thuộc khoảng 90–100 điểm của OCOP 5 sao. Theo Quyết định 26/2026, UBND cấp tỉnh lập hồ sơ đề nghị đánh giá 5 sao gửi Bộ Nông nghiệp và Môi trường, là cơ quan chủ trì đánh giá, công nhận và cấp giấy chứng nhận 5 sao; không phải cấp xã tự công nhận.",
+      "reasoning_steps": [
+        {
+          "relation": "SCORE_MAPS_TO_RATING",
+          "finding": "Xác định 92 điểm thuộc mức 5 sao",
+          "evidence_unit_ids": [
+            "ocop:evidence:fbdded1356619ad0cc90994f"
+          ]
+        },
+        {
+          "relation": "CERTIFIED_BY",
+          "finding": "Xác định cấp có thẩm quyền công nhận 5 sao",
+          "evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        },
+        {
+          "relation": "SUBMITS_FOR_EVALUATION",
+          "finding": "Xác định hồ sơ tỉnh đề nghị lên bộ",
+          "evidence_unit_ids": [
+            "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fbdded1356619ad0cc90994f"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:c4c1c5cff01d1f8cbec99d9a"
+        }
+      ],
+      "tags": [
+        "numeric",
+        "authority",
+        "procedure"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH014",
+      "query": "Giấy OCOP 4 sao ở Hải Phòng có hạn mấy năm, được in logo lên bao bì không? Quy định 2026 có giữ thời hạn giấy như vậy không?",
+      "question_type": "multi_hop",
+      "category": "certificate_rules",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Quyết định 525/2026 của Hải Phòng cho phép chủ thể được công nhận sử dụng biểu trưng OCOP và hạng sao trên bao bì; giấy chứng nhận có hiệu lực 36 tháng kể từ ngày ký. Quyết định 26/2026 cũng quy định giấy chứng nhận OCOP từ 3 sao trở lên có giá trị 36 tháng kể từ ngày cơ quan có thẩm quyền ban hành. Việc sử dụng logo vẫn cần tuân thủ quy định quản lý nhãn hiệu liên quan.",
+      "reasoning_steps": [
+        {
+          "relation": "GRANTS_BRAND_USE",
+          "finding": "Quyền sử dụng biểu trưng và thời hạn trong quyết định Hải Phòng",
+          "evidence_unit_ids": [
+            "ocop:evidence:449c6a8c3a6c0af3829b368e"
+          ]
+        },
+        {
+          "relation": "CERT_VALID_FOR",
+          "finding": "Đối chiếu thời hạn chứng nhận theo quyết định khung năm 2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:449c6a8c3a6c0af3829b368e"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 3,
+          "evidence_unit_id": "ocop:evidence:fe03f7fceeb5c416ca5d0a47"
+        }
+      ],
+      "tags": [
+        "certificate",
+        "comparison",
+        "recognition"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH015",
+      "query": "Cùng là quyết định công nhận OCOP năm 2026, Hải Phòng công nhận nhiều hơn Huế bao nhiêu sản phẩm vậy?",
+      "question_type": "multi_hop",
+      "category": "cross_document_aggregate",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Quyết định 525/2026 của Hải Phòng công nhận 58 sản phẩm (cho kết quả đánh giá năm 2025), còn Quyết định 797/2026 của Huế công nhận 3 sản phẩm (cũng cho năm 2025). Như vậy Hải Phòng nhiều hơn Huế 55 sản phẩm trong hai quyết định này.",
+      "reasoning_steps": [
+        {
+          "relation": "HAS_RECOGNITION_COUNT",
+          "finding": "Lấy số sản phẩm được Hải Phòng công nhận",
+          "evidence_unit_ids": [
+            "ocop:evidence:11a1a964d3b7bdfd4025220f"
+          ]
+        },
+        {
+          "relation": "HAS_RECOGNITION_COUNT",
+          "finding": "Lấy số sản phẩm được Huế công nhận",
+          "evidence_unit_ids": [
+            "ocop:evidence:72ee7e66ea33d62755beecbb"
+          ]
+        },
+        {
+          "relation": "DIFFERENCE_OF_COUNTS",
+          "finding": "Tính chênh lệch giữa hai số lượng",
+          "evidence_unit_ids": [
+            "ocop:evidence:11a1a964d3b7bdfd4025220f",
+            "ocop:evidence:72ee7e66ea33d62755beecbb"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HAIPHONG.QD525.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:11a1a964d3b7bdfd4025220f"
+        },
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:72ee7e66ea33d62755beecbb"
+        }
+      ],
+      "tags": [
+        "comparison",
+        "numeric",
+        "recognition"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH016",
+      "query": "Hồi trước hồ sơ OCOP đi qua cấp huyện, vậy đợt sửa quy trình năm 2025 đã chuyển sang cấp nào và phần biểu mẫu đổi gì?",
+      "question_type": "multi_hop",
+      "category": "temporal_amendment",
+      "hop_count": 4,
+      "difficulty": "hard",
+      "gold_answer": "Quyết định 1489/QĐ-TTg năm 2025 sửa đổi Quyết định 148/QĐ-TTg, chuyển quy trình đánh giá còn hai cấp (cấp tỉnh và cấp trung ương) và thay nội dung “Phần dành cho cơ quan quản lý Chương trình OCOP cấp huyện” ở Biểu mẫu 1 thành “Phần dành cho UBND cấp xã”. Hồ sơ đã được cấp huyện tiếp nhận nhưng chưa có kết quả tại thời điểm quyết định sửa đổi có hiệu lực được chuyển lên cấp tỉnh để xử lý tiếp.",
+      "reasoning_steps": [
+        {
+          "relation": "OLD_PROCESS",
+          "finding": "Đối chiếu quy trình OCOP giai đoạn 2023 trước khi sửa đổi",
+          "evidence_unit_ids": [
+            "ocop:evidence:9fc06f496c5121b2b26f00e9"
+          ]
+        },
+        {
+          "relation": "AMENDS",
+          "finding": "Nhận diện văn bản 1489 sửa đổi văn bản 148",
+          "evidence_unit_ids": [
+            "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+          ]
+        },
+        {
+          "relation": "CHANGES_ADMIN_LEVEL",
+          "finding": "Xác minh thay đổi cấp đánh giá và chuyển hồ sơ cũ",
+          "evidence_unit_ids": [
+            "ocop:evidence:dc1d4edf64efb0a37b8aac90",
+            "ocop:evidence:864bb61b6e05ff93adbd3a67"
+          ]
+        },
+        {
+          "relation": "CHANGES_FORM_FIELD",
+          "finding": "Xác minh sửa đổi phần dành cho cơ quan quản lý ở Biểu mẫu 1",
+          "evidence_unit_ids": [
+            "ocop:evidence:6f768e0ff1cf42e57334492b"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD148.2023",
+          "pdf_page": 7,
+          "evidence_unit_id": "ocop:evidence:9fc06f496c5121b2b26f00e9"
+        },
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+        },
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:dc1d4edf64efb0a37b8aac90"
+        },
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:864bb61b6e05ff93adbd3a67"
+        },
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:6f768e0ff1cf42e57334492b"
+        }
+      ],
+      "tags": [
+        "temporal",
+        "amendment",
+        "form"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH017",
+      "query": "Bộ hồ sơ OCOP năm 2025 có chỉnh chuyện cấp huyện, vậy sang bộ quy định 2026 mình vẫn điền Mẫu số 01 chứ?",
+      "question_type": "multi_hop",
+      "category": "versioned_form",
+      "hop_count": 2,
+      "difficulty": "medium",
+      "gold_answer": "Có. Quyết định 1489/2025 sửa phần dành cho cơ quan quản lý ở Biểu mẫu 1 của bộ 2023 từ cấp huyện sang UBND cấp xã. Quyết định 26/2026 quy định hồ sơ đăng ký lần đầu dùng Phiếu đăng ký Mẫu số 01 tại Phụ lục III, kèm Báo cáo tự đánh giá Mẫu số 02.",
+      "reasoning_steps": [
+        {
+          "relation": "AMENDS_FORM",
+          "finding": "Xác định sửa đổi Biểu mẫu 1 trong văn bản 2025",
+          "evidence_unit_ids": [
+            "ocop:evidence:6f768e0ff1cf42e57334492b"
+          ]
+        },
+        {
+          "relation": "HAS_FORM",
+          "finding": "Xác định biểu mẫu được quy định lại trong văn bản năm 2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:6f768e0ff1cf42e57334492b"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        }
+      ],
+      "tags": [
+        "temporal",
+        "form",
+        "comparison"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH018",
+      "query": "Bộ OCOP có lần sửa quy trình năm 2025, vậy sang Quyết định 26/2026 thì bản năm 2023 với bản sửa năm 2025 còn áp dụng nữa không?",
+      "question_type": "multi_hop",
+      "category": "temporal_validity",
+      "hop_count": 2,
+      "difficulty": "hard",
+      "gold_answer": "Quyết định 1489/2025 sửa đổi, bổ sung Quyết định 148/2023. Điều 11 Quyết định 26/2026 nêu Quyết định 148 và Quyết định 1489 hết hiệu lực sau 60 ngày tính từ ngày 22/5/2026, là ngày Quyết định 26 có hiệu lực; vì vậy tính đến cuối tháng 10/2026 hai văn bản cũ đã hết hiệu lực, trừ cách xử lý chuyển tiếp đối với hồ sơ thuộc diện quy định.",
+      "reasoning_steps": [
+        {
+          "relation": "AMENDS",
+          "finding": "Xác định quan hệ Quyết định 1489 sửa đổi Quyết định 148",
+          "evidence_unit_ids": [
+            "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+          ]
+        },
+        {
+          "relation": "SUPERSEDES_AFTER_TRANSITION",
+          "finding": "Tìm điều khoản hiệu lực và bãi hiệu lực văn bản cũ của Quyết định 26",
+          "evidence_unit_ids": [
+            "ocop:evidence:685d041cd1c20012e3498559"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD1489.2025",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:c39896ac973a09b9b9e3a7eb"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "temporal",
+        "document_relation",
+        "validity"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH019",
+      "query": "Hạt sen của Sen Huế được công nhận hồi đầu năm 2026, giờ có Quyết định 26 thay bộ tiêu chí thì giấy OCOP cũ có bị mất hiệu lực luôn không?",
+      "question_type": "multi_hop",
+      "category": "temporal_grandfathering",
+      "hop_count": 2,
+      "difficulty": "hard",
+      "gold_answer": "Hạt sen của HTX Sen Huế đã được công nhận OCOP 3 sao theo Quyết định 797/2026 ngày 04/3/2026. Quyết định 26/2026 quy định sản phẩm đã được cấp có thẩm quyền công nhận 3–5 sao trước ngày văn bản này có hiệu lực thì tiếp tục có giá trị đến hết thời hạn đã được cấp, không tự động mất hiệu lực ngay khi thay đổi bộ tiêu chí.",
+      "reasoning_steps": [
+        {
+          "relation": "RECOGNIZED_BEFORE",
+          "finding": "Xác minh kết quả công nhận 3 sao tại Huế trước ngày 22/5/2026",
+          "evidence_unit_ids": [
+            "ocop:evidence:f02df27668983011e7f138fc"
+          ]
+        },
+        {
+          "relation": "PRESERVES_CERTIFICATE",
+          "finding": "Xác minh điều khoản chuyển tiếp bảo lưu giấy chứng nhận",
+          "evidence_unit_ids": [
+            "ocop:evidence:685d041cd1c20012e3498559"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.HUE.QD797.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:f02df27668983011e7f138fc"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 13,
+          "evidence_unit_id": "ocop:evidence:685d041cd1c20012e3498559"
+        }
+      ],
+      "tags": [
+        "temporal",
+        "recognition",
+        "certificate"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH020",
+      "query": "Tôi có sản phẩm trái cây sấy đóng gói sẵn, muốn đăng ký OCOP và bán ra thị trường thì Mẫu 01 OCOP có thay được giấy tự công bố thực phẩm không?",
+      "question_type": "multi_hop",
+      "category": "cross_regulation_procedure",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Không. Phiếu đăng ký OCOP Mẫu 01 và Báo cáo tự đánh giá Mẫu 02 phục vụ đánh giá, phân hạng OCOP. Với thực phẩm đã qua chế biến bao gói sẵn thuộc diện tự công bố, Nghị định 15/2018 yêu cầu hồ sơ tự công bố riêng (bản tự công bố theo Mẫu 01 Phụ lục I và phiếu kiểm nghiệm phù hợp). Hai loại Mẫu 01 thuộc hai thủ tục, không thể dùng thay cho nhau.",
+      "reasoning_steps": [
+        {
+          "relation": "REQUIRES_OCOP_FORM",
+          "finding": "Nhận diện yêu cầu hồ sơ đăng ký OCOP theo Quyết định 26",
+          "evidence_unit_ids": [
+            "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+          ]
+        },
+        {
+          "relation": "SUBJECT_TO_FOOD_DECLARATION",
+          "finding": "Nhận diện nhóm thực phẩm bao gói sẵn thuộc diện tự công bố theo Nghị định 15",
+          "evidence_unit_ids": [
+            "ocop:evidence:7e23081983930b9474d62035"
+          ]
+        },
+        {
+          "relation": "REQUIRES_DECLARATION_FORM",
+          "finding": "Đối chiếu hồ sơ và mẫu tự công bố riêng",
+          "evidence_unit_ids": [
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:00f00c64f6f7c3f827c6a54b"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:7e23081983930b9474d62035"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d"
+        }
+      ],
+      "tags": [
+        "procedure",
+        "compliance",
+        "form_collision"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH021",
+      "query": "Mình sắp bán đồ ăn đóng gói, nhãn đang in tiếng Anh, còn hồ sơ tự công bố thì chưa làm. Có phải xử lý cả hai việc riêng không?",
+      "question_type": "multi_hop",
+      "category": "parallel_compliance",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Có. Nội dung bắt buộc trên nhãn hàng hóa lưu thông ở Việt Nam về nguyên tắc phải thể hiện bằng tiếng Việt theo Nghị định 43/2017; nếu là hàng nhập khẩu có nhãn gốc tiếng nước ngoài thì xem thêm quy định nhãn phụ. Đối với thực phẩm chế biến bao gói sẵn thuộc diện tự công bố, thủ tục và hồ sơ tự công bố được quy định riêng tại Nghị định 15/2018, trong đó có bản tự công bố và phiếu kiểm nghiệm.",
+      "reasoning_steps": [
+        {
+          "relation": "HAS_LABEL_LANGUAGE",
+          "finding": "Xác định quy định ngôn ngữ nhãn hàng hóa",
+          "evidence_unit_ids": [
+            "ocop:evidence:d9bac91e4c6aa86e5b4998f0"
+          ]
+        },
+        {
+          "relation": "HAS_SUPPLEMENTARY_LABEL",
+          "finding": "Xác định trường hợp hàng nhập khẩu dùng nhãn phụ",
+          "evidence_unit_ids": [
+            "ocop:evidence:9a8ff47a58f5c1e59db93eba"
+          ]
+        },
+        {
+          "relation": "REQUIRES_SELF_DECLARATION",
+          "finding": "Xác định thủ tục tự công bố thực phẩm đóng gói riêng biệt",
+          "evidence_unit_ids": [
+            "ocop:evidence:7e23081983930b9474d62035",
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:d9bac91e4c6aa86e5b4998f0"
+        },
+        {
+          "source_id": "VN.ND.43.2017",
+          "pdf_page": 5,
+          "evidence_unit_id": "ocop:evidence:9a8ff47a58f5c1e59db93eba"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:7e23081983930b9474d62035"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d"
+        }
+      ],
+      "tags": [
+        "natural",
+        "compliance",
+        "label"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH022",
+      "query": "Hộ sản xuất nhỏ lẻ bên mình nghe nói không phải xin giấy đủ điều kiện an toàn thực phẩm. Vậy làm hàng OCOP có được bỏ qua yêu cầu vệ sinh không?",
+      "question_type": "multi_hop",
+      "category": "exception_vs_obligation",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Không. Nghị định 15/2018 quy định một số cơ sở nhỏ lẻ thuộc diện không phải cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm, nhưng điều này không đồng nghĩa với miễn tuân thủ điều kiện bảo đảm an toàn thực phẩm. Luật An toàn thực phẩm vẫn yêu cầu điều kiện an toàn cho sản xuất, kinh doanh nhỏ lẻ; sản phẩm OCOP theo Quyết định 26/2026 cũng phải bảo đảm an toàn thực phẩm.",
+      "reasoning_steps": [
+        {
+          "relation": "EXEMPT_FROM_CERTIFICATE",
+          "finding": "Xác định ngoại lệ không phải cấp giấy chứng nhận đối với một số cơ sở",
+          "evidence_unit_ids": [
+            "ocop:evidence:ebea3b9830ac7e52426d47f4"
+          ]
+        },
+        {
+          "relation": "MUST_MEET_FOOD_SAFETY",
+          "finding": "Xác định nghĩa vụ về an toàn thực phẩm của cơ sở nhỏ lẻ",
+          "evidence_unit_ids": [
+            "ocop:evidence:02b36b3db356cea7c1217804"
+          ]
+        },
+        {
+          "relation": "OCOP_REQUIRES_SAFETY",
+          "finding": "Xác định yêu cầu an toàn cho sản phẩm OCOP",
+          "evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 10,
+          "evidence_unit_id": "ocop:evidence:ebea3b9830ac7e52426d47f4"
+        },
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 14,
+          "evidence_unit_id": "ocop:evidence:02b36b3db356cea7c1217804"
+        },
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        }
+      ],
+      "tags": [
+        "compliance",
+        "exception",
+        "safety"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH023",
+      "query": "Lô thực phẩm nhà mình vừa bị phát hiện không an toàn. Ngoài việc truy ra nguồn gốc thì có phải thu hồi không, căn cứ nào?",
+      "question_type": "multi_hop",
+      "category": "compliance_chain",
+      "hop_count": 2,
+      "difficulty": "hard",
+      "gold_answer": "Luật An toàn thực phẩm 2010 quy định về truy xuất nguồn gốc thực phẩm không bảo đảm an toàn tại Điều 54 và các trường hợp thu hồi, xử lý tại Điều 55. Nghị định 15/2018 quy định thêm trách nhiệm truy xuất đối với sản phẩm không bảo đảm an toàn tại Điều 34, 35. Việc thu hồi thực hiện khi lô hàng thuộc trường hợp phải thu hồi theo quy định, không nên chỉ dừng ở truy xuất.",
+      "reasoning_steps": [
+        {
+          "relation": "REQUIRES_TRACEABILITY",
+          "finding": "Nhận diện nghĩa vụ truy xuất nguồn gốc",
+          "evidence_unit_ids": [
+            "ocop:evidence:0d25ff4ebf54127f3a233538",
+            "ocop:evidence:12ac221b59d176c6594fe009"
+          ]
+        },
+        {
+          "relation": "REQUIRES_RECALL_IF_UNSAFE",
+          "finding": "Xác định khi nào thu hồi thực phẩm không an toàn",
+          "evidence_unit_ids": [
+            "ocop:evidence:291ac76685ddb2515deb268a"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 29,
+          "evidence_unit_id": "ocop:evidence:0d25ff4ebf54127f3a233538"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 27,
+          "evidence_unit_id": "ocop:evidence:12ac221b59d176c6594fe009"
+        },
+        {
+          "source_id": "VN.LAW.55.2010",
+          "pdf_page": 29,
+          "evidence_unit_id": "ocop:evidence:291ac76685ddb2515deb268a"
+        }
+      ],
+      "tags": [
+        "compliance",
+        "traceability",
+        "remediation"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH024",
+      "query": "Nghe nói năm 2026 nghị định mới về an toàn thực phẩm bị tạm ngưng, vậy giờ sản phẩm thực phẩm đóng gói của mình vẫn tự công bố theo nghị định nào?",
+      "question_type": "multi_hop",
+      "category": "temporal_applicability",
+      "hop_count": 3,
+      "difficulty": "hard",
+      "gold_answer": "Nghị quyết 15/2026/NQ-CP tạm ngưng hiệu lực Nghị định 46/2026/NĐ-CP và Nghị quyết 66.13/2026/NQ-CP, đồng thời nêu Nghị định 15/2018/NĐ-CP tiếp tục có hiệu lực trong thời gian tạm ngưng. Với thực phẩm đã qua chế biến bao gói sẵn thuộc diện tự công bố, quy định về tự công bố nằm tại Điều 4, 5 Nghị định 15/2018.",
+      "reasoning_steps": [
+        {
+          "relation": "SUSPENDS",
+          "finding": "Nhận diện các văn bản bị tạm ngưng",
+          "evidence_unit_ids": [
+            "ocop:evidence:6c04452a709f29d5d12441d0"
+          ]
+        },
+        {
+          "relation": "APPLIES_INSTEAD",
+          "finding": "Xác định văn bản tiếp tục áp dụng trong thời gian tạm ngưng",
+          "evidence_unit_ids": [
+            "ocop:evidence:879c38b2bd1724be8888bbd3"
+          ]
+        },
+        {
+          "relation": "REQUIRES_SELF_DECLARATION",
+          "finding": "Xác định chế độ tự công bố thực phẩm bao gói sẵn trong văn bản áp dụng",
+          "evidence_unit_ids": [
+            "ocop:evidence:7e23081983930b9474d62035",
+            "ocop:evidence:a344ebc34b6c832284f7124d"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:6c04452a709f29d5d12441d0"
+        },
+        {
+          "source_id": "VN.NQ.15.2026",
+          "pdf_page": 1,
+          "evidence_unit_id": "ocop:evidence:879c38b2bd1724be8888bbd3"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:7e23081983930b9474d62035"
+        },
+        {
+          "source_id": "VN.ND.15.2018",
+          "pdf_page": 4,
+          "evidence_unit_id": "ocop:evidence:a344ebc34b6c832284f7124d"
+        }
+      ],
+      "tags": [
+        "temporal",
+        "compliance",
+        "regulation"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "MH025",
+      "query": "Hợp tác xã mình muốn đưa sản phẩm nông sản vào OCOP, đồng thời xây thương hiệu và bán online. Luật có chính sách hỗ trợ những việc đó không?",
+      "question_type": "multi_hop",
+      "category": "policy_to_eligibility",
+      "hop_count": 4,
+      "difficulty": "hard",
+      "gold_answer": "Hợp tác xã là loại chủ thể được đăng ký đánh giá OCOP theo Quyết định 26/2026. Luật Hợp tác xã 2023 có chính sách hỗ trợ chuyển đổi số, ứng dụng thương mại điện tử (Điều 24), cũng như hỗ trợ xây dựng và đăng ký nhãn hiệu, tiếp thị sản phẩm và tham gia sàn giao dịch thương mại điện tử (Điều 25). Đây là chính sách hỗ trợ theo điều kiện, không đồng nghĩa tự động được cấp kinh phí khi tham gia OCOP.",
+      "reasoning_steps": [
+        {
+          "relation": "ELIGIBLE_SUBJECT",
+          "finding": "Kiểm tra hợp tác xã là chủ thể OCOP hợp lệ",
+          "evidence_unit_ids": [
+            "ocop:evidence:33dbf53ffdc32e646e620e01"
+          ]
+        },
+        {
+          "relation": "SUPPORTS_DIGITAL_COMMERCE",
+          "finding": "Xác định hỗ trợ chuyển đổi số và thương mại điện tử",
+          "evidence_unit_ids": [
+            "ocop:evidence:c1b22a9c4a18c2a2859fffe6"
+          ]
+        },
+        {
+          "relation": "SUPPORTS_MARKET_ACCESS",
+          "finding": "Xác định hỗ trợ nhãn hiệu và tiếp thị nông sản",
+          "evidence_unit_ids": [
+            "ocop:evidence:0e071f2565c482d58c8e6d37"
+          ]
+        },
+        {
+          "relation": "SUPPORTS_MARKETPLACE",
+          "finding": "Xác định hỗ trợ tham gia sàn giao dịch thương mại điện tử",
+          "evidence_unit_ids": [
+            "ocop:evidence:313ce7d29785bf6b5c057cad"
+          ]
+        }
+      ],
+      "gold_evidence": [
+        {
+          "source_id": "VN.OCOP.QD26.2026",
+          "pdf_page": 2,
+          "evidence_unit_id": "ocop:evidence:33dbf53ffdc32e646e620e01"
+        },
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:c1b22a9c4a18c2a2859fffe6"
+        },
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 17,
+          "evidence_unit_id": "ocop:evidence:0e071f2565c482d58c8e6d37"
+        },
+        {
+          "source_id": "VN.LAW.17.2023",
+          "pdf_page": 18,
+          "evidence_unit_id": "ocop:evidence:313ce7d29785bf6b5c057cad"
+        }
+      ],
+      "tags": [
+        "cooperative",
+        "policy",
+        "commerce"
+      ],
+      "answerable": true
+    }
+  ]
+}
